@@ -6,31 +6,36 @@ import { runApifyActor } from './apify-client.js';
 import { progressiveFetchVideos } from './utils/progressive-video-fetch.js';
 
 // Initialize Firebase Admin
-if (!getApps().length) {
-  try {
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-      privateKey = privateKey.slice(1, -1);
+function initializeFirebase() {
+  if (!getApps().length) {
+    try {
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
+      const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      };
+
+      initializeApp({ 
+        credential: cert(serviceAccount as any),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
+      });
+      console.log('✅ Firebase Admin initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize Firebase Admin:', error);
+      throw error;
     }
-    privateKey = privateKey.replace(/\\n/g, '\n');
-
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey,
-    };
-
-    initializeApp({ 
-      credential: cert(serviceAccount as any),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
-    });
-  } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error);
   }
+  return {
+    db: getFirestore(),
+    storage: getStorage()
+  };
 }
-
-const db = getFirestore();
-const storage = getStorage();
 
 /**
  * Download image from URL and upload to Firebase Storage
@@ -39,6 +44,7 @@ async function downloadAndUploadImage(
   imageUrl: string, 
   orgId: string, 
   filename: string,
+  storage: ReturnType<typeof getStorage>,
   folder: string = 'thumbnails'
 ): Promise<string> {
   try {
@@ -114,6 +120,9 @@ async function downloadAndUploadImage(
  * Called by orchestrator for each account
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Initialize Firebase
+  const { db, storage } = initializeFirebase();
+  
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -379,6 +388,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             instaThumbnail,
             orgId,
             `${platformVideoId}_thumb.jpg`,
+            storage,
             'thumbnails'
           );
         }
@@ -404,6 +414,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             tiktokThumbnail,
             orgId,
             `tt_${platformVideoId}_thumb.jpg`,
+            storage,
             'thumbnails'
           );
         }
@@ -428,6 +439,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             youtubeThumbnail,
             orgId,
             `yt_${platformVideoId}_thumb.jpg`,
+            storage,
             'thumbnails'
           );
         }
@@ -451,6 +463,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             twitterThumbnail,
             orgId,
             `tw_${platformVideoId}_thumb.jpg`,
+            storage,
             'thumbnails'
           );
         }
