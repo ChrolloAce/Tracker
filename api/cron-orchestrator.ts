@@ -46,9 +46,14 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret or Vercel Cron header
-  const authHeader = req.headers.authorization;
+  let authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  
+  // Strip "Bearer " prefix if present
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    authHeader = authHeader.substring(7);
+  }
   
   console.log('🔐 Auth check:', {
     isVercelCron,
@@ -57,22 +62,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     hasCronSecret: !!cronSecret,
     authHeaderLength: authHeader?.length || 0,
     cronSecretLength: cronSecret?.length || 0,
+    authFirst10: authHeader?.substring(0, 10) || 'none',
+    secretFirst10: cronSecret?.substring(0, 10) || 'none',
   });
   
   // Allow if:
-  // 1. Authorization header matches CRON_SECRET
-  // 2. Request is from Vercel Cron (x-vercel-cron header)
-  // 3. For testing: allow if CRON_SECRET is not set
-  const isAuthorized = isVercelCron || authHeader === cronSecret || !cronSecret;
+  // 1. Request is from Vercel Cron (x-vercel-cron header) - MOST RELIABLE
+  // 2. Authorization header matches CRON_SECRET
+  const isAuthorized = isVercelCron || authHeader === cronSecret;
   
   if (!isAuthorized) {
     console.log('❌ Unauthorized cron request - auth check failed');
+    console.log('💡 Tip: Wait for Vercel Cron to auto-trigger (will have x-vercel-cron header)');
     return res.status(401).json({ 
       error: 'Unauthorized',
+      message: 'This endpoint is only accessible by Vercel Cron or with valid CRON_SECRET',
       debug: {
         isVercelCron,
         hasAuth: !!authHeader,
-        hasCronSecret: !!cronSecret
+        hasCronSecret: !!cronSecret,
+        authMatches: authHeader === cronSecret
       }
     });
   }
