@@ -40,7 +40,7 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
 
 /**
  * Cron Orchestrator
- * Runs every 5 minutes (*/5 * * * *) for testing
+ * Runs every 5 minutes for testing (schedule: every 5 min)
  * Refreshes accounts based on their organization's subscription plan:
  * - ALL PLANS: every 5 minutes for testing (normally 12-48 hours based on plan)
  */
