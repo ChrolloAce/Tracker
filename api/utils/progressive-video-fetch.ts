@@ -1,9 +1,8 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { runApifyActor } from '../apify-client.js';
 
-const db = getFirestore();
-
 export interface ProgressiveFetchOptions {
+  db: ReturnType<typeof getFirestore>; // Pass db instance
   orgId: string;
   projectId: string;
   accountId: string;
@@ -35,7 +34,7 @@ export interface ProgressiveFetchResult {
 export async function progressiveFetchVideos(
   options: ProgressiveFetchOptions
 ): Promise<ProgressiveFetchResult> {
-  const { orgId, projectId, accountId, username, platform } = options;
+  const { db, orgId, projectId, accountId, username, platform } = options;
   
   console.log(`🔄 Starting progressive fetch for @${username} (${platform})`);
   

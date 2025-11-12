@@ -280,6 +280,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`  🔄 Using progressive fetch for @${account.username} (${account.platform})`);
         
         const progressiveResult = await progressiveFetchVideos({
+          db,
           orgId,
           projectId,
           accountId,
