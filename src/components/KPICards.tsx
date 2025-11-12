@@ -2120,8 +2120,10 @@ const _KPISparkline: React.FC<{
           stroke={stroke}
           strokeWidth={2.5}
           fill={`url(#gradient-${id})`}
-          isAnimationActive={false}
-          animationDuration={0}
+          isAnimationActive={true}
+          animationDuration={400}
+          animationEasing="ease-out"
+          animationBegin={0}
           connectNulls={true}
           dot={false}
           activeDot={{ 
@@ -2500,8 +2502,10 @@ const KPICard: React.FC<{
                           strokeOpacity={0.15}
                           fill="none"
                           dot={isSingleDay ? { r: 4, fill: 'rgb(156, 163, 175)', fillOpacity: 0.6 } : false}
-                          isAnimationActive={false}
-                          animationDuration={0}
+                          isAnimationActive={true}
+                          animationDuration={400}
+                          animationEasing="ease-out"
+                          animationBegin={0}
                         />
                       )}
                       {/* Main Current Period Graph */}
@@ -2520,8 +2524,10 @@ const KPICard: React.FC<{
                           stroke: '#fff',
                           style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
                         }}
-                        isAnimationActive={false}
-                        animationDuration={0}
+                        isAnimationActive={true}
+                        animationDuration={400}
+                        animationEasing="ease-out"
+                        animationBegin={0}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
