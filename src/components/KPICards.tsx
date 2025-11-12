@@ -181,7 +181,7 @@ interface KPICardData {
   intervalType?: IntervalType; // Add interval type to track how data is aggregated
 }
 
-const KPICards: React.FC<KPICardsProps> = ({ 
+const KPICardsComponent: React.FC<KPICardsProps> = ({ 
   submissions, 
   allSubmissions, // All submissions for PP calculation
   linkClicks = [], 
@@ -1767,25 +1767,29 @@ const KPICards: React.FC<KPICardsProps> = ({
     return cards;
   }, [submissions, allSubmissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations, onOpenRevenueSettings]);
 
+  // Memoize sorted and filtered cards to prevent recalculation
+  const sortedCards = useMemo(() => {
+    // Filter cards based on visibility
+    let visibleCards = kpiData.filter(card => cardVisibility[card.id] !== false);
+    
+    // Sort cards based on saved order
+    if (cardOrder.length > 0) {
+      visibleCards.sort((a, b) => {
+        const aIndex = cardOrder.indexOf(a.id);
+        const bIndex = cardOrder.indexOf(b.id);
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+    }
+    
+    return visibleCards;
+  }, [kpiData, cardOrder, cardVisibility]);
+
   return (
     <>
       <div className="grid gap-3 sm:gap-4 md:gap-5 xl:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
-        {(() => {
-          // Filter cards based on visibility
-          let visibleCards = kpiData.filter(card => cardVisibility[card.id] !== false);
-          
-          // Sort cards based on saved order
-          if (cardOrder.length > 0) {
-            visibleCards.sort((a, b) => {
-              const aIndex = cardOrder.indexOf(a.id);
-              const bIndex = cardOrder.indexOf(b.id);
-              if (aIndex === -1) return 1;
-              if (bIndex === -1) return -1;
-              return aIndex - bIndex;
-            });
-          }
-          
-          return visibleCards.map((card) => {
+        {sortedCards.map((card) => {
             // Special handling for link-clicks KPI card
             if (card.id === 'link-clicks') {
               return (
@@ -1873,8 +1877,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                 }}
               />
             );
-          });
-        })()}
+          })}
       </div>
 
       {/* Trash Drop Zone - Only visible when dragging a KPI card */}
@@ -1979,6 +1982,10 @@ const KPICards: React.FC<KPICardsProps> = ({
     </>
   );
 };
+
+// Memoize the component for performance
+const KPICards = React.memo(KPICardsComponent);
+KPICards.displayName = 'KPICards';
 
 // Separate component to handle sparkline rendering consistently (kept for reference)
 // @ts-ignore - Keeping for potential future use
@@ -2113,9 +2120,8 @@ const _KPISparkline: React.FC<{
           stroke={stroke}
           strokeWidth={2.5}
           fill={`url(#gradient-${id})`}
-          isAnimationActive={true}
-          animationDuration={800}
-          animationEasing="ease-in-out"
+          isAnimationActive={false}
+          animationDuration={0}
           connectNulls={true}
           dot={false}
           activeDot={{ 
@@ -2494,10 +2500,8 @@ const KPICard: React.FC<{
                           strokeOpacity={0.15}
                           fill="none"
                           dot={isSingleDay ? { r: 4, fill: 'rgb(156, 163, 175)', fillOpacity: 0.6 } : false}
-                          isAnimationActive={true}
-                          animationDuration={500}
-                          animationEasing="ease-out"
-                          animationBegin={0}
+                          isAnimationActive={false}
+                          animationDuration={0}
                         />
                       )}
                       {/* Main Current Period Graph */}
@@ -2516,10 +2520,8 @@ const KPICard: React.FC<{
                           stroke: '#fff',
                           style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
                         }}
-                        isAnimationActive={true}
-                        animationDuration={500}
-                        animationEasing="ease-out"
-                        animationBegin={0}
+                        isAnimationActive={false}
+                        animationDuration={0}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
