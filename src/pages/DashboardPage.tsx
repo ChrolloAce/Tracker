@@ -318,27 +318,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [location.search]);
 
-  // Track which tab's data is ready to prevent showing stale data
-  const [tabDataReady, setTabDataReady] = useState<Record<string, boolean>>({
-    dashboard: false,
-    videos: false,
-    accounts: false,
-    analytics: false,
-  });
-
-  // Mark tab data as ready when it finishes loading
-  useEffect(() => {
-    if (dataLoadedFromFirebase && !loadingDashboard) {
-      setTabDataReady(prev => ({
-        ...prev,
-        dashboard: true,
-        videos: true,
-        accounts: true,
-        analytics: true,
-      }));
-    }
-  }, [dataLoadedFromFirebase, loadingDashboard]);
-
   // Mark items as read when entering tabs
   useEffect(() => {
     if (!currentOrgId || !currentProjectId || isDemoMode) return;
@@ -576,6 +555,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [rulesLoadedFromFirebase, setRulesLoadedFromFirebase] = useState(false);
   const [dataLoadedFromFirebase, setDataLoadedFromFirebase] = useState(false);
   
+  // Track which tab's data is ready to prevent showing stale data
+  const [tabDataReady, setTabDataReady] = useState<Record<string, boolean>>({
+    dashboard: false,
+    videos: false,
+    accounts: false,
+    analytics: false,
+  });
+  
   // Compute ACTIVE rules count - only count rules that exist in current project
   // This prevents showing stale counts when switching projects
   const activeRulesCount = useMemo(() => {
@@ -607,6 +594,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const saved = localStorage.getItem('creatorsDateFilter');
     return (saved as DateFilterType) || 'all';
   });
+
+  // Mark tab data as ready when it finishes loading
+  useEffect(() => {
+    if (dataLoadedFromFirebase && !loadingDashboard) {
+      setTabDataReady(prev => ({
+        ...prev,
+        dashboard: true,
+        videos: true,
+        accounts: true,
+        analytics: true,
+      }));
+    }
+  }, [dataLoadedFromFirebase, loadingDashboard]);
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
