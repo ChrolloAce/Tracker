@@ -50,17 +50,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cronSecret = process.env.CRON_SECRET;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   
+  console.log('🔐 Auth check:', {
+    isVercelCron,
+    hasAuth: !!authHeader,
+    authMatches: authHeader === cronSecret,
+    hasCronSecret: !!cronSecret,
+    authHeaderLength: authHeader?.length || 0,
+    cronSecretLength: cronSecret?.length || 0,
+  });
+  
   // Allow if:
   // 1. Authorization header matches CRON_SECRET
   // 2. Request is from Vercel Cron (x-vercel-cron header)
-  if (!isVercelCron && authHeader !== cronSecret) {
-    console.log('❌ Unauthorized cron request:', { 
-      hasAuth: !!authHeader, 
-      hasVercelCron: isVercelCron,
-      headers: Object.keys(req.headers)
+  // 3. For testing: allow if CRON_SECRET is not set
+  const isAuthorized = isVercelCron || authHeader === cronSecret || !cronSecret;
+  
+  if (!isAuthorized) {
+    console.log('❌ Unauthorized cron request - auth check failed');
+    return res.status(401).json({ 
+      error: 'Unauthorized',
+      debug: {
+        isVercelCron,
+        hasAuth: !!authHeader,
+        hasCronSecret: !!cronSecret
+      }
     });
-    return res.status(401).json({ error: 'Unauthorized' });
   }
+  
+  console.log('✅ Authorized:', isVercelCron ? 'Vercel Cron' : 'Auth Header');
 
   const startTime = Date.now();
   console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
