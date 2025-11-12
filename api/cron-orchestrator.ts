@@ -87,7 +87,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let globalTotalAccounts = 0;
     let globalTotalRefreshed = 0;
     let globalTotalVideosRefreshed = 0;
-    let globalTotalVideosAdded = 0;
     let successfulOrgs = 0;
     let failedOrgs = 0;
 
@@ -135,7 +134,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let orgSuccessful = 0;
         let orgFailed = 0;
         let orgVideosRefreshed = 0;
-        let orgVideosAdded = 0;
         const dispatchPromises: Promise<any>[] = [];
 
         // Process each project
@@ -172,27 +170,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             console.log(`        ⚡ Dispatching @${accountData.username}`);
 
-            const dispatchPromise = fetch(`${baseUrl}/api/refresh-account`, {
+            const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': cronSecret || ''
               },
               body: JSON.stringify({
-                orgId: orgId,
-                projectId,
                 accountId: accountDoc.id,
-                platform: accountData.platform,
-                username: accountData.username
+                orgId: orgId,
+                projectId
               })
             })
               .then(async (response) => {
                 if (response.ok) {
                   const result = await response.json();
                   orgSuccessful++;
-                  orgVideosRefreshed += result.videosRefreshed || 0;
-                  orgVideosAdded += result.videosAdded || 0;
-                  console.log(`          ✅ @${accountData.username}: ${result.videosRefreshed || 0} refreshed, ${result.videosAdded || 0} new`);
+                  // sync-single-account returns videosCount (total synced)
+                  const videoCount = result.videosCount || 0;
+                  orgVideosRefreshed += videoCount;
+                  // Note: sync-single-account doesn't differentiate new vs updated
+                  // For email reporting, we'll consider all as "refreshed"
+                  console.log(`          ✅ @${accountData.username || result.username}: ${videoCount} videos synced`);
                 } else {
                   orgFailed++;
                   console.error(`          ❌ @${accountData.username}: ${response.status}`);
@@ -473,7 +472,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                           </p>
                           <p style="margin: 10px 0; color: #111; font-size: 15px;">
                             🎬 <strong>${orgSuccessful} accounts refreshed</strong>
-                            ${orgVideosAdded > 0 ? ` (+${orgVideosAdded} new videos)` : ''}
+                            ${orgVideosRefreshed > 0 ? ` (${orgVideosRefreshed} videos synced)` : ''}
                           </p>
                         </div>
 
@@ -547,7 +546,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         globalTotalAccounts += orgTotalAccounts;
         globalTotalRefreshed += orgSuccessful;
         globalTotalVideosRefreshed += orgVideosRefreshed;
-        globalTotalVideosAdded += orgVideosAdded;
         successfulOrgs++;
 
       } catch (error: any) {
@@ -565,8 +563,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`📊 Organizations: ${orgsSnapshot.size} total, ${successfulOrgs} successful, ${failedOrgs} failed`);
     console.log(`👥 Total accounts found: ${globalTotalAccounts}`);
     console.log(`⚡ Total accounts refreshed: ${globalTotalRefreshed}`);
-    console.log(`🎬 Total videos refreshed: ${globalTotalVideosRefreshed}`);
-    console.log(`➕ Total new videos: ${globalTotalVideosAdded}`);
+    console.log(`🎬 Total videos synced: ${globalTotalVideosRefreshed}`);
     console.log(`============================================================\n`);
 
     return res.status(200).json({
@@ -578,8 +575,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         orgsFailed: failedOrgs,
         accountsFound: globalTotalAccounts,
         accountsRefreshed: globalTotalRefreshed,
-        videosRefreshed: globalTotalVideosRefreshed,
-        videosAdded: globalTotalVideosAdded
+        videosSynced: globalTotalVideosRefreshed
       }
     });
 
