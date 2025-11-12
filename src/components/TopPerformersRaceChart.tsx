@@ -435,7 +435,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     setHoveredVideo({
                       video,
                       x: rect.left + rect.width / 2,
-                      y: rect.top
+                      y: rect.bottom
                     });
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
@@ -618,7 +618,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     setHoveredAccount({
                       handle: account.handle,
                       x: rect.left + rect.width / 2,
-                      y: rect.top
+                      y: rect.bottom
                     });
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
@@ -703,11 +703,11 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       {/* Video Tooltip */}
       {hoveredVideo && createPortal(
         <div
-          className="absolute z-50 pointer-events-none"
+          className="absolute z-[9999] pointer-events-none"
           style={{
             left: `${hoveredVideo.x}px`,
-            top: `${hoveredVideo.y - 10}px`,
-            transform: 'translate(-50%, -100%)'
+            top: `${hoveredVideo.y + 20}px`,
+            transform: 'translateX(-50%)'
           }}
         >
           <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[320px]">
@@ -801,11 +801,11 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       {/* Account Tooltip */}
       {hoveredAccount && createPortal(
         <div
-          className="absolute z-50 pointer-events-none"
+          className="absolute z-[9999] pointer-events-none"
           style={{
             left: `${hoveredAccount.x}px`,
-            top: `${hoveredAccount.y - 10}px`,
-            transform: 'translate(-50%, -100%)'
+            top: `${hoveredAccount.y + 20}px`,
+            transform: 'translateX(-50%)'
           }}
         >
           <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[380px]">

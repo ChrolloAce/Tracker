@@ -178,16 +178,6 @@ const DeletedVideosManager: React.FC = () => {
     }
   };
 
-  const getPlatformColor = (platform: string) => {
-    switch (platform.toLowerCase()) {
-      case 'instagram': return 'bg-pink-500/10 text-pink-400 border-pink-500/20';
-      case 'tiktok': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
-      case 'twitter': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'youtube': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-    }
-  };
-
   const formatDate = (date: Date) => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();

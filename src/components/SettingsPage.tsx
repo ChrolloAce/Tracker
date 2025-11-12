@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Building2, Video } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Video } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
-import TeamManagementPage from './TeamManagementPage';
 import OrganizationSwitcher from './OrganizationSwitcher';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';

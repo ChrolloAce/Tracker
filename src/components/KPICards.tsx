@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Play, 
@@ -15,7 +15,9 @@ import {
   Download,
   Bookmark,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -230,6 +232,24 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
   const [dragOverCard, setDragOverCard] = useState<string | null>(null);
   const [selectedPPInterval, setSelectedPPInterval] = useState<TimeInterval | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
+  
+  // Censored cards state (persisted in localStorage)
+  const [censoredCards, setCensoredCards] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('censoredKPICards');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  
+  const toggleCardCensor = useCallback((cardId: string) => {
+    setCensoredCards(prev => {
+      const newState = { ...prev, [cardId]: !prev[cardId] };
+      localStorage.setItem('censoredKPICards', JSON.stringify(newState));
+      return newState;
+    });
+  }, []);
 
   // Convert accounts array to Map for TrackedLinksKPICard
   const accountsMap = useMemo(() => {
@@ -1820,6 +1840,8 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
                   })) || []}
                   links={links}
                   accounts={accountsMap}
+                  isCensored={censoredCards[card.id] || false}
+                  onToggleCensor={() => toggleCardCensor(card.id)}
                   onClick={(date, clicks) => {
                     setSelectedDayClicksDate(date);
                     setSelectedDayClicks(clicks);
@@ -1851,6 +1873,8 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
                 isEditMode={isEditMode}
                 isDragging={draggedCard === card.id}
                 isDragOver={dragOverCard === card.id}
+                isCensored={censoredCards[card.id] || false}
+                onToggleCensor={() => toggleCardCensor(card.id)}
                 onDragStart={() => {
                   if (isEditMode) setDraggedCard(card.id);
                 }}
@@ -2178,6 +2202,8 @@ const KPICard: React.FC<{
   isEditMode?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
+  isCensored?: boolean;
+  onToggleCensor?: () => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
@@ -2194,6 +2220,8 @@ const KPICard: React.FC<{
   isEditMode = false,
   isDragging = false,
   isDragOver = false,
+  isCensored = false,
+  onToggleCensor,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -2204,6 +2232,7 @@ const KPICard: React.FC<{
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [isHovered, setIsHovered] = useState(false);
   
   // Auto-close tooltip when mouse is outside the card
   React.useEffect(() => {
@@ -2266,8 +2295,8 @@ const KPICard: React.FC<{
       ref={cardRef}
       onClick={onClick}
       onMouseMove={(e) => {
-        // Disable tooltips in edit mode
-        if (isEditMode) return;
+        // Disable tooltips in edit mode or when censored
+        if (isEditMode || isCensored) return;
         
         if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
         
@@ -2306,7 +2335,9 @@ const KPICard: React.FC<{
           }
         }
       }}
+      onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
+        setIsHovered(false);
         // Clear tooltip state
         setTooltipData(null);
         if (onIntervalHover) onIntervalHover(null);
@@ -2372,6 +2403,33 @@ const KPICard: React.FC<{
         </div>
       )}
 
+      {/* Privacy Toggle - Eye icon (shows on hover, next to main icon) */}
+      {isHovered && !isEditMode && onToggleCensor && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCensor();
+          }}
+          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
+          title={isCensored ? "Show data" : "Hide data"}
+        >
+          {isCensored ? (
+            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+          ) : (
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+          )}
+        </button>
+      )}
+
+      {/* Censoring Overlay - Completely blurs card when active */}
+      {isCensored && (
+        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-white/10" style={{ backdropFilter: 'blur(100px)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <EyeOff className="w-10 h-10 text-gray-400" />
+            <p className="text-gray-400 text-sm font-medium">{data.label} Hidden</p>
+          </div>
+        </div>
+      )}
 
       {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
       <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2 z-10" style={{ height: '60%' }}>

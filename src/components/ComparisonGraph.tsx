@@ -249,7 +249,14 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }} />
+            <Tooltip 
+              content={<CustomTooltip />} 
+              cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }}
+              wrapperStyle={{ zIndex: 9999, pointerEvents: 'none' }}
+              position={{ y: -10 }}
+              offset={20}
+              isAnimationActive={false}
+            />
             <Bar
               yAxisId="left"
               dataKey="metric1"
@@ -299,7 +306,13 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip 
+              content={<CustomTooltip />}
+              wrapperStyle={{ zIndex: 9999, pointerEvents: 'none' }}
+              position={{ y: -10 }}
+              offset={20}
+              isAnimationActive={false}
+            />
             <Line
               yAxisId="left"
               type="monotone"
@@ -363,7 +376,13 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip 
+              content={<CustomTooltip />}
+              wrapperStyle={{ zIndex: 9999, pointerEvents: 'none' }}
+              position={{ y: -10 }}
+              offset={20}
+              isAnimationActive={false}
+            />
             <Area
               yAxisId="left"
               type="monotone"

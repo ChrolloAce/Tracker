@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
 import { LinkClick } from '../services/LinkClicksService';
-import { LucideIcon, Link as LinkIcon } from 'lucide-react';
+import { LucideIcon, Link as LinkIcon, Eye, EyeOff } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 
 interface SparklineDataPoint {
@@ -20,6 +20,8 @@ interface TrackedLinksKPICardProps {
   sparklineData: SparklineDataPoint[];
   links?: TrackedLink[];
   accounts?: Map<string, TrackedAccount>;
+  isCensored?: boolean;
+  onToggleCensor?: () => void;
   onClick?: (date: Date, clicks: LinkClick[]) => void; // Click on card/graph point
   onLinkClick?: (shortCode: string, date: Date, clicks: LinkClick[]) => void; // Click on specific link in tooltip
 }
@@ -33,11 +35,14 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   sparklineData,
   links = [],
   accounts: _accounts = new Map(),
+  isCensored = false,
+  onToggleCensor,
   onClick,
   onLinkClick
 }) => {
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: SparklineDataPoint; lineX: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -82,6 +87,9 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
       ref={cardRef}
       onClick={handleCardClick}
       onMouseMove={(e) => {
+        // Disable tooltips when censored
+        if (isCensored) return;
+        
         if (!sparklineData || sparklineData.length === 0 || !cardRef.current) return;
         
         const cardRect = cardRef.current.getBoundingClientRect();
@@ -108,7 +116,11 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
           });
         }
       }}
-      onMouseLeave={() => setTooltipData(null)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setTooltipData(null);
+      }}
       className="group relative rounded-2xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden cursor-pointer"
       style={{ minHeight: '180px', backgroundColor: '#121214' }}
     >
@@ -119,6 +131,34 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
         }}
       />
+
+      {/* Privacy Toggle - Eye icon (shows on hover, next to main icon) */}
+      {isHovered && onToggleCensor && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCensor();
+          }}
+          className="absolute top-4 right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
+          title={isCensored ? "Show data" : "Hide data"}
+        >
+          {isCensored ? (
+            <EyeOff className="w-5 h-5 text-gray-400 hover:text-white" />
+          ) : (
+            <Eye className="w-5 h-5 text-gray-400 hover:text-white" />
+          )}
+        </button>
+      )}
+
+      {/* Censoring Overlay - Completely blurs card when active */}
+      {isCensored && (
+        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-white/10" style={{ backdropFilter: 'blur(100px)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <EyeOff className="w-10 h-10 text-gray-400" />
+            <p className="text-gray-400 text-sm font-medium">{label} Hidden</p>
+          </div>
+        </div>
+      )}
 
       {/* Full-height vertical cursor line */}
       {tooltipData && (
