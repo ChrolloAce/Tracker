@@ -818,7 +818,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             id: `synthetic-${video.id}-${ppInterval.endDate.getTime()}`,
             videoId: video.id || '',
             capturedAt: ppInterval.endDate,
-            capturedBy: 'system',
+            capturedBy: 'scheduled_refresh',
             views: latestViews,
             likes: latestLikes,
             comments: latestComments,
@@ -869,6 +869,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   }, [ppVideos, ppInterval, accountFilter, dayOfWeek, hourRange]);
 
   // Calculate total views from new uploads (kept for potential future use)
+  // @ts-ignore - Keeping for reference
   const _totalNewUploadViews = useMemo(() => {
     return newUploads.reduce((sum, video) => sum + (video.views || 0), 0);
   }, [newUploads]);

@@ -34,7 +34,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     submissions,
     allSubmissions,
     linkClicks,
-    links,
+    links: _links, // Kept for potential future use
     dateFilter,
     customRange,
     granularity,
