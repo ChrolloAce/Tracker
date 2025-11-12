@@ -3,7 +3,7 @@ import { X, ChevronDown, LinkIcon, RefreshCw, AlertCircle, Trash2 } from 'lucide
 import { useNavigate } from 'react-router-dom';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
-import FirestoreDataService from '../services/FirestoreDataService';
+import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { User } from 'firebase/auth';
 
 /**
@@ -150,39 +150,17 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Process each account
+      // Process each account in parallel
       const results = await Promise.allSettled(
         accountsToAdd.map(async (acc) => {
-          const accountData = {
-            username: acc.username,
-            platform: acc.platform,
-            url: acc.url,
-            displayName: acc.username,
-            avatarUrl: null,
-            followerCount: null,
-            videoCount: null,
-            isVerified: false,
-            bio: null,
-            lastUpdated: new Date(),
-            lastSynced: null,
-            syncStatus: 'idle' as const,
-            creatorType: 'manual' as const,
-          };
-
-          const accountId = await FirestoreDataService.addTrackedAccount(
+          await AccountTrackingServiceFirebase.addAccount(
             orgId,
             projectId,
             user.uid,
-            accountData
-          );
-
-          // Sync videos for this account with specific video count
-          await FirestoreDataService.syncAccountVideos(
-            orgId,
-            projectId,
-            accountId,
-            user.uid,
-            acc.videoCount
+            acc.username,
+            acc.platform,
+            'my', // Default to 'my' account type
+            acc.videoCount // Pass each account's specific video count
           );
 
           return { success: true, username: acc.username };
