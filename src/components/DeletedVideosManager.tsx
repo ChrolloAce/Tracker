@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Trash2, RotateCcw, Calendar, AlertCircle, Eye, Heart, MessageCircle as CommentIcon, Share2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProxiedImage } from './ProxiedImage';
+import { PlatformIcon } from './ui/PlatformIcon';
 
 interface DeletedVideo {
   id: string;
@@ -26,6 +27,7 @@ const DeletedVideosManager: React.FC = () => {
   const [deletedVideos, setDeletedVideos] = useState<DeletedVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [restoring, setRestoring] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     loadDeletedVideos();
@@ -83,6 +85,75 @@ const DeletedVideosManager: React.FC = () => {
     try {
       setRestoring(video.id);
 
+      // Remove from blacklist
+      const deletedRef = doc(
+        db,
+        'organizations',
+        currentOrgId,
+        'projects',
+        currentProjectId,
+        'deletedVideos',
+        video.id
+      );
+
+      await deleteDoc(deletedRef);
+
+      // Re-add video to videos collection with all metadata
+      const videoRef = doc(
+        db,
+        'organizations',
+        currentOrgId,
+        'projects',
+        currentProjectId,
+        'videos',
+        video.originalVideoId || video.platformVideoId
+      );
+
+      const now = Timestamp.now();
+      await setDoc(videoRef, {
+        videoId: video.platformVideoId,
+        platform: video.platform,
+        title: video.title || '',
+        caption: video.title || '',
+        thumbnail: video.thumbnail || '',
+        url: video.url || '',
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
+        saves: 0,
+        uploadDate: now,
+        lastRefreshed: now,
+        status: 'active',
+        syncStatus: 'completed',
+        isRestored: true, // Flag to indicate this was restored from blacklist
+        restoredAt: now,
+      });
+
+      // Remove from local state
+      setDeletedVideos(prev => prev.filter(v => v.id !== video.id));
+
+      console.log(`✅ Restored video ${video.platformVideoId} to videos collection`);
+    } catch (error) {
+      console.error('Failed to restore video:', error);
+      alert('Failed to restore video. Please try again.');
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  const handleDeletePermanently = async (video: DeletedVideo) => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete this video from the blacklist?\n\n"${video.title || 'Untitled video'}"\n\nThis video will no longer be blacklisted and could be re-synced automatically.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      setDeleting(video.id);
+
       const deletedRef = doc(
         db,
         'organizations',
@@ -98,12 +169,12 @@ const DeletedVideosManager: React.FC = () => {
       // Remove from local state
       setDeletedVideos(prev => prev.filter(v => v.id !== video.id));
 
-      console.log(`✅ Unblacklisted video ${video.platformVideoId}`);
+      console.log(`✅ Permanently deleted blacklist entry for ${video.platformVideoId}`);
     } catch (error) {
-      console.error('Failed to unblacklist video:', error);
-      alert('Failed to unblacklist video. Please try again.');
+      console.error('Failed to delete blacklist entry:', error);
+      alert('Failed to delete. Please try again.');
     } finally {
-      setRestoring(null);
+      setDeleting(null);
     }
   };
 
@@ -174,8 +245,8 @@ const DeletedVideosManager: React.FC = () => {
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-300">
-            <strong>How it works:</strong> Deleted videos are blacklisted to prevent the automatic sync from re-adding them. 
-            Click "Restore" to unblacklist a video - it will be re-synced on the next scheduled refresh.
+            <strong>How it works:</strong> Deleted videos are blacklisted to prevent automatic re-syncing. 
+            Click <strong>"Restore"</strong> to immediately add the video back to your tracked videos, or <strong>"Delete"</strong> to permanently remove it from the blacklist.
           </div>
         </div>
       </div>
@@ -223,9 +294,10 @@ const DeletedVideosManager: React.FC = () => {
 
                   {/* Platform and Video ID */}
                   <div className="flex items-center gap-3 mb-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase border ${getPlatformColor(video.platform)}`}>
-                      {video.platform}
-                    </span>
+                    <PlatformIcon 
+                      platform={video.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter'} 
+                      size="sm" 
+                    />
                     <code className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                       {video.platformVideoId}
                     </code>
@@ -273,25 +345,48 @@ const DeletedVideosManager: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Restore Button */}
-                <button
-                  onClick={() => handleUnblacklist(video)}
-                  disabled={restoring === video.id}
-                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Remove from blacklist and allow re-syncing"
-                >
-                  {restoring === video.id ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
-                      <span>Restoring...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RotateCcw className="w-4 h-4" />
-                      <span>Restore</span>
-                    </>
-                  )}
-                </button>
+                {/* Action Buttons */}
+                <div className="flex-shrink-0 flex items-center gap-2">
+                  {/* Restore Button */}
+                  <button
+                    onClick={() => handleUnblacklist(video)}
+                    disabled={restoring === video.id || deleting === video.id}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Restore video and add it back to your tracked videos"
+                  >
+                    {restoring === video.id ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Restoring...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Restore</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Delete Permanently Button */}
+                  <button
+                    onClick={() => handleDeletePermanently(video)}
+                    disabled={restoring === video.id || deleting === video.id}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Permanently remove from blacklist"
+                  >
+                    {deleting === video.id ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           ))
@@ -302,7 +397,7 @@ const DeletedVideosManager: React.FC = () => {
       {deletedVideos.length > 0 && (
         <div className="px-6 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-200 dark:border-white/10">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            💡 <strong>Tip:</strong> Restored videos will be re-synced from the platform during the next scheduled refresh (every 12-48 hours depending on your plan)
+            💡 <strong>Tip:</strong> Restored videos are immediately added back to your tracked videos and will appear in your dashboard right away!
           </p>
         </div>
       )}
