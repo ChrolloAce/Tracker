@@ -151,7 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .collection('projects')
             .doc(projectId)
             .collection('trackedAccounts')
-            .where('status', '==', 'active')
+            .where('isActive', '==', true)
             .get();
 
           console.log(`      👥 ${accountsSnapshot.size} account(s)`);
