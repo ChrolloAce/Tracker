@@ -2352,7 +2352,7 @@ const KPICard: React.FC<{
         <div
           style={{
             position: 'absolute',
-            left: `${tooltipData.lineX}px`,
+            left: `${tooltipData.lineX - 1}px`, // Offset by 1px (half of line width) to center on dot
             top: 0,
             bottom: 0,
             width: '2px',
