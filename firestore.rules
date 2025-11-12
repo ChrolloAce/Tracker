@@ -290,8 +290,10 @@ service cloud.firestore {
             // Cloud Functions can also create (via Admin SDK, bypasses rules)
             allow create: if canWriteOrg(orgId);
             
-            // Snapshots are immutable after creation
-            allow update, delete: if false;
+            // Only admins can delete snapshots (when deleting parent video)
+            // Snapshots cannot be updated (immutable after creation)
+            allow update: if false;
+            allow delete: if canManageOrg(orgId);
           }
         }
         
@@ -563,8 +565,10 @@ service cloud.firestore {
           allow create: if canWriteOrg(orgId) 
             && request.resource.data.capturedBy == request.auth.uid;
           
-          // Snapshots are immutable after creation
-          allow update, delete: if false;
+          // Only admins can delete snapshots (when deleting parent video)
+          // Snapshots cannot be updated (immutable after creation)
+          allow update: if false;
+          allow delete: if canManageOrg(orgId);
         }
       }
       
