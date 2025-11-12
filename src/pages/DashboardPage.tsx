@@ -208,10 +208,53 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-  const [granularity, setGranularity] = useState<'day' | 'week' | 'month' | 'year'>(() => {
-    const saved = localStorage.getItem('dashboardGranularity');
-    return (saved as 'day' | 'week' | 'month' | 'year') || 'day';
-  });
+  const [manualGranularity, setManualGranularity] = useState<'day' | 'week' | 'month' | 'year' | null>(null);
+  
+  // Auto-calculate granularity based on date filter (updates in same render!)
+  const granularity = useMemo<'day' | 'week' | 'month' | 'year'>(() => {
+    // If user manually set granularity, use that
+    if (manualGranularity) return manualGranularity;
+    
+    // Otherwise, auto-calculate based on date filter
+    let autoGranularity: 'day' | 'week' | 'month' | 'year' = 'day';
+    
+    switch (dateFilter) {
+      case 'today':
+      case 'yesterday':
+      case 'last7days':
+      case 'last14days':
+        autoGranularity = 'day';
+        break;
+      case 'last30days':
+      case 'mtd':
+        autoGranularity = 'week';
+        break;
+      case 'last90days':
+      case 'ytd':
+      case 'all':
+        autoGranularity = 'month';
+        break;
+      case 'custom':
+        if (customDateRange) {
+          const daysDiff = Math.ceil(
+            (customDateRange.endDate.getTime() - customDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          
+          if (daysDiff <= 14) {
+            autoGranularity = 'day';
+          } else if (daysDiff <= 60) {
+            autoGranularity = 'week';
+          } else if (daysDiff <= 365) {
+            autoGranularity = 'month';
+          } else {
+            autoGranularity = 'year';
+          }
+        }
+        break;
+    }
+    
+    return autoGranularity;
+  }, [dateFilter, customDateRange, manualGranularity]);
   
   // Day Videos Modal state (for account clicks from race chart)
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
@@ -1312,60 +1355,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return filtered;
   }, [linkClicks, links]);
 
-  // Handle date filter changes and auto-adjust granularity
+  // Handle date filter changes (granularity auto-calculates via useMemo - no separate render!)
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
     setDateFilter(filter);
     setCustomDateRange(customRange);
-    
-    // Auto-adjust granularity based on time range
-    let newGranularity: 'day' | 'week' | 'month' | 'year' = 'day';
-    
-    switch (filter) {
-      case 'today':
-      case 'yesterday':
-      case 'last7days':
-        newGranularity = 'day';
-        break;
-      case 'last14days':
-        newGranularity = 'day';
-        break;
-      case 'last30days':
-        newGranularity = 'week';
-        break;
-      case 'last90days':
-        newGranularity = 'month';
-        break;
-      case 'mtd':
-        newGranularity = 'week';
-        break;
-      case 'ytd':
-        newGranularity = 'month';
-        break;
-      case 'all':
-        newGranularity = 'month';
-        break;
-      case 'custom':
-        // For custom ranges, calculate the number of days
-        if (customRange) {
-          const daysDiff = Math.ceil(
-            (customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          
-          if (daysDiff <= 14) {
-            newGranularity = 'day';
-          } else if (daysDiff <= 60) {
-            newGranularity = 'week';
-          } else if (daysDiff <= 365) {
-            newGranularity = 'month';
-          } else {
-            newGranularity = 'year';
-          }
-        }
-        break;
-    }
-    
-    setGranularity(newGranularity);
-    localStorage.setItem('dashboardGranularity', newGranularity);
+    setManualGranularity(null); // Reset manual override when filter changes
   }, []);
 
   const handleVideoClick = useCallback(async (video: VideoSubmission) => {
@@ -2338,7 +2332,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   <div className="relative hidden md:block">
                     <select
                       value={granularity}
-                      onChange={(e) => setGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                      onChange={(e) => setManualGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
                       className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                     >
                       <option value="day" className="bg-gray-900">Daily</option>
@@ -3953,7 +3947,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   <label className="block text-sm font-medium text-white/70 mb-2">Granularity</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => setGranularity('day')}
+                      onClick={() => setManualGranularity('day')}
                       className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'day' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
@@ -3963,7 +3957,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       Daily
                     </button>
                     <button
-                      onClick={() => setGranularity('week')}
+                      onClick={() => setManualGranularity('week')}
                       className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'week' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
@@ -3973,7 +3967,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       Weekly
                     </button>
                     <button
-                      onClick={() => setGranularity('month')}
+                      onClick={() => setManualGranularity('month')}
                       className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'month' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
@@ -3983,7 +3977,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       Monthly
                     </button>
                     <button
-                      onClick={() => setGranularity('year')}
+                      onClick={() => setManualGranularity('year')}
                       className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'year' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
@@ -4032,7 +4026,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   // Reset filters based on active tab
                   if (activeTab === 'dashboard' || activeTab === 'videos') {
                     setSelectedAccountIds([]);
-                    setGranularity('day');
+                    setManualGranularity('day');
                   }
                   setDashboardPlatformFilter('all');
                   localStorage.setItem('dashboardPlatformFilter', 'all');
