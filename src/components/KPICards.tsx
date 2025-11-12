@@ -9,7 +9,6 @@ import {
   Video, 
   Share2,
   ChevronRight,
-  ChevronDown,
   Link as LinkIcon,
   DollarSign,
   Download,

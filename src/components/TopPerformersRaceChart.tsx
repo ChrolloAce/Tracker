@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
-import { ChevronDown, Play, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, Play, Info } from 'lucide-react';
 
 interface TopPerformersRaceChartProps {
   submissions: VideoSubmission[];
