@@ -117,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .doc('subscription')
           .get();
         
-        if (subscriptionDoc.exists()) {
+        if (subscriptionDoc.exists) {
           const subscriptionData = subscriptionDoc.data();
           orgPlanTier = subscriptionData?.planTier || 'free';
         }
@@ -182,7 +182,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`      ⚡ Dispatching @${accountData.username} (${accountData.platform}), last refresh: ${lastRefreshed ? new Date(lastRefreshed).toISOString() : 'never'}`);
 
           // Dispatch async refresh job
-          const dispatchPromise = fetch(`${process.env.VERCEL_URL || 'https://www.viewtrack.app'}/api/refresh-account`, {
+          const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.viewtrack.app';
+          const dispatchPromise = fetch(`${baseUrl}/api/refresh-account`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -234,7 +235,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`    💰 Found Apple revenue integration, syncing...`);
           
           // Sync last 7 days to catch any new data (incremental sync)
-          const dispatchPromise = fetch(`${process.env.VERCEL_URL || 'https://www.viewtrack.app'}/api/sync-apple-revenue`, {
+          const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.viewtrack.app';
+          const dispatchPromise = fetch(`${baseUrl}/api/sync-apple-revenue`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -462,6 +464,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const errorData = await emailResponse.json();
             console.warn(`⚠️ [EMAIL] Failed to send refresh summary email for ${orgId}: ${JSON.stringify(errorData)}`);
           }
+          
+          // Rate limit: Wait 600ms between emails (Resend allows 2/second, so we send ~1.6/second to be safe)
+          await new Promise(resolve => setTimeout(resolve, 600));
         } catch (emailError) {
           console.warn(`⚠️ [EMAIL] Failed to send refresh summary email for ${orgId}:`, emailError);
         }
