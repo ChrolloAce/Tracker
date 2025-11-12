@@ -158,8 +158,8 @@ async function fetchTikTokBatch(username: string, maxItems: number): Promise<any
       }
     };
     
-    const items = await runApifyActor('apidojo/tiktok-scraper', input, false);
-    return items || [];
+    const response = await runApifyActor({ actorId: 'clockworks~tiktok-scraper', input });
+    return response.items || [];
   } catch (error) {
     console.error(`❌ Failed to fetch TikTok batch:`, error);
     return [];

@@ -292,7 +292,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         
         console.log(`  🔄 Calling Apify actor: ${actorId}`);
-        const allVideos = await runApifyActor(actorId, apifyInput);
+        const response = await runApifyActor({ actorId, input: apifyInput });
+        const allVideos = response.items || [];
         
         // Filter to only existing videos and mark them
         results = allVideos
@@ -357,7 +358,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         
         console.log(`  🔄 Calling Apify actor: ${actorId}`);
-        const allVideos = await runApifyActor(actorId, apifyInput);
+        const response = await runApifyActor({ actorId, input: apifyInput });
+        const allVideos = response.items || [];
         
         // Filter to only existing videos
         results = allVideos
@@ -396,7 +398,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         // Instagram has date range support, use Apify directly
         console.log(`  🔄 Calling Apify actor: ${actorId}`);
-        results = await runApifyActor(actorId, apifyInput);
+        const response = await runApifyActor({ actorId, input: apifyInput });
+        results = response.items || [];
       }
     }
     
