@@ -2965,36 +2965,22 @@ const KPICard: React.FC<{
                   <div className="flex items-center justify-between">
                     {/* For revenue and downloads, show compact format: "Aug 5 - $400" */}
                     {(data.id === 'revenue' || data.id === 'downloads') ? (
-                      <>
-                        <div className="flex items-baseline gap-2 flex-1">
-                          <p className="text-xs text-gray-400 font-medium tracking-wider">
-                            {dateStr}
-                          </p>
-                          <p className="text-xl font-bold text-white">
-                            {displayValue}
-                          </p>
-                        </div>
-                        {ppComparison && (
-                          <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
-                          </span>
-                        )}
-                      </>
+                      <div className="flex items-baseline gap-2 flex-1">
+                        <p className="text-xs text-gray-400 font-medium tracking-wider">
+                          {dateStr}
+                        </p>
+                        <p className="text-xl font-bold text-white">
+                          {displayValue}
+                        </p>
+                      </div>
                     ) : (
                       <>
                     <p className="text-xs text-gray-400 font-medium tracking-wider">
                       {dateStr}
                     </p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-xl font-bold text-white">
-                        {displayValue}
-                      </p>
-                      {ppComparison && (
-                        <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-xl font-bold text-white">
+                      {displayValue}
+                    </p>
                       </>
                     )}
                   </div>
@@ -3023,6 +3009,15 @@ const KPICard: React.FC<{
                           </p>
                         </>
                       )}
+                    </div>
+                  )}
+                  
+                  {/* Comparison Line - Third Line */}
+                  {ppComparison && ppDateStr && (
+                    <div className="pt-2 border-t border-white/5">
+                      <p className={`text-xs font-medium ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(1)}% {ppComparison.isPositive ? 'increase' : 'decrease'} on CP ({dateStr}) compared to PP ({ppDateStr})
+                      </p>
                     </div>
                   )}
             </div>
