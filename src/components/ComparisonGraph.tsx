@@ -7,7 +7,7 @@ import DayVideosModal from './DayVideosModal';
 
 interface ComparisonGraphProps {
   submissions: VideoSubmission[];
-  granularity?: 'day' | 'week' | 'month' | 'year';
+  granularity?: 'hour' | 'day' | 'week' | 'month' | 'year';
   dateRange?: { startDate: Date; endDate: Date }; // Optional: use filter's date range instead of deriving from submissions
   onVideoClick?: (video: VideoSubmission) => void;
 }

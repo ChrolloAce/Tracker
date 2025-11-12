@@ -153,7 +153,7 @@ interface KPICardsProps {
   dateFilter?: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
   timePeriod?: TimePeriodType;
-  granularity?: 'day' | 'week' | 'month' | 'year';
+  granularity?: 'hour' | 'day' | 'week' | 'month' | 'year';
   onCreateLink?: () => void;
   onVideoClick?: (video: VideoSubmission) => void;
   onOpenRevenueSettings?: () => void;

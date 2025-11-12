@@ -20,7 +20,7 @@ interface TopPerformersSectionProps {
   subsectionVisibility: Record<string, boolean>;
   isEditMode?: boolean;
   onToggleSubsection?: (id: string) => void;
-  granularity?: 'day' | 'week' | 'month' | 'year';
+  granularity?: 'hour' | 'day' | 'week' | 'month' | 'year';
   dateRange?: { startDate: Date; endDate: Date }; // Date range from filter
 }
 
