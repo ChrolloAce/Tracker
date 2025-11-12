@@ -318,16 +318,72 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [location.search]);
 
-  // Mark items as read when entering tabs
+  // Mark items as read when entering tabs & reload videos to prevent stale data
   useEffect(() => {
     if (!currentOrgId || !currentProjectId || isDemoMode) return;
 
     if (activeTab === 'videos') {
+      // Force reload videos when entering videos tab to prevent stale data
+      setLoadingDashboard(true);
+      
+      // Reload videos
+      (async () => {
+        try {
+          const videoDocs = await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 });
+          const videoIds = videoDocs.map(v => v.id);
+          const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(currentOrgId, currentProjectId, videoIds);
+          
+          const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
+            const video = videoDoc as any;
+            const account = trackedAccounts.find(acc => acc.id === video.trackedAccountId);
+            const snapshots = snapshotsMap.get(video.id) || [];
+            
+            const caption = video.caption || video.videoTitle || '';
+            const title = video.videoTitle || video.caption || '';
+            
+            return {
+              id: video.id,
+              url: video.videoUrl || video.url || '',
+              platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+              thumbnail: video.thumbnail || '',
+              title: title,
+              caption: caption,
+              uploader: account?.displayName || account?.username || '',
+              uploaderHandle: account?.username || '',
+              uploaderProfilePicture: account?.profilePicture,
+              followerCount: account?.followerCount,
+              status: video.status === 'archived' ? 'rejected' : 'approved',
+              views: video.views || 0,
+              likes: video.likes || 0,
+              comments: video.comments || 0,
+              shares: video.shares || 0,
+              duration: video.duration || 0,
+              dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
+              uploadDate: video.uploadDate?.toDate?.() || new Date(),
+              lastRefreshed: video.lastRefreshed?.toDate?.(),
+              isOutlier: video.isOutlier || false,
+              trackedAccountId: video.trackedAccountId,
+              platformVideoId: video.platformVideoId,
+              snapshots: snapshots,
+              isRead: video.isRead || false,
+              orgId: currentOrgId,
+              projectId: currentProjectId
+            };
+          });
+          
+          setSubmissions(allSubmissions);
+        } catch (error) {
+          console.error('Failed to reload videos:', error);
+        } finally {
+          setLoadingDashboard(false);
+        }
+      })();
+      
       MarkAsReadService.markVideosAsRead(currentOrgId, currentProjectId);
     } else if (activeTab === 'accounts') {
       MarkAsReadService.markAccountsAsRead(currentOrgId, currentProjectId);
     }
-  }, [activeTab, currentOrgId, currentProjectId, isDemoMode]);
+  }, [activeTab, currentOrgId, currentProjectId, isDemoMode, trackedAccounts]);
 
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
@@ -3159,7 +3215,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Videos Tab */}
           {activeTab === 'videos' && (
-            isInitialLoading ? (
+            (isInitialLoading || loadingDashboard) ? (
               <div className="space-y-4">
                 {/* Loading skeleton for videos */}
                 <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
