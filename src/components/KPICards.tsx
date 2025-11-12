@@ -2646,6 +2646,10 @@ const KPICard: React.FC<{
         // Calculate new uploads and top gainers counts
         const videosInInterval = interval ? submissions.filter((video: VideoSubmission) => {
           const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+          // For hourly intervals, need precise time-based filtering
+          if (interval.intervalType === 'hours') {
+            return uploadDate >= interval.startDate && uploadDate < interval.endDate;
+          }
           return DataAggregationService.isDateInInterval(uploadDate, interval);
         }) : [];
         
@@ -2663,6 +2667,10 @@ const KPICard: React.FC<{
             
             const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
               const snapshotDate = new Date(snapshot.capturedAt);
+              // For hourly intervals, be more precise with time boundaries
+              if (interval.intervalType === 'hours') {
+                return snapshotDate >= interval.startDate && snapshotDate <= interval.endDate;
+              }
               return snapshotDate <= interval.endDate;
             });
             
@@ -2852,6 +2860,10 @@ const KPICard: React.FC<{
                 // Filter to snapshots within the interval OR just before it (for baseline)
                 const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
                   const snapshotDate = new Date(snapshot.capturedAt);
+                  // For hourly intervals, be more precise with time boundaries
+                  if (interval.intervalType === 'hours') {
+                    return snapshotDate >= interval.startDate && snapshotDate <= interval.endDate;
+                  }
                   return snapshotDate <= interval.endDate;
                 });
                 
@@ -3471,8 +3483,8 @@ const KPICard: React.FC<{
                   </div>
                 ) : null}
                 
-                {/* Click to Expand - For video tooltips (excluding published videos KPI) */}
-                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
+                {/* Click to Expand - For video tooltips (excluding published videos KPI, accounts, revenue, downloads) */}
+                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
                   <div className="px-5 py-3 border-t border-white/10">
                     <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
                       <span>Click to view details</span>
