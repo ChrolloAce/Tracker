@@ -264,13 +264,115 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
       
-      // For manual accounts, we need to fetch each video individually to refresh metrics
-      // Mark them so we know to only update, not add as new
-      results = existingVideosSnapshot.docs.map(doc => ({ 
-        ...doc.data(), 
-        _isExistingVideo: true,
-        _manualAccountRefreshOnly: true 
-      }));
+      // For manual accounts, fetch FRESH metrics from platform (not stale DB data)
+      // Build list of existing video IDs and URLs
+      const existingVideoIds = new Set<string>();
+      const videoUrls: string[] = [];
+      
+      for (const doc of existingVideosSnapshot.docs) {
+        const videoData = doc.data();
+        existingVideoIds.add(videoData.videoId);
+        if (videoData.url) {
+          videoUrls.push(videoData.url);
+        }
+      }
+      
+      console.log(`  🔄 Fetching fresh metrics from ${account.platform} for ${existingVideoIds.size} videos...`);
+      
+      // Fetch fresh data from platform using same method as automatic accounts
+      if (account.platform === 'tiktok') {
+        // For TikTok, fetch user's recent videos (API returns fresh metrics)
+        // We'll filter to only process existing video IDs later
+        actorId = 'clockworks~tiktok-scraper';
+        apifyInput = {
+          profiles: [`https://www.tiktok.com/@${account.username}`],
+          resultsPerPage: 100, // Get more to ensure we cover existing videos
+          shouldDownloadVideos: false,
+          shouldDownloadCovers: false
+        };
+        
+        console.log(`  🔄 Calling Apify actor: ${actorId}`);
+        const allVideos = await runApifyActor(actorId, apifyInput);
+        
+        // Filter to only existing videos and mark them
+        results = allVideos
+          .filter((video: any) => existingVideoIds.has(video.id || video.video_id))
+          .map((video: any) => ({
+            ...video,
+            _isExistingVideo: true,
+            _manualAccountRefreshOnly: true
+          }));
+        
+        console.log(`  ✅ Found ${results.length}/${existingVideoIds.size} existing videos with fresh metrics`);
+        
+      } else if (account.platform === 'youtube' || account.platform === 'twitter') {
+        // For YouTube/Twitter, fetch recent videos and filter
+        const progressiveResult = await progressiveFetchVideos({
+          db,
+          orgId,
+          projectId,
+          accountId,
+          username: account.username,
+          platform: account.platform as 'youtube' | 'twitter',
+          existingVideoIds
+        });
+        
+        // Get ALL videos (new + existing) from the API response
+        // We need to re-fetch to get fresh metrics for existing ones
+        console.log(`  🔄 Re-fetching ${account.platform} to get fresh metrics for existing videos...`);
+        
+        if (account.platform === 'youtube') {
+          actorId = 'youtube-api-v3';
+          // Will use YouTube Data API in the progressive fetch
+        } else {
+          actorId = 'apidojo~tweet-scraper';
+        }
+        
+        // For now, fetch profile again and filter to existing IDs
+        const progressiveResult2 = await progressiveFetchVideos({
+          db,
+          orgId,
+          projectId,
+          accountId,
+          username: account.username,
+          platform: account.platform as 'youtube' | 'twitter'
+        });
+        
+        // This will return both new and existing videos with fresh data
+        // We'll filter in the processing loop
+        results = progressiveResult2.newVideos;
+        
+      } else if (account.platform === 'instagram') {
+        // For Instagram, use Apify
+        actorId = 'scraper-engine~instagram-reels-scraper';
+        apifyInput = {
+          urls: [`https://www.instagram.com/${account.username}/`],
+          sortOrder: 'most-recent',
+          maxComments: 0,
+          maxReels: 100,
+          proxyConfiguration: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL']
+          }
+        };
+        
+        console.log(`  🔄 Calling Apify actor: ${actorId}`);
+        const allVideos = await runApifyActor(actorId, apifyInput);
+        
+        // Filter to only existing videos
+        results = allVideos
+          .filter((video: any) => {
+            const videoId = video.shortCode || video.code || video.id;
+            return existingVideoIds.has(videoId);
+          })
+          .map((video: any) => ({
+            ...video,
+            _isExistingVideo: true,
+            _manualAccountRefreshOnly: true
+          }));
+        
+        console.log(`  ✅ Found ${results.length}/${existingVideoIds.size} existing videos with fresh metrics`);
+      }
       
     } else {
       // AUTOMATIC account - discover new videos
@@ -333,23 +435,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let skippedCount = 0;
 
     for (const media of results) {
-      // Extract platform video ID
+      // Extract platform video ID (same for both manual and automatic accounts)
       let platformVideoId = '';
       
-      // For manual accounts, videos come from DB and use 'videoId' field
-      if ((media as any)._isExistingVideo || (media as any)._manualAccountRefreshOnly) {
-        platformVideoId = media.videoId;
-      } else {
-        // For automatic accounts, videos come from API with platform-specific fields
-        if (account.platform === 'instagram') {
-          platformVideoId = media.shortCode || media.code || media.id;
-        } else if (account.platform === 'tiktok') {
-          platformVideoId = media.id || media.video_id;
-        } else if (account.platform === 'youtube') {
-          platformVideoId = media.id;
-        } else if (account.platform === 'twitter') {
-          platformVideoId = media.id || media.id_str;
-        }
+      if (account.platform === 'instagram') {
+        platformVideoId = media.shortCode || media.code || media.id;
+      } else if (account.platform === 'tiktok') {
+        platformVideoId = media.id || media.video_id;
+      } else if (account.platform === 'youtube') {
+        platformVideoId = media.id;
+      } else if (account.platform === 'twitter') {
+        platformVideoId = media.id || media.id_str;
       }
 
       if (!platformVideoId) {

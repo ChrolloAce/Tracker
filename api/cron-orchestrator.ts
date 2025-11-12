@@ -161,12 +161,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           for (const accountDoc of accountsSnapshot.docs) {
             const accountData = accountDoc.data();
             
-            // Skip manual accounts - they should only be refreshed manually via UI
-            if (accountData.creatorType === 'manual') {
-              console.log(`        ⏭️  Skip @${accountData.username} (manual account)`);
-              continue;
-            }
-            
             const lastRefreshed = accountData.lastRefreshed?.toMillis() || 0;
             const timeSinceRefresh = Date.now() - lastRefreshed;
 
