@@ -1983,8 +1983,26 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
   );
 };
 
-// Memoize the component for performance
-const KPICards = React.memo(KPICardsComponent);
+// Custom comparison function for React.memo to prevent unnecessary re-renders
+const arePropsEqual = (prevProps: KPICardsProps, nextProps: KPICardsProps) => {
+  // Only re-render if these specific props actually change
+  return (
+    prevProps.submissions === nextProps.submissions &&
+    prevProps.allSubmissions === nextProps.allSubmissions &&
+    prevProps.linkClicks === nextProps.linkClicks &&
+    prevProps.dateFilter === nextProps.dateFilter &&
+    prevProps.timePeriod === nextProps.timePeriod &&
+    prevProps.granularity === nextProps.granularity &&
+    prevProps.isEditMode === nextProps.isEditMode &&
+    JSON.stringify(prevProps.customRange) === JSON.stringify(nextProps.customRange) &&
+    JSON.stringify(prevProps.cardOrder) === JSON.stringify(nextProps.cardOrder) &&
+    JSON.stringify(prevProps.cardVisibility) === JSON.stringify(nextProps.cardVisibility) &&
+    prevProps.revenueMetrics === nextProps.revenueMetrics
+  );
+};
+
+// Memoize the component for performance with custom comparison
+const KPICards = React.memo(KPICardsComponent, arePropsEqual);
 KPICards.displayName = 'KPICards';
 
 // Separate component to handle sparkline rendering consistently (kept for reference)
