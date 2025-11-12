@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -43,38 +44,55 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
  * Processes all organizations directly (no HTTP calls)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify cron secret or Vercel Cron header
+  // Verify authorization: Vercel Cron, Cron Secret, or Firebase User Token
   let authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   
-  // Strip "Bearer " prefix if present
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    authHeader = authHeader.substring(7);
+  let isAuthorized = false;
+  let authMethod = '';
+  
+  // Check 1: Vercel Cron header
+  if (isVercelCron) {
+    isAuthorized = true;
+    authMethod = 'Vercel Cron';
   }
   
-  console.log('🔐 Auth check:', {
-    isVercelCron,
-      hasAuth: !!authHeader, 
-    authMatches: authHeader === cronSecret,
-    hasCronSecret: !!cronSecret,
-    authHeaderLength: authHeader?.length || 0,
-    cronSecretLength: cronSecret?.length || 0,
-    authFirst10: authHeader?.substring(0, 10) || 'none',
-    secretFirst10: cronSecret?.substring(0, 10) || 'none',
-  });
+  // Check 2: Cron Secret (strip "Bearer " prefix if present)
+  if (!isAuthorized && authHeader) {
+    let tokenToCheck = authHeader;
+    if (authHeader.startsWith('Bearer ')) {
+      tokenToCheck = authHeader.substring(7);
+    }
+    
+    if (tokenToCheck === cronSecret) {
+      isAuthorized = true;
+      authMethod = 'Cron Secret';
+    }
+  }
   
-  const isAuthorized = isVercelCron || authHeader === cronSecret;
+  // Check 3: Firebase User Token (for manual testing via UI)
+  if (!isAuthorized && authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const decodedToken = await getAuth().verifyIdToken(token);
+      console.log(`🔒 Authenticated as Firebase user: ${decodedToken.uid}`);
+      isAuthorized = true;
+      authMethod = 'Firebase User';
+    } catch (error: any) {
+      console.error('❌ Firebase token verification failed:', error.message);
+    }
+  }
   
   if (!isAuthorized) {
-    console.log('❌ Unauthorized cron request');
+    console.log('❌ Unauthorized orchestrator request');
     return res.status(401).json({ 
       error: 'Unauthorized',
-      message: 'This endpoint is only accessible by Vercel Cron or with valid CRON_SECRET'
+      message: 'This endpoint requires Vercel Cron, CRON_SECRET, or valid Firebase user token'
     });
   }
-  
-  console.log('✅ Authorized:', isVercelCron ? 'Vercel Cron' : 'Auth Header');
+
+  console.log(`✅ Authorized: ${authMethod}`);
 
   const startTime = Date.now();
   console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);

@@ -1419,33 +1419,41 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     window.location.reload();
   }, []);
 
-  // Trigger manual video refresh
+  // Trigger scheduled refresh (same as cron, for testing)
   const handleManualRefresh = useCallback(async () => {
-    if (!currentOrgId || !currentProjectId || isRefreshing) return;
+    if (!user || isRefreshing) return;
     
     setIsRefreshing(true);
     try {
-      console.log('🔄 Triggering manual video refresh...');
-      const response = await fetch('/api/cron-refresh-videos', {
+      console.log('🔄 Triggering scheduled refresh (cron orchestrator)...');
+      
+      // Get Firebase token for authentication
+      const token = await user.getIdToken();
+      
+      const response = await fetch('/api/cron-orchestrator', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          manual: true,
-          organizationId: currentOrgId,
-          projectId: currentProjectId,
-        }),
       });
 
       const result = await response.json();
       
       if (response.ok && result.success) {
-        console.log('✅ Video refresh completed:', result);
-        // Optionally show a success message to the user
-        alert(`✅ Refresh completed!\n\n${result.summary || 'Videos updated successfully'}`);
+        console.log('✅ Scheduled refresh completed:', result);
+        const stats = result.stats || {};
+        alert(
+          `✅ Scheduled Refresh Completed!\n\n` +
+          `⚡ ${stats.accountsRefreshed || 0} accounts refreshed\n` +
+          `🎬 ${stats.videosSynced || 0} videos synced\n` +
+          `⏱️  Duration: ${result.duration?.toFixed(1) || 0}s`
+        );
+        
+        // Reload page to show updated data
+        setTimeout(() => window.location.reload(), 1000);
       } else {
-        console.error('❌ Video refresh failed:', result);
+        console.error('❌ Scheduled refresh failed:', result);
         alert(`❌ Refresh failed: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
@@ -1454,7 +1462,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     } finally {
       setIsRefreshing(false);
     }
-  }, [currentOrgId, currentProjectId, isRefreshing]);
+  }, [user, isRefreshing]);
 
   // Helper function to get human-readable date filter label
   const getDateFilterLabel = useCallback((filter: DateFilterType): string => {
@@ -2403,7 +2411,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   </button>
                   )}
                   
-                  {/* Manual Refresh Button - Temporary for testing (Hidden in demo mode and on mobile) */}
+                  {/* Scheduled Refresh Button - Trigger cron refresh for testing (Hidden in demo mode and on mobile) */}
                   {!isDemoMode && (
                   <button
                     onClick={handleManualRefresh}
@@ -2413,7 +2421,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
                         : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
                     }`}
-                    title="Manually refresh all video data"
+                    title="Trigger scheduled refresh (same as cron)"
                   >
                     <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   </button>
