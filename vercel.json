@@ -67,7 +67,7 @@
   "crons": [
     {
       "path": "/api/cron-orchestrator",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/25 * * * *"
     }
   ],
   "routes": [

@@ -30,16 +30,16 @@ const db = getFirestore();
 
 // Subscription plan refresh intervals (in hours)
 const PLAN_REFRESH_INTERVALS: Record<string, number> = {
-  free: 0.0833,     // 5 minutes for testing (normally 48 hours)
-  basic: 0.0833,    // 5 minutes for testing (normally 24 hours)
-  pro: 0.0833,      // 5 minutes for testing (normally 24 hours)
-  ultra: 0.0833,    // 5 minutes for testing (normally 12 hours)
-  enterprise: 0.0833, // 5 minutes for testing (normally 12 hours)
+  free: 0.4167,     // 25 minutes (normally 48 hours)
+  basic: 0.4167,    // 25 minutes (normally 24 hours)
+  pro: 0.4167,      // 25 minutes (normally 24 hours)
+  ultra: 0.4167,    // 25 minutes (normally 12 hours)
+  enterprise: 0.4167, // 25 minutes (normally 12 hours)
 };
 
 /**
  * Cron Orchestrator
- * Runs every 5 minutes for testing
+ * Runs every 25 minutes (*/25 * * * *)
  * Processes all organizations directly (no HTTP calls)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {

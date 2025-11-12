@@ -52,13 +52,13 @@ const RefreshCountdown: React.FC = () => {
   }, [currentOrgId, currentProjectId]);
 
   const getNextCronRun = (): Date => {
-    // Cron runs every 5 minutes (*/5 * * * *)
+    // Cron runs every 25 minutes (*/25 * * * *)
     const now = new Date(currentTime);
     const currentMinute = now.getMinutes();
     const currentSecond = now.getSeconds();
     
-    // Calculate next 5-minute mark (0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
-    const nextMinuteMark = Math.ceil(currentMinute / 5) * 5;
+    // Calculate next 25-minute mark (0, 25, 50)
+    const nextMinuteMark = Math.ceil(currentMinute / 25) * 25;
     
     const nextRun = new Date(now);
     nextRun.setSeconds(0, 0); // Reset seconds and milliseconds
@@ -66,10 +66,14 @@ const RefreshCountdown: React.FC = () => {
     if (nextMinuteMark >= 60) {
       // Roll over to next hour
       nextRun.setHours(now.getHours() + 1);
-      nextRun.setMinutes(0);
+      nextRun.setMinutes(nextMinuteMark - 60);
     } else if (nextMinuteMark === currentMinute && currentSecond === 0) {
-      // If we're exactly at a 5-minute mark, move to next one
-      nextRun.setMinutes(nextMinuteMark + 5);
+      // If we're exactly at a 25-minute mark, move to next one
+      nextRun.setMinutes(nextMinuteMark + 25);
+      if (nextRun.getMinutes() >= 60) {
+        nextRun.setHours(nextRun.getHours() + 1);
+        nextRun.setMinutes(nextRun.getMinutes() - 60);
+      }
     } else {
       nextRun.setMinutes(nextMinuteMark);
     }
@@ -95,19 +99,19 @@ const RefreshCountdown: React.FC = () => {
   };
 
   const getProgressPercent = (): number => {
-    // Calculate progress through the current 5-minute period
+    // Calculate progress through the current 25-minute period
     const now = new Date(currentTime);
     const currentMinute = now.getMinutes();
     
-    // Determine last 5-minute mark
-    const lastRunMinute = Math.floor(currentMinute / 5) * 5;
+    // Determine last 25-minute mark (0, 25, 50)
+    const lastRunMinute = Math.floor(currentMinute / 25) * 25;
     const lastRun = new Date(now);
     lastRun.setMinutes(lastRunMinute, 0, 0);
     
     // Calculate elapsed time since last run
     const elapsed = currentTime - lastRun.getTime();
-    const fiveMinutesInMs = 5 * 60 * 1000;
-    const progress = (elapsed / fiveMinutesInMs) * 100;
+    const twentyFiveMinutesInMs = 25 * 60 * 1000;
+    const progress = (elapsed / twentyFiveMinutesInMs) * 100;
     
     return Math.min(progress, 100);
   };
