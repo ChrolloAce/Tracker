@@ -302,6 +302,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         if (!membersSnapshot.empty) {
               const ownerEmail = membersSnapshot.docs[0].data().email;
+              
+              // Skip if no email found
+              if (!ownerEmail) {
+                console.log(`  ⏭️ Skipping email - no owner email found`);
+              } else {
               const orgName = orgData.name || 'Your Organization';
 
               console.log(`  📧 Fetching email data...`);
@@ -553,6 +558,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               
               // Rate limit
               await new Promise(resolve => setTimeout(resolve, 600));
+              }
             }
           } catch (emailError: any) {
             console.warn(`  ⚠️ Email failed: ${emailError.message}`);
