@@ -335,14 +335,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const media of results) {
       // Extract platform video ID
       let platformVideoId = '';
-      if (account.platform === 'instagram') {
-        platformVideoId = media.shortCode || media.code || media.id;
-      } else if (account.platform === 'tiktok') {
-        platformVideoId = media.id || media.video_id;
-      } else if (account.platform === 'youtube') {
-        platformVideoId = media.id;
-      } else if (account.platform === 'twitter') {
-        platformVideoId = media.id || media.id_str;
+      
+      // For manual accounts, videos come from DB and use 'videoId' field
+      if ((media as any)._isExistingVideo || (media as any)._manualAccountRefreshOnly) {
+        platformVideoId = media.videoId;
+      } else {
+        // For automatic accounts, videos come from API with platform-specific fields
+        if (account.platform === 'instagram') {
+          platformVideoId = media.shortCode || media.code || media.id;
+        } else if (account.platform === 'tiktok') {
+          platformVideoId = media.id || media.video_id;
+        } else if (account.platform === 'youtube') {
+          platformVideoId = media.id;
+        } else if (account.platform === 'twitter') {
+          platformVideoId = media.id || media.id_str;
+        }
       }
 
       if (!platformVideoId) {
