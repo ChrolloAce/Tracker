@@ -91,7 +91,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let successfulOrgs = 0;
     let failedOrgs = 0;
 
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.viewtrack.app';
+    // Always use production URL to avoid deployment protection issues
+    const baseUrl = 'https://www.viewtrack.app';
 
     // Process each organization
     for (const orgDoc of orgsSnapshot.docs) {
