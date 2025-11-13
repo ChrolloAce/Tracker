@@ -18,7 +18,7 @@ import UsageTrackingService from '../services/UsageTrackingService';
  * ```
  */
 export function useUsageLimits() {
-  const { currentOrgId, currentUser } = useAuth();
+  const { currentOrgId, user } = useAuth();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [limitInfo, setLimitInfo] = useState<{
     resourceType: 'account' | 'video' | 'link' | 'team' | 'mcp';
@@ -43,7 +43,7 @@ export function useUsageLimits() {
       const result = await UsageTrackingService.canPerformAction(
         currentOrgId, 
         resource,
-        currentUser?.uid // Pass userId for admin check
+        user?.uid // Pass userId for admin check
       );
       
       if (!result.allowed) {
@@ -64,7 +64,7 @@ export function useUsageLimits() {
       console.error('Failed to check usage limit:', error);
       return false;
     }
-  }, [currentOrgId, currentUser]);
+  }, [currentOrgId, user]);
 
   /**
    * Increment usage after successful action
