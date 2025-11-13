@@ -802,6 +802,21 @@ async function fetchVideosFromPlatform(
   });
 
   const videos = result.items || [];
+  
+  // Check if the response contains an error (Apify returns 200 but with error in JSON)
+  if (videos.length === 1 && videos[0]?.error === true) {
+    const errorMessage = videos[0].message || 'Unknown error from scraper';
+    const errorCode = videos[0].code || 'UNKNOWN';
+    console.error(`    ❌ [${platform.toUpperCase()}] Scraper returned error:`, errorMessage, `(${errorCode})`);
+    throw new Error(errorMessage);
+  }
+  
+  // Also check for noResults flag
+  if (videos.length === 1 && videos[0]?.noResults === true) {
+    const errorMessage = videos[0].message || 'No results found';
+    console.error(`    ❌ [${platform.toUpperCase()}] No results:`, errorMessage);
+    throw new Error(errorMessage);
+  }
 
   // Skip videos if needed (for pagination)
   return skipVideos > 0 ? videos.slice(skipVideos) : videos;

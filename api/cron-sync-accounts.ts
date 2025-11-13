@@ -222,6 +222,32 @@ export default async function handler(
               if (profileResponse.ok) {
                 const profileData = await profileResponse.json();
                 console.log(`📊 Profile data received:`, JSON.stringify(profileData).substring(0, 500));
+                
+                // Check for error in profile response
+                if (profileData.error === true || profileData.noResults === true) {
+                  const errorMessage = profileData.message || 'Could not fetch profile data';
+                  console.error(`❌ Profile scraper error for @${account.username}:`, errorMessage);
+                  
+                  await accountRef.update({
+                    syncStatus: 'failed',
+                    lastSyncError: errorMessage,
+                    syncProgress: {
+                      current: 100,
+                      total: 100,
+                      message: `Failed: ${errorMessage}`
+                    }
+                  });
+                  
+                  results.push({
+                    accountId,
+                    username: account.username,
+                    status: 'failed',
+                    error: errorMessage,
+                    videosCount: 0
+                  });
+                  continue;
+                }
+                
                 const firstTweet = profileData.items?.[0];
                 
                 if (firstTweet?.author) {
