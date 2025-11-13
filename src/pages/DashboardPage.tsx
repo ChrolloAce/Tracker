@@ -3010,10 +3010,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         }
                       case 'posting-activity':
                         return (
-                          <PostingActivityHeatmap 
-                            submissions={filteredSubmissions}
-                            onVideoClick={handleVideoClick}
-                          />
+                          <div className="-mx-3 sm:-mx-4 md:-mx-6">
+                            <PostingActivityHeatmap 
+                              submissions={filteredSubmissions}
+                              onVideoClick={handleVideoClick}
+                            />
+                          </div>
                         );
                       case 'tracked-accounts':
                         return (
