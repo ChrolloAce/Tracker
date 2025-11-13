@@ -364,7 +364,11 @@ table {
   transition: background-color 0.2s ease;
 }
 
-.scrollbar-thumb-white\/10::-webkit-scrollbar-thumb:hover {
+.scrollbar-thumb-white\/10:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.hover\:scrollbar-thumb-white\/20:hover::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
 }
 
