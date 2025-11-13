@@ -1667,7 +1667,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     />
                     <ColumnHeader
                       label="Type"
-                      tooltip="Account tracking type. Automatic accounts discover new videos on refresh, while Manual accounts only update existing videos."
+                      tooltip="Account tracking type. Automatic accounts discover new videos on refresh, while Static accounts only update existing videos."
                       sortable={false}
                     />
                     <ColumnHeader
@@ -2140,7 +2140,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                   : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
                               )}
                             >
-                              {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Manual'}
+                              {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Static'}
                             </span>
                           
                           <FloatingTooltip
@@ -2163,7 +2163,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                   </div>
                                 ) : (
                               <div className="space-y-1.5 w-64">
-                                    <div className="font-semibold text-gray-400">Manual Mode</div>
+                                    <div className="font-semibold text-gray-400">Static Mode</div>
                                     <div className="text-gray-300">
                                       • <span className="text-white font-medium">Only refreshes existing videos</span>
                                     </div>
@@ -2339,7 +2339,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <DropdownItem
                                 icon={<RefreshCw className="w-4 h-4" />}
                                 label={(account.creatorType || 'automatic') === 'automatic' 
-                                  ? 'Convert to Manual' 
+                                  ? 'Convert to Static' 
                                   : 'Convert to Automatic'}
                                     onClick={async (e) => {
                                       e.stopPropagation();
@@ -2351,7 +2351,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                       }
                                       
                                       const currentType = account.creatorType || 'automatic';
-                                      const newType = currentType === 'automatic' ? 'manual' : 'automatic';
+                                      const newType = currentType === 'automatic' ? 'static' : 'automatic';
                                       
                                       try {
                                         const accountRef = doc(
@@ -2365,7 +2365,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                         );
                                         await updateDoc(accountRef, { creatorType: newType });
                                         
-                                        const typeLabel = newType === 'automatic' ? 'Automatic' : 'Manual';
+                                        const typeLabel = newType === 'automatic' ? 'Automatic' : 'Static';
                                         alert(`Account converted to ${typeLabel} mode`);
                                       } catch (error) {
                                         console.error('Failed to update account type:', error);

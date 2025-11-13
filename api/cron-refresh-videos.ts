@@ -200,48 +200,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const creatorType = accountData.creatorType || 'automatic'; // Default to automatic for backward compatibility
 
             try {
-              // Check if this is a manual account (should only refresh existing videos)
-              if (creatorType === 'manual') {
-                console.log(`    🔄 @${username} [MANUAL]: Refreshing existing videos only (no new video discovery)`);
-                
-                // For manual accounts, ONLY refresh existing videos (no new video discovery)
-                const updated = await refreshExistingVideos(orgId, projectId, accountId, platform);
-                
-                if (updated > 0) {
-                  console.log(`    ✅ @${username} [MANUAL]: Updated ${updated} existing videos`);
-                  
-                  // Update account lastSynced timestamp
-                  await accountDoc.ref.update({
-                    lastSynced: new Date()
-                  });
-                  
-                  // Track stats
-                  const orgStats = processedOrgs.get(orgId);
-                  if (orgStats) {
-                    orgStats.accountsProcessed++;
-                    orgStats.videosUpdated += updated;
-                  }
-                  
-                  return { success: true, username, updated: updated, added: 0 };
-                } else {
-                  console.log(`    ℹ️ @${username} [MANUAL]: No existing videos to refresh`);
-                  return { success: true, username, updated: 0, added: 0 };
-                }
-              }
-              
-              // Automatic account - fetch new videos AND refresh existing ones
-              console.log(`    🔄 @${username} [AUTOMATIC]: Discovering new videos + refreshing existing`);
+              // Fetch creatorType from account data and pass to refreshAccountVideos
               const result = await refreshAccountVideos(
                 orgId,
                 projectId,
                 accountId,
                 username,
                 platform,
-                isManualTrigger
+                isManualTrigger,
+                creatorType
               );
 
               if (result.fetched > 0 || result.updated > 0) {
-                console.log(`    ✅ @${username} [AUTOMATIC]: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
+                console.log(`    ✅ @${username} [${creatorType.toUpperCase()}]: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
 
                 // Update account lastSynced timestamp and verified status
                 const updateData: any = {
@@ -573,10 +544,10 @@ async function downloadAndUploadImage(
  * OPTIMIZED: Refresh videos for a single account using incremental fetch + bulk refresh
  * 
  * Strategy:
- * 1. Fetch 2-5 newest videos at a time
- * 2. Check if any already exist in database
- * 3. Once we find an existing video, STOP fetching new videos
- * 4. Refresh all existing videos using platform-specific unique endpoints
+ * - Static mode: Only refresh existing videos, no new fetches
+ * - Automatic mode with 0 videos: Fetch exactly 10 videos
+ * - Automatic mode with existing videos: Progressive fetch 5, 10, 15, 20... until duplicate found
+ * - Always refresh all existing videos at the end
  */
 async function refreshAccountVideos(
   orgId: string,
@@ -584,97 +555,98 @@ async function refreshAccountVideos(
   accountId: string,
   username: string,
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
-  isManualTrigger: boolean
+  isManualTrigger: boolean,
+  creatorType: 'automatic' | 'static' = 'automatic'
 ): Promise<{ fetched: number; updated: number; added: number; skipped: number; verified?: boolean; blueVerified?: boolean }> {
-  console.log(`    🔄 [${platform.toUpperCase()}] Starting optimized refresh for @${username}...`);
+  console.log(`    🔄 [${platform.toUpperCase()}] Starting refresh for @${username} (${creatorType} mode)...`);
   
-  // STEP 1: Fetch initial batch of newest videos (2-5 videos)
-  const INITIAL_BATCH_SIZE = 2;
-  const newVideos: any[] = [];
-  let foundExisting = false;
+  let added = 0;
+  let newVideos: any[] = [];
   let isVerified: boolean | undefined;
   let isBlueVerified: boolean | undefined;
-
-  console.log(`    📥 [${platform.toUpperCase()}] Fetching ${INITIAL_BATCH_SIZE} newest videos...`);
   
-  const initialBatch = await fetchVideosFromPlatform(platform, username, INITIAL_BATCH_SIZE);
-  
-  if (!initialBatch || initialBatch.length === 0) {
-    console.log(`    ⚠️ [${platform.toUpperCase()}] No videos returned`);
-    return { fetched: 0, updated: 0, added: 0, skipped: 0 };
-  }
-
-  // Extract verified status from first video
-  const platformLower = platform.toLowerCase().trim();
-  if (initialBatch.length > 0) {
-    const firstVideo = initialBatch[0];
-    if (platformLower === 'instagram') {
-      // hpix~ig-reels-scraper: verified status is in raw_data.owner.is_verified
-      isVerified = firstVideo.raw_data?.owner?.is_verified || false;
-    } else if (platformLower === 'tiktok') {
-      // apidojo/tiktok-scraper: verified status is in channel.verified
-      isVerified = firstVideo.channel?.verified || false;
-    } else if (platformLower === 'twitter') {
-      isVerified = firstVideo.isVerified || false;
-      isBlueVerified = firstVideo.isBlueVerified || false;
-    }
-  }
-
-  // Check each video in initial batch
-  for (const video of initialBatch) {
-    const videoId = extractVideoId(video, platform);
-    if (!videoId) continue;
-
-    const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+  // STEP 1: Handle new video fetching based on creatorType
+  if (creatorType === 'static') {
+    console.log(`    🔒 [${platform.toUpperCase()}] Static mode - skipping new video fetch`);
+  } else if (creatorType === 'automatic') {
+    // Check if account has any videos in DB
+    const existingCount = await getAccountVideoCount(orgId, projectId, accountId);
+    console.log(`    📊 [${platform.toUpperCase()}] Account has ${existingCount} existing videos`);
     
-    if (exists) {
-      console.log(`    ✓ [${platform.toUpperCase()}] Found existing video: ${videoId} - stopping new fetch`);
-      foundExisting = true;
-      break;
-    } else {
-      console.log(`    ✨ [${platform.toUpperCase()}] New video detected: ${videoId}`);
-      newVideos.push(video);
-    }
-  }
-
-  // STEP 2: If no existing videos found in first batch, continue fetching
-  if (!foundExisting && initialBatch.length === INITIAL_BATCH_SIZE) {
-    console.log(`    📥 [${platform.toUpperCase()}] No existing videos in first batch, fetching more...`);
-    
-    // Fetch a larger batch (10-20 more videos)
-    const secondBatch = await fetchVideosFromPlatform(platform, username, 20, INITIAL_BATCH_SIZE);
-    
-    for (const video of secondBatch) {
-      const videoId = extractVideoId(video, platform);
-      if (!videoId) continue;
-
-      const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+    if (existingCount === 0) {
+      // NEW ACCOUNT: Fetch exactly 10 videos
+      console.log(`    ✨ [${platform.toUpperCase()}] New account - fetching 10 videos`);
+      const batch = await fetchVideosFromPlatform(platform, username, 10);
+      newVideos = batch;
       
-      if (exists) {
-        console.log(`    ✓ [${platform.toUpperCase()}] Found existing video: ${videoId} - stopping`);
-        foundExisting = true;
-        break;
-      } else {
-        newVideos.push(video);
+      // Extract verified status from first video
+      if (batch.length > 0) {
+        isVerified = extractVerifiedStatus(batch[0], platform);
+        isBlueVerified = extractBlueVerifiedStatus(batch[0], platform);
       }
+      
+    } else {
+      // EXISTING ACCOUNT: Progressive fetch 5, 10, 15, 20... until duplicate
+      console.log(`    🔄 [${platform.toUpperCase()}] Existing account - progressive fetch`);
+      const batchSizes = [5, 10, 15, 20];
+      let foundDuplicate = false;
+      
+      for (const size of batchSizes) {
+        console.log(`    📥 [${platform.toUpperCase()}] Fetching ${size} videos...`);
+        const batch = await fetchVideosFromPlatform(platform, username, size);
+        
+        if (!batch || batch.length === 0) {
+          console.log(`    ⚠️ [${platform.toUpperCase()}] No videos returned`);
+          break;
+        }
+        
+        // Extract verified status from first batch
+        if (newVideos.length === 0 && batch.length > 0) {
+          isVerified = extractVerifiedStatus(batch[0], platform);
+          isBlueVerified = extractBlueVerifiedStatus(batch[0], platform);
+        }
+        
+        // Check each video in batch
+        for (const video of batch) {
+          const videoId = extractVideoId(video, platform);
+          if (!videoId) continue;
+          
+          const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+          
+          if (exists) {
+            console.log(`    ✓ [${platform.toUpperCase()}] Found duplicate: ${videoId} - stopping fetch`);
+            foundDuplicate = true;
+            break;
+          } else {
+            newVideos.push(video);
+          }
+        }
+        
+        if (foundDuplicate) break;
+        
+        // Stop if we got fewer videos than requested (reached end of account's content)
+        if (batch.length < size) {
+          console.log(`    ⏹️ [${platform.toUpperCase()}] Got ${batch.length} < ${size} (end of content)`);
+          break;
+        }
+      }
+      
+      console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
+    }
+    
+    // STEP 2: Save new videos
+    if (newVideos.length > 0) {
+      const counts = await saveVideosToFirestore(orgId, projectId, accountId, newVideos, platform, isManualTrigger);
+      added = counts.added;
     }
   }
-
-  console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
-
-  // STEP 3: Save new videos to database
-  let added = 0;
-  if (newVideos.length > 0) {
-    const counts = await saveVideosToFirestore(orgId, projectId, accountId, newVideos, platform, isManualTrigger);
-    added = counts.added;
-  }
-
-  // STEP 4: Refresh all existing videos using platform-specific bulk refresh
+  
+  // STEP 3: Refresh all existing videos (for BOTH automatic and static)
   console.log(`    🔄 [${platform.toUpperCase()}] Refreshing existing videos...`);
   const updated = await refreshExistingVideos(orgId, projectId, accountId, platform);
   
   console.log(`    ✅ [${platform.toUpperCase()}] Complete: ${added} new, ${updated} refreshed`);
-
+  
   return {
     fetched: newVideos.length,
     updated: updated,
@@ -888,6 +860,52 @@ function extractVideoId(video: any, platform: string): string | null {
     return video.id || null;
   }
   return null;
+}
+
+/**
+ * Get count of videos for an account
+ */
+async function getAccountVideoCount(
+  orgId: string,
+  projectId: string,
+  accountId: string
+): Promise<number> {
+  const snapshot = await db
+    .collection('organizations')
+    .doc(orgId)
+    .collection('projects')
+    .doc(projectId)
+    .collection('videos')
+    .where('trackedAccountId', '==', accountId)
+    .count()
+    .get();
+  
+  return snapshot.data().count;
+}
+
+/**
+ * Extract verified status from video data
+ */
+function extractVerifiedStatus(video: any, platform: string): boolean | undefined {
+  const platformLower = platform.toLowerCase().trim();
+  if (platformLower === 'instagram') {
+    return video.raw_data?.owner?.is_verified || false;
+  } else if (platformLower === 'tiktok') {
+    return video.channel?.verified || false;
+  } else if (platformLower === 'twitter') {
+    return video.isVerified || false;
+  }
+  return undefined;
+}
+
+/**
+ * Extract blue verified status (Twitter only)
+ */
+function extractBlueVerifiedStatus(video: any, platform: string): boolean | undefined {
+  if (platform.toLowerCase().trim() === 'twitter') {
+    return video.isBlueVerified || false;
+  }
+  return undefined;
 }
 
 /**

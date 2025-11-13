@@ -202,7 +202,7 @@ export interface TrackedAccount {
   status?: 'active' | 'paused' | 'inactive'; // For controlling whether account gets refreshed
   
   // Account type - determines refresh behavior
-  creatorType?: 'automatic' | 'manual'; // automatic: discovers new videos, manual: only refreshes existing videos (default: automatic)
+  creatorType?: 'automatic' | 'static'; // automatic: discovers new videos, static: only refreshes existing videos (default: automatic)
   
   // Aggregates (computed)
   totalVideos: number;
