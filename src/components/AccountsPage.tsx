@@ -213,7 +213,7 @@ const ColumnHeader: React.FC<{
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId, isDemoMode = false }, ref) => {
-  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, isAdmin } = useAuth();
   
   // Use props if provided (for demo mode), otherwise use auth
   const currentOrgId = organizationId || authOrgId;
@@ -386,6 +386,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       if (!currentOrgId) return;
       
       try {
+        // Admin users bypass limits
+        if (isAdmin) {
+          setUsageLimits({
+            accountsLeft: 999999,
+            videosLeft: 999999,
+            isAtAccountLimit: false,
+            isAtVideoLimit: false
+          });
+          return;
+        }
+        
         const [usage, limits] = await Promise.all([
           UsageTrackingService.getUsage(currentOrgId),
           UsageTrackingService.getLimits(currentOrgId)
@@ -406,7 +417,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     };
     
     loadUsageLimits();
-  }, [currentOrgId, accounts.length]); // Reload when accounts change
+  }, [currentOrgId, accounts.length, isAdmin]); // Reload when accounts change or admin status changes
 
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {
