@@ -205,16 +205,16 @@ class FirestoreDataService {
     const isAdmin = await AdminService.shouldBypassLimits(userId);
     
     if (!isAdmin) {
-      const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
-      const usage = usageDoc.data();
-      const currentVideos = usage?.trackedVideos || 0;
-      const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
-      
-      if (currentVideos >= videoLimit) {
-        throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
-      }
-      
-      console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${videoLimit - currentVideos}`);
+    const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
+    const usage = usageDoc.data();
+    const currentVideos = usage?.trackedVideos || 0;
+    const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
+    
+    if (currentVideos >= videoLimit) {
+      throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+    }
+    
+    console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${videoLimit - currentVideos}`);
     } else {
       console.log(`🔓 Admin user ${userId} bypassing video limit check`);
     }

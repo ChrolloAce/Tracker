@@ -564,7 +564,7 @@ async function refreshAccountVideos(
   let newVideos: any[] = [];
   let isVerified: boolean | undefined;
   let isBlueVerified: boolean | undefined;
-  
+
   // STEP 1: Handle new video fetching based on creatorType
   if (creatorType === 'static') {
     console.log(`    🔒 [${platform.toUpperCase()}] Static mode - skipping new video fetch`);
@@ -572,14 +572,14 @@ async function refreshAccountVideos(
     // Check if account has any videos in DB
     const existingCount = await getAccountVideoCount(orgId, projectId, accountId);
     console.log(`    📊 [${platform.toUpperCase()}] Account has ${existingCount} existing videos`);
-    
+  
     if (existingCount === 0) {
       // NEW ACCOUNT: Fetch exactly 10 videos
       console.log(`    ✨ [${platform.toUpperCase()}] New account - fetching 10 videos`);
       const batch = await fetchVideosFromPlatform(platform, username, 10);
       newVideos = batch;
-      
-      // Extract verified status from first video
+
+  // Extract verified status from first video
       if (batch.length > 0) {
         isVerified = extractVerifiedStatus(batch[0], platform);
         isBlueVerified = extractBlueVerifiedStatus(batch[0], platform);
@@ -594,10 +594,10 @@ async function refreshAccountVideos(
       for (const size of batchSizes) {
         console.log(`    📥 [${platform.toUpperCase()}] Fetching ${size} videos...`);
         const batch = await fetchVideosFromPlatform(platform, username, size);
-        
+    
         if (!batch || batch.length === 0) {
           console.log(`    ⚠️ [${platform.toUpperCase()}] No videos returned`);
-          break;
+      break;
         }
         
         // Extract verified status from first batch
@@ -608,19 +608,19 @@ async function refreshAccountVideos(
         
         // Check each video in batch
         for (const video of batch) {
-          const videoId = extractVideoId(video, platform);
-          if (!videoId) continue;
-          
-          const exists = await videoExistsInDatabase(orgId, projectId, videoId);
-          
-          if (exists) {
+      const videoId = extractVideoId(video, platform);
+      if (!videoId) continue;
+
+      const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+      
+      if (exists) {
             console.log(`    ✓ [${platform.toUpperCase()}] Found duplicate: ${videoId} - stopping fetch`);
             foundDuplicate = true;
-            break;
-          } else {
-            newVideos.push(video);
-          }
-        }
+        break;
+      } else {
+        newVideos.push(video);
+      }
+    }
         
         if (foundDuplicate) break;
         
@@ -629,24 +629,24 @@ async function refreshAccountVideos(
           console.log(`    ⏹️ [${platform.toUpperCase()}] Got ${batch.length} < ${size} (end of content)`);
           break;
         }
-      }
-      
-      console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
+  }
+
+  console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
     }
-    
+
     // STEP 2: Save new videos
-    if (newVideos.length > 0) {
-      const counts = await saveVideosToFirestore(orgId, projectId, accountId, newVideos, platform, isManualTrigger);
-      added = counts.added;
+  if (newVideos.length > 0) {
+    const counts = await saveVideosToFirestore(orgId, projectId, accountId, newVideos, platform, isManualTrigger);
+    added = counts.added;
     }
   }
-  
+
   // STEP 3: Refresh all existing videos (for BOTH automatic and static)
   console.log(`    🔄 [${platform.toUpperCase()}] Refreshing existing videos...`);
   const updated = await refreshExistingVideos(orgId, projectId, accountId, platform);
   
   console.log(`    ✅ [${platform.toUpperCase()}] Complete: ${added} new, ${updated} refreshed`);
-  
+
   return {
     fetched: newVideos.length,
     updated: updated,

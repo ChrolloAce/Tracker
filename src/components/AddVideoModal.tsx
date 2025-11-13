@@ -46,13 +46,13 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
           setVideosLeft(999999);
           setIsAtVideoLimit(false);
         } else {
-          UsageTrackingService.getUsage(currentOrgId).then(usage => {
-            UsageTrackingService.getLimits(currentOrgId).then(limits => {
-              const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
-              setVideosLeft(left);
-              setIsAtVideoLimit(left === 0);
-            });
+        UsageTrackingService.getUsage(currentOrgId).then(usage => {
+          UsageTrackingService.getLimits(currentOrgId).then(limits => {
+            const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
+            setVideosLeft(left);
+            setIsAtVideoLimit(left === 0);
           });
+        });
         }
       }
     } else {

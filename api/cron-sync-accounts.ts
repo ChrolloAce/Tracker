@@ -190,8 +190,134 @@ export default async function handler(
             videosFetched = videos.length;
           }
         } else if (account.platform === 'instagram') {
-          // Instagram logic
-          console.log(`⚠️  Instagram sync not yet implemented for ${account.username}`);
+          // Instagram logic via Apify
+          console.log(`📸 Fetching Instagram reels for @${account.username}...`);
+          
+          try {
+            const maxReels = account.maxVideos || 100;
+            const instagramResponse = await fetch(
+              `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/apify-proxy`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  actorId: 'hpix~ig-reels-scraper',
+                  input: {
+                    tags: [`https://www.instagram.com/${account.username}/reels/`],
+                    target: 'reels_only',
+                    reels_count: maxReels,
+                    include_raw_data: true,
+                    custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+                    proxy: {
+                      useApifyProxy: true,
+                      apifyProxyGroups: ['RESIDENTIAL'],
+                      apifyProxyCountry: 'US'
+                    },
+                    maxConcurrency: 1,
+                    maxRequestRetries: 3,
+                    handlePageTimeoutSecs: 120,
+                    debugLog: false
+                  },
+                  action: 'run'
+                })
+              }
+            );
+
+            console.log(`📡 Instagram response status: ${instagramResponse.status}`);
+
+            if (instagramResponse.ok) {
+              const instagramData = await instagramResponse.json();
+              console.log(`📊 Instagram data received:`, JSON.stringify(instagramData).substring(0, 500));
+              
+              // Check for error response in JSON
+              if (instagramData.error === true || instagramData.noResults === true) {
+                const errorMessage = instagramData.message || 'Unknown error from Instagram scraper';
+                console.error(`❌ Instagram scraper error for @${account.username}:`, errorMessage);
+                
+                await accountRef.update({
+                  syncStatus: 'failed',
+                  lastSyncError: errorMessage,
+                  syncProgress: {
+                    current: 100,
+                    total: 100,
+                    message: `Failed: ${errorMessage}`
+                  }
+                });
+                
+                results.push({
+                  accountId,
+                  username: account.username,
+                  status: 'failed',
+                  error: errorMessage,
+                  videosCount: 0
+                });
+                continue;
+              }
+              
+              const allReels = instagramData.items || [];
+              console.log(`📊 Total reels received: ${allReels.length}`);
+              
+              if (allReels.length === 0) {
+                console.warn(`⚠️ No reels found for @${account.username}. This could mean:`);
+                console.warn(`   - The account has no reels`);
+                console.warn(`   - The account is private`);
+                console.warn(`   - The account doesn't exist`);
+                console.warn(`   - The scraper is not working properly`);
+                
+                await accountRef.update({
+                  syncStatus: 'failed',
+                  lastSyncError: 'No reels found - account may be private, deleted, or non-existent',
+                  syncProgress: {
+                    current: 100,
+                    total: 100,
+                    message: 'No reels found'
+                  }
+                });
+                
+                results.push({
+                  accountId,
+                  username: account.username,
+                  status: 'failed',
+                  error: 'No reels found',
+                  videosCount: 0
+                });
+                continue;
+              }
+              
+              // Transform Instagram reels to video format
+              videos = allReels.map((reel: any) => {
+                const reelCode = reel.code || reel.shortcode || '';
+                const reelUrl = reelCode ? `https://www.instagram.com/reel/${reelCode}/` : '';
+                const reelCaption = reel.caption || reel.description || '';
+
+                return {
+                  videoId: reelCode,
+                  videoTitle: reelCaption ? reelCaption.substring(0, 100) + (reelCaption.length > 100 ? '...' : '') : 'Untitled Reel',
+                  videoUrl: reelUrl,
+                  platform: 'instagram',
+                  thumbnail: reel.thumbnail || reel.display_url || '', // Will be uploaded to Firebase Storage
+                  accountUsername: account.username,
+                  accountDisplayName: reel.owner?.username || account.username,
+                  uploadDate: reel.timestamp ? Timestamp.fromDate(new Date(reel.timestamp * 1000)) : Timestamp.now(),
+                  views: reel.view_count || reel.play_count || 0,
+                  likes: reel.like_count || 0,
+                  comments: reel.comment_count || 0,
+                  shares: 0, // Instagram doesn't provide share count
+                  caption: reelCaption
+                };
+              });
+              
+              videosFetched = videos.length;
+              console.log(`✅ Processed ${videosFetched} Instagram reels`);
+            } else {
+              const errorText = await instagramResponse.text();
+              console.error(`❌ Instagram fetch failed with status ${instagramResponse.status}: ${errorText}`);
+              throw new Error(`Instagram API returned ${instagramResponse.status}: ${errorText}`);
+            }
+          } catch (instagramError: any) {
+            console.error(`❌ Instagram sync error for ${account.username}:`, instagramError);
+            throw instagramError;
+          }
         } else if (account.platform === 'twitter') {
           // Twitter/X logic via Apify
           console.log(`🐦 Fetching tweets for @${account.username}...`);
@@ -426,47 +552,47 @@ export default async function handler(
         if (isAdmin) {
           console.log(`🔓 Admin user ${userId} bypassing video limit check for org ${account.orgId}`);
         } else {
-          // Check video limits before saving
-          const usageDoc = await db
-            .collection('organizations')
-            .doc(account.orgId)
-            .collection('billing')
-            .doc('usage')
-            .get();
+        // Check video limits before saving
+        const usageDoc = await db
+          .collection('organizations')
+          .doc(account.orgId)
+          .collection('billing')
+          .doc('usage')
+          .get();
+        
+        const usage = usageDoc.data();
+        const currentVideos = usage?.trackedVideos || 0;
+        const videoLimit = usage?.limits?.trackedVideos || 100; // Default limit
+        const availableSpace = videoLimit - currentVideos;
+        
+        console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
+        
+        if (availableSpace <= 0) {
+          console.warn(`⚠️ Video limit reached for org ${account.orgId}. Skipping video sync.`);
+          await accountRef.update({
+            syncStatus: 'failed',
+            lastSyncError: 'Video limit reached. Please upgrade your plan.',
+            syncProgress: {
+              current: 100,
+              total: 100,
+              message: 'Video limit reached'
+            }
+          });
           
-          const usage = usageDoc.data();
-          const currentVideos = usage?.trackedVideos || 0;
-          const videoLimit = usage?.limits?.trackedVideos || 100; // Default limit
-          const availableSpace = videoLimit - currentVideos;
-          
-          console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
-          
-          if (availableSpace <= 0) {
-            console.warn(`⚠️ Video limit reached for org ${account.orgId}. Skipping video sync.`);
-            await accountRef.update({
-              syncStatus: 'failed',
-              lastSyncError: 'Video limit reached. Please upgrade your plan.',
-              syncProgress: {
-                current: 100,
-                total: 100,
-                message: 'Video limit reached'
-              }
-            });
-            
-            results.push({
-              accountId,
-              username: account.username,
-              status: 'failed',
-              error: 'Video limit reached',
-              videosCount: 0
-            });
-            continue;
-          }
-          
-          // Limit videos to available space
+          results.push({
+            accountId,
+            username: account.username,
+            status: 'failed',
+            error: 'Video limit reached',
+            videosCount: 0
+          });
+          continue;
+        }
+        
+        // Limit videos to available space
           videosToSave = videos.slice(0, availableSpace);
-          if (videosToSave.length < videos.length) {
-            console.warn(`⚠️ Limiting sync to ${videosToSave.length} videos (available space: ${availableSpace})`);
+        if (videosToSave.length < videos.length) {
+          console.warn(`⚠️ Limiting sync to ${videosToSave.length} videos (available space: ${availableSpace})`);
           }
         }
 
