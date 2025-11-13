@@ -228,7 +228,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         </div>
 
         {/* Heatmap grid - Fixed minimum cell size for readability */}
-        <div className="flex-1 min-w-max">
+        <div className="min-w-max">
           <div className="grid gap-[2px] sm:gap-[3px]" style={{ 
             gridTemplateColumns: `repeat(${weeks.length}, minmax(10px, 16px))`,
             gridAutoFlow: 'column'
