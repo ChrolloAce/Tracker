@@ -3010,25 +3010,29 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         }
                       case 'posting-activity':
                         return (
-                          <div className="relative">
-                            <div 
-                              className="-mx-3 sm:-mx-4 md:-mx-6"
-                              style={{ 
-                                width: '100vw',
-                                maxWidth: '100vw',
-                                position: 'relative',
-                                left: '50%',
-                                right: '50%',
-                                marginLeft: '-50vw',
-                                marginRight: '-50vw'
-                              }}
-                            >
-                              <div className="px-3 sm:px-4 md:px-6">
-                                <PostingActivityHeatmap 
-                                  submissions={filteredSubmissions}
-                                  onVideoClick={handleVideoClick}
-                                />
-                              </div>
+                          <div 
+                            className="relative"
+                            style={{
+                              margin: '0 -0.75rem', // Mobile: offset px-3
+                            }}
+                          >
+                            <style>{`
+                              @media (min-width: 640px) {
+                                .posting-activity-full-width {
+                                  margin: 0 -1rem !important; /* Tablet: offset px-4 */
+                                }
+                              }
+                              @media (min-width: 768px) {
+                                .posting-activity-full-width {
+                                  margin: 0 -1.5rem !important; /* Desktop: offset px-6 */
+                                }
+                              }
+                            `}</style>
+                            <div className="posting-activity-full-width">
+                              <PostingActivityHeatmap 
+                                submissions={filteredSubmissions}
+                                onVideoClick={handleVideoClick}
+                              />
                             </div>
                           </div>
                         );
