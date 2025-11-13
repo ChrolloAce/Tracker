@@ -3010,20 +3010,23 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         }
                       case 'posting-activity':
                         return (
-                          <div className="relative" style={{ 
-                            left: '50%',
-                            right: '50%',
-                            marginLeft: '-50vw',
-                            marginRight: '-50vw',
-                            width: '100vw',
-                            maxWidth: '100vw'
-                          }}>
-                            <div className="px-3 sm:px-4 md:px-6">
-                              <PostingActivityHeatmap 
-                                submissions={filteredSubmissions}
-                                onVideoClick={handleVideoClick}
-                              />
-                            </div>
+                          <div 
+                            className="relative -mx-3 sm:-mx-4 md:-mx-6"
+                            style={{ 
+                              width: isSidebarCollapsed 
+                                ? 'calc(100vw - 4rem)' // 64px sidebar collapsed
+                                : 'calc(100vw - 16rem)', // 256px sidebar expanded
+                              maxWidth: isSidebarCollapsed 
+                                ? 'calc(100vw - 4rem)'
+                                : 'calc(100vw - 16rem)',
+                              marginLeft: '-0.75rem', // Offset px-3
+                              marginRight: '-0.75rem'
+                            }}
+                          >
+                            <PostingActivityHeatmap 
+                              submissions={filteredSubmissions}
+                              onVideoClick={handleVideoClick}
+                            />
                           </div>
                         );
                       case 'tracked-accounts':
