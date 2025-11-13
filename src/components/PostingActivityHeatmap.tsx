@@ -227,10 +227,10 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           <div className="h-3 sm:h-4 leading-none">S</div>
         </div>
 
-        {/* Heatmap grid - Fixed minimum cell size for readability */}
-        <div className="min-w-max">
-          <div className="grid gap-[2px] sm:gap-[3px]" style={{ 
-            gridTemplateColumns: `repeat(${weeks.length}, minmax(10px, 16px))`,
+        {/* Heatmap grid - Full width responsive */}
+        <div className="flex-1 min-w-0">
+          <div className="grid gap-[2px] sm:gap-[3px] w-full" style={{ 
+            gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
             gridAutoFlow: 'column'
           }}>
             {weeks.map((week, weekIndex) => (
@@ -238,7 +238,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                 {/* Fill empty days at the start of the first week */}
                 {weekIndex === 0 && week[0] && week[0].date.getDay() > 0 && (
                   Array.from({ length: week[0].date.getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="w-[10px] sm:w-[12px] md:w-[16px] h-[10px] sm:h-[12px] md:h-[16px]" />
+                    <div key={`empty-${i}`} className="w-full aspect-square" />
                   ))
                 )}
                 
@@ -246,7 +246,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                   <div
                     key={format(day.date, 'yyyy-MM-dd')}
                     className={`
-                      w-[10px] sm:w-[12px] md:w-[16px] h-[10px] sm:h-[12px] md:h-[16px] rounded-sm transition-all cursor-pointer
+                      w-full aspect-square rounded-sm transition-all cursor-pointer
                       ${getColorIntensity(day.count)}
                       ${day.count > 0 ? 'hover:ring-1 sm:hover:ring-2 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''}
                     `}
