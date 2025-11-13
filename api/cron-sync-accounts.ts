@@ -115,6 +115,32 @@ export default async function handler(
 
           if (response.ok) {
             const data = await response.json();
+            
+            // Check for error response in JSON
+            if (data.error === true || data.noResults === true) {
+              const errorMessage = data.message || 'Unknown error from TikTok scraper';
+              console.error(`❌ TikTok scraper error for @${account.username}:`, errorMessage);
+              
+              await accountRef.update({
+                syncStatus: 'failed',
+                lastSyncError: errorMessage,
+                syncProgress: {
+                  current: 100,
+                  total: 100,
+                  message: `Failed: ${errorMessage}`
+                }
+              });
+              
+              results.push({
+                accountId,
+                username: account.username,
+                status: 'failed',
+                error: errorMessage,
+                videosCount: 0
+              });
+              continue;
+            }
+            
             videos = data.videos || [];
             videosFetched = videos.length;
           } else {
@@ -134,6 +160,32 @@ export default async function handler(
 
           if (response.ok) {
             const data = await response.json();
+            
+            // Check for error response in JSON
+            if (data.error === true || data.noResults === true) {
+              const errorMessage = data.message || 'Unknown error from YouTube scraper';
+              console.error(`❌ YouTube scraper error for @${account.username}:`, errorMessage);
+              
+              await accountRef.update({
+                syncStatus: 'failed',
+                lastSyncError: errorMessage,
+                syncProgress: {
+                  current: 100,
+                  total: 100,
+                  message: `Failed: ${errorMessage}`
+                }
+              });
+              
+              results.push({
+                accountId,
+                username: account.username,
+                status: 'failed',
+                error: errorMessage,
+                videosCount: 0
+              });
+              continue;
+            }
+            
             videos = data.videos || [];
             videosFetched = videos.length;
           }
@@ -222,6 +274,32 @@ export default async function handler(
               console.log(`📊 Raw tweets data structure:`, Object.keys(tweetsData));
               console.log(`📊 Tweets data sample:`, JSON.stringify(tweetsData).substring(0, 1000));
               
+              // Check for error response in the JSON data
+              if (tweetsData.error === true || tweetsData.noResults === true) {
+                const errorMessage = tweetsData.message || 'Unknown error from scraper';
+                const errorCode = tweetsData.code || 'UNKNOWN';
+                console.error(`❌ Scraper returned error for @${account.username}:`, errorMessage, `(${errorCode})`);
+                
+                await accountRef.update({
+                  syncStatus: 'failed',
+                  lastSyncError: errorMessage,
+                  syncProgress: {
+                    current: 100,
+                    total: 100,
+                    message: `Failed: ${errorMessage}`
+                  }
+                });
+                
+                results.push({
+                  accountId,
+                  username: account.username,
+                  status: 'failed',
+                  error: errorMessage,
+                  videosCount: 0
+                });
+                continue;
+              }
+              
               const allTweets = tweetsData.items || [];
               console.log(`📊 Total items received: ${allTweets.length}`);
               
@@ -232,6 +310,25 @@ export default async function handler(
                 console.warn(`   - The account doesn't exist`);
                 console.warn(`   - The Apify actor is not working properly`);
                 console.warn(`   - The username format is incorrect`);
+                
+                await accountRef.update({
+                  syncStatus: 'failed',
+                  lastSyncError: 'No tweets found - account may be private, deleted, or non-existent',
+                  syncProgress: {
+                    current: 100,
+                    total: 100,
+                    message: 'No tweets found'
+                  }
+                });
+                
+                results.push({
+                  accountId,
+                  username: account.username,
+                  status: 'failed',
+                  error: 'No tweets found',
+                  videosCount: 0
+                });
+                continue;
               }
               
               // Filter out retweets
