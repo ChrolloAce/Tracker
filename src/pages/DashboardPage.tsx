@@ -120,7 +120,7 @@ const getVideoTableHeader = (dateFilter: DateFilterType): string => {
 
 function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string; initialSettingsTab?: string } = {}) {
   // Get authentication state, current organization, and current project
-  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -640,6 +640,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       if (!currentOrgId) return;
       
       try {
+        // Admin users have unlimited everything
+        if (isAdmin) {
+          setUsageLimits({
+            accountsLeft: 999999,
+            videosLeft: 999999,
+            isAtAccountLimit: false,
+            isAtVideoLimit: false
+          });
+          return;
+        }
+        
         const [usage, limits] = await Promise.all([
           UsageTrackingService.getUsage(currentOrgId),
           UsageTrackingService.getLimits(currentOrgId)
@@ -660,7 +671,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     };
     
     loadUsageLimits();
-  }, [currentOrgId, pendingAccounts.length]); // Reload when accounts change
+  }, [currentOrgId, pendingAccounts.length, isAdmin]); // Reload when accounts change or admin status changes
 
   useEffect(() => {
     // Use project-scoped key to prevent account IDs from contaminating other projects
