@@ -3010,21 +3010,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         }
                       case 'posting-activity':
                         return (
-                          <div 
-                            className="relative w-screen"
-                            style={{
-                              marginLeft: 'calc(-50vw + 50%)',
-                              marginRight: 'calc(-50vw + 50%)',
-                              maxWidth: 'none'
-                            }}
-                          >
-                            <div className="px-3 sm:px-4 md:px-6">
-                              <PostingActivityHeatmap 
-                                submissions={filteredSubmissions}
-                                onVideoClick={handleVideoClick}
-                              />
-                            </div>
-                          </div>
+                          <PostingActivityHeatmap 
+                            submissions={filteredSubmissions}
+                            onVideoClick={handleVideoClick}
+                          />
                         );
                       case 'tracked-accounts':
                         return (

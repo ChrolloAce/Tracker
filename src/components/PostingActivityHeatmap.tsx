@@ -207,17 +207,16 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   }, [heatmapData]);
 
   return (
-    <div className="bg-zinc-900 rounded-lg shadow-lg border border-white/10 overflow-hidden">
-      {/* Header - Fixed, doesn't scroll */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 p-3 sm:p-4 md:p-6 pb-3 sm:pb-4">
+    <div className="bg-zinc-900 rounded-lg shadow-lg p-3 sm:p-4 md:p-6 border border-white/10">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg md:text-xl font-semibold text-white">Posting Activity</h2>
         <div className="text-[10px] sm:text-xs md:text-sm text-white/60">
           {stats.totalPosts} posts • {stats.activeDays} active days
         </div>
       </div>
 
-      {/* Day labels and Heatmap grid - Horizontally scrollable */}
-      <div className="flex items-start gap-2 sm:gap-3 mb-2 overflow-x-auto px-3 sm:px-4 md:px-6 pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20">
+      {/* Day labels and Heatmap grid */}
+      <div className="flex items-start gap-2 sm:gap-3 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20">
         <div className="w-6 sm:w-8 md:w-10 flex-shrink-0 flex flex-col gap-[3px] text-[10px] sm:text-xs text-white/40 pt-1">
           <div className="h-3 sm:h-4 leading-none">M</div>
           <div className="h-3 sm:h-4 leading-none">T</div>
@@ -263,8 +262,8 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         </div>
       </div>
 
-      {/* Legend - Fixed, doesn't scroll */}
-      <div className="flex items-center justify-between mt-3 sm:mt-4 px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6 text-[10px] sm:text-xs text-white/40">
+      {/* Legend */}
+      <div className="flex items-center justify-between mt-3 sm:mt-4 text-[10px] sm:text-xs text-white/40">
         <div className="hidden sm:block">Fewer Posts</div>
         <div className="sm:hidden">Less</div>
         <div className="flex items-center gap-[2px]">
