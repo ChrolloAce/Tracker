@@ -3011,24 +3011,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       case 'posting-activity':
                         return (
                           <div 
-                            className="relative"
+                            className="relative w-screen"
                             style={{
-                              margin: '0 -0.75rem', // Mobile: offset px-3
+                              marginLeft: 'calc(-50vw + 50%)',
+                              marginRight: 'calc(-50vw + 50%)',
+                              maxWidth: 'none'
                             }}
                           >
-                            <style>{`
-                              @media (min-width: 640px) {
-                                .posting-activity-full-width {
-                                  margin: 0 -1rem !important; /* Tablet: offset px-4 */
-                                }
-                              }
-                              @media (min-width: 768px) {
-                                .posting-activity-full-width {
-                                  margin: 0 -1.5rem !important; /* Desktop: offset px-6 */
-                                }
-                              }
-                            `}</style>
-                            <div className="posting-activity-full-width">
+                            <div className="px-3 sm:px-4 md:px-6">
                               <PostingActivityHeatmap 
                                 submissions={filteredSubmissions}
                                 onVideoClick={handleVideoClick}
