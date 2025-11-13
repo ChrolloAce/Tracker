@@ -19,7 +19,7 @@ interface VideoInput {
 }
 
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [videoInputs, setVideoInputs] = useState<VideoInput[]>([{ id: '1', url: '', detectedPlatform: null }]);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -39,22 +39,28 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
       
       checkClipboard();
       
-      // Load usage limits
+      // Load usage limits (admins bypass)
       if (currentOrgId) {
-        UsageTrackingService.getUsage(currentOrgId).then(usage => {
-          UsageTrackingService.getLimits(currentOrgId).then(limits => {
-            const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
-            setVideosLeft(left);
-            setIsAtVideoLimit(left === 0);
+        if (isAdmin) {
+          // Admin users have unlimited videos
+          setVideosLeft(999999);
+          setIsAtVideoLimit(false);
+        } else {
+          UsageTrackingService.getUsage(currentOrgId).then(usage => {
+            UsageTrackingService.getLimits(currentOrgId).then(limits => {
+              const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
+              setVideosLeft(left);
+              setIsAtVideoLimit(left === 0);
+            });
           });
-        });
+        }
       }
     } else {
       // Reset when modal closes
       setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
       setUrlError(null);
     }
-  }, [isOpen, currentOrgId]);
+  }, [isOpen, currentOrgId, isAdmin]);
 
   const handleAddVideoInput = () => {
     setVideoInputs([...videoInputs, { id: Date.now().toString(), url: '', detectedPlatform: null }]);
