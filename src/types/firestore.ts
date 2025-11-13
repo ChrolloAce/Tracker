@@ -74,6 +74,7 @@ export interface UserAccount {
   lastLoginAt: Timestamp;
   plan: 'free' | 'pro' | 'enterprise';
   defaultOrgId?: string; // Most recently used organization
+  isAdmin?: boolean; // Admin users bypass all usage limits
 }
 
 // ==================== ORGANIZATIONS ====================

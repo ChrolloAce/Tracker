@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Video } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Video, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -374,7 +374,7 @@ const BillingTabContent: React.FC = () => {
  * Features: Billing, Notifications, Organization, Profile management
  */
 const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTabProp }) => {
-  const { user, currentOrgId, userRole } = useAuth();
+  const { user, currentOrgId, userRole, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Use initialTab from URL if provided
@@ -852,7 +852,15 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {activeTab === 'profile' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile</h2>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h2>
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border border-amber-500/30">
+                      <Shield className="w-3.5 h-3.5" />
+                      Admin
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-600 dark:text-gray-400">Manage your personal information and account settings.</p>
           </div>
 

@@ -8,6 +8,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
+import AdminService from './AdminService';
 
 /**
  * Usage Tracking Service
@@ -251,12 +252,20 @@ class UsageTrackingService {
   
   /**
    * Check if action is allowed (within limits)
+   * Admin users bypass all limits
    */
   static async canPerformAction(
     orgId: string, 
-    resource: 'account' | 'video' | 'link' | 'team' | 'mcp'
+    resource: 'account' | 'video' | 'link' | 'team' | 'mcp',
+    userId?: string
   ): Promise<{ allowed: boolean; reason?: string; current: number; limit: number }> {
     try {
+      // Check if user is admin - admins bypass all limits
+      if (userId && await AdminService.shouldBypassLimits(userId)) {
+        console.log(`🔓 Admin user ${userId} bypassing ${resource} limit check`);
+        return { allowed: true, current: 0, limit: -1 };
+      }
+      
       const [usage, limits] = await Promise.all([
         this.getUsage(orgId),
         this.getLimits(orgId)

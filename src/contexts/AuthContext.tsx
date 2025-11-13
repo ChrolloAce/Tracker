@@ -21,6 +21,7 @@ interface AuthContextType {
   currentOrgId: string | null;
   currentProjectId: string | null;
   userRole: string | null;
+  isAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
@@ -45,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // First check for redirect result, then set up auth state listener
@@ -200,6 +202,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // User has orgs! Get the default org or use first one
         const userAccount = await OrganizationService.getUserAccount(user.uid);
+        
+        // Set admin status
+        setIsAdmin(userAccount?.isAdmin === true);
+        if (userAccount?.isAdmin) {
+          console.log('🔓 Admin user detected:', user.uid);
+        }
         
         if (userAccount?.defaultOrgId && userOrgs.find(o => o.id === userAccount.defaultOrgId)) {
           // Use saved default org
@@ -428,6 +436,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentOrgId,
     currentProjectId,
     userRole,
+    isAdmin,
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,

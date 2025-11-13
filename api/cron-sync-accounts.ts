@@ -290,47 +290,61 @@ export default async function handler(
           }
         });
 
-        // Check video limits before saving
-        const usageDoc = await db
-          .collection('organizations')
-          .doc(account.orgId)
-          .collection('billing')
-          .doc('usage')
-          .get();
-        
-        const usage = usageDoc.data();
-        const currentVideos = usage?.trackedVideos || 0;
-        const videoLimit = usage?.limits?.trackedVideos || 100; // Default limit
-        const availableSpace = videoLimit - currentVideos;
-        
-        console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
-        
-        if (availableSpace <= 0) {
-          console.warn(`⚠️ Video limit reached for org ${account.orgId}. Skipping video sync.`);
-          await accountRef.update({
-            syncStatus: 'failed',
-            lastSyncError: 'Video limit reached. Please upgrade your plan.',
-            syncProgress: {
-              current: 100,
-              total: 100,
-              message: 'Video limit reached'
-            }
-          });
-          
-          results.push({
-            accountId,
-            username: account.username,
-            status: 'failed',
-            error: 'Video limit reached',
-            videosCount: 0
-          });
-          continue;
+        // Check if user is admin - admins bypass video limits
+        const userId = account.syncRequestedBy || account.addedBy;
+        let isAdmin = false;
+        if (userId) {
+          const userDoc = await db.collection('users').doc(userId).get();
+          isAdmin = userDoc.exists && userDoc.data()?.isAdmin === true;
         }
         
-        // Limit videos to available space
-        const videosToSave = videos.slice(0, availableSpace);
-        if (videosToSave.length < videos.length) {
-          console.warn(`⚠️ Limiting sync to ${videosToSave.length} videos (available space: ${availableSpace})`);
+        let videosToSave = videos;
+        
+        if (isAdmin) {
+          console.log(`🔓 Admin user ${userId} bypassing video limit check for org ${account.orgId}`);
+        } else {
+          // Check video limits before saving
+          const usageDoc = await db
+            .collection('organizations')
+            .doc(account.orgId)
+            .collection('billing')
+            .doc('usage')
+            .get();
+          
+          const usage = usageDoc.data();
+          const currentVideos = usage?.trackedVideos || 0;
+          const videoLimit = usage?.limits?.trackedVideos || 100; // Default limit
+          const availableSpace = videoLimit - currentVideos;
+          
+          console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
+          
+          if (availableSpace <= 0) {
+            console.warn(`⚠️ Video limit reached for org ${account.orgId}. Skipping video sync.`);
+            await accountRef.update({
+              syncStatus: 'failed',
+              lastSyncError: 'Video limit reached. Please upgrade your plan.',
+              syncProgress: {
+                current: 100,
+                total: 100,
+                message: 'Video limit reached'
+              }
+            });
+            
+            results.push({
+              accountId,
+              username: account.username,
+              status: 'failed',
+              error: 'Video limit reached',
+              videosCount: 0
+            });
+            continue;
+          }
+          
+          // Limit videos to available space
+          videosToSave = videos.slice(0, availableSpace);
+          if (videosToSave.length < videos.length) {
+            console.warn(`⚠️ Limiting sync to ${videosToSave.length} videos (available space: ${availableSpace})`);
+          }
         }
 
         await accountRef.update({

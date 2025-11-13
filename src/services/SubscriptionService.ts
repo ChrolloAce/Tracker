@@ -13,6 +13,7 @@ import {
   UsageLimit,
   SUBSCRIPTION_PLANS 
 } from '../types/subscription';
+import AdminService from './AdminService';
 
 /**
  * Subscription and billing management service
@@ -120,11 +121,19 @@ class SubscriptionService {
 
   /**
    * Check if organization can perform action based on plan limits
+   * Admin users bypass all limits
    */
   static async canPerformAction(
     orgId: string,
-    action: 'addAccount' | 'addVideo' | 'addTeamMember' | 'makeMCPCall' | 'addLink' | 'refreshOnDemand'
+    action: 'addAccount' | 'addVideo' | 'addTeamMember' | 'makeMCPCall' | 'addLink' | 'refreshOnDemand',
+    userId?: string
   ): Promise<{ allowed: boolean; reason?: string; limit?: number; current?: number }> {
+    // Check if user is admin - admins bypass all limits
+    if (userId && await AdminService.shouldBypassLimits(userId)) {
+      console.log(`🔓 Admin user ${userId} bypassing ${action} limit check`);
+      return { allowed: true, limit: -1, current: 0 };
+    }
+    
     const subscription = await this.getSubscription(orgId);
     
     if (!subscription) {

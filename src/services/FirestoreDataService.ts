@@ -23,6 +23,7 @@ import {
   LinkClick
 } from '../types/firestore';
 import { VideoSnapshot } from '../types/index';
+import AdminService from './AdminService';
 
 /**
  * FirestoreDataService - Manages videos, tracked accounts, and links within projects
@@ -192,6 +193,7 @@ class FirestoreDataService {
   
   /**
    * Add a video to a project
+   * Admin users bypass video limits
    */
   static async addVideo(
     orgId: string,
@@ -199,17 +201,23 @@ class FirestoreDataService {
     userId: string,
     videoData: Omit<VideoDoc, 'id' | 'orgId' | 'dateAdded' | 'addedBy'>
   ): Promise<string> {
-    // ✅ CHECK VIDEO LIMITS BEFORE ADDING
-    const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
-    const usage = usageDoc.data();
-    const currentVideos = usage?.trackedVideos || 0;
-    const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
+    // ✅ CHECK VIDEO LIMITS BEFORE ADDING (admins bypass)
+    const isAdmin = await AdminService.shouldBypassLimits(userId);
     
-    if (currentVideos >= videoLimit) {
-      throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+    if (!isAdmin) {
+      const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
+      const usage = usageDoc.data();
+      const currentVideos = usage?.trackedVideos || 0;
+      const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
+      
+      if (currentVideos >= videoLimit) {
+        throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+      }
+      
+      console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${videoLimit - currentVideos}`);
+    } else {
+      console.log(`🔓 Admin user ${userId} bypassing video limit check`);
     }
-    
-    console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${videoLimit - currentVideos}`);
     
     const batch = writeBatch(db);
     

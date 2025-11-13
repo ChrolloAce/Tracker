@@ -18,7 +18,7 @@ import UsageTrackingService from '../services/UsageTrackingService';
  * ```
  */
 export function useUsageLimits() {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, currentUser } = useAuth();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [limitInfo, setLimitInfo] = useState<{
     resourceType: 'account' | 'video' | 'link' | 'team' | 'mcp';
@@ -29,6 +29,7 @@ export function useUsageLimits() {
   /**
    * Check if an action is allowed
    * Returns true if allowed, false if limit reached (and shows upgrade modal)
+   * Admin users bypass all limits
    */
   const checkLimit = useCallback(async (
     resource: 'account' | 'video' | 'link' | 'team' | 'mcp'
@@ -39,7 +40,11 @@ export function useUsageLimits() {
     }
 
     try {
-      const result = await UsageTrackingService.canPerformAction(currentOrgId, resource);
+      const result = await UsageTrackingService.canPerformAction(
+        currentOrgId, 
+        resource,
+        currentUser?.uid // Pass userId for admin check
+      );
       
       if (!result.allowed) {
         // Show upgrade modal
@@ -59,7 +64,7 @@ export function useUsageLimits() {
       console.error('Failed to check usage limit:', error);
       return false;
     }
-  }, [currentOrgId]);
+  }, [currentOrgId, currentUser]);
 
   /**
    * Increment usage after successful action
