@@ -3717,6 +3717,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         dayOfWeek={(window as any).__heatmapDayOfWeek}
         hourRange={(window as any).__heatmapHourRange}
         onVideoClick={handleVideoClick}
+        onDelete={handleDelete}
         selectedPeriodRange={dateFilter !== 'all' && customDateRange ? customDateRange : undefined}
       />
 

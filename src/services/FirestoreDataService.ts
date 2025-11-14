@@ -586,14 +586,14 @@ class FirestoreDataService {
   }
 
   /**
-   * Delete a single video from a project (queues for background processing)
-   * ✅ NEW: Instant UI update, background deletion via cron
+   * Delete a single video from a project (immediately via API)
+   * ✅ UPDATED: Immediate deletion via API call instead of cron queue
    */
   static async deleteVideo(orgId: string, projectId: string, videoId: string): Promise<void> {
     try {
-      console.log(`🗑️ Queuing video ${videoId} for deletion`);
+      console.log(`🗑️ Deleting video ${videoId} immediately...`);
       
-      // Get video data before queuing
+      // Get video data before deletion
       const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
       const videoSnap = await getDoc(videoRef);
       
@@ -602,36 +602,46 @@ class FirestoreDataService {
         return;
       }
       
-          const videoData = videoSnap.data();
+      const videoData = videoSnap.data();
       const platform = videoData?.platform;
       const platformVideoId = videoData?.videoId;
       const trackedAccountId = videoData?.trackedAccountId;
       
-      // STEP 1: Queue the deletion for background processing
-      const deletionRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'pendingDeletions'));
-      await setDoc(deletionRef, {
-        type: 'video',
-        orgId,
-        projectId,
-        videoId,
-        platformVideoId: platformVideoId || null,
-        platform: platform || null,
-        trackedAccountId: trackedAccountId || null,
-        status: 'pending',
-        queuedAt: Timestamp.now(),
-        deletedBy: 'user', // Could pass user ID if needed
-        retryCount: 0
+      // Get Firebase ID token for authentication
+      const user = getAuth().currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      const token = await user.getIdToken();
+      
+      // Call the immediate deletion API
+      const response = await fetch('/api/delete-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orgId,
+          projectId,
+          videoId,
+          platformVideoId: platformVideoId || null,
+          platform: platform || null,
+          trackedAccountId: trackedAccountId || null
+        })
       });
       
-      console.log(`✅ Video ${videoId} queued for deletion (will be processed by cron within 2 minutes)`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete video');
+      }
       
-      // STEP 2: IMMEDIATELY remove from UI by deleting the document
-      // The cron job will handle snapshots, storage, blacklist, and usage counters
-      await deleteDoc(videoRef);
-      console.log(`✅ Video ${videoId} removed from UI (background cleanup queued)`);
+      const result = await response.json();
+      console.log(`✅ Video deleted successfully in ${result.duration}s (${result.snapshotsDeleted} snapshots removed)`);
       
     } catch (error) {
-      console.error('❌ Failed to queue video deletion:', error);
+      console.error('❌ Failed to delete video:', error);
       throw error;
     }
   }

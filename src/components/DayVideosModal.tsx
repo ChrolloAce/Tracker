@@ -12,6 +12,7 @@ interface DayVideosModalProps {
   videos: VideoSubmission[];
   metricLabel: string;
   onVideoClick?: (video: VideoSubmission) => void;
+  onDelete?: (id: string) => void; // Optional: delete handler
   accountFilter?: string; // Optional: filter by account username
   dateRangeLabel?: string; // Optional: show date range instead of specific date (e.g., "Last 7 Days")
   interval?: TimeInterval | null; // Optional: interval information for formatted date range
@@ -31,6 +32,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   videos,
   metricLabel: _metricLabel,
   onVideoClick,
+  onDelete,
   accountFilter,
   dateRangeLabel,
   interval,
@@ -1006,6 +1008,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                       <VideoSubmissionsTable
                         submissions={videosToShow}
                         onVideoClick={onVideoClick}
+                        onDelete={onDelete}
                         headerTitle={`New Videos (${videosToShow.length})`}
                       />
                     </div>
@@ -1052,6 +1055,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                           };
                         })}
                         onVideoClick={onVideoClick}
+                        onDelete={onDelete}
                         headerTitle={`Refreshed Videos (${gainersToShow.length})`}
                       />
                     </div>
