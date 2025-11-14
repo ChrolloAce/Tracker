@@ -148,20 +148,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
     };
   }, [dailyMetrics, ppInterval]);
 
-  // Top days (sorted by revenue, then downloads)
-  const topDays = useMemo(() => {
-    return [...currentPeriodMetrics]
-      .sort((a, b) => {
-        // Sort by revenue first
-        if (b.revenue !== a.revenue) {
-          return b.revenue - a.revenue;
-        }
-        // If revenue is equal, sort by downloads
-        return b.downloads - a.downloads;
-      })
-      .slice(0, 10);
-  }, [currentPeriodMetrics]);
-
   // Chart data (sorted by date for timeline)
   const chartData = useMemo(() => {
     return [...currentPeriodMetrics]
@@ -391,6 +377,11 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                 <div className="flex items-center gap-2 px-1 mb-3">
                   <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {metricType === 'revenue' ? 'Revenue Trend' : 'Download Trend'}
+                    {interval && (
+                      <span className="ml-2 text-emerald-400">
+                        ({formatIntervalRange(interval)})
+                      </span>
+                    )}
                   </h3>
                 </div>
                 <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
@@ -459,52 +450,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                 </div>
               </div>
             )}
-
-            {/* Top Days */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Top Days · {topDays.length}
-                </h3>
-              </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                {topDays.length > 0 ? (
-                  topDays.map((day, idx) => (
-                    <div 
-                      key={`day-${day.date}-${idx}`}
-                      className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-white">
-                            {new Date(day.date).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-white">
-                            {formatCurrency(day.revenue)}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            {formatNumber(day.downloads)} downloads
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <p className="text-sm text-gray-500">No data available</p>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>

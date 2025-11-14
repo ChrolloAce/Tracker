@@ -172,17 +172,21 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     ppDateStr = DataAggregationService.formatIntervalLabelFull(ppStartDate, interval.intervalType);
   }
   
-  const isRevenueMetric = data.id === 'revenue' || data.id === 'downloads';
+  const isRevenueMetric = data.id === 'revenue';
+  const isDownloadsMetric = data.id === 'downloads';
+  
   const formatDisplayNumber = (num: number | undefined | null): string => {
     if (num === undefined || num === null || isNaN(num)) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    if (isRevenueMetric) return num.toFixed(2);
+    if (isRevenueMetric) return `$${num.toFixed(2)}`; // Add $ here for revenue
+    if (isDownloadsMetric) return num.toLocaleString();
     return num.toLocaleString();
   };
   
-  const displayValue = typeof value === 'number' ? (data.id === 'revenue' ? `$${formatDisplayNumber(value)}` : formatDisplayNumber(value)) : value;
-  const ppDisplayValue = typeof ppValue === 'number' ? (data.id === 'revenue' ? `$${formatDisplayNumber(ppValue)}` : formatDisplayNumber(ppValue)) : null;
+  // Don't add $ again since formatDisplayNumber already includes it for revenue
+  const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
+  const ppDisplayValue = typeof ppValue === 'number' ? formatDisplayNumber(ppValue) : null;
   
   const ppComparison = (typeof ppValue === 'number' && typeof value === 'number') ? (() => {
     const diff = value - ppValue;
@@ -392,7 +396,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       <div className="px-5 pt-4 pb-3 space-y-2.5">
         <div className="flex items-center justify-between">
           {(data.id === 'revenue' || data.id === 'downloads') ? (
-            <div className="flex items-baseline gap-2 flex-1">
+            <div className="flex flex-col gap-1.5 flex-1">
               <div className="flex items-center gap-1.5">
                 {data.appIcon && (
                   <img 
@@ -406,7 +410,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                 )}
                 <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
               </div>
-              <p className="text-xl font-bold text-white">{displayValue}</p>
+              <p className="text-2xl font-bold text-white">{displayValue}</p>
             </div>
           ) : (
             <>
