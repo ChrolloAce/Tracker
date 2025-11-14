@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { RevenueMetrics } from '../types/revenue';
 import { TimeInterval } from '../services/DataAggregationService';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface DayTransactionsModalProps {
   isOpen: boolean;
@@ -159,6 +160,18 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
         return b.downloads - a.downloads;
       })
       .slice(0, 10);
+  }, [currentPeriodMetrics]);
+
+  // Chart data (sorted by date for timeline)
+  const chartData = useMemo(() => {
+    return [...currentPeriodMetrics]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(day => ({
+        date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue: day.revenue / 100, // Convert cents to dollars
+        downloads: day.downloads,
+        fullDate: new Date(day.date)
+      }));
   }, [currentPeriodMetrics]);
 
   if (!isOpen) return null;
@@ -368,6 +381,81 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Trend Chart */}
+            {chartData.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 px-1 mb-3">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {metricType === 'revenue' ? 'Revenue Trend' : 'Download Trend'}
+                  </h3>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="rgba(255,255,255,0.3)"
+                        style={{ fontSize: '12px' }}
+                        tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                      />
+                      <YAxis 
+                        yAxisId="left"
+                        stroke="rgba(16,185,129,0.5)"
+                        style={{ fontSize: '12px' }}
+                        tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                        tickFormatter={(value) => `$${value.toFixed(0)}`}
+                      />
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right"
+                        stroke="rgba(59,130,246,0.5)"
+                        style={{ fontSize: '12px' }}
+                        tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                        tickFormatter={(value) => formatNumber(value)}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(17, 17, 17, 0.95)', 
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px',
+                          color: 'white'
+                        }}
+                        formatter={(value: any, name: string) => {
+                          if (name === 'revenue') {
+                            return [`$${Number(value).toFixed(2)}`, 'Revenue'];
+                          }
+                          return [formatNumber(Number(value)), 'Downloads'];
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}
+                        formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                      />
+                      <Line 
+                        yAxisId="left"
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="rgb(16,185,129)" 
+                        strokeWidth={2}
+                        dot={{ fill: 'rgb(16,185,129)', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line 
+                        yAxisId="right"
+                        type="monotone" 
+                        dataKey="downloads" 
+                        stroke="rgb(59,130,246)" 
+                        strokeWidth={2}
+                        dot={{ fill: 'rgb(59,130,246)', r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}
