@@ -96,10 +96,11 @@ class FirestoreDataService {
     console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: ${skipSync ? 'completed' : 'pending'}`);
     
     if (!skipSync) {
-      console.log(`⚡ Triggering immediate sync for instant feedback...`);
+      console.log(`⚡ [${accountData.platform?.toUpperCase()}] Triggering immediate sync for @${accountData.username}...`);
       // Trigger immediate sync (fire and forget)
-      this.triggerImmediateSync(orgId, projectId, accountRef.id).catch(err => {
-        console.error('Failed to trigger immediate sync:', err);
+      this.triggerImmediateSync(orgId, projectId, accountRef.id, accountData.platform, accountData.username).catch(err => {
+        console.error(`❌ [${accountData.platform?.toUpperCase()}] Failed to trigger immediate sync for @${accountData.username}:`, err);
+        console.error('Error details:', err.message, err.stack);
         // Non-critical - cron will pick it up anyway
       });
     } else {
@@ -114,15 +115,34 @@ class FirestoreDataService {
    * This provides instant feedback to users when they add accounts
    * Falls back to cron job if immediate sync fails
    */
-  private static async triggerImmediateSync(orgId: string, projectId: string, accountId: string): Promise<void> {
+  private static async triggerImmediateSync(
+    orgId: string, 
+    projectId: string, 
+    accountId: string, 
+    platform?: string, 
+    username?: string
+  ): Promise<void> {
+    const platformLabel = platform?.toUpperCase() || 'UNKNOWN';
+    const accountLabel = username ? `@${username}` : accountId;
+    
     try {
+      console.log(`🔄 [${platformLabel}] Starting immediate sync for ${accountLabel}...`);
+      
       // Dynamic import to avoid circular dependencies
       const { default: AuthenticatedApiService } = await import('./AuthenticatedApiService');
-      await AuthenticatedApiService.syncAccount(accountId, orgId, projectId);
-      console.log(`🚀 Immediate sync triggered for account ${accountId}`);
-    } catch (error) {
-      console.error('Failed to trigger immediate sync:', error);
+      
+      console.log(`📡 [${platformLabel}] Calling /api/sync-single-account for ${accountLabel}...`);
+      const result = await AuthenticatedApiService.syncAccount(accountId, orgId, projectId);
+      
+      console.log(`✅ [${platformLabel}] Immediate sync triggered successfully for ${accountLabel}!`);
+      console.log(`   Response:`, result);
+    } catch (error: any) {
+      console.error(`❌ [${platformLabel}] Failed to trigger immediate sync for ${accountLabel}:`, error);
+      console.error(`   Error type: ${error.constructor.name}`);
+      console.error(`   Error message: ${error.message}`);
+      console.error(`   Full error:`, error);
       // Non-critical error - cron will process it anyway
+      throw error; // Re-throw so the outer catch can log it too
     }
   }
 
