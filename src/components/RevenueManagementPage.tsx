@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, DollarSign, CheckCircle, XCircle, Clock, Trash2, RefreshCw, TrendingUp } from 'lucide-react';
+import { Plus, DollarSign, CheckCircle, XCircle, Clock, Trash2, RefreshCw, TrendingUp, Edit2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AppleAppStoreWizard, { AppleAppStoreCredentials } from './AppleAppStoreWizard';
 import RevenueDataService from '../services/RevenueDataService';
@@ -17,6 +17,7 @@ const RevenueManagementPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [dateRange, setDateRange] = useState<number>(90); // Default to 90 days
+  const [editingIntegration, setEditingIntegration] = useState<RevenueIntegration | null>(null);
 
   useEffect(() => {
     loadIntegrations();
@@ -105,6 +106,48 @@ const RevenueManagementPage: React.FC = () => {
       console.error('Failed to save credentials:', error);
       setErrorMessage(error.message || 'Failed to save Apple App Store credentials');
       throw error;
+    }
+  };
+
+  const handleEditIntegration = (integration: RevenueIntegration) => {
+    setEditingIntegration(integration);
+  };
+
+  const handleUpdateBundleId = async (bundleId: string) => {
+    if (!currentOrgId || !currentProjectId || !editingIntegration) return;
+
+    try {
+      setErrorMessage(null);
+      
+      console.log('📝 Updating Bundle ID:', bundleId || '(removing filter - will import ALL apps)');
+      
+      // Update the integration's appId (Bundle ID)
+      await RevenueDataService.updateIntegration(
+        currentOrgId,
+        currentProjectId,
+        editingIntegration.id,
+        {
+          credentials: {
+            ...editingIntegration.credentials,
+            appId: bundleId || undefined, // Remove if empty
+          }
+        }
+      );
+      
+      setSuccessMessage(bundleId 
+        ? `Bundle ID updated to "${bundleId}". Please re-sync to fetch filtered data.`
+        : 'Bundle ID removed. Next sync will import ALL apps in your vendor account.'
+      );
+      setTimeout(() => setSuccessMessage(null), 8000);
+      
+      // Close modal
+      setEditingIntegration(null);
+      
+      // Refresh list
+      await loadIntegrations();
+    } catch (error: any) {
+      console.error('Failed to update Bundle ID:', error);
+      setErrorMessage(error.message || 'Failed to update Bundle ID');
     }
   };
 
@@ -276,7 +319,7 @@ const RevenueManagementPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Provider</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Issuer ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Key ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Vendor #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Bundle ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Last Sync</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Connected</th>
@@ -315,11 +358,18 @@ const RevenueManagementPage: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* Vendor Number */}
+                      {/* Bundle ID (App Filter) */}
                       <td className="px-6 py-4">
-                        <span className="text-sm text-white/70 font-mono">
-                          {integration.credentials.vendorNumber}
-                        </span>
+                        {integration.credentials.appId ? (
+                          <span className="text-sm text-emerald-400 font-mono">
+                            {integration.credentials.appId}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-yellow-400 flex items-center gap-1">
+                            <span>⚠️</span>
+                            <span>ALL APPS</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -359,18 +409,30 @@ const RevenueManagementPage: React.FC = () => {
 
                       {/* Actions */}
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleDeleteIntegration(integration.id)}
-                          disabled={deletingId === integration.id}
-                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Remove connection"
-                        >
-                          {deletingId === integration.id ? (
-                            <div className="animate-spin w-4 h-4 border-2 border-red-400/20 border-t-red-400 rounded-full" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => handleEditIntegration(integration)}
+                            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            title="Edit Bundle ID"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handleDeleteIntegration(integration.id)}
+                            disabled={deletingId === integration.id}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Remove connection"
+                          >
+                            {deletingId === integration.id ? (
+                              <div className="animate-spin w-4 h-4 border-2 border-red-400/20 border-t-red-400 rounded-full" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -477,6 +539,128 @@ const RevenueManagementPage: React.FC = () => {
           onComplete={handleWizardComplete}
         />
       )}
+
+      {/* Edit Bundle ID Modal */}
+      {editingIntegration && (
+        <EditBundleIdModal
+          currentBundleId={editingIntegration.credentials.appId}
+          onClose={() => setEditingIntegration(null)}
+          onSave={handleUpdateBundleId}
+        />
+      )}
+    </div>
+  );
+};
+
+// Edit Bundle ID Modal Component
+interface EditBundleIdModalProps {
+  currentBundleId?: string;
+  onClose: () => void;
+  onSave: (bundleId: string) => void;
+}
+
+const EditBundleIdModal: React.FC<EditBundleIdModalProps> = ({ currentBundleId, onClose, onSave }) => {
+  const [bundleId, setBundleId] = useState(currentBundleId || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await onSave(bundleId);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1a1a1a] rounded-2xl border border-white/10 max-w-xl w-full shadow-2xl">
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-white/10">
+          <h2 className="text-2xl font-bold text-white">Edit Bundle ID Filter</h2>
+          <p className="text-white/60 text-sm mt-2">
+            Filter revenue data to a specific app by Bundle ID
+          </p>
+        </div>
+
+        {/* Body */}
+        <div className="px-8 py-6 space-y-6">
+          {/* Current Status */}
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-white/60">Current Filter:</span>
+              {currentBundleId ? (
+                <span className="text-sm text-emerald-400 font-mono">{currentBundleId}</span>
+              ) : (
+                <span className="text-sm text-yellow-400">⚠️ ALL APPS (no filter)</span>
+              )}
+            </div>
+            <p className="text-xs text-white/40">
+              {currentBundleId 
+                ? 'Revenue data is currently filtered to this specific app.'
+                : 'Revenue data from ALL apps in your vendor account is being imported.'
+              }
+            </p>
+          </div>
+
+          {/* Bundle ID Input */}
+          <div className="space-y-2">
+            <label className="text-white/80 text-sm block flex items-center gap-2">
+              Bundle ID
+              <span className="text-emerald-400 text-xs">(for filtering specific app)</span>
+            </label>
+            <input
+              type="text"
+              value={bundleId}
+              onChange={(e) => setBundleId(e.target.value)}
+              placeholder="e.g., com.yourcompany.appname"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 font-mono"
+            />
+            <p className="text-white/40 text-xs">
+              📌 <strong>Leave empty to import ALL apps</strong> from your vendor account, or enter a Bundle ID to filter to a specific app.
+            </p>
+          </div>
+
+          {/* Warning */}
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+            <p className="text-yellow-300 text-sm flex items-start gap-2">
+              <span>⚠️</span>
+              <span>
+                <strong>Important:</strong> Changing the Bundle ID will only affect <strong>future syncs</strong>. 
+                Click "Sync Now" in the Analytics tab after saving to fetch filtered data.
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-6 border-t border-white/10 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="px-6 py-2.5 text-white/70 hover:text-white hover:bg-white/5 rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white rounded-full" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                Save & Re-sync
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -622,7 +622,7 @@ class FirestoreDataService {
         return;
       }
       
-      const videoData = videoSnap.data();
+          const videoData = videoSnap.data();
       const platform = videoData?.platform;
       const platformVideoId = videoData?.videoId;
       const trackedAccountId = videoData?.trackedAccountId;
@@ -643,11 +643,11 @@ class FirestoreDataService {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          orgId,
-          projectId,
-          videoId,
-          platformVideoId: platformVideoId || null,
-          platform: platform || null,
+        orgId,
+        projectId,
+        videoId,
+        platformVideoId: platformVideoId || null,
+        platform: platform || null,
           trackedAccountId: trackedAccountId || null
         })
       });
@@ -660,7 +660,7 @@ class FirestoreDataService {
       const result = await response.json();
       console.log(`✅ Video deleted successfully in ${result.duration}s (${result.snapshotsDeleted} snapshots removed)`);
       
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Failed to delete video:', error);
       throw error;
     }

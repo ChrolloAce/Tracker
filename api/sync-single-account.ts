@@ -321,7 +321,7 @@ export default async function handler(
           
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
-          const username = account.username.replace('@', '');
+        const username = account.username.replace('@', '');
           
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
@@ -329,22 +329,22 @@ export default async function handler(
             console.log(`📥 [TIKTOK] Fetching ${batchSize} videos...`);
             
             try {
-              const data = await runApifyActor({
-                actorId: 'apidojo/tiktok-scraper',
-                input: {
-                  startUrls: [`https://www.tiktok.com/@${username}`],
+        const data = await runApifyActor({
+          actorId: 'apidojo/tiktok-scraper',
+          input: {
+            startUrls: [`https://www.tiktok.com/@${username}`],
                   maxItems: batchSize,
-                  sortType: 'RELEVANCE',
-                  dateRange: 'DEFAULT',
-                  location: 'US',
-                  includeSearchKeywords: false,
-                  customMapFunction: '(object) => { return {...object} }',
-                  proxy: {
-                    useApifyProxy: true,
-                    apifyProxyGroups: ['RESIDENTIAL']
-                  }
-                }
-              });
+            sortType: 'RELEVANCE',
+            dateRange: 'DEFAULT',
+            location: 'US',
+            includeSearchKeywords: false,
+            customMapFunction: '(object) => { return {...object} }',
+            proxy: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL']
+            }
+          }
+        });
 
               const batch = data.items || [];
               
@@ -599,18 +599,18 @@ export default async function handler(
             console.log(`📥 [YOUTUBE] Fetching ${batchSize} Shorts...`);
             
             try {
-              const data = await runApifyActor({
-                actorId: 'grow_media/youtube-shorts-scraper',
-                input: {
-                  channels: [channelHandle],
+        const data = await runApifyActor({
+          actorId: 'grow_media/youtube-shorts-scraper',
+          input: {
+            channels: [channelHandle],
                   maxResults: batchSize,
-                  sortBy: 'latest',
-                  proxy: {
-                    useApifyProxy: true,
-                    apifyProxyGroups: ['RESIDENTIAL']
-                  }
-                }
-              });
+            sortBy: 'latest',
+            proxy: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL']
+            }
+          }
+        });
 
               const batch = data.items || [];
               
@@ -861,20 +861,20 @@ export default async function handler(
           console.log(`📥 [TWITTER] Fetching ${batchSize} tweets...`);
           
           try {
-            const tweetsData = await runApifyActor({
-              actorId: 'apidojo/tweet-scraper',
-              input: {
-                twitterHandles: [account.username],
+      const tweetsData = await runApifyActor({
+        actorId: 'apidojo/tweet-scraper',
+        input: {
+          twitterHandles: [account.username],
                 maxItems: batchSize,
-                sort: 'Latest',
-                onlyImage: false,
-                onlyVideo: false,
-                onlyQuote: false,
-                onlyVerifiedUsers: false,
-                onlyTwitterBlue: false,
-                includeSearchTerms: false,
-              }
-            });
+          sort: 'Latest',
+          onlyImage: false,
+          onlyVideo: false,
+          onlyQuote: false,
+          onlyVerifiedUsers: false,
+          onlyTwitterBlue: false,
+          includeSearchTerms: false,
+        }
+      });
 
             const batch = tweetsData.items || [];
             
@@ -1024,28 +1024,28 @@ export default async function handler(
             console.log(`📥 [INSTAGRAM] Fetching ${batchSize} reels...`);
             
             try {
-              const scraperInput: any = {
-                tags: [`https://www.instagram.com/${account.username}/reels/`],
-                target: 'reels_only',
+        const scraperInput: any = {
+          tags: [`https://www.instagram.com/${account.username}/reels/`],
+          target: 'reels_only',
                 reels_count: batchSize,
-                include_raw_data: true,
+          include_raw_data: true,
                 // NO beginDate/endDate - date filtering doesn't work reliably
-                custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-                proxy: {
-                  useApifyProxy: true,
-                  apifyProxyGroups: ['RESIDENTIAL'],
-                  apifyProxyCountry: 'US'
-                },
-                maxConcurrency: 1,
-                maxRequestRetries: 3,
-                handlePageTimeoutSecs: 120,
-                debugLog: false
-              };
-              
-              const data = await runApifyActor({
-                actorId: 'hpix~ig-reels-scraper',
-                input: scraperInput
-              });
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL'],
+            apifyProxyCountry: 'US'
+          },
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
+        };
+        
+        const data = await runApifyActor({
+          actorId: 'hpix~ig-reels-scraper',
+          input: scraperInput
+        });
 
               const batch = data.items || [];
               

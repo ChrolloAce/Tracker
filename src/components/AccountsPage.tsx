@@ -651,13 +651,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     // Use onSnapshot for real-time updates instead of getDocs
     const unsubscribe = onSnapshot(accountsQuery, (snapshot) => {
       try {
-        const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as TrackedAccount));
-        
+      const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as TrackedAccount));
+      
         console.log(`✅ Accounts updated via real-time listener:`, loadedAccounts.length, 'accounts');
-        setAccounts(loadedAccounts);
+      setAccounts(loadedAccounts);
 
       // Auto-cleanup: Remove from processing if account now exists in real list AND has finished loading
       // We wait for the account to have a profile picture or follower count to ensure it's fully loaded
@@ -686,8 +686,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         }
         hasRestoredFromLocalStorage.current = true;
       }
-        
-        setLoading(false);
+      
+      setLoading(false);
       } catch (error) {
         console.error('❌ Failed to load accounts:', error);
         setLoading(false);

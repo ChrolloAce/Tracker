@@ -253,10 +253,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }))
             .filter(account => {
               const lastRefreshed = account.data.lastRefreshed?.toMillis() || 0;
-              const timeSinceRefresh = Date.now() - lastRefreshed;
+            const timeSinceRefresh = Date.now() - lastRefreshed;
 
-              if (timeSinceRefresh < refreshIntervalMs) {
-                const hoursRemaining = ((refreshIntervalMs - timeSinceRefresh) / (1000 * 60 * 60)).toFixed(1);
+            if (timeSinceRefresh < refreshIntervalMs) {
+            const hoursRemaining = ((refreshIntervalMs - timeSinceRefresh) / (1000 * 60 * 60)).toFixed(1);
                 console.log(`        ⏭️  Skip @${account.data.username} (${hoursRemaining}h remaining)`);
                 return false;
               }
@@ -278,36 +278,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 try {
                   const response = await fetch(`${baseUrl}/api/sync-single-account`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': cronSecret || ''
-                    },
-                    body: JSON.stringify({
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': cronSecret || ''
+            },
+            body: JSON.stringify({
                       accountId: account.id,
-                      orgId: orgId,
-                      projectId
-                    })
+                orgId: orgId,
+                projectId
+            })
                   });
 
-                  if (response.ok) {
-                    const result = await response.json();
-                    orgSuccessful++;
-                    const videoCount = result.videosCount || 0;
-                    orgVideosRefreshed += videoCount;
-                    console.log(`          ✅ @${accountData.username || result.username}: ${videoCount} videos synced`);
-                  } else {
-                    orgFailed++;
-                    console.error(`          ❌ @${accountData.username}: ${response.status}`);
-                  }
-                } catch (error: any) {
+              if (response.ok) {
+                  const result = await response.json();
+                  orgSuccessful++;
+                  const videoCount = result.videosCount || 0;
+                  orgVideosRefreshed += videoCount;
+                  console.log(`          ✅ @${accountData.username || result.username}: ${videoCount} videos synced`);
+              } else {
                   orgFailed++;
-                  console.error(`          ❌ @${accountData.username}: ${error.message}`);
+                  console.error(`          ❌ @${accountData.username}: ${response.status}`);
+              }
+                } catch (error: any) {
+                orgFailed++;
+                console.error(`          ❌ @${accountData.username}: ${error.message}`);
                 }
               },
               APIFY_CONCURRENCY_LIMIT
             );
-          }
+        }
 
           // Check for Apple revenue integration
           try {
@@ -326,26 +326,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
               try {
                 const response = await fetch(`${baseUrl}/api/sync-apple-revenue`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': cronSecret || ''
-                  },
-                  body: JSON.stringify({
-                    organizationId: orgId,
-                    projectId,
-                    dateRange: '7',
-                    manual: false
-                  })
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': cronSecret || ''
+            },
+            body: JSON.stringify({
+              organizationId: orgId,
+                  projectId,
+                  dateRange: '7',
+              manual: false
+            })
                 });
 
-                if (response.ok) {
-                  console.log(`        ✅ Apple revenue synced`);
-                } else {
-                  console.error(`        ❌ Revenue sync failed: ${response.status}`);
-                }
+              if (response.ok) {
+                    console.log(`        ✅ Apple revenue synced`);
+              } else {
+                    console.error(`        ❌ Revenue sync failed: ${response.status}`);
+              }
               } catch (error: any) {
-                console.error(`        ❌ Revenue sync error: ${error.message}`);
+                  console.error(`        ❌ Revenue sync error: ${error.message}`);
               }
             }
           } catch (error: any) {
