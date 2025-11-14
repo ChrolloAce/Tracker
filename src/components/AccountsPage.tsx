@@ -1419,12 +1419,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           accountData?.platform
         );
         console.log(`✅ [BACKGROUND] Account @${accountUsername} fully deleted from database`);
-        
-        // ✅ STEP 3: Reload page data to ensure everything is in sync
-        console.log('🔄 [BACKGROUND] Reloading page to refresh all data...');
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000); // Brief delay to ensure deletion is complete
+        console.log('✅ Account deletion complete - UI already updated, no reload needed');
+        // No reload needed - UI was already updated instantly when deletion started
     } catch (error) {
         console.error('❌ [BACKGROUND] Failed to complete account deletion:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1432,11 +1428,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         // Show error notification but DON'T restore the account to UI
         // (it's likely partially deleted and would cause issues)
         alert(`Account was removed from view but background cleanup encountered an error:\n${errorMessage}\n\nThe account will not reappear. Check console for details.`);
-        
-        // Still reload to ensure UI is in sync
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
     }
     })();
     
@@ -3432,9 +3423,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           setIsVideoAnalyticsModalOpen(false);
           setSelectedVideoForAnalytics(null);
         }}
-        onDelete={() => {
-          console.log('🔄 Video deleted - reloading page data...');
-          window.location.reload();
+        onDelete={async () => {
+          console.log('🔄 Video deleted - refreshing account videos...');
+          // Refresh the current account's videos instead of full page reload
+          if (selectedAccount && currentOrgId && currentProjectId) {
+            try {
+              await loadAccountVideos(selectedAccount.id);
+              console.log('✅ Account videos refreshed');
+            } catch (error) {
+              console.error('⚠️ Failed to refresh videos:', error);
+            }
+          }
         }}
         totalCreatorVideos={
           selectedVideoForAnalytics
