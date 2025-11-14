@@ -38,7 +38,7 @@ service cloud.firestore {
     
     // Check if organization is a demo org (public access)
     function isDemoOrg(orgId) {
-      return orgId == 'zcoz9Yc6BpjxsFogAIqr';
+      return orgId == 'Vx2UpxGCV3uD8Xj2ioX4';
     }
     
     // Check if user can read org data
