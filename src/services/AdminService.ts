@@ -72,9 +72,45 @@ class AdminService {
   /**
    * Check if user should bypass limits
    * This is the main method other services should use
+   * Admins can toggle this off to see the experience as a normal user
    */
   static async shouldBypassLimits(userId: string): Promise<boolean> {
-    return await this.isAdmin(userId);
+    const isAdmin = await this.isAdmin(userId);
+    
+    if (!isAdmin) {
+      return false;
+    }
+    
+    // Check if admin has toggled bypass off (to view as normal user)
+    const bypassDisabled = localStorage.getItem(`admin_bypass_disabled_${userId}`) === 'true';
+    
+    if (bypassDisabled) {
+      console.log(`🔒 Admin ${userId} viewing as normal user (bypass disabled)`);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Toggle admin bypass on/off
+   * Allows admins to view the app as a normal user would
+   */
+  static toggleBypass(userId: string, enabled: boolean): void {
+    if (enabled) {
+      localStorage.removeItem(`admin_bypass_disabled_${userId}`);
+      console.log(`🔓 Admin bypass enabled for ${userId}`);
+    } else {
+      localStorage.setItem(`admin_bypass_disabled_${userId}`, 'true');
+      console.log(`🔒 Admin bypass disabled for ${userId} - viewing as normal user`);
+    }
+  }
+  
+  /**
+   * Check if admin bypass is currently enabled
+   */
+  static isBypassEnabled(userId: string): boolean {
+    return localStorage.getItem(`admin_bypass_disabled_${userId}`) !== 'true';
   }
 }
 

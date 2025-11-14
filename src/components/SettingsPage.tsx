@@ -6,6 +6,7 @@ import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
+import AdminService from '../services/AdminService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import OrganizationSwitcher from './OrganizationSwitcher';
 import SubscriptionService from '../services/SubscriptionService';
@@ -397,6 +398,11 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  
+  // Admin bypass toggle
+  const [adminBypassEnabled, setAdminBypassEnabled] = useState(() => 
+    user ? AdminService.isBypassEnabled(user.uid) : true
+  );
 
   // Load current organization and members
   useEffect(() => {
@@ -860,7 +866,46 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   )}
                 </div>
                 <p className="text-gray-600 dark:text-gray-400">Manage your personal information and account settings.</p>
-          </div>
+              </div>
+
+              {/* Admin Bypass Toggle - Only visible to admins */}
+              {isAdmin && user && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Shield className="w-4 h-4 text-amber-400" />
+                        <h3 className="text-sm font-semibold text-amber-400">Admin Privileges</h3>
+                      </div>
+                      <p className="text-xs text-amber-400/80">
+                        {adminBypassEnabled 
+                          ? 'You are bypassing all limits. Toggle off to view the app as a normal user would.'
+                          : 'Viewing as normal user. You will see all limits and restrictions.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newValue = !adminBypassEnabled;
+                        setAdminBypassEnabled(newValue);
+                        AdminService.toggleBypass(user.uid, newValue);
+                        // Force a page reload to apply changes immediately
+                        window.location.reload();
+                      }}
+                      className={`
+                        relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0
+                        ${adminBypassEnabled ? 'bg-amber-500' : 'bg-white/20'}
+                      `}
+                    >
+                      <span
+                        className={`
+                          inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                          ${adminBypassEnabled ? 'translate-x-6' : 'translate-x-1'}
+                        `}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
 
             {/* Profile Photo */}
               <div className="bg-black/40 rounded-xl border border-white/10 p-6">

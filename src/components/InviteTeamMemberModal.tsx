@@ -110,7 +110,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
               {error.includes('team member limit') && (
                 <a
                   href="/settings?tab=billing"
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition-all"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-white text-black hover:bg-gray-100 dark:hover:bg-gray-100 text-sm font-semibold rounded-lg transition-all"
                 >
                   <Crown className="w-4 h-4" />
                   Upgrade Plan
