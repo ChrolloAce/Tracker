@@ -311,8 +311,14 @@ export default async function handler(
           
           console.log(`📊 Found ${existingVideoIds.size} existing TikTok videos in database`);
           
-          // Progressive fetch strategy: 5 → 10 → 15 → 20
-          const batchSizes = [5, 10, 15, 20];
+          // 🔧 MANUAL vs SCHEDULED STRATEGY:
+          // - Manual: Fetch exact amount user specified (maxVideos)
+          // - Scheduled: Use progressive fetch (5→10→15→20) to save API credits
+          const useProgressiveFetch = !isManualSync;
+          const batchSizes = useProgressiveFetch ? [5, 10, 15, 20] : [account.maxVideos || 10];
+          
+          console.log(`🎯 [TIKTOK] Strategy: ${useProgressiveFetch ? 'Progressive (scheduled)' : `Direct fetch ${account.maxVideos || 10} videos (manual)`}`);
+          
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
           const username = account.username.replace('@', '');
@@ -320,7 +326,7 @@ export default async function handler(
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
             
-            console.log(`📥 [TIKTOK] Fetching ${batchSize} videos (progressive strategy)...`);
+            console.log(`📥 [TIKTOK] Fetching ${batchSize} videos...`);
             
             try {
               const data = await runApifyActor({
@@ -576,15 +582,21 @@ export default async function handler(
           
           console.log(`📊 Found ${existingVideoIds.size} existing YouTube Shorts in database`);
           
-          // Progressive fetch strategy: 5 → 10 → 15 → 20
-          const batchSizes = [5, 10, 15, 20];
+          // 🔧 MANUAL vs SCHEDULED STRATEGY:
+          // - Manual: Fetch exact amount user specified (maxVideos)
+          // - Scheduled: Use progressive fetch (5→10→15→20) to save API credits
+          const useProgressiveFetch = !isManualSync;
+          const batchSizes = useProgressiveFetch ? [5, 10, 15, 20] : [account.maxVideos || 10];
+          
+          console.log(`🎯 [YOUTUBE] Strategy: ${useProgressiveFetch ? 'Progressive (scheduled)' : `Direct fetch ${account.maxVideos || 10} Shorts (manual)`}`);
+          
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
           
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
             
-            console.log(`📥 [YOUTUBE] Fetching ${batchSize} Shorts (progressive strategy)...`);
+            console.log(`📥 [YOUTUBE] Fetching ${batchSize} Shorts...`);
             
             try {
               const data = await runApifyActor({
@@ -995,15 +1007,21 @@ export default async function handler(
         // Only fetch NEW videos for automatic accounts
         if (creatorType === 'automatic') {
           
-          // Progressive fetch strategy: 5 → 10 → 15 → 20
-          const batchSizes = [5, 10, 15, 20];
+          // 🔧 MANUAL vs SCHEDULED STRATEGY:
+          // - Manual: Fetch exact amount user specified (maxVideos)
+          // - Scheduled: Use progressive fetch (5→10→15→20) to save API credits
+          const useProgressiveFetch = !isManualSync;
+          const batchSizes = useProgressiveFetch ? [5, 10, 15, 20] : [account.maxVideos || 10];
+          
+          console.log(`🎯 [INSTAGRAM] Strategy: ${useProgressiveFetch ? 'Progressive (scheduled)' : `Direct fetch ${account.maxVideos || 10} reels (manual)`}`);
+          
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
           
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
             
-            console.log(`📥 [INSTAGRAM] Fetching ${batchSize} reels (progressive strategy)...`);
+            console.log(`📥 [INSTAGRAM] Fetching ${batchSize} reels...`);
             
             try {
               const scraperInput: any = {
