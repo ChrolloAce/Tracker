@@ -58,6 +58,7 @@ import DateFilterService from '../services/DateFilterService';
 import CreateLinkModal from './CreateLinkModal';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import UsageTrackingService from '../services/UsageTrackingService';
+import AdminService from '../services/AdminService';
 import { useNavigate } from 'react-router-dom';
 import { Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
 
@@ -383,11 +384,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   // Load usage limits
   useEffect(() => {
     const loadUsageLimits = async () => {
-      if (!currentOrgId) return;
+      if (!currentOrgId || !user) return;
       
       try {
-        // Admin users bypass limits
-        if (isAdmin) {
+        // Admin users with bypass enabled bypass limits
+        const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
+        
+        if (shouldBypass) {
           setUsageLimits({
             accountsLeft: 999999,
             videosLeft: 999999,
@@ -397,6 +400,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           return;
         }
         
+        // Normal users or admins viewing as normal user - check limits
         const [usage, limits] = await Promise.all([
           UsageTrackingService.getUsage(currentOrgId),
           UsageTrackingService.getLimits(currentOrgId)
@@ -417,7 +421,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     };
     
     loadUsageLimits();
-  }, [currentOrgId, accounts.length, isAdmin]); // Reload when accounts change or admin status changes
+  }, [currentOrgId, accounts.length, user]); // Reload when accounts change or user changes
 
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {

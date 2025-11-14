@@ -3,6 +3,7 @@ import { Trash2, AlertCircle, Link as LinkIcon, X, ChevronDown, RefreshCw } from
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import UsageTrackingService from '../services/UsageTrackingService';
+import AdminService from '../services/AdminService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,7 +20,7 @@ interface VideoInput {
 }
 
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
-  const { currentOrgId, isAdmin } = useAuth();
+  const { user, currentOrgId } = useAuth();
   const navigate = useNavigate();
   const [videoInputs, setVideoInputs] = useState<VideoInput[]>([{ id: '1', url: '', detectedPlatform: null }]);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -39,28 +40,33 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
       
       checkClipboard();
       
-      // Load usage limits (admins bypass)
-      if (currentOrgId) {
-        if (isAdmin) {
-          // Admin users have unlimited videos
-          setVideosLeft(999999);
-          setIsAtVideoLimit(false);
-        } else {
-        UsageTrackingService.getUsage(currentOrgId).then(usage => {
-          UsageTrackingService.getLimits(currentOrgId).then(limits => {
+      // Load usage limits (admins with bypass enabled skip limits)
+      if (currentOrgId && user) {
+        const checkLimits = async () => {
+          const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
+          
+          if (shouldBypass) {
+            // Admin users with bypass enabled have unlimited videos
+            setVideosLeft(999999);
+            setIsAtVideoLimit(false);
+          } else {
+            // Normal users or admins viewing as normal user - check limits
+            const usage = await UsageTrackingService.getUsage(currentOrgId);
+            const limits = await UsageTrackingService.getLimits(currentOrgId);
             const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
             setVideosLeft(left);
             setIsAtVideoLimit(left === 0);
-          });
-        });
-        }
+          }
+        };
+        
+        checkLimits();
       }
     } else {
       // Reset when modal closes
       setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
       setUrlError(null);
     }
-  }, [isOpen, currentOrgId, isAdmin]);
+  }, [isOpen, currentOrgId, user]);
 
   const handleAddVideoInput = () => {
     setVideoInputs([...videoInputs, { id: Date.now().toString(), url: '', detectedPlatform: null }]);
