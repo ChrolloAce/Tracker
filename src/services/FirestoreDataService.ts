@@ -631,16 +631,9 @@ class FirestoreDataService {
       console.log(`✅ Video ${videoId} removed from UI (background cleanup queued)`);
       
       // STEP 3: Trigger deletion cron immediately (fire-and-forget)
-      const cronUrl = typeof window !== 'undefined' && window.location?.origin
-        ? `${window.location.origin}/api/cron-process-deletions`
-        : '/api/cron-process-deletions';
-      
-      fetch(cronUrl, {
+      fetch('/api/trigger-deletion', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.VITE_CRON_SECRET || ''}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }).catch(err => {
         console.warn('⚠️ Could not trigger deletion cron:', err);
       });
@@ -681,16 +674,9 @@ class FirestoreDataService {
       console.log(`✅ Account ${accountId} removed from UI (background cleanup queued)`);
       
       // STEP 3: Trigger deletion cron immediately (fire-and-forget)
-      const cronUrl = typeof window !== 'undefined' && window.location?.origin
-        ? `${window.location.origin}/api/cron-process-deletions`
-        : '/api/cron-process-deletions';
-      
-      fetch(cronUrl, {
+      fetch('/api/trigger-deletion', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.VITE_CRON_SECRET || ''}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }).catch(err => {
         console.warn('⚠️ Could not trigger deletion cron:', err);
       });
