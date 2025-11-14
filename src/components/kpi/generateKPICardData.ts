@@ -662,7 +662,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
 
     // Filter daily metrics by date range
     const filteredDailyMetrics = revenueMetrics.dailyMetrics.filter(day => {
-      const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+      const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
       if (!dateRangeStart) return true; // Include all if no start date
       return dayDate >= dateRangeStart && dayDate <= dateRangeEnd;
     });
@@ -674,12 +674,12 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     // Generate sparkline data for revenue (with dates for tooltip)
     const revenueSparkline = filteredDailyMetrics
       .sort((a, b) => {
-        const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
-        const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+        const dateA = (a.date as any)?.toDate ? (a.date as any).toDate() : new Date(a.date);
+        const dateB = (b.date as any)?.toDate ? (b.date as any).toDate() : new Date(b.date);
         return dateA.getTime() - dateB.getTime();
       })
       .map(day => {
-        const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+        const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
         return {
           value: day.revenue / 100, // Convert cents to dollars
           ppValue: 0, // PP not implemented for revenue yet
@@ -691,12 +691,12 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     // Generate sparkline data for downloads (with dates for tooltip)
     const downloadsSparkline = filteredDailyMetrics
       .sort((a, b) => {
-        const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
-        const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+        const dateA = (a.date as any)?.toDate ? (a.date as any).toDate() : new Date(a.date);
+        const dateB = (b.date as any)?.toDate ? (b.date as any).toDate() : new Date(b.date);
         return dateA.getTime() - dateB.getTime();
       })
       .map(day => {
-        const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+        const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
         return {
           value: day.downloads,
           ppValue: 0, // PP not implemented for revenue yet

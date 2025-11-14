@@ -408,7 +408,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                     }}
                   />
                 )}
-                <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
+              <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
               </div>
               <p className="text-2xl font-bold text-white">{displayValue}</p>
             </div>

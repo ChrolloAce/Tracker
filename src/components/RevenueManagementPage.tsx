@@ -368,7 +368,7 @@ const RevenueManagementPage: React.FC = () => {
                           <span className="text-sm text-yellow-400 flex items-center gap-1">
                             <span>⚠️</span>
                             <span>ALL APPS</span>
-                          </span>
+                        </span>
                         )}
                       </td>
 
@@ -420,18 +420,18 @@ const RevenueManagementPage: React.FC = () => {
                           </button>
                           
                           {/* Delete Button */}
-                          <button
-                            onClick={() => handleDeleteIntegration(integration.id)}
-                            disabled={deletingId === integration.id}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Remove connection"
-                          >
-                            {deletingId === integration.id ? (
-                              <div className="animate-spin w-4 h-4 border-2 border-red-400/20 border-t-red-400 rounded-full" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                        <button
+                          onClick={() => handleDeleteIntegration(integration.id)}
+                          disabled={deletingId === integration.id}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove connection"
+                        >
+                          {deletingId === integration.id ? (
+                            <div className="animate-spin w-4 h-4 border-2 border-red-400/20 border-t-red-400 rounded-full" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
                         </div>
                       </td>
                     </tr>

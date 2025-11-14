@@ -118,7 +118,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
         endDate.setHours(23, 59, 59, 999);
         
         metrics = metrics.filter(day => {
-          const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+          const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
           return dayDate >= startDate && dayDate <= endDate;
         });
       } else {
@@ -145,7 +145,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
         startDate.setHours(0, 0, 0, 0);
         
         metrics = metrics.filter(day => {
-          const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+          const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
           return dayDate >= startDate && dayDate <= now;
         });
       }
@@ -467,13 +467,43 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                           backgroundColor: 'rgba(17, 17, 17, 0.95)', 
                           border: '1px solid rgba(255,255,255,0.1)',
                           borderRadius: '8px',
-                          color: 'white'
+                          color: 'white',
+                          padding: '12px'
+                        }}
+                        labelStyle={{
+                          color: 'rgba(255, 255, 255, 0.6)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          marginBottom: '8px'
                         }}
                         formatter={(value: any, name: string) => {
                           if (name === 'revenue') {
-                            return [`$${Number(value).toFixed(2)}`, 'Revenue'];
+                            return [
+                              <span style={{ color: 'rgb(16,185,129)', fontWeight: 700, fontSize: '16px' }}>
+                                ${Number(value).toFixed(2)}
+                              </span>,
+                              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 500 }}>
+                                Revenue
+                              </span>
+                            ];
                           }
-                          return [formatNumber(Number(value)), 'Downloads'];
+                          return [
+                            <span style={{ color: 'rgb(59,130,246)', fontWeight: 700, fontSize: '16px' }}>
+                              {formatNumber(Number(value))}
+                            </span>,
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 500 }}>
+                              Downloads
+                            </span>
+                          ];
+                        }}
+                        labelFormatter={(label) => {
+                          return <span style={{ 
+                            color: 'rgba(255,255,255,0.7)', 
+                            fontSize: '12px',
+                            fontWeight: 600
+                          }}>{label}</span>;
                         }}
                       />
                       <Legend 
@@ -501,8 +531,8 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
-            )}
+                    </div>
+                  )}
           </div>
         </div>
       </div>

@@ -321,11 +321,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('📋 Sample record data:', allSalesData[0]);
     }
     
+    // Track filtering stats
+    let totalRecords = 0;
+    let filteredRecords = 0;
+    let skippedRecords = 0;
+    const uniqueSKUs = new Set<string>();
+    const uniqueAppleIds = new Set<string>();
+    
     allSalesData.forEach(record => {
+      totalRecords++;
+      
       // Get identifiers from the record
       // Apple Sales Reports don't include Bundle ID - use SKU or Apple Identifier instead
       const recordSKU = record['SKU'] || record['sku'];
       const recordAppleId = record['Apple Identifier'] || record['apple_identifier'];
+      
+      // Track all unique identifiers
+      if (recordSKU) uniqueSKUs.add(recordSKU);
+      if (recordAppleId) uniqueAppleIds.add(recordAppleId);
       
       // If we have a target filter, check if this record matches
       // targetBundleId can be: Bundle ID, SKU, or Apple ID
@@ -335,8 +348,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const matchesBundleId = recordSKU && targetBundleId.includes('.') && recordSKU.toLowerCase().includes(targetBundleId.split('.').pop()?.toLowerCase() || '');
         
         if (!matchesSKU && !matchesAppleId && !matchesBundleId) {
+          skippedRecords++;
           return; // Skip this record - it's from a different app
         }
+        
+        filteredRecords++;
+      } else {
+        filteredRecords++;
       }
       
       // Units = downloads/purchases
@@ -377,8 +395,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('📊 SYNC COMPLETE');
     console.log('=' .repeat(60));
     console.log(`✅ Total Records: ${allSalesData.length}`);
-    console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)}`);
-    console.log(`📥 Total Downloads: ${totalDownloads.toLocaleString()}`);
+    console.log(`🎯 Filtered Records: ${filteredRecords} (kept)`);
+    console.log(`🚫 Skipped Records: ${skippedRecords} (filtered out)`);
+    console.log(`📦 Unique SKUs found: ${Array.from(uniqueSKUs).join(', ')}`);
+    console.log(`🆔 Unique Apple IDs found: ${Array.from(uniqueAppleIds).join(', ')}`);
+    console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)} (from ${filteredRecords} records)`);
+    console.log(`📥 Total Downloads: ${totalDownloads.toLocaleString()} (from ${filteredRecords} records)`);
     console.log(`📅 Date Range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
     console.log(`📈 Days Processed: ${daysProcessed}`);
     console.log(`💰 Days with Sales: ${daysWithData}`);
