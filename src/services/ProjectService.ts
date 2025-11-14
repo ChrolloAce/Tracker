@@ -174,7 +174,17 @@ class ProjectService {
     updates: Partial<Pick<Project, 'name' | 'description' | 'color' | 'icon' | 'imageUrl'>>
   ): Promise<void> {
     const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
-    await updateDoc(projectRef, updates);
+    
+    // Filter out undefined values (Firebase doesn't allow them)
+    const cleanedUpdates: any = {};
+    Object.keys(updates).forEach((key) => {
+      const value = updates[key as keyof typeof updates];
+      if (value !== undefined) {
+        cleanedUpdates[key] = value;
+      }
+    });
+    
+    await updateDoc(projectRef, cleanedUpdates);
     console.log(`✅ Updated project ${projectId}`);
   }
 

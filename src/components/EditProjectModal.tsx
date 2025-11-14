@@ -92,8 +92,9 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
       }
 
       // If image was removed (imagePreview is null but project had an image)
+      // Set to empty string instead of undefined (Firebase doesn't allow undefined)
       if (!imagePreview && project.imageUrl) {
-        imageUrl = undefined;
+        imageUrl = '';
       }
 
       await ProjectService.updateProject(currentOrgId, project.id, {
