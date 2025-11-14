@@ -18,6 +18,9 @@
     "api/cron-orchestrator.ts": {
       "maxDuration": 300
     },
+    "api/trigger-orchestrator.ts": {
+      "maxDuration": 10
+    },
     "api/refresh-account.ts": {
       "maxDuration": 180
     },

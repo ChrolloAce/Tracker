@@ -371,7 +371,7 @@ function generateDashboard(status: any): string {
       }
       
       <div class="actions">
-        <a href="/api/cron-test" class="btn" onclick="return confirm('Trigger manual refresh now?')">🔄 Trigger Manual Refresh</a>
+        <a href="/api/trigger-orchestrator" class="btn" onclick="return confirm('Start background refresh now? This may take several minutes.')">🔄 Trigger Manual Refresh</a>
         <a href="/api/cron-status" class="btn">🔃 Refresh Dashboard</a>
       </div>
     </div>

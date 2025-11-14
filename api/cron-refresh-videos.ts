@@ -588,9 +588,9 @@ async function refreshAccountVideos(
       } catch (fetchError: any) {
         console.error(`    ❌ [${platform.toUpperCase()}] Failed to fetch videos:`, fetchError.message);
         // Return early with zero results instead of crashing
-        return { fetched: 0, updated: 0, added: 0, skipped: 0 };
-      }
-      
+    return { fetched: 0, updated: 0, added: 0, skipped: 0 };
+  }
+
     } else {
       // EXISTING ACCOUNT: Progressive fetch 5, 10, 15, 20... until duplicate
       console.log(`    🔄 [${platform.toUpperCase()}] Existing account - progressive fetch`);
@@ -612,36 +612,36 @@ async function refreshAccountVideos(
           if (newVideos.length === 0 && batch.length > 0) {
             isVerified = extractVerifiedStatus(batch[0], platform);
             isBlueVerified = extractBlueVerifiedStatus(batch[0], platform);
-          }
-          
+  }
+
           // Check each video in batch
           for (const video of batch) {
-            const videoId = extractVideoId(video, platform);
-            if (!videoId) continue;
+    const videoId = extractVideoId(video, platform);
+    if (!videoId) continue;
 
-            const exists = await videoExistsInDatabase(orgId, projectId, videoId);
-            
-            if (exists) {
+    const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+    
+    if (exists) {
               console.log(`    ✓ [${platform.toUpperCase()}] Found duplicate: ${videoId} - stopping fetch`);
               foundDuplicate = true;
-              break;
-            } else {
-              newVideos.push(video);
-            }
-          }
-          
+      break;
+    } else {
+      newVideos.push(video);
+    }
+  }
+
           if (foundDuplicate) break;
-          
+    
           // Stop if we got fewer videos than requested (reached end of account's content)
           if (batch.length < size) {
             console.log(`    ⏹️ [${platform.toUpperCase()}] Got ${batch.length} < ${size} (end of content)`);
-            break;
-          }
+        break;
+      }
         } catch (fetchError: any) {
           console.error(`    ❌ [${platform.toUpperCase()}] Fetch failed at size ${size}:`, fetchError.message);
           break; // Stop trying to fetch more
-        }
-      }
+    }
+  }
 
   console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
     }

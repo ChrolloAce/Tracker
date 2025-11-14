@@ -49,7 +49,7 @@ const CronManagementPage: React.FC = () => {
   };
 
   const triggerManualRefresh = async () => {
-    if (!confirm('Trigger a manual refresh now? This will fetch fresh data for all accounts.')) {
+    if (!confirm('Trigger a manual refresh now? This will fetch fresh data for all accounts in the background.')) {
       return;
     }
 
@@ -57,7 +57,12 @@ const CronManagementPage: React.FC = () => {
     setTriggerResult(null);
     
     try {
-      const response = await fetch('/api/cron-test');
+      const response = await fetch('/api/trigger-orchestrator', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       const result = await response.json();
       setTriggerResult(result);
       setLastRefresh(new Date());
@@ -183,13 +188,13 @@ const CronManagementPage: React.FC = () => {
               <div className="text-gray-400 text-sm">View detailed status of all accounts</div>
             </a>
             <a
-              href="/api/cron-test"
+              href="/api/trigger-orchestrator"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-gradient-to-br from-green-600/20 to-emerald-600/20 border border-green-500/30 rounded-xl p-4 hover:from-green-600/30 hover:to-emerald-600/30 transition-colors"
             >
               <div className="text-green-400 font-semibold mb-1">🔄 Manual Trigger</div>
-              <div className="text-gray-400 text-sm">Run the cron job immediately</div>
+              <div className="text-gray-400 text-sm">Start refresh job in background</div>
             </a>
             <a
               href="https://vercel.com/dashboard"

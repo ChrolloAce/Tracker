@@ -1493,22 +1493,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     window.location.reload();
   }, []);
 
-  // Trigger scheduled refresh (same as cron, for testing)
+  // Trigger scheduled refresh asynchronously (fire and forget)
   const handleManualRefresh = useCallback(async () => {
     if (!user || isRefreshing) return;
     
     setIsRefreshing(true);
     try {
-      console.log('🔄 Triggering scheduled refresh (cron orchestrator)...');
+      console.log('🔄 Triggering scheduled refresh (async)...');
       
-      // Get Firebase token for authentication
-      const token = await user.getIdToken();
-      
-      const response = await fetch('/api/cron-orchestrator', {
+      // Call the trigger endpoint (fire and forget)
+      const response = await fetch('/api/trigger-orchestrator', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -1526,13 +1523,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       }
       
       if (response.ok && result.success) {
-        console.log('✅ Scheduled refresh completed:', result);
-        const stats = result.stats || {};
+        console.log('✅ Refresh job triggered:', result);
         alert(
-          `✅ Scheduled Refresh Completed!\n\n` +
-          `⚡ ${stats.accountsRefreshed || 0} accounts refreshed\n` +
-          `🎬 ${stats.videosSynced || 0} videos synced\n` +
-          `⏱️  Duration: ${result.duration?.toFixed(1) || 0}s`
+          `✅ Refresh Started!\n\n` +
+          `⚡ All accounts are being refreshed in the background\n` +
+          `⏱️  This may take several minutes to complete\n\n` +
+          `Your dashboard will update automatically as data is refreshed.`
         );
         
         // Reload page to show updated data
@@ -2495,7 +2491,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   </button>
                   )}
                   
-                  {/* Scheduled Refresh Button - Trigger cron refresh for testing (Hidden in demo mode and on mobile) */}
+                  {/* Scheduled Refresh Button - Trigger async refresh (Hidden in demo mode and on mobile) */}
                   {!isDemoMode && (
                   <button
                     onClick={handleManualRefresh}
@@ -2505,7 +2501,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
                         : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
                     }`}
-                    title="Trigger scheduled refresh (same as cron)"
+                    title="Refresh all accounts in background"
                   >
                     <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   </button>
