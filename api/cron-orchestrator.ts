@@ -43,7 +43,7 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
 
 /**
  * Cron Orchestrator
- * Runs every 12 hours (0 */12 * * *)
+ * Runs every 12 hours (0 *\12 * * *)
  * Processes all organizations directly (no HTTP calls)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -90,12 +90,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!isAuthorized && authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const token = authHeader.substring(7);
+      
+      // Verify Firebase is properly initialized
+      if (!getApps().length) {
+        console.error('❌ Firebase not initialized when verifying token');
+        return res.status(500).json({ 
+          success: false,
+          error: 'Server configuration error: Firebase not initialized',
+          errorType: 'FIREBASE_NOT_INITIALIZED'
+        });
+      }
+      
+      console.log('🔐 Verifying Firebase user token...');
       const decodedToken = await getAuth().verifyIdToken(token);
       console.log(`🔒 Authenticated as Firebase user: ${decodedToken.uid}`);
       isAuthorized = true;
       authMethod = 'Firebase User';
     } catch (error: any) {
       console.error('❌ Firebase token verification failed:', error.message);
+      console.error('Error details:', { code: error.code, stack: error.stack });
+      // Don't return error here - just log and continue to the unauthorized check below
+      // This allows the function to return a proper 401 instead of crashing
     }
   }
   
