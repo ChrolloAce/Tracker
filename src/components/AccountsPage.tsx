@@ -1289,22 +1289,46 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setIsAddModalOpen(false);
 
     // Process all accounts in PARALLEL, each with its own video count
-    const addPromises = accountsToAdd.map(account => 
-      AccountTrackingServiceFirebase.addAccount(
-        currentOrgId,
-        currentProjectId,
-        user.uid,
-        account.username,
-        account.platform,
-        'my', // Default to 'my' account type
-        account.videoCount // Pass each account's specific video count
-      ).then(() => {
+    const addPromises = accountsToAdd.map(async account => {
+      try {
+        // Step 1: Add account to Firestore (queues for sync)
+        const accountId = await AccountTrackingServiceFirebase.addAccount(
+          currentOrgId,
+          currentProjectId,
+          user.uid,
+          account.username,
+          account.platform,
+          'my', // Default to 'my' account type
+          account.videoCount // Pass each account's specific video count
+        );
+        
+        console.log(`✅ Account @${account.username} queued (${accountId}), triggering immediate sync...`);
+        
+        // Step 2: Trigger IMMEDIATE sync (don't wait for cron)
+        fetch('/api/sync-single-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId,
+            orgId: currentOrgId,
+            projectId: currentProjectId
+          })
+        }).then(res => {
+          if (res.ok) {
+            console.log(`🚀 Immediate sync triggered for @${account.username}`);
+          } else {
+            console.warn(`⚠️ Immediate sync failed for @${account.username}, will be picked up by cron`);
+          }
+        }).catch(err => {
+          console.warn(`⚠️ Could not trigger immediate sync for @${account.username}:`, err);
+        });
+        
         return { success: true, username: account.username };
-      }).catch(error => {
+      } catch (error) {
         console.error(`Failed to add account @${account.username}:`, error);
         return { success: false, username: account.username };
-      })
-    );
+      }
+    });
 
     // Wait for all to complete
     await Promise.all(addPromises);
