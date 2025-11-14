@@ -851,6 +851,7 @@ class RevenueDataService {
 
   /**
    * Sync Apple App Store data
+   * Uses the serverless sync endpoint instead of browser-side API calls
    */
   static async syncApple(
     orgId: string,
@@ -860,59 +861,44 @@ class RevenueDataService {
   ): Promise<{ transactionCount: number; revenue: number }> {
     const integration = await this.getIntegration(orgId, projectId, 'apple');
     
-    if (!integration || !integration.credentials.apiKey || !integration.credentials.keyId || !integration.credentials.issuerId || !integration.credentials.appId) {
+    if (!integration || !integration.credentials.apiKey || !integration.credentials.keyId || !integration.credentials.issuerId) {
       // Return empty data instead of throwing - integration not configured yet
       console.log('ℹ️ Apple App Store integration not configured, skipping sync');
       return { transactionCount: 0, revenue: 0 };
     }
 
-    console.log('📱 Syncing Apple App Store data...');
+    console.log('📱 Syncing Apple App Store data via serverless endpoint...');
 
     try {
-      // Fetch transactions from Apple
-      const appleTransactions = await AppleAppStoreService.fetchTransactions(
-        {
-          privateKey: integration.credentials.apiKey,
-          keyId: integration.credentials.keyId,
-          issuerId: integration.credentials.issuerId,
-          bundleId: integration.credentials.appId
+      // Calculate date range in days
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Call the serverless sync endpoint (uses Sales Reports API)
+      const response = await fetch('/api/sync-apple-revenue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        startDate,
-        endDate,
-        false // Use production by default; could be made configurable
-      );
-
-      console.log(`✅ Fetched ${appleTransactions.length} Apple transactions`);
-
-      // Convert to RevenueTransaction format with app metadata
-      const transactions = AppleAppStoreService.convertToRevenueTransactions(
-        appleTransactions,
-        orgId,
-        projectId,
-        {
-          bundleId: integration.credentials.appId,
-          appName: integration.settings?.appName,
-          appIcon: integration.settings?.appIcon,
-          appleId: integration.settings?.appleId
-        }
-      );
-
-      // Save to Firestore
-      if (transactions.length > 0) {
-        await this.saveTransactions(orgId, projectId, transactions);
-      }
-
-      // Calculate metrics
-      const totalRevenue = transactions.reduce((sum, tx) => sum + tx.amount, 0);
-
-      // Update last synced time
-      await this.updateIntegration(orgId, projectId, integration.id, {
-        lastSynced: new Date(),
+        body: JSON.stringify({
+          organizationId: orgId,
+          projectId: projectId,
+          manual: true,
+          dateRange: daysDiff.toString()
+        })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to sync Apple revenue');
+      }
+
+      const data = await response.json();
+      
+      console.log(`✅ Apple sync completed:`, data);
+
       return {
-        transactionCount: transactions.length,
-        revenue: totalRevenue,
+        transactionCount: 0, // Sales Reports API doesn't provide transaction count
+        revenue: data.summary?.totalRevenue || 0,
       };
     } catch (error) {
       console.error('❌ Failed to sync Apple data:', error);
