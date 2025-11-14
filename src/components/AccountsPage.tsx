@@ -2249,12 +2249,26 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Shares Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalShares' in account ? (account as AccountWithFilteredStats).filteredTotalShares || 0 : account.totalShares || 0)}
+                          {(() => {
+                            // Only TikTok provides share counts
+                            if (account.platform === 'tiktok') {
+                              return formatNumber('filteredTotalShares' in account ? (account as AccountWithFilteredStats).filteredTotalShares || 0 : account.totalShares || 0);
+                            }
+                            // Instagram, YouTube, and Twitter don't provide share counts
+                            return 'N/A';
+                          })()}
                         </td>
 
                         {/* Bookmarks Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalBookmarks' in account ? (account as AccountWithFilteredStats).filteredTotalBookmarks || 0 : 0)}
+                          {(() => {
+                            // Twitter and TikTok provide bookmark/save counts
+                            if (account.platform === 'twitter' || account.platform === 'tiktok') {
+                              return formatNumber('filteredTotalBookmarks' in account ? (account as AccountWithFilteredStats).filteredTotalBookmarks || 0 : 0);
+                            }
+                            // Instagram and YouTube don't provide bookmark counts
+                            return 'N/A';
+                          })()}
                         </td>
 
                         {/* Engagement Rate Column - Average across videos */}

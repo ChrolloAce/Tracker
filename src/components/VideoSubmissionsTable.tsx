@@ -889,11 +889,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {(() => {
-                            // TikTok and YouTube have shares available
-                            if (submission.platform === 'tiktok' || submission.platform === 'youtube') {
+                            // Only TikTok has shares available
+                            if (submission.platform === 'tiktok') {
                               return formatNumber(submission.shares || 0);
                             }
-                            // Instagram and Twitter don't have shares
+                            // Instagram, YouTube, and Twitter don't provide share counts
                             return 'N/A';
                           })()}
                         </span>
