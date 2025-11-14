@@ -658,17 +658,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       
       setAccounts(loadedAccounts);
 
-      // Auto-cleanup: Remove from processing ONLY when sync is fully completed
-      // Don't remove just because profile pic exists - wait for ALL videos to be fetched
+      // Auto-cleanup: Remove from processing if account now exists in real list AND has finished loading
+      // We wait for the account to have a profile picture or follower count to ensure it's fully loaded
       setProcessingAccounts(prev => {
         const fullyLoadedAccounts = new Set(
           loadedAccounts
-            .filter(acc => acc.syncStatus === 'completed')
+            .filter(acc => acc.profilePicture || (acc.followerCount ?? 0) > 0)
             .map(acc => `${acc.platform}_${acc.username}`)
         );
         const remaining = prev.filter(proc => !fullyLoadedAccounts.has(`${proc.platform}_${proc.username}`));
         if (remaining.length < prev.length) {
-          console.log(`✅ Removed ${prev.length - remaining.length} processing accounts (sync completed)`);
+          console.log(`✅ Removed ${prev.length - remaining.length} processing accounts that are now fully loaded`);
         }
         return remaining;
       });
@@ -1289,10 +1289,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setIsAddModalOpen(false);
 
     // Process all accounts in PARALLEL, each with its own video count
-    const addPromises = accountsToAdd.map(async account => {
-      try {
-        // Step 1: Add account to Firestore (queues for sync)
-        const accountId = await AccountTrackingServiceFirebase.addAccount(
+    const addPromises = accountsToAdd.map(account => 
+      AccountTrackingServiceFirebase.addAccount(
         currentOrgId,
         currentProjectId,
         user.uid,
@@ -1300,39 +1298,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         account.platform,
         'my', // Default to 'my' account type
         account.videoCount // Pass each account's specific video count
-        );
-        
-        console.log(`✅ Account @${account.username} queued (${accountId}), triggering immediate sync...`);
-        
-        // Step 2: Trigger IMMEDIATE sync (don't wait for cron)
-        const token = await user.getIdToken();
-        fetch('/api/sync-single-account', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            accountId,
-            orgId: currentOrgId,
-            projectId: currentProjectId
-          })
-        }).then(res => {
-          if (res.ok) {
-            console.log(`🚀 Immediate sync triggered for @${account.username}`);
-          } else {
-            console.warn(`⚠️ Immediate sync failed for @${account.username}, will be picked up by cron`);
-          }
-        }).catch(err => {
-          console.warn(`⚠️ Could not trigger immediate sync for @${account.username}:`, err);
-        });
-        
+      ).then(() => {
         return { success: true, username: account.username };
-      } catch (error) {
+      }).catch(error => {
         console.error(`Failed to add account @${account.username}:`, error);
         return { success: false, username: account.username };
-      }
-    });
+      })
+    );
 
     // Wait for all to complete
     await Promise.all(addPromises);

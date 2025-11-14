@@ -630,14 +630,6 @@ class FirestoreDataService {
       await deleteDoc(videoRef);
       console.log(`✅ Video ${videoId} removed from UI (background cleanup queued)`);
       
-      // STEP 3: Trigger deletion cron immediately (fire-and-forget)
-      fetch('/api/trigger-deletion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }).catch(err => {
-        console.warn('⚠️ Could not trigger deletion cron:', err);
-      });
-      
     } catch (error) {
       console.error('❌ Failed to queue video deletion:', error);
       throw error;
@@ -652,7 +644,7 @@ class FirestoreDataService {
     try {
       console.log(`🗑️ Queuing account ${accountId} for deletion`);
       
-      // STEP 1: Queue the account deletion for background processing
+      // Queue the account deletion for background processing
       const deletionRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'pendingDeletions'));
       await setDoc(deletionRef, {
         type: 'account',
@@ -667,21 +659,7 @@ class FirestoreDataService {
       
       console.log(`✅ Account ${accountId} queued for deletion (videos, snapshots, and thumbnails will be cleaned up by cron within 2 minutes)`);
       
-      // STEP 2: IMMEDIATELY remove account from UI by deleting the document
-      // The cron job will handle videos, snapshots, storage, and usage counters
-      const accountRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts', accountId);
-      await deleteDoc(accountRef);
-      console.log(`✅ Account ${accountId} removed from UI (background cleanup queued)`);
-      
-      // STEP 3: Trigger deletion cron immediately (fire-and-forget)
-      fetch('/api/trigger-deletion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }).catch(err => {
-        console.warn('⚠️ Could not trigger deletion cron:', err);
-      });
-      
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Failed to queue account deletion:', error);
       throw error;
     }

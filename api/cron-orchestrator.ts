@@ -198,7 +198,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${cronSecret}`
+              'Authorization': cronSecret || ''
             },
             body: JSON.stringify({
                 accountId: accountDoc.id,

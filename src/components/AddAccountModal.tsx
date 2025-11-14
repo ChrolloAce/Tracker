@@ -153,8 +153,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       // Process each account in parallel
       const results = await Promise.allSettled(
         accountsToAdd.map(async (acc) => {
-          // Step 1: Add account to Firestore (queues for sync)
-          const accountId = await AccountTrackingServiceFirebase.addAccount(
+          await AccountTrackingServiceFirebase.addAccount(
             orgId,
             projectId,
             user.uid,
@@ -163,33 +162,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             'my', // Default to 'my' account type
             acc.videoCount // Pass each account's specific video count
           );
-          
-          console.log(`✅ Account @${acc.username} queued (${accountId}), triggering immediate sync...`);
-          
-          // Step 2: Trigger IMMEDIATE sync (don't wait for cron)
-          if (user) {
-            const token = await user.getIdToken();
-            fetch('/api/sync-single-account', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                accountId,
-                orgId,
-                projectId
-              })
-            }).then(res => {
-              if (res.ok) {
-                console.log(`🚀 Immediate sync triggered for @${acc.username}`);
-              } else {
-                console.warn(`⚠️ Immediate sync failed for @${acc.username}, will be picked up by cron`);
-              }
-            }).catch(err => {
-              console.warn(`⚠️ Could not trigger immediate sync for @${acc.username}:`, err);
-            });
-          }
 
           return { success: true, username: acc.username };
         })

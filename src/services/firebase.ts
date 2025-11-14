@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
@@ -21,13 +21,13 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 
-// Session persistence - auth stored in sessionStorage
-// Survives page navigation/refresh but clears when browser closes
-// This is privacy-friendly and works with both popup and redirect auth
-setPersistence(auth, browserSessionPersistence)
+// Local persistence - auth stored in localStorage
+// Survives page navigation/refresh AND persists when browser closes
+// Users stay logged in until they explicitly log out
+setPersistence(auth, browserLocalPersistence)
   .then(() => {
-    console.log('✅ Firebase Auth persistence set to SESSION');
-    console.log('ℹ️  Auth will persist during your session but clear when browser closes');
+    console.log('✅ Firebase Auth persistence set to LOCAL');
+    console.log('ℹ️  Auth will persist across browser sessions until logout');
   })
   .catch((error) => {
     console.error('❌ Failed to set auth persistence:', error);
