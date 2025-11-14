@@ -511,6 +511,18 @@ export default async function handler(
             console.log(`🔧 [TIKTOK] Reconstructed URL from ID: ${videoUrl}`);
           }
           
+          // 🔧 FIX: Use Unix epoch (Jan 1, 1970) for videos without upload date instead of current time
+          // This prevents old videos from appearing in "today's" NEW UPLOADS section
+          let uploadTimestamp: FirebaseFirestore.Timestamp;
+          if (item.uploadedAt) {
+            uploadTimestamp = Timestamp.fromMillis(item.uploadedAt * 1000);
+          } else if (item.uploaded_at) {
+            uploadTimestamp = Timestamp.fromMillis(item.uploaded_at * 1000);
+          } else {
+            console.warn(`⚠️ [TIKTOK] Video ${videoId} missing upload date - using epoch`);
+            uploadTimestamp = Timestamp.fromMillis(0); // Unix epoch = Jan 1, 1970
+          }
+          
           return {
             videoId: videoId || `tiktok_${Date.now()}_${index}`,
             videoTitle: item.title || item.caption || item.subtitle || 'Untitled TikTok',
@@ -519,9 +531,7 @@ export default async function handler(
             thumbnail: thumbnail,
             accountUsername: account.username,
             accountDisplayName: channel.name || item['channel.name'] || account.username,
-            uploadDate: item.uploadedAt ? Timestamp.fromMillis(item.uploadedAt * 1000) : 
-                       item.uploaded_at ? Timestamp.fromMillis(item.uploaded_at * 1000) : 
-                       Timestamp.now(),
+            uploadDate: uploadTimestamp,
             views: item.views || 0,
             likes: item.likes || 0,
             comments: item.comments || 0,
@@ -710,6 +720,15 @@ export default async function handler(
             thumbnail = video.thumbnailUrl;
           }
           
+          // 🔧 FIX: Use Unix epoch (Jan 1, 1970) for videos without upload date
+          let uploadTimestamp: FirebaseFirestore.Timestamp;
+          if (video.date) {
+            uploadTimestamp = Timestamp.fromDate(new Date(video.date));
+          } else {
+            console.warn(`⚠️ [YOUTUBE] Video ${video.id} missing upload date - using epoch`);
+            uploadTimestamp = Timestamp.fromMillis(0); // Unix epoch = Jan 1, 1970
+          }
+          
           return {
             videoId: video.id,
             videoTitle: video.title || 'Untitled Short',
@@ -718,7 +737,7 @@ export default async function handler(
             thumbnail: thumbnail,
             accountUsername: account.username,
             accountDisplayName: video.channelName || account.username,
-            uploadDate: video.date ? Timestamp.fromDate(new Date(video.date)) : Timestamp.now(),
+            uploadDate: uploadTimestamp,
             views: video.viewCount || 0,
             likes: video.likes || 0,
             comments: video.commentsCount || 0,
@@ -911,6 +930,15 @@ export default async function handler(
         const tweetUrl = tweet.url || `https://twitter.com/i/status/${tweetId}`;
         const tweetText = tweet.fullText || tweet.text || '';
 
+        // 🔧 FIX: Use Unix epoch (Jan 1, 1970) for tweets without creation date
+        let uploadTimestamp: FirebaseFirestore.Timestamp;
+        if (tweet.createdAt) {
+          uploadTimestamp = Timestamp.fromDate(new Date(tweet.createdAt));
+        } else {
+          console.warn(`⚠️ [TWITTER] Tweet ${tweetId} missing creation date - using epoch`);
+          uploadTimestamp = Timestamp.fromMillis(0); // Unix epoch = Jan 1, 1970
+        }
+
         return {
           videoId: tweetId,
           videoTitle: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
@@ -919,7 +947,7 @@ export default async function handler(
           thumbnail: thumbnail,
           accountUsername: account.username,
           accountDisplayName: tweet.author?.name || account.username,
-          uploadDate: tweet.createdAt ? Timestamp.fromDate(new Date(tweet.createdAt)) : Timestamp.now(),
+          uploadDate: uploadTimestamp,
           views: tweet.viewCount || 0,
           likes: tweet.likeCount || 0,
           comments: tweet.replyCount || 0,
@@ -1184,7 +1212,16 @@ export default async function handler(
           const likes = item.like_count || 0;
           const comments = item.comment_count || 0;
           const caption = item.caption || '';
-          const uploadDate = item.taken_at ? Timestamp.fromMillis(item.taken_at * 1000) : Timestamp.now();
+          
+          // 🔧 FIX: Use Unix epoch (Jan 1, 1970) for reels without upload date
+          let uploadTimestamp: FirebaseFirestore.Timestamp;
+          if (item.taken_at) {
+            uploadTimestamp = Timestamp.fromMillis(item.taken_at * 1000);
+          } else {
+            console.warn(`⚠️ [INSTAGRAM] Reel ${videoCode} missing taken_at date - using epoch`);
+            uploadTimestamp = Timestamp.fromMillis(0); // Unix epoch = Jan 1, 1970
+          }
+          
           const thumbnailUrl = item.thumbnail_url || '';
           const duration = item.raw_data?.video_duration || item.duration || 0;
           
@@ -1196,7 +1233,7 @@ export default async function handler(
             thumbnail: thumbnailUrl,
             accountUsername: user.username || account.username,
             accountDisplayName: user.full_name || account.username,
-            uploadDate: uploadDate,
+            uploadDate: uploadTimestamp,
             views: views,
             likes: likes,
             comments: comments,
