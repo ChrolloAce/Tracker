@@ -313,6 +313,7 @@ export default async function handler(
           // Progressive fetch strategy: 5 → 10 → 15 → 20
           const batchSizes = [5, 10, 15, 20];
           let foundDuplicate = false;
+          const seenVideoIds = new Set<string>(); // Track videos we've already processed
           const username = account.username.replace('@', '');
           
           for (const batchSize of batchSizes) {
@@ -354,14 +355,20 @@ export default async function handler(
                   continue;
                 }
                 
-                // Check if we already have this video
-                if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [TIKTOK] Found duplicate: ${videoId} - stopping progressive fetch`);
-                  foundDuplicate = true;
-                  break;
+                // Skip if we already saw this video in a previous batch
+                if (seenVideoIds.has(videoId)) {
+                  continue; // Skip duplicate from overlapping batch
                 }
                 
-                // This is a new video
+                // Check if this video exists in database
+                if (existingVideoIds.has(videoId)) {
+                  console.log(`✓ [TIKTOK] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  foundDuplicate = true;
+                  break; // Stop immediately - don't process this or any more videos
+                }
+                
+                // This is a new video - add it
+                seenVideoIds.add(videoId);
                 newTikTokVideos.push(video);
               }
               
@@ -378,6 +385,46 @@ export default async function handler(
           }
           
           console.log(`✅ [TIKTOK] Progressive fetch complete: ${newTikTokVideos.length} new videos found`);
+          
+          // SECOND API CALL: Refresh metrics for ALL existing TikTok videos (like Instagram does)
+          if (existingVideoIds.size > 0) {
+            console.log(`🔄 [TIKTOK] Refreshing ${existingVideoIds.size} existing videos...`);
+            
+            try {
+              // Build video URLs for existing videos
+              const videoUrls = Array.from(existingVideoIds).map(id => 
+                `https://www.tiktok.com/@${username}/video/${id}`
+              );
+              
+              console.log(`📊 [TIKTOK] Fetching updated metrics for ${videoUrls.length} existing videos...`);
+              
+              const refreshData = await runApifyActor({
+                actorId: 'apidojo/tiktok-scraper',
+                input: {
+                  startUrls: videoUrls,
+                  maxItems: videoUrls.length,
+                  sortType: 'RELEVANCE',
+                  dateRange: 'DEFAULT',
+                  location: 'US',
+                  includeSearchKeywords: false,
+                  customMapFunction: '(object) => { return {...object} }',
+                  proxy: {
+                    useApifyProxy: true,
+                    apifyProxyGroups: ['RESIDENTIAL']
+                  }
+                }
+              });
+              
+              const refreshedVideos = refreshData.items || [];
+              console.log(`✅ [TIKTOK] Refreshed ${refreshedVideos.length} existing videos`);
+              
+              // Add refreshed videos to processing
+              newTikTokVideos.push(...refreshedVideos);
+            } catch (refreshError) {
+              console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
+              // Don't fail the whole sync if refresh fails
+            }
+          }
         } else {
           console.log(`🔒 [TIKTOK] Static account - skipping new video fetch`);
         }
@@ -521,6 +568,7 @@ export default async function handler(
           // Progressive fetch strategy: 5 → 10 → 15 → 20
           const batchSizes = [5, 10, 15, 20];
           let foundDuplicate = false;
+          const seenVideoIds = new Set<string>(); // Track videos we've already processed
           
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
@@ -557,14 +605,20 @@ export default async function handler(
                   continue;
                 }
                 
-                // Check if we already have this video
-                if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [YOUTUBE] Found duplicate: ${videoId} - stopping progressive fetch`);
-                  foundDuplicate = true;
-                  break;
+                // Skip if we already saw this video in a previous batch
+                if (seenVideoIds.has(videoId)) {
+                  continue; // Skip duplicate from overlapping batch
                 }
                 
-                // This is a new video
+                // Check if this video exists in database
+                if (existingVideoIds.has(videoId)) {
+                  console.log(`✓ [YOUTUBE] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  foundDuplicate = true;
+                  break; // Stop immediately - don't process this or any more videos
+                }
+                
+                // This is a new video - add it
+                seenVideoIds.add(videoId);
                 newYouTubeVideos.push(video);
               }
               
@@ -760,6 +814,7 @@ export default async function handler(
         // Progressive fetch strategy: 5 → 10 → 15 → 20
         const batchSizes = [5, 10, 15, 20];
         let foundDuplicate = false;
+        const seenTweetIds = new Set<string>(); // Track tweets we've already processed
         
         for (const batchSize of batchSizes) {
           if (foundDuplicate) break;
@@ -798,14 +853,20 @@ export default async function handler(
                 continue;
               }
               
-              // Check if we already have this tweet
-              if (existingTweetIds.has(tweetId)) {
-                console.log(`✓ [TWITTER] Found duplicate: ${tweetId} - stopping progressive fetch`);
-                foundDuplicate = true;
-                break;
+              // Skip if we already saw this tweet in a previous batch
+              if (seenTweetIds.has(tweetId)) {
+                continue; // Skip duplicate from overlapping batch
               }
               
-              // This is a new tweet
+              // Check if this tweet exists in database
+              if (existingTweetIds.has(tweetId)) {
+                console.log(`✓ [TWITTER] Found existing tweet: ${tweetId} - STOPPING ALL FETCHING`);
+                foundDuplicate = true;
+                break; // Stop immediately - don't process this or any more tweets
+              }
+              
+              // This is a new tweet - add it
+              seenTweetIds.add(tweetId);
               allTweets.push(tweet);
             }
             
@@ -901,6 +962,7 @@ export default async function handler(
           // Progressive fetch strategy: 5 → 10 → 15 → 20
           const batchSizes = [5, 10, 15, 20];
           let foundDuplicate = false;
+          const seenVideoIds = new Set<string>(); // Track videos we've already processed
           
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
@@ -947,14 +1009,20 @@ export default async function handler(
                   continue;
                 }
                 
-                // Check if we already have this video
-                if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [INSTAGRAM] Found duplicate: ${videoId} - stopping progressive fetch`);
-                  foundDuplicate = true;
-                  break;
+                // Skip if we already saw this video in a previous batch
+                if (seenVideoIds.has(videoId)) {
+                  continue; // Skip duplicate from overlapping batch
                 }
                 
-                // This is a new video
+                // Check if this video exists in database
+                if (existingVideoIds.has(videoId)) {
+                  console.log(`✓ [INSTAGRAM] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  foundDuplicate = true;
+                  break; // Stop immediately - don't process this or any more videos
+                }
+                
+                // This is a new video - add it
+                seenVideoIds.add(videoId);
                 newInstagramReels.push(reel);
               }
               
