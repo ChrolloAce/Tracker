@@ -492,25 +492,101 @@ export default async function handler(
       console.log(`📺 Fetching YouTube Shorts for ${account.username}...`);
       
       try {
-        // Use grow_media/youtube-shorts-scraper via Apify
-        const channelHandle = account.username.startsWith('@') ? account.username : `@${account.username}`;
-        console.log(`🔍 Scraping YouTube Shorts for: ${channelHandle}`);
+        const creatorType = account.creatorType || 'automatic';
+        console.log(`🔧 Account type: ${creatorType}`);
         
-        const data = await runApifyActor({
-          actorId: 'grow_media/youtube-shorts-scraper',
-          input: {
-            channels: [channelHandle],
-            maxResults: maxVideos,
-            sortBy: 'latest',
-            proxy: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL']
+        let newYouTubeVideos: any[] = [];
+        const channelHandle = account.username.startsWith('@') ? account.username : `@${account.username}`;
+        
+        // Only fetch NEW videos for automatic accounts
+        if (creatorType === 'automatic') {
+          // Get existing video IDs to check for duplicates
+          const existingVideosSnapshot = await db
+            .collection('organizations')
+            .doc(orgId)
+            .collection('projects')
+            .doc(projectId)
+            .collection('videos')
+            .where('trackedAccountId', '==', accountId)
+            .where('platform', '==', 'youtube')
+            .select('videoId')
+            .get();
+          
+          const existingVideoIds = new Set(
+            existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+          );
+          
+          console.log(`📊 Found ${existingVideoIds.size} existing YouTube Shorts in database`);
+          
+          // Progressive fetch strategy: 5 → 10 → 15 → 20
+          const batchSizes = [5, 10, 15, 20];
+          let foundDuplicate = false;
+          
+          for (const batchSize of batchSizes) {
+            if (foundDuplicate) break;
+            
+            console.log(`📥 [YOUTUBE] Fetching ${batchSize} Shorts (progressive strategy)...`);
+            
+            try {
+              const data = await runApifyActor({
+                actorId: 'grow_media/youtube-shorts-scraper',
+                input: {
+                  channels: [channelHandle],
+                  maxResults: batchSize,
+                  sortBy: 'latest',
+                  proxy: {
+                    useApifyProxy: true,
+                    apifyProxyGroups: ['RESIDENTIAL']
+                  }
+                }
+              });
+
+              const batch = data.items || [];
+              
+              if (batch.length === 0) {
+                console.log(`⚠️ [YOUTUBE] No Shorts returned`);
+                break;
+              }
+              
+              // Check each video for duplicates
+              for (const video of batch) {
+                const videoId = video.id;
+                
+                if (!videoId) {
+                  console.warn(`⚠️ YouTube Short missing ID, skipping`);
+                  continue;
+                }
+                
+                // Check if we already have this video
+                if (existingVideoIds.has(videoId)) {
+                  console.log(`✓ [YOUTUBE] Found duplicate: ${videoId} - stopping progressive fetch`);
+                  foundDuplicate = true;
+                  break;
+                }
+                
+                // This is a new video
+                newYouTubeVideos.push(video);
+              }
+              
+              // Stop if we got fewer videos than requested (end of content)
+              if (batch.length < batchSize) {
+                console.log(`⏹️ [YOUTUBE] Got ${batch.length} < ${batchSize} (end of channel's content)`);
+                break;
+              }
+              
+            } catch (fetchError: any) {
+              console.error(`❌ [YOUTUBE] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+              break;
             }
           }
-        });
-
-        const youtubeVideos = data.items || [];
-        console.log(`✅ Fetched ${youtubeVideos.length} YouTube Shorts`);
+          
+          console.log(`✅ [YOUTUBE] Progressive fetch complete: ${newYouTubeVideos.length} new Shorts found`);
+        } else {
+          console.log(`🔒 [YOUTUBE] Static account - skipping new video fetch`);
+        }
+        
+        const youtubeVideos = newYouTubeVideos;
+        console.log(`📊 [YOUTUBE] Processing ${youtubeVideos.length} new Shorts`);
         
         // Extract profile/channel data from first video
         if (youtubeVideos.length > 0 && youtubeVideos[0]) {
@@ -653,25 +729,104 @@ export default async function handler(
         console.error('Profile fetch error:', profileError);
       }
 
-      // Now fetch tweets
+      // Now fetch tweets using progressive strategy
       console.log(`📥 Fetching tweets for ${account.username}...`);
-      const tweetsData = await runApifyActor({
-        actorId: 'apidojo/tweet-scraper',
-        input: {
-          twitterHandles: [account.username],
-          maxItems: maxVideos, // Use user's preference
-          sort: 'Latest',
-          onlyImage: false,
-          onlyVideo: false,
-          onlyQuote: false,
-          onlyVerifiedUsers: false,
-          onlyTwitterBlue: false,
-          includeSearchTerms: false,
-        }
-      });
+      
+      const creatorType = account.creatorType || 'automatic';
+      console.log(`🔧 Account type: ${creatorType}`);
+      
+      let allTweets: any[] = [];
+      
+      // Only fetch NEW tweets for automatic accounts
+      if (creatorType === 'automatic') {
+        // Get existing tweet IDs to check for duplicates
+        const existingTweetsSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .where('trackedAccountId', '==', accountId)
+          .where('platform', '==', 'twitter')
+          .select('videoId')
+          .get();
+        
+        const existingTweetIds = new Set(
+          existingTweetsSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+        );
+        
+        console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
+        
+        // Progressive fetch strategy: 5 → 10 → 15 → 20
+        const batchSizes = [5, 10, 15, 20];
+        let foundDuplicate = false;
+        
+        for (const batchSize of batchSizes) {
+          if (foundDuplicate) break;
+          
+          console.log(`📥 [TWITTER] Fetching ${batchSize} tweets (progressive strategy)...`);
+          
+          try {
+            const tweetsData = await runApifyActor({
+              actorId: 'apidojo/tweet-scraper',
+              input: {
+                twitterHandles: [account.username],
+                maxItems: batchSize,
+                sort: 'Latest',
+                onlyImage: false,
+                onlyVideo: false,
+                onlyQuote: false,
+                onlyVerifiedUsers: false,
+                onlyTwitterBlue: false,
+                includeSearchTerms: false,
+              }
+            });
 
-      const allTweets = tweetsData.items || [];
-      console.log(`📊 Total items received: ${allTweets.length}`);
+            const batch = tweetsData.items || [];
+            
+            if (batch.length === 0) {
+              console.log(`⚠️ [TWITTER] No tweets returned`);
+              break;
+            }
+            
+            // Check each tweet for duplicates
+            for (const tweet of batch) {
+              const tweetId = tweet.id;
+              
+              if (!tweetId) {
+                console.warn(`⚠️ Tweet missing ID, skipping`);
+                continue;
+              }
+              
+              // Check if we already have this tweet
+              if (existingTweetIds.has(tweetId)) {
+                console.log(`✓ [TWITTER] Found duplicate: ${tweetId} - stopping progressive fetch`);
+                foundDuplicate = true;
+                break;
+              }
+              
+              // This is a new tweet
+              allTweets.push(tweet);
+            }
+            
+            // Stop if we got fewer tweets than requested (end of content)
+            if (batch.length < batchSize) {
+              console.log(`⏹️ [TWITTER] Got ${batch.length} < ${batchSize} (end of account's content)`);
+              break;
+            }
+            
+          } catch (fetchError: any) {
+            console.error(`❌ [TWITTER] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+            break;
+          }
+        }
+        
+        console.log(`✅ [TWITTER] Progressive fetch complete: ${allTweets.length} new tweets found`);
+      } else {
+        console.log(`🔒 [TWITTER] Static account - skipping new tweet fetch`);
+      }
+      
+      console.log(`📊 Total items to process: ${allTweets.length}`);
       
       if (allTweets.length === 0) {
         console.warn(`⚠️ No tweets found for @${account.username}`);
