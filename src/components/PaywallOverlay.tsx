@@ -76,11 +76,11 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Track 3 accounts</span>
+                <span>Unlimited accounts</span>
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Up to 100 videos</span>
+                <span>Up to 150 videos</span>
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
@@ -89,6 +89,14 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>App Store integration</span>
+              </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>Creator portals</span>
+              </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>Contract management</span>
               </li>
             </ul>
             <button
@@ -131,11 +139,19 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>On-demand refresh</span>
+                <span>Revenue tracking</span>
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Creator campaigns</span>
+              </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>Creator portals</span>
+              </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>Contract management</span>
               </li>
             </ul>
             <button
@@ -172,6 +188,10 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>12-hour data refresh</span>
+              </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>Revenue tracking</span>
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />

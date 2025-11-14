@@ -144,13 +144,13 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Track 3 accounts</span>
+                  <span>Unlimited accounts</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Up to 100 videos</span>
+                  <span>Up to 150 videos</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -163,6 +163,18 @@ const LandingPage: React.FC = () => {
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
                   <span>App Store integration</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>Creator portals</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>Contract management</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -219,7 +231,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>On-demand refresh</span>
+                  <span>Revenue tracking</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -231,7 +243,13 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Revenue tracking</span>
+                  <span>Creator portals</span>
+                </li>
+                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>Contract management</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -285,7 +303,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>On-demand refresh</span>
+                  <span>Revenue tracking</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
