@@ -849,6 +849,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         
         // Group videos by account
         const videosByAccount = new Map<string, any[]>();
+        const videosWithoutAccount: any[] = [];
         videosSnapshot.docs.forEach(doc => {
           const video = { id: doc.id, ...doc.data() } as any;
           const accountId = video.trackedAccountId;
@@ -857,8 +858,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               videosByAccount.set(accountId, []);
             }
             videosByAccount.get(accountId)!.push(video);
+          } else {
+            // Track videos without trackedAccountId for debugging
+            videosWithoutAccount.push({ id: doc.id, platform: video.platform, videoId: video.videoId });
           }
         });
+        
+        if (videosWithoutAccount.length > 0) {
+          console.warn(`⚠️ Found ${videosWithoutAccount.length} videos without trackedAccountId:`, videosWithoutAccount);
+        }
 
         // Calculate filtered stats for each account
         const accountsWithStats: AccountWithFilteredStats[] = accounts.map(account => {
