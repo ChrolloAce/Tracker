@@ -142,9 +142,16 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   const ppValue = point.ppValue;
   
   // Format functions
-  const dateStr = interval 
-    ? DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType)
-    : '';
+  // For revenue metrics, use point.date if available (direct date from data)
+  // For other metrics, use interval (aggregated time range)
+  let dateStr = '';
+  if (point.date && (data.id === 'revenue' || data.id === 'downloads')) {
+    // Revenue/Downloads have specific dates in sparkline data
+    const dateObj = new Date(point.date);
+    dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } else if (interval) {
+    dateStr = DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType);
+  }
   
   let ppDateStr = '';
   if (interval && dateFilter !== 'all') {
@@ -386,7 +393,19 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         <div className="flex items-center justify-between">
           {(data.id === 'revenue' || data.id === 'downloads') ? (
             <div className="flex items-baseline gap-2 flex-1">
-              <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
+              <div className="flex items-center gap-1.5">
+                {data.appIcon && (
+                  <img 
+                    src={data.appIcon} 
+                    alt={data.appName || data.label}
+                    className="w-4 h-4 rounded object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
+                <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
+              </div>
               <p className="text-xl font-bold text-white">{displayValue}</p>
             </div>
           ) : (

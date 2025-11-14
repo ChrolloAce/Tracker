@@ -32,6 +32,8 @@ export interface KPICardsProps {
 export interface KPICardData {
   id: string;
   label: string;
+  appIcon?: string; // For revenue/downloads cards - app icon URL
+  appName?: string; // For revenue/downloads cards - app name
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';

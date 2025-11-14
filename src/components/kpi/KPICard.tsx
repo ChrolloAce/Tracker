@@ -287,8 +287,18 @@ const KPICard: React.FC<{
         {/* Metric Content - Pushed Higher */}
         <div className="flex flex-col h-full justify-start pt-1">
           {/* Label - Smaller */}
-          <div className="text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
-            {data.label}
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
+            {data.appIcon && (
+              <img 
+                src={data.appIcon} 
+                alt={data.appName || data.label}
+                className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+            <span>{data.label}</span>
           </div>
 
           {/* Value Row - Number + Delta Badge aligned horizontally */}

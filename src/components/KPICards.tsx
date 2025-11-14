@@ -361,12 +361,13 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       customRange,
       granularity,
       revenueMetrics,
+      revenueIntegrations,
       onOpenRevenueSettings
     });
     
     // Return the generated cards
     return result.cards;
-  }, [submissions, allSubmissions, linkClicks, links, dateFilter, customRange, granularity, revenueMetrics]);
+  }, [submissions, allSubmissions, linkClicks, links, dateFilter, customRange, granularity, revenueMetrics, revenueIntegrations]);
   // Note: onOpenRevenueSettings removed from deps - it's just a callback, doesn't affect calculated data
 
   // Memoize sorted and filtered cards to prevent recalculation

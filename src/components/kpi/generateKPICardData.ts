@@ -2,7 +2,7 @@ import { Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign
 import { VideoSubmission } from '../../types';
 import { LinkClick } from '../../services/LinkClicksService';
 import { TrackedLink } from '../../types/firestore';
-import { RevenueMetrics } from '../../types/revenue';
+import { RevenueMetrics, RevenueIntegration } from '../../types/revenue';
 import { DateFilterType } from '../DateRangeFilter';
 import { KPICardData } from './kpiTypes';
 import { formatNumber } from './kpiHelpers';
@@ -18,6 +18,7 @@ export interface GenerateKPICardDataParams {
   customRange?: { startDate: Date; endDate: Date };
   granularity: 'day' | 'week' | 'month' | 'year';
   revenueMetrics?: RevenueMetrics | null;
+  revenueIntegrations?: RevenueIntegration[];
   onOpenRevenueSettings?: () => void;
 }
 
@@ -39,6 +40,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     customRange,
     granularity,
     revenueMetrics,
+    revenueIntegrations,
     onOpenRevenueSettings
   } = params;
 
@@ -653,6 +655,11 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
 
   // Add revenue cards if available
   if (revenueMetrics && revenueMetrics.dailyMetrics) {
+    // Extract app metadata from Apple integration
+    const appleIntegration = revenueIntegrations?.find(i => i.provider === 'apple' && i.enabled);
+    const appIcon = appleIntegration?.settings?.appIcon;
+    const appName = appleIntegration?.settings?.appName;
+
     // Filter daily metrics by date range
     const filteredDailyMetrics = revenueMetrics.dailyMetrics.filter(day => {
       const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
@@ -664,29 +671,39 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     const filteredTotalRevenue = filteredDailyMetrics.reduce((sum, day) => sum + (day.revenue || 0), 0);
     const filteredTotalDownloads = filteredDailyMetrics.reduce((sum, day) => sum + (day.downloads || 0), 0);
     
-    // Generate sparkline data for revenue
+    // Generate sparkline data for revenue (with dates for tooltip)
     const revenueSparkline = filteredDailyMetrics
       .sort((a, b) => {
         const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
         const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
         return dateA.getTime() - dateB.getTime();
       })
-      .map(day => ({
-        value: day.revenue / 100, // Convert cents to dollars
-        ppValue: 0 // PP not implemented for revenue yet
-      }));
+      .map(day => {
+        const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+        return {
+          value: day.revenue / 100, // Convert cents to dollars
+          ppValue: 0, // PP not implemented for revenue yet
+          date: dayDate.toISOString().split('T')[0], // YYYY-MM-DD format for tooltip
+          timestamp: dayDate.getTime()
+        };
+      });
     
-    // Generate sparkline data for downloads
+    // Generate sparkline data for downloads (with dates for tooltip)
     const downloadsSparkline = filteredDailyMetrics
       .sort((a, b) => {
         const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
         const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
         return dateA.getTime() - dateB.getTime();
       })
-      .map(day => ({
-        value: day.downloads,
-        ppValue: 0 // PP not implemented for revenue yet
-      }));
+      .map(day => {
+        const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+        return {
+          value: day.downloads,
+          ppValue: 0, // PP not implemented for revenue yet
+          date: dayDate.toISOString().split('T')[0], // YYYY-MM-DD format for tooltip
+          timestamp: dayDate.getTime()
+        };
+      });
     
     cards.push(
       {
@@ -697,7 +714,9 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
         accent: 'emerald',
         sparklineData: revenueSparkline,
         intervalType: granularity,
-        isEmpty: filteredTotalRevenue === 0
+        isEmpty: filteredTotalRevenue === 0,
+        appIcon,
+        appName
       },
       {
         id: 'downloads',
@@ -707,7 +726,9 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
         accent: 'blue',
         sparklineData: downloadsSparkline,
         intervalType: granularity,
-        isEmpty: filteredTotalDownloads === 0
+        isEmpty: filteredTotalDownloads === 0,
+        appIcon,
+        appName
       }
     );
   } else if (onOpenRevenueSettings) {
