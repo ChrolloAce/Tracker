@@ -1305,9 +1305,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         console.log(`✅ Account @${account.username} queued (${accountId}), triggering immediate sync...`);
         
         // Step 2: Trigger IMMEDIATE sync (don't wait for cron)
+        const token = await user.getIdToken();
         fetch('/api/sync-single-account', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             accountId,
             orgId: currentOrgId,

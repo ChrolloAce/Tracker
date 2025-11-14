@@ -167,23 +167,29 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           console.log(`✅ Account @${acc.username} queued (${accountId}), triggering immediate sync...`);
           
           // Step 2: Trigger IMMEDIATE sync (don't wait for cron)
-          fetch('/api/sync-single-account', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              accountId,
-              orgId,
-              projectId
-            })
-          }).then(res => {
-            if (res.ok) {
-              console.log(`🚀 Immediate sync triggered for @${acc.username}`);
-            } else {
-              console.warn(`⚠️ Immediate sync failed for @${acc.username}, will be picked up by cron`);
-            }
-          }).catch(err => {
-            console.warn(`⚠️ Could not trigger immediate sync for @${acc.username}:`, err);
-          });
+          if (user) {
+            const token = await user.getIdToken();
+            fetch('/api/sync-single-account', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                accountId,
+                orgId,
+                projectId
+              })
+            }).then(res => {
+              if (res.ok) {
+                console.log(`🚀 Immediate sync triggered for @${acc.username}`);
+              } else {
+                console.warn(`⚠️ Immediate sync failed for @${acc.username}, will be picked up by cron`);
+              }
+            }).catch(err => {
+              console.warn(`⚠️ Could not trigger immediate sync for @${acc.username}:`, err);
+            });
+          }
 
           return { success: true, username: acc.username };
         })
