@@ -73,10 +73,6 @@
       "schedule": "0 */12 * * *"
     },
     {
-      "path": "/api/cron-sync-accounts",
-      "schedule": "*/2 * * * *"
-    },
-    {
       "path": "/api/cron-process-deletions",
       "schedule": "*/2 * * * *"
     }
