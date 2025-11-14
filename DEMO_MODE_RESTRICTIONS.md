@@ -11,8 +11,8 @@ Demo mode is activated when:
 3. **Read-Only Access**: All data is visible but cannot be modified
 
 ### Demo Organization Details
-- **Demo Org ID**: `zcoz9Yc6BpjxsFogAIqr`
-- **Demo Project ID**: `r2JV9idlIMO8dXbhpcR0`
+- **Demo Org ID**: `Vx2UpxGCV3uD8Xj2ioX4`
+- **Demo Project ID**: `ayGJEIQc23rJlamuOqp3`
 - **Access**: Public (no login required)
 
 ## Disabled Actions
