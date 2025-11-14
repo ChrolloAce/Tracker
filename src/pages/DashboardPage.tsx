@@ -741,6 +741,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         }, { merge: true });
         
         console.log('✅ Successfully saved selected rules to Firebase:', selectedRuleIds);
+        
+        // 🔧 CRITICAL FIX: Update cache immediately to prevent stale data from being reloaded
+        const cacheKey = `dashboard_${currentOrgId}_${currentProjectId}`;
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const cachedData = JSON.parse(cached);
+            cachedData.selectedRuleIds = selectedRuleIds;
+            cachedData.timestamp = Date.now(); // Update timestamp
+            localStorage.setItem(cacheKey, JSON.stringify(cachedData));
+            console.log('🔄 Updated cache with new selectedRuleIds');
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ Failed to update cache:', cacheError);
+        }
       } catch (error) {
         console.error('❌ Failed to save selected rules:', error);
       }
