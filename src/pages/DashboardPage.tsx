@@ -1063,7 +1063,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             accounts,
             submissions: allSubmissions,
             rules,
-            selectedRuleIds: savedSelectedRuleIds,
+            selectedRuleIds: filteredSelectedRuleIds,
             links: allLinks,
             linkClicks: allClicks,
             timestamp: Date.now()
