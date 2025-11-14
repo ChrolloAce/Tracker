@@ -60,6 +60,7 @@ const RevenueManagementPage: React.FC = () => {
         issuerID: credentials.issuerID,
         keyID: credentials.keyID,
         vendorNumber: credentials.vendorNumber,
+        bundleId: credentials.bundleId || 'NOT SET (will import ALL apps)',
         privateKeyFileName: credentials.privateKeyFileName,
         privateKeyLength: credentials.privateKey.length,
         isEncrypted: true

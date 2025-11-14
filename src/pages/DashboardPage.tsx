@@ -1149,7 +1149,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           // For Apple, just fetch the summary metrics (don't calculate from transactions)
           const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
           setRevenueMetrics(metrics);
+          
+          // Get Apple integration to check Bundle ID filter
+          const appleIntegration = revenueIntegrations.find(i => i.provider === 'apple' && i.enabled);
+          const bundleIdFilter = appleIntegration?.credentials?.appId;
+          
           console.log('✅ Apple revenue metrics loaded:', metrics);
+          console.log('🎯 Bundle ID Filter:', bundleIdFilter || '⚠️ NOT SET - importing ALL apps in vendor account');
         } else {
           // For other providers (RevenueCat, etc.), recalculate from transactions
         const metrics = await RevenueDataService.calculateMetricsFromTransactions(
