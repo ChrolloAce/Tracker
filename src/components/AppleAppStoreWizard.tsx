@@ -12,7 +12,8 @@ export interface AppleAppStoreCredentials {
   vendorNumber: string;
   privateKey: string;
   privateKeyFileName: string;
-  // App metadata (optional)
+  // App metadata
+  bundleId?: string; // Bundle ID for filtering specific app (e.g., com.yourcompany.app)
   appName?: string;
   appIcon?: string;
   appleId?: string;
