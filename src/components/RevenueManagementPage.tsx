@@ -577,9 +577,9 @@ const EditBundleIdModal: React.FC<EditBundleIdModalProps> = ({ currentBundleId, 
       <div className="bg-[#1a1a1a] rounded-2xl border border-white/10 max-w-xl w-full shadow-2xl">
         {/* Header */}
         <div className="px-8 py-6 border-b border-white/10">
-          <h2 className="text-2xl font-bold text-white">Edit Bundle ID Filter</h2>
+          <h2 className="text-2xl font-bold text-white">Edit App Filter</h2>
           <p className="text-white/60 text-sm mt-2">
-            Filter revenue data to a specific app by Bundle ID
+            Filter revenue data to a specific app using SKU or Apple ID
           </p>
         </div>
 
@@ -603,21 +603,24 @@ const EditBundleIdModal: React.FC<EditBundleIdModalProps> = ({ currentBundleId, 
             </p>
           </div>
 
-          {/* Bundle ID Input */}
+          {/* App Filter Input */}
           <div className="space-y-2">
             <label className="text-white/80 text-sm block flex items-center gap-2">
-              Bundle ID
+              App Filter (SKU or Apple ID)
               <span className="text-emerald-400 text-xs">(for filtering specific app)</span>
             </label>
             <input
               type="text"
               value={bundleId}
               onChange={(e) => setBundleId(e.target.value)}
-              placeholder="e.g., com.yourcompany.appname"
+              placeholder="e.g., MyAppSKU or 1234567890"
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 font-mono"
             />
             <p className="text-white/40 text-xs">
-              📌 <strong>Leave empty to import ALL apps</strong> from your vendor account, or enter a Bundle ID to filter to a specific app.
+              📌 <strong>Leave empty to import ALL apps</strong> from your vendor account, or enter your app's SKU (e.g., "Distant") or Apple ID (e.g., "6745060144").
+            </p>
+            <p className="text-emerald-400 text-xs mt-2">
+              💡 <strong>Find your SKU:</strong> App Store Connect → Your App → App Information → SKU
             </p>
           </div>
 

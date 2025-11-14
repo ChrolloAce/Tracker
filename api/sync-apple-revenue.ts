@@ -322,12 +322,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     allSalesData.forEach(record => {
-      // Check if this record is for the target app (if filter is specified)
-      const recordBundleId = record['SKU'] || record['sku'] || record['Bundle ID'] || record['bundle_id'];
+      // Get identifiers from the record
+      // Apple Sales Reports don't include Bundle ID - use SKU or Apple Identifier instead
+      const recordSKU = record['SKU'] || record['sku'];
+      const recordAppleId = record['Apple Identifier'] || record['apple_identifier'];
       
-      // If we have a target bundle ID, only count records matching that app
-      if (targetBundleId && recordBundleId && !recordBundleId.includes(targetBundleId)) {
-        return; // Skip this record - it's from a different app
+      // If we have a target filter, check if this record matches
+      // targetBundleId can be: Bundle ID, SKU, or Apple ID
+      if (targetBundleId) {
+        const matchesSKU = recordSKU && recordSKU.toLowerCase().includes(targetBundleId.toLowerCase());
+        const matchesAppleId = recordAppleId && recordAppleId === targetBundleId;
+        const matchesBundleId = recordSKU && targetBundleId.includes('.') && recordSKU.toLowerCase().includes(targetBundleId.split('.').pop()?.toLowerCase() || '');
+        
+        if (!matchesSKU && !matchesAppleId && !matchesBundleId) {
+          return; // Skip this record - it's from a different app
+        }
       }
       
       // Units = downloads/purchases

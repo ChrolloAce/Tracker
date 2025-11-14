@@ -546,19 +546,22 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           
           <div className="space-y-2">
             <label className="text-white/80 text-sm block flex items-center gap-2">
-              Bundle ID
+              App Filter (SKU or Apple ID)
               <span className="text-emerald-400 text-xs">(IMPORTANT for filtering)</span>
             </label>
             <input
               type="text"
               value={credentials.bundleId || ''}
               onChange={(e) => setCredentials(prev => ({ ...prev, bundleId: e.target.value }))}
-              placeholder="e.g., com.yourcompany.appname"
+              placeholder="e.g., MyAppSKU or 1234567890"
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
             />
             <p className="text-white/40 text-xs">
-              📌 <strong>Required if you have multiple apps:</strong> Only data for this Bundle ID will be imported. 
+              📌 <strong>Required if you have multiple apps:</strong> Enter your app's SKU (e.g., "Distant") or Apple ID (e.g., "6745060144"). 
               Leave empty to import ALL apps in your vendor account.
+            </p>
+            <p className="text-emerald-400 text-xs mt-2">
+              💡 <strong>Find your SKU:</strong> Go to App Store Connect → Your App → App Information → SKU
             </p>
           </div>
           
