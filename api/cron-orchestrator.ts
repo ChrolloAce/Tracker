@@ -42,9 +42,42 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
 };
 
 /**
+ * Queue system for managing concurrent Apify actor runs
+ * Limits concurrent jobs to avoid exceeding Apify RAM limit
+ */
+async function processAccountsInBatches(
+  accounts: any[],
+  processFn: (account: any) => Promise<void>,
+  concurrencyLimit: number = 6
+): Promise<void> {
+  const results = {
+    successful: 0,
+    failed: 0
+  };
+
+  console.log(`    📊 Processing ${accounts.length} accounts with max ${concurrencyLimit} concurrent jobs`);
+
+  for (let i = 0; i < accounts.length; i += concurrencyLimit) {
+    const batch = accounts.slice(i, i + concurrencyLimit);
+    console.log(`    🔄 Batch ${Math.floor(i / concurrencyLimit) + 1}: Processing ${batch.length} accounts...`);
+    
+    const batchPromises = batch.map(account => processFn(account));
+    await Promise.all(batchPromises);
+    
+    console.log(`    ✅ Batch ${Math.floor(i / concurrencyLimit) + 1} complete`);
+  }
+}
+
+/**
  * Cron Orchestrator
  * Runs every 12 hours (0 *\12 * * *)
  * Processes all organizations directly (no HTTP calls)
+ * 
+ * 🔧 APIFY RAM MANAGEMENT:
+ * - Total RAM: 32GB
+ * - Per job: ~4GB
+ * - Max concurrent: 6 jobs (24GB, leaving 8GB buffer)
+ * - Processes accounts in batches to avoid memory overruns
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -192,7 +225,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let orgSuccessful = 0;
         let orgFailed = 0;
         let orgVideosRefreshed = 0;
-        const dispatchPromises: Promise<any>[] = [];
 
         // Process each project
       for (const projectDoc of projectsSnapshot.docs) {
@@ -213,55 +245,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`      👥 ${accountsSnapshot.size} account(s)`);
           orgTotalAccounts += accountsSnapshot.size;
 
-          // Dispatch account refresh jobs
-        for (const accountDoc of accountsSnapshot.docs) {
-          const accountData = accountDoc.data();
+          // Filter accounts that need refreshing
+          const accountsToRefresh = accountsSnapshot.docs
+            .map(doc => ({
+              id: doc.id,
+              data: doc.data()
+            }))
+            .filter(account => {
+              const lastRefreshed = account.data.lastRefreshed?.toMillis() || 0;
+              const timeSinceRefresh = Date.now() - lastRefreshed;
 
-          const lastRefreshed = accountData.lastRefreshed?.toMillis() || 0;
-            const timeSinceRefresh = Date.now() - lastRefreshed;
-
-            if (timeSinceRefresh < refreshIntervalMs) {
-            const hoursRemaining = ((refreshIntervalMs - timeSinceRefresh) / (1000 * 60 * 60)).toFixed(1);
-              console.log(`        ⏭️  Skip @${accountData.username} (${hoursRemaining}h remaining)`);
-            continue;
-          }
-
-            console.log(`        ⚡ Dispatching @${accountData.username}`);
-
-            const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': cronSecret || ''
-            },
-            body: JSON.stringify({
-                accountId: accountDoc.id,
-                orgId: orgId,
-                projectId
-            })
-          })
-            .then(async (response) => {
-              if (response.ok) {
-                  const result = await response.json();
-                  orgSuccessful++;
-                  // sync-single-account returns videosCount (total synced)
-                  const videoCount = result.videosCount || 0;
-                  orgVideosRefreshed += videoCount;
-                  // Note: sync-single-account doesn't differentiate new vs updated
-                  // For email reporting, we'll consider all as "refreshed"
-                  console.log(`          ✅ @${accountData.username || result.username}: ${videoCount} videos synced`);
-              } else {
-                  orgFailed++;
-                  console.error(`          ❌ @${accountData.username}: ${response.status}`);
+              if (timeSinceRefresh < refreshIntervalMs) {
+                const hoursRemaining = ((refreshIntervalMs - timeSinceRefresh) / (1000 * 60 * 60)).toFixed(1);
+                console.log(`        ⏭️  Skip @${account.data.username} (${hoursRemaining}h remaining)`);
+                return false;
               }
-            })
-            .catch((error) => {
-                orgFailed++;
-                console.error(`          ❌ @${accountData.username}: ${error.message}`);
+              return true;
             });
 
-          dispatchPromises.push(dispatchPromise);
-        }
+          console.log(`      🎯 ${accountsToRefresh.length} accounts need refresh`);
+
+          // Process accounts in batches to respect Apify RAM limits (32GB total, ~4GB per job)
+          // Max 6 concurrent jobs = 24GB, leaving 8GB buffer
+          const APIFY_CONCURRENCY_LIMIT = 6;
+
+          if (accountsToRefresh.length > 0) {
+            await processAccountsInBatches(
+              accountsToRefresh,
+              async (account) => {
+                const accountData = account.data;
+                console.log(`        ⚡ Processing @${accountData.username}`);
+
+                try {
+                  const response = await fetch(`${baseUrl}/api/sync-single-account`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': cronSecret || ''
+                    },
+                    body: JSON.stringify({
+                      accountId: account.id,
+                      orgId: orgId,
+                      projectId
+                    })
+                  });
+
+                  if (response.ok) {
+                    const result = await response.json();
+                    orgSuccessful++;
+                    const videoCount = result.videosCount || 0;
+                    orgVideosRefreshed += videoCount;
+                    console.log(`          ✅ @${accountData.username || result.username}: ${videoCount} videos synced`);
+                  } else {
+                    orgFailed++;
+                    console.error(`          ❌ @${accountData.username}: ${response.status}`);
+                  }
+                } catch (error: any) {
+                  orgFailed++;
+                  console.error(`          ❌ @${accountData.username}: ${error.message}`);
+                }
+              },
+              APIFY_CONCURRENCY_LIMIT
+            );
+          }
 
           // Check for Apple revenue integration
           try {
@@ -278,31 +324,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!revenueIntegrationsSnapshot.empty) {
               console.log(`      💰 Syncing Apple revenue...`);
           
-              const dispatchPromise = fetch(`${baseUrl}/api/sync-apple-revenue`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': cronSecret || ''
-            },
-            body: JSON.stringify({
-              organizationId: orgId,
-                  projectId,
-                  dateRange: '7',
-              manual: false
-            })
-          })
-            .then(async (response) => {
-              if (response.ok) {
-                    console.log(`        ✅ Apple revenue synced`);
-              } else {
-                    console.error(`        ❌ Revenue sync failed: ${response.status}`);
-              }
-            })
-            .catch((error) => {
-                  console.error(`        ❌ Revenue sync error: ${error.message}`);
-            });
+              try {
+                const response = await fetch(`${baseUrl}/api/sync-apple-revenue`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': cronSecret || ''
+                  },
+                  body: JSON.stringify({
+                    organizationId: orgId,
+                    projectId,
+                    dateRange: '7',
+                    manual: false
+                  })
+                });
 
-          dispatchPromises.push(dispatchPromise);
+                if (response.ok) {
+                  console.log(`        ✅ Apple revenue synced`);
+                } else {
+                  console.error(`        ❌ Revenue sync failed: ${response.status}`);
+                }
+              } catch (error: any) {
+                console.error(`        ❌ Revenue sync error: ${error.message}`);
+              }
             }
           } catch (error: any) {
             console.error(`      ⚠️ Revenue integration check failed: ${error.message}`);
@@ -321,20 +365,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-        // For manual triggers: dispatch and don't wait (return quickly)
-        // For scheduled cron: wait for completion to get accurate stats for emails
-        if (dispatchPromises.length > 0) {
-          if (isManualTrigger) {
-            console.log(`  🚀 Dispatched ${dispatchPromises.length} jobs (running async, not waiting)`);
-            // Jobs will complete in background - don't block
-            Promise.all(dispatchPromises).catch(err => {
-              console.error(`  ⚠️ Some dispatches failed:`, err);
-            });
-          } else {
-          console.log(`  ⏳ Waiting for ${dispatchPromises.length} jobs...`);
-          await Promise.all(dispatchPromises);
-          }
-        }
+        // Note: dispatchPromises removed - now using batched processing above
+        // All account syncs are now processed in batches with concurrency limits
 
         // Send email (only for scheduled cron, not manual triggers)
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
