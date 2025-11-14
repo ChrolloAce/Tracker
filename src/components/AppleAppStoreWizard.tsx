@@ -544,26 +544,29 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
         <div className="border-t border-white/10 pt-4 space-y-4">
           <p className="text-white/60 text-sm font-medium">App Information</p>
           
-          <div className="space-y-2">
-            <label className="text-white/80 text-sm block flex items-center gap-2">
-              App Filter (SKU or Apple ID)
-              <span className="text-emerald-400 text-xs">(IMPORTANT for filtering)</span>
-            </label>
-            <input
-              type="text"
-              value={credentials.bundleId || ''}
-              onChange={(e) => setCredentials(prev => ({ ...prev, bundleId: e.target.value }))}
-              placeholder="e.g., MyAppSKU or 1234567890"
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
-            />
-            <p className="text-white/40 text-xs">
-              📌 <strong>Required if you have multiple apps:</strong> Enter your app's SKU (e.g., "Distant") or Apple ID (e.g., "6745060144"). 
-              Leave empty to import ALL apps in your vendor account.
-            </p>
-            <p className="text-emerald-400 text-xs mt-2">
-              💡 <strong>Find your SKU:</strong> Go to App Store Connect → Your App → App Information → SKU
-            </p>
-          </div>
+        <div className="space-y-2">
+          <label className="text-white/80 text-sm block flex items-center gap-2">
+            Apple ID (App Filter)
+            <span className="text-emerald-400 text-xs">(REQUIRED for filtering)</span>
+          </label>
+          <input
+            type="text"
+            value={credentials.bundleId || ''}
+            onChange={(e) => setCredentials(prev => ({ ...prev, bundleId: e.target.value }))}
+            placeholder="e.g., 6752973301"
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
+          />
+          <p className="text-white/40 text-xs">
+            📌 <strong>Required if you have multiple apps:</strong> Enter your app's Apple ID (e.g., "6752973301"). 
+            This uses EXACT matching to filter only your app's data. Leave empty to import ALL apps in your vendor account.
+          </p>
+          <p className="text-emerald-400 text-xs mt-2">
+            💡 <strong>Find your Apple ID:</strong> Go to App Store Connect → Your App → App Information → Apple ID (numeric ID)
+          </p>
+          <p className="text-yellow-400 text-xs mt-2">
+            ⚠️ <strong>Must be numeric Apple ID only</strong> - SKU filtering has been removed for accuracy
+          </p>
+        </div>
           
           <div className="space-y-2">
             <label className="text-white/80 text-sm block">App Name (Optional)</label>

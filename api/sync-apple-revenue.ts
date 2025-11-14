@@ -311,9 +311,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let totalDownloads = 0;
     const dailyBreakdown: Record<string, { revenue: number; downloads: number; date: Date }> = {};
     
-    // Get bundle ID for filtering (if specified in integration settings)
-    const targetBundleId = integration.credentials?.appId; // This is the Bundle ID from settings
-    console.log(`🎯 Target Bundle ID: ${targetBundleId || 'ALL APPS (no filter)'}`);
+    // Get Apple ID for filtering (if specified in integration settings)
+    const targetAppleId = integration.credentials?.appId; // This is the Apple ID from settings
+    console.log(`🎯 Target Apple ID: ${targetAppleId || 'ALL APPS (no filter)'}`);
     
     // Debug: Log first record structure to see what fields are available
     if (allSalesData.length > 0) {
@@ -325,29 +325,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let totalRecords = 0;
     let filteredRecords = 0;
     let skippedRecords = 0;
-    const uniqueSKUs = new Set<string>();
     const uniqueAppleIds = new Set<string>();
     
     allSalesData.forEach(record => {
       totalRecords++;
       
-      // Get identifiers from the record
-      // Apple Sales Reports don't include Bundle ID - use SKU or Apple Identifier instead
-      const recordSKU = record['SKU'] || record['sku'];
+      // Get Apple Identifier from the record (ONLY identifier we use for filtering)
       const recordAppleId = record['Apple Identifier'] || record['apple_identifier'];
       
-      // Track all unique identifiers
-      if (recordSKU) uniqueSKUs.add(recordSKU);
+      // Track all unique Apple IDs
       if (recordAppleId) uniqueAppleIds.add(recordAppleId);
       
-      // If we have a target filter, check if this record matches
-      // targetBundleId can be: Bundle ID, SKU, or Apple ID
-      if (targetBundleId) {
-        const matchesSKU = recordSKU && recordSKU.toLowerCase().includes(targetBundleId.toLowerCase());
-        const matchesAppleId = recordAppleId && recordAppleId === targetBundleId;
-        const matchesBundleId = recordSKU && targetBundleId.includes('.') && recordSKU.toLowerCase().includes(targetBundleId.split('.').pop()?.toLowerCase() || '');
+      // If we have a target filter, check if this record matches (EXACT MATCH ONLY)
+      if (targetAppleId) {
+        const matchesAppleId = recordAppleId && recordAppleId === targetAppleId;
         
-        if (!matchesSKU && !matchesAppleId && !matchesBundleId) {
+        if (!matchesAppleId) {
           skippedRecords++;
           return; // Skip this record - it's from a different app
         }
@@ -395,10 +388,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('📊 SYNC COMPLETE');
     console.log('=' .repeat(60));
     console.log(`✅ Total Records: ${allSalesData.length}`);
-    console.log(`🎯 Filtered Records: ${filteredRecords} (kept)`);
+    console.log(`🎯 Filtered Records: ${filteredRecords} (kept) - EXACT Apple ID match only`);
     console.log(`🚫 Skipped Records: ${skippedRecords} (filtered out)`);
-    console.log(`📦 Unique SKUs found: ${Array.from(uniqueSKUs).join(', ')}`);
-    console.log(`🆔 Unique Apple IDs found: ${Array.from(uniqueAppleIds).join(', ')}`);
+    console.log(`🆔 Unique Apple IDs in data: ${Array.from(uniqueAppleIds).join(', ')}`);
+    console.log(`🎯 Target Apple ID: ${targetAppleId || 'NONE (importing all apps)'}`);
     console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)} (from ${filteredRecords} records)`);
     console.log(`📥 Total Downloads: ${totalDownloads.toLocaleString()} (from ${filteredRecords} records)`);
     console.log(`📅 Date Range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
