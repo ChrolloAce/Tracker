@@ -637,26 +637,27 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [selectedAccount?.id, currentOrgId, currentProjectId, selectedRuleIds, dateFilter, dashboardRules]);
 
-  // Real-time listener for accounts
+  // Real-time listener for accounts (FIXED: Now uses onSnapshot for instant updates!)
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) {
       setLoading(false);
       return;
     }
 
-    
+    console.log('👂 Setting up real-time listener for accounts...');
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const accountsQuery = query(accountsRef);
 
-    (async () => {
+    // Use onSnapshot for real-time updates instead of getDocs
+    const unsubscribe = onSnapshot(accountsQuery, (snapshot) => {
       try {
-        const snapshot = await getDocs(accountsQuery);
-      const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as TrackedAccount));
-      
-      setAccounts(loadedAccounts);
+        const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as TrackedAccount));
+        
+        console.log(`✅ Accounts updated via real-time listener:`, loadedAccounts.length, 'accounts');
+        setAccounts(loadedAccounts);
 
       // Auto-cleanup: Remove from processing if account now exists in real list AND has finished loading
       // We wait for the account to have a profile picture or follower count to ensure it's fully loaded
@@ -685,13 +686,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         }
         hasRestoredFromLocalStorage.current = true;
       }
-      
-      setLoading(false);
+        
+        setLoading(false);
       } catch (error) {
         console.error('❌ Failed to load accounts:', error);
         setLoading(false);
       }
-    })();
+    }, (error) => {
+      console.error('❌ Real-time listener error:', error);
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      console.log('🔌 Disconnecting accounts real-time listener');
+      unsubscribe();
+    };
   }, [currentOrgId, currentProjectId]);
 
   // Load creator names for each account
