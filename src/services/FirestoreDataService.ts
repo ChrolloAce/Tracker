@@ -644,7 +644,7 @@ class FirestoreDataService {
     try {
       console.log(`🗑️ Queuing account ${accountId} for deletion`);
       
-      // Queue the account deletion for background processing
+      // STEP 1: Queue the account deletion for background processing
       const deletionRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'pendingDeletions'));
       await setDoc(deletionRef, {
         type: 'account',
@@ -659,7 +659,13 @@ class FirestoreDataService {
       
       console.log(`✅ Account ${accountId} queued for deletion (videos, snapshots, and thumbnails will be cleaned up by cron within 2 minutes)`);
       
-      } catch (error) {
+      // STEP 2: IMMEDIATELY remove account from UI by deleting the document
+      // The cron job will handle videos, snapshots, storage, and usage counters
+      const accountRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts', accountId);
+      await deleteDoc(accountRef);
+      console.log(`✅ Account ${accountId} removed from UI (background cleanup queued)`);
+      
+    } catch (error) {
       console.error('❌ Failed to queue account deletion:', error);
       throw error;
     }
