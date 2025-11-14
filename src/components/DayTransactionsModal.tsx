@@ -147,17 +147,17 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
     };
   }, [dailyMetrics, ppInterval]);
 
-  // Top revenue days
-  const topRevenueDays = useMemo(() => {
+  // Top days (sorted by revenue, then downloads)
+  const topDays = useMemo(() => {
     return [...currentPeriodMetrics]
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
-  }, [currentPeriodMetrics]);
-
-  // Top download days
-  const topDownloadDays = useMemo(() => {
-    return [...currentPeriodMetrics]
-      .sort((a, b) => b.downloads - a.downloads)
+      .sort((a, b) => {
+        // Sort by revenue first
+        if (b.revenue !== a.revenue) {
+          return b.revenue - a.revenue;
+        }
+        // If revenue is equal, sort by downloads
+        return b.downloads - a.downloads;
+      })
       .slice(0, 10);
   }, [currentPeriodMetrics]);
 
@@ -372,98 +372,49 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               </div>
             )}
 
-            {/* Daily Breakdown */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Top Revenue Days */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 px-1">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Top Revenue Days · {topRevenueDays.length}
-                  </h3>
-                </div>
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                  {topRevenueDays.length > 0 ? (
-                    topRevenueDays.map((day, idx) => (
-                      <div 
-                        key={`revenue-${day.date}-${idx}`}
-                        className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-white">
-                              {new Date(day.date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-white">
-                              {formatCurrency(day.revenue)}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {formatNumber(day.downloads)} downloads
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <p className="text-sm text-gray-500">No revenue data</p>
-                    </div>
-                  )}
-                </div>
+            {/* Top Days */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Top Days · {topDays.length}
+                </h3>
               </div>
-
-              {/* Top Download Days */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 px-1">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Top Download Days · {topDownloadDays.length}
-                  </h3>
-                </div>
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                  {topDownloadDays.length > 0 ? (
-                    topDownloadDays.map((day, idx) => (
-                      <div 
-                        key={`downloads-${day.date}-${idx}`}
-                        className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-white">
-                              {new Date(day.date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-white">
-                              {formatNumber(day.downloads)}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {formatCurrency(day.revenue)} revenue
-                            </p>
-                          </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                {topDays.length > 0 ? (
+                  topDays.map((day, idx) => (
+                    <div 
+                      key={`day-${day.date}-${idx}`}
+                      className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            {new Date(day.date).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-white">
+                            {formatCurrency(day.revenue)}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {formatNumber(day.downloads)} downloads
+                          </p>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <p className="text-sm text-gray-500">No download data</p>
                     </div>
-                  )}
-                </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <p className="text-sm text-gray-500">No data available</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
