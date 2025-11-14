@@ -285,27 +285,105 @@ export default async function handler(
       console.log(`🎵 Fetching TikTok videos for ${account.username}...`);
       
       try {
-        // Call Apify directly (no HTTP proxy) - using apidojo/tiktok-scraper
-        const username = account.username.replace('@', '');
-        const data = await runApifyActor({
-          actorId: 'apidojo/tiktok-scraper',
-          input: {
-            startUrls: [`https://www.tiktok.com/@${username}`],
-            maxItems: maxVideos, // Use user's preference
-            sortType: 'RELEVANCE',
-            dateRange: 'DEFAULT',
-            location: 'US',
-            includeSearchKeywords: false,
-            customMapFunction: '(object) => { return {...object} }',
-            proxy: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL']
+        const creatorType = account.creatorType || 'automatic';
+        console.log(`🔧 Account type: ${creatorType}`);
+        
+        let newTikTokVideos: any[] = [];
+        
+        // Only fetch NEW videos for automatic accounts
+        if (creatorType === 'automatic') {
+          // Get existing video IDs to check for duplicates
+          const existingVideosSnapshot = await db
+            .collection('organizations')
+            .doc(orgId)
+            .collection('projects')
+            .doc(projectId)
+            .collection('videos')
+            .where('trackedAccountId', '==', accountId)
+            .where('platform', '==', 'tiktok')
+            .select('videoId')
+            .get();
+          
+          const existingVideoIds = new Set(
+            existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+          );
+          
+          console.log(`📊 Found ${existingVideoIds.size} existing TikTok videos in database`);
+          
+          // Progressive fetch strategy: 5 → 10 → 15 → 20
+          const batchSizes = [5, 10, 15, 20];
+          let foundDuplicate = false;
+          const username = account.username.replace('@', '');
+          
+          for (const batchSize of batchSizes) {
+            if (foundDuplicate) break;
+            
+            console.log(`📥 [TIKTOK] Fetching ${batchSize} videos (progressive strategy)...`);
+            
+            try {
+              const data = await runApifyActor({
+                actorId: 'apidojo/tiktok-scraper',
+                input: {
+                  startUrls: [`https://www.tiktok.com/@${username}`],
+                  maxItems: batchSize,
+                  sortType: 'RELEVANCE',
+                  dateRange: 'DEFAULT',
+                  location: 'US',
+                  includeSearchKeywords: false,
+                  customMapFunction: '(object) => { return {...object} }',
+                  proxy: {
+                    useApifyProxy: true,
+                    apifyProxyGroups: ['RESIDENTIAL']
+                  }
+                }
+              });
+
+              const batch = data.items || [];
+              
+              if (batch.length === 0) {
+                console.log(`⚠️ [TIKTOK] No videos returned`);
+                break;
+              }
+              
+              // Check each video for duplicates
+              for (const video of batch) {
+                const videoId = video.id || video.post_id || video.video_id;
+                
+                if (!videoId) {
+                  console.warn(`⚠️ TikTok video missing ID, skipping`);
+                  continue;
+                }
+                
+                // Check if we already have this video
+                if (existingVideoIds.has(videoId)) {
+                  console.log(`✓ [TIKTOK] Found duplicate: ${videoId} - stopping progressive fetch`);
+                  foundDuplicate = true;
+                  break;
+                }
+                
+                // This is a new video
+                newTikTokVideos.push(video);
+              }
+              
+              // Stop if we got fewer videos than requested (end of content)
+              if (batch.length < batchSize) {
+                console.log(`⏹️ [TIKTOK] Got ${batch.length} < ${batchSize} (end of account's content)`);
+                break;
+              }
+              
+            } catch (fetchError: any) {
+              console.error(`❌ [TIKTOK] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+              break;
             }
           }
-        });
-
-        const tiktokVideos = data.items || [];
-        console.log(`✅ Fetched ${tiktokVideos.length} TikTok videos`);
+          
+          console.log(`✅ [TIKTOK] Progressive fetch complete: ${newTikTokVideos.length} new videos found`);
+        } else {
+          console.log(`🔒 [TIKTOK] Static account - skipping new video fetch`);
+        }
+        
+        const tiktokVideos = newTikTokVideos;
+        console.log(`📊 [TIKTOK] Processing ${tiktokVideos.length} new videos`);
         
         // Get profile data from first video (if available)
         if (tiktokVideos.length > 0 && tiktokVideos[0]) {
