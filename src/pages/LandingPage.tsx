@@ -162,12 +162,6 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>App Store integration</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
                   <span>Creator portals</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
@@ -180,7 +174,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>1 team seat</span>
+                  <span>2 team seats</span>
                 </li>
               </ul>
               <button
@@ -255,7 +249,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>1 team seat</span>
+                  <span>5 team seats</span>
                 </li>
               </ul>
               <button
@@ -327,7 +321,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>20 team seats</span>
+                  <span>15 team seats</span>
                 </li>
               </ul>
               <button

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Video, Shield } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -13,9 +13,8 @@ import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
-import DeletedVideosManager from './DeletedVideosManager';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue' | 'videos';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue';
 
 /**
  * BillingTabContent Component
@@ -378,7 +377,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Use initialTab from URL if provided
-    if (initialTabProp && ['profile', 'organization', 'billing', 'notifications', 'videos'].includes(initialTabProp)) {
+    if (initialTabProp && ['profile', 'organization', 'billing', 'notifications'].includes(initialTabProp)) {
       return initialTabProp as TabType;
     }
     return 'profile';
@@ -570,7 +569,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'billing', label: 'Billing', icon: CreditCard },
-              { id: 'videos', label: 'Videos', icon: Video },
               { id: 'notifications', label: 'Notifications', icon: Bell },
             ]
             .filter(tab => {
@@ -970,12 +968,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
             </div>
           )}
 
-          {/* Videos Tab */}
-          {activeTab === 'videos' && (
-            <div className="space-y-6">
-              <DeletedVideosManager />
-                </div>
-          )}
 
         </div>
       </div>

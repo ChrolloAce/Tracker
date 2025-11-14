@@ -88,15 +88,15 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>App Store integration</span>
-              </li>
-              <li className="flex items-center gap-2 text-gray-300">
-                <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Creator portals</span>
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Contract management</span>
+              </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>2 team seats</span>
               </li>
             </ul>
             <button
@@ -153,6 +153,10 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Contract management</span>
               </li>
+              <li className="flex items-center gap-2 text-gray-300">
+                <Check className="w-5 h-5 text-[#2282FF]" />
+                <span>5 team seats</span>
+              </li>
             </ul>
             <button
               onClick={() => handleUpgrade('pro')}
@@ -203,7 +207,7 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>20 team seats</span>
+                <span>15 team seats</span>
               </li>
             </ul>
             <button
