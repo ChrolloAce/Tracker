@@ -18,13 +18,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `https://${process.env.VERCEL_URL}`
       : 'https://www.viewtrack.app';
 
+    const cronSecret = process.env.CRON_SECRET;
+    
     console.log(`📡 Calling orchestrator at: ${baseUrl}/api/cron-orchestrator`);
+    console.log(`🔑 CRON_SECRET available: ${!!cronSecret}`);
+    
+    if (!cronSecret) {
+      console.error('❌ CRON_SECRET environment variable is not set!');
+      throw new Error('CRON_SECRET is not configured');
+    }
 
     // Call orchestrator with CRON_SECRET (orchestrator will detect manual trigger and return quickly)
     const response = await fetch(`${baseUrl}/api/cron-orchestrator`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+        'Authorization': `Bearer ${cronSecret}`,
         'Content-Type': 'application/json'
       }
     });

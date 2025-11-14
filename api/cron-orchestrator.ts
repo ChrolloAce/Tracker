@@ -59,22 +59,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let isAuthorized = false;
   let authMethod = '';
   
+  console.log(`🔍 Auth check - Header present: ${!!authHeader}, Vercel Cron: ${isVercelCron}, CRON_SECRET set: ${!!cronSecret}`);
+  
   // Check 1: Vercel Cron header
   if (isVercelCron) {
     isAuthorized = true;
     authMethod = 'Vercel Cron';
+    console.log('✅ Authorized via Vercel Cron header');
   }
   
   // Check 2: Cron Secret (strip "Bearer " prefix if present)
-  if (!isAuthorized && authHeader) {
+  if (!isAuthorized && authHeader && cronSecret) {
     let tokenToCheck = authHeader;
     if (authHeader.startsWith('Bearer ')) {
       tokenToCheck = authHeader.substring(7);
     }
     
+    console.log(`🔑 Comparing tokens - Match: ${tokenToCheck === cronSecret}`);
+    
     if (tokenToCheck === cronSecret) {
       isAuthorized = true;
       authMethod = 'Cron Secret';
+      console.log('✅ Authorized via Cron Secret');
+    } else {
+      console.log('❌ Cron Secret mismatch');
     }
   }
   
@@ -306,8 +314,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               console.error(`  ⚠️ Some dispatches failed:`, err);
             });
           } else {
-            console.log(`  ⏳ Waiting for ${dispatchPromises.length} jobs...`);
-            await Promise.all(dispatchPromises);
+          console.log(`  ⏳ Waiting for ${dispatchPromises.length} jobs...`);
+          await Promise.all(dispatchPromises);
           }
         }
 
