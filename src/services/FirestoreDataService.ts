@@ -94,9 +94,12 @@ class FirestoreDataService {
     }
     
     console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: ${skipSync ? 'completed' : 'pending'}`);
+    console.log(`🔍 DEBUG: skipSync = ${skipSync}, will trigger immediate sync = ${!skipSync}`);
     
     if (!skipSync) {
       console.log(`⚡ [${accountData.platform?.toUpperCase()}] Triggering immediate sync for @${accountData.username}...`);
+      console.log(`📋 DEBUG: Calling triggerImmediateSync with:`, { orgId, projectId, accountId: accountRef.id, platform: accountData.platform, username: accountData.username });
+      
       // Trigger immediate sync (fire and forget)
       this.triggerImmediateSync(orgId, projectId, accountRef.id, accountData.platform, accountData.username).catch(err => {
         console.error(`❌ [${accountData.platform?.toUpperCase()}] Failed to trigger immediate sync for @${accountData.username}:`, err);
