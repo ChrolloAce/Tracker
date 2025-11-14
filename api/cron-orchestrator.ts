@@ -113,7 +113,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
 
   // Determine if this is a manual trigger (for quick return) or scheduled cron (for complete execution)
-  const isManualTrigger = authMethod === 'Cron Secret';
+  // Manual triggers: Cron Secret or Firebase User (from UI)
+  // Scheduled cron: Vercel Cron header
+  const isManualTrigger = authMethod === 'Cron Secret' || authMethod === 'Firebase User';
   
   if (isManualTrigger) {
     console.log('⚡ Manual trigger detected - will dispatch jobs and return quickly');

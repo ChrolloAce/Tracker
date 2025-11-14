@@ -1501,11 +1501,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     try {
       console.log('🔄 Triggering scheduled refresh (async)...');
       
-      // Call the trigger endpoint (fire and forget)
-      const response = await fetch('/api/trigger-orchestrator', {
+      // Get Firebase token for authentication
+      const token = await user.getIdToken();
+      
+      // Call orchestrator directly with Firebase token (no need for CRON_SECRET)
+      const response = await fetch('/api/cron-orchestrator', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
