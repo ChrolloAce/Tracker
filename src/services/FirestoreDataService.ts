@@ -665,7 +665,7 @@ class FirestoreDataService {
       await deleteDoc(accountRef);
       console.log(`✅ Account ${accountId} removed from UI (background cleanup queued)`);
       
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Failed to queue account deletion:', error);
       throw error;
     }

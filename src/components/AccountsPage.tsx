@@ -658,17 +658,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       
       setAccounts(loadedAccounts);
 
-      // Auto-cleanup: Remove from processing if account now exists in real list AND has finished loading
-      // We wait for the account to have a profile picture or follower count to ensure it's fully loaded
+      // Auto-cleanup: Remove from processing ONLY when sync is fully completed
+      // Don't remove just because profile pic exists - wait for ALL videos to be fetched
       setProcessingAccounts(prev => {
         const fullyLoadedAccounts = new Set(
           loadedAccounts
-            .filter(acc => acc.profilePicture || (acc.followerCount ?? 0) > 0)
+            .filter(acc => acc.syncStatus === 'completed')
             .map(acc => `${acc.platform}_${acc.username}`)
         );
         const remaining = prev.filter(proc => !fullyLoadedAccounts.has(`${proc.platform}_${proc.username}`));
         if (remaining.length < prev.length) {
-          console.log(`✅ Removed ${prev.length - remaining.length} processing accounts that are now fully loaded`);
+          console.log(`✅ Removed ${prev.length - remaining.length} processing accounts (sync completed)`);
         }
         return remaining;
       });
@@ -1293,13 +1293,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       try {
         // Step 1: Add account to Firestore (queues for sync)
         const accountId = await AccountTrackingServiceFirebase.addAccount(
-          currentOrgId,
-          currentProjectId,
-          user.uid,
-          account.username,
-          account.platform,
-          'my', // Default to 'my' account type
-          account.videoCount // Pass each account's specific video count
+        currentOrgId,
+        currentProjectId,
+        user.uid,
+        account.username,
+        account.platform,
+        'my', // Default to 'my' account type
+        account.videoCount // Pass each account's specific video count
         );
         
         console.log(`✅ Account @${account.username} queued (${accountId}), triggering immediate sync...`);
