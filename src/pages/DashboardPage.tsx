@@ -306,6 +306,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setCreatorFilterId(null);
       // Update the visual filter dropdown to show the selected account
       setSelectedAccountIds([accountParam]);
+      
+      // 🔧 FIX: If account doesn't exist in list yet (newly added), refresh accounts
+      const accountExists = trackedAccounts.some(acc => acc.id === accountParam);
+      if (!accountExists && currentOrgId && currentProjectId) {
+        console.log('⚠️ Account not found in list, refreshing accounts...');
+        FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
+          .then(updatedAccounts => {
+            console.log('✅ Accounts refreshed:', updatedAccounts.length);
+            setTrackedAccounts(updatedAccounts);
+          })
+          .catch(err => console.error('Failed to refresh accounts:', err));
+      }
     } else if (creatorParam) {
       console.log('🎨 Applying creator filter from URL:', creatorParam);
       setCreatorFilterId(creatorParam);
