@@ -646,34 +646,6 @@ class FirestoreDataService {
     }
   }
 
-  /**
-   * Delete all videos for a tracked account (queues for background processing)
-   * ✅ NEW: Instant UI update, background deletion via cron
-   */
-  static async deleteAccountVideos(orgId: string, projectId: string, accountId: string): Promise<void> {
-    try {
-      console.log(`🗑️ Queuing account ${accountId} for deletion`);
-      
-      // Queue the account deletion for background processing
-      const deletionRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'pendingDeletions'));
-      await setDoc(deletionRef, {
-        type: 'account',
-        orgId,
-        projectId,
-        accountId,
-        status: 'pending',
-        queuedAt: Timestamp.now(),
-        deletedBy: 'user',
-        retryCount: 0
-      });
-      
-      console.log(`✅ Account ${accountId} queued for deletion (videos, snapshots, and thumbnails will be cleaned up by cron within 2 minutes)`);
-      
-      } catch (error) {
-      console.error('❌ Failed to queue account deletion:', error);
-      throw error;
-    }
-  }
 
   /**
    * Add video snapshot (refresh data)
