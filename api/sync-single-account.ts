@@ -635,12 +635,16 @@ export default async function handler(
         };
       });
     } else if (account.platform === 'instagram') {
-      console.log(`👤 Fetching Instagram profile + reels for ${account.username} using unified scraper...`);
+      console.log(`👤 Fetching Instagram reels for ${account.username}...`);
       
       try {
-        // Check if we have existing reels to determine date range
-        let mostRecentReelDate: Date | null = null;
-      try {
+        const creatorType = account.creatorType || 'automatic';
+        console.log(`🔧 Account type: ${creatorType}`);
+        
+        let newInstagramReels: any[] = [];
+        let existingVideoIds = new Set<string>();
+        
+        // Get existing video IDs (used for duplicate checking)
         const existingVideosSnapshot = await db
           .collection('organizations')
           .doc(orgId)
@@ -649,64 +653,102 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'instagram')
-            .orderBy('uploadDate', 'desc') // Get MOST RECENT (not oldest!)
-          .limit(1)
+          .select('videoId')
           .get();
         
-        if (!existingVideosSnapshot.empty) {
-            const mostRecentVideo = existingVideosSnapshot.docs[0].data();
-            mostRecentReelDate = mostRecentVideo.uploadDate?.toDate() || null;
-            console.log(`📅 Most recent reel date: ${mostRecentReelDate?.toISOString()}`);
-        }
-      } catch (err) {
-          console.warn(`⚠️ Could not fetch most recent reel date:`, err);
-      }
-      
-        // Build input for Instagram scraper
-        const scraperInput: any = {
-          tags: [`https://www.instagram.com/${account.username}/reels/`],
-          target: 'reels_only',
-          reels_count: maxVideos,
-          include_raw_data: true,
-          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL'],
-            apifyProxyCountry: 'US'
-          },
-          maxConcurrency: 1,
-          maxRequestRetries: 3,
-          handlePageTimeoutSecs: 120,
-          debugLog: false
-        };
+        existingVideoIds = new Set(
+          existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+        );
         
-        // RULE: If we have existing reels, use date filtering to fetch only NEW reels
-        // beginDate = date of most recent reel we have
-        // endDate = current date (today)
-        // If no existing reels, don't use dates (first-time sync)
-        if (mostRecentReelDate) {
-          const beginDate = mostRecentReelDate.toISOString().split('T')[0]; // YYYY-MM-DD
-          const endDate = new Date().toISOString().split('T')[0]; // Today
-          
-          scraperInput.beginDate = beginDate;
-          scraperInput.endDate = endDate;
-          
-          console.log(`📅 Incremental sync: Fetching reels between ${beginDate} (last known) and ${endDate} (today)`);
-        } else {
-          console.log(`📅 First-time sync: No date filtering - fetching latest ${maxVideos} reels`);
-        }
+        console.log(`📊 Found ${existingVideoIds.size} existing Instagram reels in database`);
         
-        // Use single scraper for both profile and reels (hpix~ig-reels-scraper)
-        const data = await runApifyActor({
-          actorId: 'hpix~ig-reels-scraper',
-          input: scraperInput
-        });
+        // Only fetch NEW videos for automatic accounts
+        if (creatorType === 'automatic') {
+          
+          // Progressive fetch strategy: 5 → 10 → 15 → 20
+          const batchSizes = [5, 10, 15, 20];
+          let foundDuplicate = false;
+          
+          for (const batchSize of batchSizes) {
+            if (foundDuplicate) break;
+            
+            console.log(`📥 [INSTAGRAM] Fetching ${batchSize} reels (progressive strategy)...`);
+            
+            try {
+              const scraperInput: any = {
+                tags: [`https://www.instagram.com/${account.username}/reels/`],
+                target: 'reels_only',
+                reels_count: batchSize,
+                include_raw_data: true,
+                // NO beginDate/endDate - date filtering doesn't work reliably
+                custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL'],
+                  apifyProxyCountry: 'US'
+                },
+                maxConcurrency: 1,
+                maxRequestRetries: 3,
+                handlePageTimeoutSecs: 120,
+                debugLog: false
+              };
+              
+              const data = await runApifyActor({
+                actorId: 'hpix~ig-reels-scraper',
+                input: scraperInput
+              });
 
-        const instagramItems = data.items || [];
-        console.log(`✅ Fetched ${instagramItems.length} NEW Instagram reels`);
+              const batch = data.items || [];
+              
+              if (batch.length === 0) {
+                console.log(`⚠️ [INSTAGRAM] No reels returned`);
+                break;
+              }
+              
+              // Check each video for duplicates
+              for (const reel of batch) {
+                const videoId = reel.video_id || reel.shortcode || reel.id;
+                
+                if (!videoId) {
+                  console.warn(`⚠️ Reel missing video_id, skipping`);
+                  continue;
+                }
+                
+                // Check if we already have this video
+                if (existingVideoIds.has(videoId)) {
+                  console.log(`✓ [INSTAGRAM] Found duplicate: ${videoId} - stopping progressive fetch`);
+                  foundDuplicate = true;
+                  break;
+                }
+                
+                // This is a new video
+                newInstagramReels.push(reel);
+              }
+              
+              // Stop if we got fewer videos than requested (end of content)
+              if (batch.length < batchSize) {
+                console.log(`⏹️ [INSTAGRAM] Got ${batch.length} < ${batchSize} (end of account's content)`);
+                break;
+              }
+              
+            } catch (fetchError: any) {
+              console.error(`❌ [INSTAGRAM] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+              break;
+            }
+          }
+          
+          console.log(`✅ [INSTAGRAM] Progressive fetch complete: ${newInstagramReels.length} new reels found`);
+        } else {
+          console.log(`🔒 [INSTAGRAM] Static account - skipping new video fetch`);
+        }
         
-        // SECOND API CALL: Refresh metrics for ALL existing reels (if this is an incremental sync)
-        if (mostRecentReelDate) {
+        const instagramItems = newInstagramReels;
+        console.log(`📊 [INSTAGRAM] Processing ${instagramItems.length} new reels`);
+        
+        // SECOND API CALL: Refresh metrics for ALL existing reels
+        // Only do this if we have existing videos
+        const hasExistingVideos = creatorType === 'automatic' ? existingVideoIds.size > 0 : true;
+        if (hasExistingVideos) {
           console.log(`🔄 Fetching updated metrics for existing reels...`);
           
           try {
@@ -769,7 +811,7 @@ export default async function handler(
           }
         }
         
-        console.log(`📦 Total reels to process: ${instagramItems.length} (${instagramItems.length - (data.items?.length || 0)} refreshed + ${data.items?.length || 0} new)`);
+        console.log(`📦 Total reels to process: ${instagramItems.length}`);
         
         // ALWAYS use apify/instagram-profile-scraper for profile pic + follower count
         // (hpix~ig-reels-scraper doesn't consistently include follower count)
