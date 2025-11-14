@@ -20,6 +20,7 @@ import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import { MarkAsReadService } from '../services/MarkAsReadService';
+import AuthenticatedApiService from '../services/AuthenticatedApiService';
 import TopPerformersSection from '../components/TopPerformersSection';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
 import HeatmapByHour from '../components/HeatmapByHour';
@@ -1656,11 +1657,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
         
         // Trigger immediate processing (like accounts) with authentication
-        import('../services/AuthenticatedApiService').then(module => {
-          module.default.processVideo(videoId, currentOrgId, currentProjectId).catch((err: any) => {
+        AuthenticatedApiService.processVideo(videoId, currentOrgId, currentProjectId).catch((err: any) => {
           console.error('Failed to trigger immediate processing:', err);
           // Non-critical - cron will pick it up
-          });
         });
 
         successCount++;
