@@ -652,28 +652,62 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
   ];
 
   // Add revenue cards if available
-  if (revenueMetrics) {
-    // Calculate total downloads from daily metrics if available
-    const totalDownloads = revenueMetrics.dailyMetrics?.reduce((sum, day) => sum + (day.downloads || 0), 0) || 0;
+  if (revenueMetrics && revenueMetrics.dailyMetrics) {
+    // Filter daily metrics by date range
+    const filteredDailyMetrics = revenueMetrics.dailyMetrics.filter(day => {
+      const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+      if (!dateRangeStart) return true; // Include all if no start date
+      return dayDate >= dateRangeStart && dayDate <= dateRangeEnd;
+    });
+    
+    // Calculate totals from FILTERED data
+    const filteredTotalRevenue = filteredDailyMetrics.reduce((sum, day) => sum + (day.revenue || 0), 0);
+    const filteredTotalDownloads = filteredDailyMetrics.reduce((sum, day) => sum + (day.downloads || 0), 0);
+    
+    // Generate sparkline data for revenue
+    const revenueSparkline = filteredDailyMetrics
+      .sort((a, b) => {
+        const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      })
+      .map(day => ({
+        value: day.revenue / 100, // Convert cents to dollars
+        ppValue: 0 // PP not implemented for revenue yet
+      }));
+    
+    // Generate sparkline data for downloads
+    const downloadsSparkline = filteredDailyMetrics
+      .sort((a, b) => {
+        const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      })
+      .map(day => ({
+        value: day.downloads,
+        ppValue: 0 // PP not implemented for revenue yet
+      }));
     
     cards.push(
       {
         id: 'revenue',
         label: 'Revenue',
-        value: `$${formatNumber((revenueMetrics.totalRevenue || 0) / 100, true)}`,
+        value: `$${formatNumber(filteredTotalRevenue / 100, true)}`,
         icon: DollarSign,
         accent: 'emerald',
-        sparklineData: [],
-        isEmpty: (revenueMetrics.totalRevenue || 0) === 0
+        sparklineData: revenueSparkline,
+        intervalType: granularity,
+        isEmpty: filteredTotalRevenue === 0
       },
       {
         id: 'downloads',
         label: 'Downloads',
-        value: formatNumber(totalDownloads),
+        value: formatNumber(filteredTotalDownloads),
         icon: Download,
         accent: 'blue',
-        sparklineData: [],
-        isEmpty: totalDownloads === 0
+        sparklineData: downloadsSparkline,
+        intervalType: granularity,
+        isEmpty: filteredTotalDownloads === 0
       }
     );
   } else if (onOpenRevenueSettings) {
