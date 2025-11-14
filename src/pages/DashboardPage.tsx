@@ -3375,10 +3375,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <AddAccountModal
         isOpen={isAddAccountModalOpen}
         onClose={() => setIsAddAccountModalOpen(false)}
-        onSuccess={() => {
-          console.log('✅ Account added successfully - waiting for real-time updates...');
-          // Don't reload - let Firestore real-time listeners update the UI
-          // This prevents cancelling the immediate sync API call
+        onSuccess={async () => {
+          console.log('✅ Account added successfully - refreshing accounts list...');
+          // Don't reload page - this would cancel the immediate sync API call
+          // Instead, manually refresh just the accounts list
+          if (currentOrgId && currentProjectId) {
+            try {
+              const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
+              setTrackedAccounts(updatedAccounts);
+              console.log('✅ Accounts list refreshed:', updatedAccounts.length, 'accounts');
+            } catch (error) {
+              console.error('⚠️ Failed to refresh accounts list:', error);
+            }
+          }
         }}
         orgId={currentOrgId || ''}
         projectId={currentProjectId || ''}
