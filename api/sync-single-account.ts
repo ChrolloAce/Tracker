@@ -219,14 +219,15 @@ export default async function handler(
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
   const isCronRequest = authHeader === cronSecret;
+  const isManualSync = !isCronRequest; // Manual = user triggered, Scheduled = cron triggered
   
   if (isCronRequest) {
-    console.log(`🔒 Authenticated as CRON job for sync request`);
+    console.log(`🔒 Authenticated as CRON job for sync request (SCHEDULED REFRESH)`);
   } else {
     // Regular user authentication
     try {
       const { user } = await authenticateAndVerifyOrg(req, orgId);
-      console.log(`🔒 Authenticated user ${user.userId} for sync request`);
+      console.log(`🔒 Authenticated user ${user.userId} for sync request (MANUAL ADD)`);
     } catch (authError: any) {
       console.error('❌ Authentication failed:', authError.message);
       return res.status(401).json({ 
@@ -236,7 +237,7 @@ export default async function handler(
     }
   }
 
-  console.log(`⚡ Immediate sync started for account: ${accountId}`);
+  console.log(`⚡ Sync started for account: ${accountId} [${isManualSync ? 'MANUAL' : 'SCHEDULED'}]`);
 
   try {
     const accountRef = db
@@ -831,14 +832,21 @@ export default async function handler(
         console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
         
         // Progressive fetch strategy: 5 → 10 → 15 → 20
-        const batchSizes = [5, 10, 15, 20];
+        // 🔧 MANUAL vs SCHEDULED STRATEGY:
+        // - Manual: Fetch exact amount user specified (maxVideos)
+        // - Scheduled: Use progressive fetch (5→10→15→20) to save API credits
+        const useProgressiveFetch = !isManualSync;
+        const batchSizes = useProgressiveFetch ? [5, 10, 15, 20] : [account.maxVideos || 10];
+        
+        console.log(`🎯 [TWITTER] Strategy: ${useProgressiveFetch ? 'Progressive (scheduled)' : `Direct fetch ${account.maxVideos || 10} tweets (manual)`}`);
+        
         let foundDuplicate = false;
         const seenTweetIds = new Set<string>(); // Track tweets we've already processed
         
         for (const batchSize of batchSizes) {
           if (foundDuplicate) break;
           
-          console.log(`📥 [TWITTER] Fetching ${batchSize} tweets (progressive strategy)...`);
+          console.log(`📥 [TWITTER] Fetching ${batchSize} tweets...`);
           
           try {
             const tweetsData = await runApifyActor({
