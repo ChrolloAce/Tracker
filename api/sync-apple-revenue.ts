@@ -311,7 +311,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let totalDownloads = 0;
     const dailyBreakdown: Record<string, { revenue: number; downloads: number; date: Date }> = {};
     
+    // Get bundle ID for filtering (if specified in integration settings)
+    const targetBundleId = integration.credentials?.appId; // This is the Bundle ID from settings
+    console.log(`🎯 Target Bundle ID: ${targetBundleId || 'ALL APPS (no filter)'}`);
+    
     allSalesData.forEach(record => {
+      // Check if this record is for the target app (if filter is specified)
+      const recordBundleId = record['SKU'] || record['sku'] || record['Bundle ID'] || record['bundle_id'];
+      
+      // If we have a target bundle ID, only count records matching that app
+      if (targetBundleId && recordBundleId && !recordBundleId.includes(targetBundleId)) {
+        return; // Skip this record - it's from a different app
+      }
+      
       // Units = downloads/purchases
       const units = parseInt(record['Units'] || record['units'] || '0');
       // Developer Proceeds = revenue after Apple's cut
