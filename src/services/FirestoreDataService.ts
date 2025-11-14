@@ -4,7 +4,6 @@ import {
   setDoc, 
   getDoc, 
   getDocs, 
-  deleteDoc,
   query,
   where,
   orderBy,
@@ -14,6 +13,7 @@ import {
   increment,
   updateDoc
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
 import { 
   TrackedAccount, 
