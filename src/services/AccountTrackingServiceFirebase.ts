@@ -1225,25 +1225,45 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * Remove account and all its data
+   * Remove account and all its data (calls immediate deletion API)
    */
-  static async removeAccount(orgId: string, projectId: string, accountId: string): Promise<void> {
+  static async removeAccount(orgId: string, projectId: string, accountId: string, username?: string, platform?: string): Promise<void> {
     try {
-      console.log(`🗑️ Removing account ${accountId}...`);
+      console.log(`🗑️ Removing account ${accountId} immediately via API...`);
       
-      // Delete all videos
-      await FirestoreDataService.deleteAccountVideos(orgId, projectId, accountId);
+      // Get Firebase ID token for authentication
+      const { getAuth } = await import('firebase/auth');
+      const user = getAuth().currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
       
-      // Delete all thumbnails
-      await FirebaseStorageService.deleteAccountThumbnails(orgId, accountId);
+      const token = await user.getIdToken();
       
-      // Delete profile picture
-      await FirebaseStorageService.deleteProfilePicture(orgId, accountId);
+      // Call the immediate deletion API
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orgId,
+          projectId,
+          accountId,
+          username,
+          platform
+        })
+      });
       
-      // Delete account
-      await FirestoreDataService.deleteTrackedAccount(orgId, projectId, accountId);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete account');
+      }
       
-      console.log(`✅ Removed account ${accountId}`);
+      const result = await response.json();
+      console.log(`✅ Account deleted successfully in ${result.duration}s (${result.videosDeleted} videos, ${result.snapshotsDeleted} snapshots removed)`);
+      
     } catch (error) {
       console.error('❌ Failed to remove account:', error);
       throw error;

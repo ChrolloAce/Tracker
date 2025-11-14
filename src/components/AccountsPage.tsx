@@ -1410,7 +1410,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     (async () => {
       try {
         console.log(`🔄 [BACKGROUND] Processing deletion for @${accountUsername}...`);
-        await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountId);
+        const accountData = accounts.find(a => a.id === accountId);
+        await AccountTrackingServiceFirebase.removeAccount(
+          currentOrgId, 
+          currentProjectId, 
+          accountId, 
+          accountData?.username, 
+          accountData?.platform
+        );
         console.log(`✅ [BACKGROUND] Account @${accountUsername} fully deleted from database`);
         
         // ✅ STEP 3: Reload page data to ensure everything is in sync
