@@ -589,6 +589,8 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
           metricType={transactionsMetricType}
           interval={selectedInterval}
           ppInterval={selectedPPInterval}
+          dateFilter={dateFilter}
+          customRange={customRange}
         />
       )}
 

@@ -709,7 +709,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
       {
         id: 'revenue',
         label: 'Revenue',
-        value: `$${formatNumber(filteredTotalRevenue / 100, true)}`,
+        value: formatNumber(filteredTotalRevenue / 100, true), // formatNumber already adds $ for revenue
         icon: DollarSign,
         accent: 'emerald',
         sparklineData: revenueSparkline,

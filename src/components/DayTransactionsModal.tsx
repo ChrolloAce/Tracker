@@ -13,6 +13,8 @@ interface DayTransactionsModalProps {
   interval?: TimeInterval | null;
   ppInterval?: TimeInterval | null;
   dateRangeLabel?: string;
+  dateFilter?: string;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
 const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
@@ -23,7 +25,9 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
   metricType,
   interval,
   ppInterval,
-  dateRangeLabel
+  dateRangeLabel,
+  dateFilter,
+  customRange
 }) => {
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
 
@@ -95,13 +99,62 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
 
   const hasPPData = ppInterval !== null && ppInterval !== undefined;
 
-  // Get daily metrics from revenue metrics
+  // Get daily metrics from revenue metrics, filtered by date range
   const dailyMetrics = useMemo(() => {
     if (!revenueMetrics?.dailyMetrics) return [];
-    return [...revenueMetrics.dailyMetrics].sort((a, b) => 
+    
+    let metrics = [...revenueMetrics.dailyMetrics];
+    
+    // Apply date filter if provided
+    if (dateFilter && dateFilter !== 'all') {
+      const now = new Date();
+      now.setHours(23, 59, 59, 999);
+      let startDate: Date;
+      
+      if (dateFilter === 'custom' && customRange) {
+        startDate = new Date(customRange.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(customRange.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        
+        metrics = metrics.filter(day => {
+          const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+          return dayDate >= startDate && dayDate <= endDate;
+        });
+      } else {
+        // Calculate start date for preset filters
+        if (dateFilter === 'today') {
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+        } else if (dateFilter === 'last7days') {
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
+        } else if (dateFilter === 'last14days') {
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 14);
+        } else if (dateFilter === 'last30days') {
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 30);
+        } else if (dateFilter === 'last90days') {
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 90);
+        } else {
+          startDate = new Date(0); // Show all
+        }
+        
+        startDate.setHours(0, 0, 0, 0);
+        
+        metrics = metrics.filter(day => {
+          const dayDate = day.date?.toDate ? day.date.toDate() : new Date(day.date);
+          return dayDate >= startDate && dayDate <= now;
+        });
+      }
+    }
+    
+    return metrics.sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [revenueMetrics]);
+  }, [revenueMetrics, dateFilter, customRange]);
 
   // Filter daily metrics for the current interval
   const currentPeriodMetrics = useMemo(() => {
@@ -433,7 +486,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                         dataKey="revenue" 
                         stroke="rgb(16,185,129)" 
                         strokeWidth={2}
-                        dot={{ fill: 'rgb(16,185,129)', r: 3 }}
+                        dot={false}
                         activeDot={{ r: 5 }}
                       />
                       <Line 
@@ -442,7 +495,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                         dataKey="downloads" 
                         stroke="rgb(59,130,246)" 
                         strokeWidth={2}
-                        dot={{ fill: 'rgb(59,130,246)', r: 3 }}
+                        dot={false}
                         activeDot={{ r: 5 }}
                       />
                     </LineChart>
