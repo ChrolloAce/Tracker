@@ -315,6 +315,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const targetBundleId = integration.credentials?.appId; // This is the Bundle ID from settings
     console.log(`🎯 Target Bundle ID: ${targetBundleId || 'ALL APPS (no filter)'}`);
     
+    // Debug: Log first record structure to see what fields are available
+    if (allSalesData.length > 0) {
+      console.log('📋 Sample record structure:', Object.keys(allSalesData[0]));
+      console.log('📋 Sample record data:', allSalesData[0]);
+    }
+    
     allSalesData.forEach(record => {
       // Check if this record is for the target app (if filter is specified)
       const recordBundleId = record['SKU'] || record['sku'] || record['Bundle ID'] || record['bundle_id'];
