@@ -539,12 +539,30 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           </p>
         </div>
 
-        {/* App Metadata (Optional) */}
+        {/* App Metadata */}
         <div className="border-t border-white/10 pt-4 space-y-4">
-          <p className="text-white/60 text-sm font-medium">App Information (Optional - helps identify revenue by app)</p>
+          <p className="text-white/60 text-sm font-medium">App Information</p>
           
           <div className="space-y-2">
-            <label className="text-white/80 text-sm block">App Name</label>
+            <label className="text-white/80 text-sm block flex items-center gap-2">
+              Bundle ID
+              <span className="text-emerald-400 text-xs">(IMPORTANT for filtering)</span>
+            </label>
+            <input
+              type="text"
+              value={credentials.bundleId || ''}
+              onChange={(e) => setCredentials(prev => ({ ...prev, bundleId: e.target.value }))}
+              placeholder="e.g., com.yourcompany.appname"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
+            />
+            <p className="text-white/40 text-xs">
+              📌 <strong>Required if you have multiple apps:</strong> Only data for this Bundle ID will be imported. 
+              Leave empty to import ALL apps in your vendor account.
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-white/80 text-sm block">App Name (Optional)</label>
             <input
               type="text"
               value={credentials.appName || ''}
@@ -555,7 +573,7 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           </div>
 
           <div className="space-y-2">
-            <label className="text-white/80 text-sm block">Apple ID</label>
+            <label className="text-white/80 text-sm block">Apple ID (Optional)</label>
             <input
               type="text"
               value={credentials.appleId || ''}

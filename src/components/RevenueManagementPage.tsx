@@ -75,6 +75,7 @@ const RevenueManagementPage: React.FC = () => {
           keyId: credentials.keyID,
           vendorNumber: credentials.vendorNumber,
           apiKey: credentials.privateKey, // Encrypted .p8 key stored as apiKey
+          appId: credentials.bundleId, // Bundle ID for filtering specific app
         },
         {
           autoSync: true,
