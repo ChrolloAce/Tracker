@@ -3376,8 +3376,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         isOpen={isAddAccountModalOpen}
         onClose={() => setIsAddAccountModalOpen(false)}
         onSuccess={() => {
-          // Reload pending accounts or refresh data
-          window.location.reload();
+          console.log('✅ Account added successfully - waiting for real-time updates...');
+          // Don't reload - let Firestore real-time listeners update the UI
+          // This prevents cancelling the immediate sync API call
         }}
         orgId={currentOrgId || ''}
         projectId={currentProjectId || ''}
