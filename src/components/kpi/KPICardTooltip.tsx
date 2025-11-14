@@ -288,6 +288,10 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     .sort((a: any, b: any) => (b.absoluteGain || 0) - (a.absoluteGain || 0))
     .slice(0, 5);
   
+  // Calculate total views from NEW UPLOADS and REFRESHED VIDEOS
+  const totalViewsFromNewUploads = videosInInterval.reduce((sum, video) => sum + (video.views || 0), 0);
+  const totalViewsFromRefreshedVideos = allTopGainers.reduce((sum: number, item: any) => sum + (item.viewsGrowth || 0), 0);
+  
   let sortedItems: any[] = [];
   if (data.id === 'accounts' || data.id === 'active-accounts') {
     const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number; profilePicture?: string }>();
@@ -435,7 +439,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
             <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <Upload className="w-3.5 h-3.5" />
-                New Uploads ({totalNewUploads})
+                <span>New Uploads ({totalNewUploads})</span>
+                <span className="text-white font-bold ml-auto">{formatDisplayNumber(totalViewsFromNewUploads)} views</span>
               </h3>
               <div className="space-y-2">
                 {newUploads.map((video: VideoSubmission, idx: number) => (
@@ -485,7 +490,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
             <div className="flex-1 px-5 py-3">
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5" />
-                Refreshed Videos ({totalTopGainers})
+                <span>Refreshed Videos ({totalTopGainers})</span>
+                <span className="text-white font-bold ml-auto">+{formatDisplayNumber(totalViewsFromRefreshedVideos)} views</span>
               </h3>
               {topGainers.length > 0 ? (
                 <div className="space-y-2">
