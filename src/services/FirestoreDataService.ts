@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
+import AuthenticatedApiService from './AuthenticatedApiService';
 import { 
   TrackedAccount, 
   VideoDoc,
