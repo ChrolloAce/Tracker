@@ -104,6 +104,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
   console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
 
+  // Determine if this is a manual trigger (for quick return) or scheduled cron (for complete execution)
+  const isManualTrigger = authMethod === 'Cron Secret';
+  
+  if (isManualTrigger) {
+    console.log('⚡ Manual trigger detected - will dispatch jobs and return quickly');
+  } else {
+    console.log('🕒 Scheduled cron detected - will wait for completion and send emails');
+  }
+
     // Get all organizations
     const orgsSnapshot = await db.collection('organizations').get();
     console.log(`📊 Found ${orgsSnapshot.size} organization(s)\n`);
@@ -287,15 +296,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-        // Wait for all jobs
+        // For manual triggers: dispatch and don't wait (return quickly)
+        // For scheduled cron: wait for completion to get accurate stats for emails
         if (dispatchPromises.length > 0) {
-          console.log(`  ⏳ Waiting for ${dispatchPromises.length} jobs...`);
-          await Promise.all(dispatchPromises);
+          if (isManualTrigger) {
+            console.log(`  🚀 Dispatched ${dispatchPromises.length} jobs (running async, not waiting)`);
+            // Jobs will complete in background - don't block
+            Promise.all(dispatchPromises).catch(err => {
+              console.error(`  ⚠️ Some dispatches failed:`, err);
+            });
+          } else {
+            console.log(`  ⏳ Waiting for ${dispatchPromises.length} jobs...`);
+            await Promise.all(dispatchPromises);
+          }
         }
 
-        // Send email
+        // Send email (only for scheduled cron, not manual triggers)
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
-        if (RESEND_API_KEY && (orgSuccessful > 0 || orgFailed > 0)) {
+        if (!isManualTrigger && RESEND_API_KEY && (orgSuccessful > 0 || orgFailed > 0)) {
           try {
         const orgData = orgDoc.data();
         const membersSnapshot = await db

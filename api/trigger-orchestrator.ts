@@ -11,32 +11,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    console.log('🚀 Triggering orchestrator (fire and forget)...');
+    console.log('🚀 Triggering orchestrator...');
 
     // Get the base URL
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}`
       : 'https://www.viewtrack.app';
 
-    // Fire and forget - trigger orchestrator without awaiting
-    fetch(`${baseUrl}/api/cron-orchestrator`, {
+    console.log(`📡 Calling orchestrator at: ${baseUrl}/api/cron-orchestrator`);
+
+    // Call orchestrator with CRON_SECRET (orchestrator will detect manual trigger and return quickly)
+    const response = await fetch(`${baseUrl}/api/cron-orchestrator`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.CRON_SECRET}`,
         'Content-Type': 'application/json'
       }
-    }).catch(err => {
-      console.error('Orchestrator trigger failed (non-critical):', err.message);
-      // Non-critical - orchestrator runs on schedule anyway
     });
 
-    // Return immediately
-    console.log('✅ Orchestrator triggered successfully (running in background)');
+    console.log(`📊 Orchestrator response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Orchestrator returned error: ${response.status}`, errorText.substring(0, 200));
+      throw new Error(`Orchestrator failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Orchestrator completed:', result);
     
     return res.status(200).json({
       success: true,
-      message: 'Refresh job started in background',
-      note: 'All accounts will be refreshed asynchronously. This may take several minutes to complete.',
+      message: 'Refresh jobs dispatched successfully',
+      stats: result.stats || {},
+      note: 'All accounts are being refreshed in the background.',
       timestamp: new Date().toISOString()
     });
 
