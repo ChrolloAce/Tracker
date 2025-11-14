@@ -6,13 +6,25 @@ import { auth } from './firebase';
  */
 class AuthenticatedApiService {
   /**
-   * Get the current user's ID token
+   * Wait for auth to be ready and get the current user's ID token
+   * Fixes intermittent "No authenticated user" errors when auth hasn't initialized yet
    */
   private async getIdToken(): Promise<string> {
+    // Wait for auth to be ready (max 5 seconds)
+    const maxWait = 5000;
+    const startTime = Date.now();
+    
+    while (!auth.currentUser && (Date.now() - startTime) < maxWait) {
+      console.log('⏳ Waiting for Firebase auth to be ready...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
     const user = auth.currentUser;
     if (!user) {
-      throw new Error('No authenticated user');
+      throw new Error('No authenticated user after waiting 5s - please refresh and try again');
     }
+    
+    console.log(`✅ Auth ready: ${user.email}`);
     return await user.getIdToken();
   }
 
