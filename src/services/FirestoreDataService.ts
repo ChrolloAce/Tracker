@@ -130,10 +130,6 @@ class FirestoreDataService {
     
     try {
       console.log(`🔄 [${platformLabel}] Starting immediate sync for ${accountLabel}...`);
-      
-      // Dynamic import to avoid circular dependencies
-      const { default: AuthenticatedApiService } = await import('./AuthenticatedApiService');
-      
       console.log(`📡 [${platformLabel}] Calling /api/sync-single-account for ${accountLabel}...`);
       const result = await AuthenticatedApiService.syncAccount(accountId, orgId, projectId);
       
