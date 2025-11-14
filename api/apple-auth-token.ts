@@ -24,13 +24,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Decode the base64-encoded private key
+    // Decrypt the private key (reverse of encryption from wizard)
     let privateKeyPem: string;
     try {
-      privateKeyPem = Buffer.from(privateKey, 'base64').toString('utf-8');
+      // First decode from base64, then reverse XOR encryption
+      const decoded = Buffer.from(privateKey, 'base64').toString('binary');
+      privateKeyPem = Array.from(decoded)
+        .map(char => String.fromCharCode(char.charCodeAt(0) ^ 0xAA))
+        .join('');
     } catch (error) {
       return res.status(400).json({ 
-        error: 'Invalid private key format. Must be base64 encoded.' 
+        error: 'Invalid private key format. Failed to decrypt.' 
       });
     }
 

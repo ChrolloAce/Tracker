@@ -24,10 +24,16 @@ export default async function (req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 1. Generate JWT token
-    const decodedPrivateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+    // 1. Decrypt the private key (reverse of encryption from wizard)
+    // First decode from base64, then reverse XOR encryption
+    const decoded = Buffer.from(privateKey, 'base64').toString('binary');
+    const decrypted = Array.from(decoded)
+      .map(char => String.fromCharCode(char.charCodeAt(0) ^ 0xAA))
+      .join('');
+    
+    // 2. Generate JWT token
     const alg = 'ES256';
-    const pkey = await jose.importPKCS8(decodedPrivateKey, alg);
+    const pkey = await jose.importPKCS8(decrypted, alg);
 
     const jwt = await new jose.SignJWT({})
       .setProtectedHeader({
