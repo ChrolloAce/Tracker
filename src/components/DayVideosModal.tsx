@@ -895,17 +895,17 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div 
-        className="bg-[#0a0a0a] rounded-xl shadow-2xl w-full max-w-7xl max-h-[90vh] overflow-hidden border border-white/[0.06]"
+        className="bg-[#0a0a0a] rounded-xl shadow-2xl w-full max-w-full sm:max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-white/[0.06]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Minimal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-white">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <h2 className="text-sm sm:text-lg font-semibold text-white truncate">
               {(() => {
                 // If filtering by day of week and hour, show special format
                 if (dayOfWeek !== undefined && hourRange) {
@@ -928,13 +928,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               })()}
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {/* Period Toggle Tabs */}
             {hasPPData && (
               <div className="flex items-center bg-white/[0.02] rounded-lg p-0.5 border border-white/[0.04]">
               <button
                   onClick={() => setShowPreviousPeriod(false)}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-medium transition-all ${
                     !showPreviousPeriod 
                       ? 'bg-white/10 text-white' 
                       : 'text-gray-400 hover:text-gray-300'
@@ -958,7 +958,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </button>
                 <button
                   onClick={() => setShowPreviousPeriod(true)}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-medium transition-all ${
                     showPreviousPeriod 
                       ? 'bg-white/10 text-white' 
                       : 'text-gray-400 hover:text-gray-300'
@@ -984,25 +984,25 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-1 sm:p-1.5 hover:bg-white/5 rounded-lg transition-colors"
             >
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
             </button>
           </div>
         </div>
 
         {/* Main Content - Reorganized Layout */}
-        <div className="p-6 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(90vh - 65px)' }}>
-          {/* Two-Column Layout: Left (Videos) | Right (KPIs) */}
-          <div className="flex gap-4">
+        <div className="p-3 sm:p-6 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(95vh - 60px)' }}>
+          {/* Two-Column Layout: Left (Videos) | Right (KPIs) - Stacks vertically on mobile */}
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
             {/* LEFT SIDE - Video Tables (Compact) */}
-            <div className="flex-1 space-y-2 min-w-0">
+            <div className="flex-1 space-y-2 min-w-0 order-2 lg:order-1">
               {/* New Videos Table - Compact */}
               {(() => {
                 const videosToShow = showPreviousPeriod ? ppNewUploads : newUploads;
                 return (
-                  <div className="overflow-x-auto">
-                    <div style={{ transform: 'scale(0.85)', transformOrigin: 'top left', width: '117.65%' }}>
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
+                    <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
                       <VideoSubmissionsTable
                         submissions={videosToShow}
                         onVideoClick={onVideoClick}
@@ -1017,8 +1017,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               {(() => {
                 const gainersToShow = showPreviousPeriod ? ppFilteredTopGainers : filteredTopGainers;
                 return (
-                  <div className="overflow-x-auto">
-                    <div style={{ transform: 'scale(0.85)', transformOrigin: 'top left', width: '117.65%' }}>
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
+                    <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
                       <VideoSubmissionsTable
                         submissions={gainersToShow.map((item: any) => {
                           // Calculate growth for all metrics from snapshots
@@ -1060,8 +1060,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               })()}
             </div>
 
-            {/* RIGHT SIDE - Summary Card + KPI Metrics (Sticky) */}
-            <div className="w-72 flex-shrink-0 sticky top-0 self-start space-y-4">
+            {/* RIGHT SIDE - Summary Card + KPI Metrics (Sticky on desktop, flows normally on mobile) */}
+            <div className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-0 self-start space-y-3 sm:space-y-4 order-1 lg:order-2">
               {/* Performance Summary Card */}
               {(() => {
                 const currentViews = cpKPIMetrics.views;
@@ -1121,8 +1121,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   : '';
                 
                 return (
-                  <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
-                    <p className="text-xs leading-relaxed text-gray-400">
+                  <div className="bg-white/[0.02] rounded-lg p-2 sm:p-3 border border-white/[0.04]">
+                    <p className="text-[10px] sm:text-xs leading-relaxed text-gray-400">
                       {hasPPData && percentChange !== Infinity && percentChange !== 0 && (
                         <>
                           In {periodName}, you did{' '}
@@ -1172,18 +1172,18 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                 }, { views: 0, likes: 0, comments: 0, shares: 0, bookmarks: 0 });
                 
                 return (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {/* Views */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.views)} • Refreshed: ${formatNumber(refreshedMetrics.views)}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Views</span>
-                <Eye className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Views</span>
+                <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.views : cpKPIMetrics.views)}
                 </span>
                 {hasPPData && (() => {
@@ -1214,15 +1214,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Likes */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.likes)} • Refreshed: ${formatNumber(refreshedMetrics.likes)}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Likes</span>
-                <Heart className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Likes</span>
+                <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.likes : cpKPIMetrics.likes)}
                 </span>
                 {hasPPData && (() => {
@@ -1253,15 +1253,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Comments */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.comments)} • Refreshed: ${formatNumber(refreshedMetrics.comments)}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Comments</span>
-                <MessageCircle className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Comments</span>
+                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.comments : cpKPIMetrics.comments)}
                 </span>
                 {hasPPData && (() => {
@@ -1292,15 +1292,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Shares */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.shares)} • Refreshed: ${formatNumber(refreshedMetrics.shares)}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Shares</span>
-                <Share2 className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Shares</span>
+                <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.shares : cpKPIMetrics.shares)}
                 </span>
                 {hasPPData && (() => {
@@ -1331,15 +1331,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Engagement Rate */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
               title={`New: ${newUploadMetrics.views ? ((newUploadMetrics.likes + newUploadMetrics.comments + newUploadMetrics.shares) / newUploadMetrics.views * 100).toFixed(1) : 0}% • Refreshed: ${refreshedMetrics.views ? ((refreshedMetrics.likes + refreshedMetrics.comments + refreshedMetrics.shares) / refreshedMetrics.views * 100).toFixed(1) : 0}%`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Engagement</span>
-                <Activity className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Engagement</span>
+                <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {(showPreviousPeriod ? ppKPIMetrics.engagementRate : cpKPIMetrics.engagementRate).toFixed(1)}%
                 </span>
                 {hasPPData && (() => {
@@ -1374,15 +1374,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Videos */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
               title={`New: ${uploadsToUse.length} • Refreshed: ${gainersToUse.length}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Videos</span>
-                <Video className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Videos</span>
+                <Video className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.videos : cpKPIMetrics.videos)}
                 </span>
                 {hasPPData && (() => {
@@ -1413,12 +1413,12 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Accounts */}
             <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Accounts</span>
-                <Users className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Accounts</span>
+                <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.accounts : cpKPIMetrics.accounts)}
                 </span>
                 {hasPPData && (() => {
@@ -1436,12 +1436,12 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Link Clicks */}
             <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 font-medium">Clicks</span>
-                <MousePointerClick className="w-3.5 h-3.5 text-gray-600" />
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Clicks</span>
+                <MousePointerClick className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-white">
+              <div className="flex items-baseline gap-1 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.clicks : cpKPIMetrics.clicks)}
                 </span>
                 {hasPPData && (() => {
