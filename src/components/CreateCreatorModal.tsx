@@ -4,7 +4,8 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { X, Check, Mail, User as UserIcon, Link as LinkIcon, Search, UserPlus, AlertCircle } from 'lucide-react';
+import UsageTrackingService from '../services/UsageTrackingService';
+import { X, Check, Mail, User as UserIcon, Link as LinkIcon, Search, UserPlus, AlertCircle, Crown } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import clsx from 'clsx';
 
@@ -77,6 +78,19 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         throw new Error('Please enter a valid email address');
       }
 
+      // ✅ CHECK TEAM SEAT LIMITS BEFORE INVITING
+      const canInvite = await UsageTrackingService.canPerformAction(
+        currentOrgId,
+        'team',
+        user.uid
+      );
+
+      if (!canInvite.allowed) {
+        throw new Error(
+          `You've reached your team member limit (${canInvite.limit} seats). Upgrade your plan to invite more creators.`
+        );
+      }
+
       // Get organization details
       const orgs = await OrganizationService.getUserOrganizations(user.uid);
       const currentOrg = orgs.find(o => o.id === currentOrgId);
@@ -147,9 +161,20 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+              </div>
+              {error.includes('team member limit') && (
+                <a
+                  href="/settings?tab=billing"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition-all"
+                >
+                  <Crown className="w-4 h-4" />
+                  Upgrade Plan
+                </a>
+              )}
             </div>
           )}
 
