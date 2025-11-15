@@ -71,7 +71,7 @@ async function processAccountsInBatches(
 
 /**
  * Cron Orchestrator
- * Runs every 6 hours (0 */6 * * *) to support Enterprise 6h refresh intervals
+ * Runs every 6 hours (cron: "0 *-slash-6 * * *") to support Enterprise 6h refresh intervals
  * Processes all organizations directly (no HTTP calls)
  * 
  * 🔄 REFRESH INTERVALS BY PLAN:
