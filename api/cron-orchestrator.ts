@@ -33,12 +33,13 @@ if (!getApps().length) {
 }
 
 // Subscription plan refresh intervals (in hours)
+// Must match dataRefreshHours in subscription.ts
 const PLAN_REFRESH_INTERVALS: Record<string, number> = {
   free: 48,         // 48 hours (2 days)
   basic: 24,        // 24 hours (1 day)
   pro: 24,          // 24 hours (1 day)
-  ultra: 12,        // 12 hours
-  enterprise: 12,   // 12 hours
+  ultra: 12,        // 12 hours (premium - more frequent)
+  enterprise: 6,    // 6 hours (enterprise - most frequent)
 };
 
 /**
@@ -70,8 +71,14 @@ async function processAccountsInBatches(
 
 /**
  * Cron Orchestrator
- * Runs every 12 hours (0 *\12 * * *)
+ * Runs every 6 hours (0 */6 * * *) to support Enterprise 6h refresh intervals
  * Processes all organizations directly (no HTTP calls)
+ * 
+ * 🔄 REFRESH INTERVALS BY PLAN:
+ * - Free: 48h (every 8th run)
+ * - Basic/Pro: 24h (every 4th run)
+ * - Ultra: 12h (every 2nd run)
+ * - Enterprise: 6h (every run)
  * 
  * 🔧 APIFY RAM MANAGEMENT:
  * - Total RAM: 32GB

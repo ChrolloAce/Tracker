@@ -81,16 +81,17 @@ Top Performers:
 ## 🗂️ Cron Jobs Architecture
 
 ### 1. `cron-orchestrator.ts`
-**Schedule:** Every 12 hours (midnight & noon UTC)  
-**Purpose:** Process all organizations  
+**Schedule:** Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)  
+**Purpose:** Process all organizations with plan-based refresh intervals  
 **What it does:**
-- Finds accounts that need refreshing (based on plan interval)
+- Finds accounts that need refreshing (based on plan-specific intervals)
+- Respects refresh intervals: Free (48h), Basic/Pro (24h), Ultra (12h), Enterprise (6h)
 - Calls `sync-single-account` for each account
 - Sends ONE summary email per organization
 - Tracks Apple revenue if enabled
 
 ### 2. `cron-refresh-videos.ts` (Standalone)
-**Schedule:** Every 12 hours (configurable)  
+**Schedule:** Manual trigger only (superseded by orchestrator)  
 **Purpose:** Direct video refresh without orchestrator  
 **What it does:**
 - Processes all organizations directly

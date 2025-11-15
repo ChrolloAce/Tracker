@@ -35,7 +35,8 @@ const storage = getStorage();
 
 /**
  * Cron Job: Refresh all videos for all tracked accounts
- * Runs every 12 hours (scheduled) or can be triggered manually by authenticated users
+ * Now superseded by cron-orchestrator.ts which runs every 6 hours
+ * Can still be triggered manually by authenticated users
  * 
  * Security: 
  * - Cron jobs: Requires CRON_SECRET in Authorization header

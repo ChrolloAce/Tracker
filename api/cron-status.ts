@@ -341,7 +341,7 @@ function generateDashboard(status: any): string {
     
     <div class="content">
       <div class="refresh-info">
-        ⏰ Automatic refresh runs every 12 hours • Next sync: Check Vercel Crons tab
+        ⏰ Automatic refresh runs every 6 hours (plan-based intervals) • Next sync: Check Vercel Crons tab
       </div>
       
       ${status.organizations.length === 0 ? '<div class="empty">No organizations found</div>' : 
