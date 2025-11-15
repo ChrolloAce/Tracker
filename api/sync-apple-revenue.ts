@@ -173,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('🍎 Starting Apple revenue sync...');
 
     // Get organization and project from query params or body
-    const { organizationId, projectId, manual, dateRange } = req.method === 'POST' 
+    const { organizationId, projectId, manual, dateRange, wipeData } = req.method === 'POST' 
       ? req.body 
       : req.query;
 
@@ -187,7 +187,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Parse date range (30, 90, or custom number of days)
     const daysToSync = dateRange ? parseInt(dateRange as string) : 90;
     
-    console.log('📦 Syncing for:', { organizationId, projectId, manual: !!manual, days: daysToSync });
+    console.log('📦 Syncing for:', { organizationId, projectId, manual: !!manual, days: daysToSync, wipeData: !!wipeData });
+
+    // If wipeData flag is set, delete all existing revenue data before syncing
+    if (wipeData) {
+      console.log('🗑️  Wiping existing revenue data...');
+      const metricsRef = db
+        .collection('organizations')
+        .doc(organizationId as string)
+        .collection('projects')
+        .doc(projectId as string)
+        .collection('revenueMetrics')
+        .doc('apple_summary');
+      
+      await metricsRef.delete();
+      console.log('✅ Revenue data wiped successfully');
+    }
 
     // Get Apple integration from Firestore
     const integrationsRef = db
