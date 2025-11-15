@@ -6,7 +6,8 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
  * Returns immediately to provide instant feedback to users
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
+  // Allow both GET and POST for manual triggers
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -34,7 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: {
         'Authorization': `Bearer ${cronSecret}`,
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ manual: true })
     });
 
     console.log(`📊 Orchestrator response status: ${response.status}`);
