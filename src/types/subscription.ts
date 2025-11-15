@@ -137,7 +137,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
     stripePriceIdMonthly: process.env.VITE_STRIPE_BASIC_MONTHLY || 'price_basic_monthly',
     stripePriceIdYearly: process.env.VITE_STRIPE_BASIC_YEARLY || 'price_basic_yearly',
     features: {
-      teamSeats: 1,
+      teamSeats: 2,
       flexibleSeats: false,
       maxAccounts: -1, // unlimited
       maxVideos: 150,
@@ -164,7 +164,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
     stripePriceIdYearly: process.env.VITE_STRIPE_PRO_YEARLY || 'price_pro_yearly',
     recommended: true,
     features: {
-      teamSeats: 1,
+      teamSeats: 5,
       flexibleSeats: true,
       maxAccounts: -1, // unlimited
       maxVideos: 1000,
@@ -190,7 +190,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
     stripePriceIdMonthly: process.env.VITE_STRIPE_ULTRA_MONTHLY || 'price_ultra_monthly',
     stripePriceIdYearly: process.env.VITE_STRIPE_ULTRA_YEARLY || 'price_ultra_yearly',
     features: {
-      teamSeats: 20,
+      teamSeats: 15,
       flexibleSeats: true,
       maxAccounts: -1, // unlimited
       maxVideos: 5000,
