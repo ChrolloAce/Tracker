@@ -214,7 +214,7 @@ const ColumnHeader: React.FC<{
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId, isDemoMode = false }, ref) => {
-  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, isAdmin } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   // Use props if provided (for demo mode), otherwise use auth
   const currentOrgId = organizationId || authOrgId;
