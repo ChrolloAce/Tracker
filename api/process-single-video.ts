@@ -167,6 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // For Instagram, ALWAYS use apify/instagram-profile-scraper for complete profile data
       // DO NOT use videoData.profile_pic_url - it's from the wrong API!
       let uploadedProfilePic = '';
+      let uploadedCoverPic = '';
       let followerCount = videoData.follower_count || 0;
       let displayName = videoData.display_name || videoData.username;
       let isVerified = false;
@@ -208,6 +209,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.warn(`⚠️ [TIKTOK] No fallback - will retry on next sync`);
           }
         }
+        followerCount = videoData.follower_count || 0;
+        displayName = videoData.display_name || videoData.username;
+      } else if (video.platform === 'twitter') {
+        // For Twitter, upload profile pic and cover pic from video data
+        console.log(`👤 [TWITTER] Uploading profile pic and cover pic for @${videoData.username}...`);
+        
+        // Upload profile picture
+        if (videoData.profile_pic_url) {
+          try {
+            uploadedProfilePic = await downloadAndUploadImage(
+              videoData.profile_pic_url,
+              orgId,
+              `twitter_profile_${videoData.username}.jpg`,
+              'profile'
+            );
+            console.log(`✅ [TWITTER] Profile pic uploaded to Firebase Storage: ${uploadedProfilePic}`);
+          } catch (uploadError) {
+            console.error(`❌ [TWITTER] Profile pic upload failed:`, uploadError);
+            console.warn(`⚠️ [TWITTER] Using original URL as fallback`);
+            uploadedProfilePic = videoData.profile_pic_url; // Fallback to original URL
+          }
+        }
+        
+        // Upload cover picture (banner)
+        if (videoData.cover_pic_url) {
+          try {
+            uploadedCoverPic = await downloadAndUploadImage(
+              videoData.cover_pic_url,
+              orgId,
+              `twitter_cover_${videoData.username}.jpg`,
+              'profile'
+            );
+            console.log(`✅ [TWITTER] Cover pic uploaded to Firebase Storage: ${uploadedCoverPic}`);
+          } catch (uploadError) {
+            console.error(`❌ [TWITTER] Cover pic upload failed:`, uploadError);
+            console.warn(`⚠️ [TWITTER] Using original cover URL as fallback`);
+            uploadedCoverPic = videoData.cover_pic_url; // Fallback to original URL
+          }
+        }
+        
         followerCount = videoData.follower_count || 0;
         displayName = videoData.display_name || videoData.username;
       } else if (video.platform === 'instagram') {
@@ -279,6 +320,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         platform: video.platform,
         displayName: displayName,
         profilePicture: uploadedProfilePic,
+        coverPicture: uploadedCoverPic, // ✅ ADD COVER/BANNER IMAGE
         followerCount: followerCount,
         isVerified: isVerified,
         isActive: true,
@@ -323,7 +365,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`📊 [${video.platform.toUpperCase()}] Updating follower count: ${videoData.follower_count}`);
     }
 
-      // Update profile pic if available - for Instagram, upload to Firebase Storage
+      // Update profile pic if available - for Instagram and Twitter, upload to Firebase Storage
       if (videoData.profile_pic_url) {
         if (video.platform === 'instagram') {
           try {
@@ -339,9 +381,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed, using direct URL:`, uploadError);
             updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
           }
+        } else if (video.platform === 'twitter') {
+          try {
+            console.log(`📸 [TWITTER] Downloading updated profile pic to Firebase Storage for @${videoData.username}...`);
+            const uploadedProfilePic = await downloadAndUploadThumbnail(
+              videoData.profile_pic_url,
+              orgId,
+              `twitter_profile_${videoData.username}.jpg`
+            );
+            updateData.profilePicture = uploadedProfilePic;
+            console.log(`✅ [TWITTER] Updated profile picture uploaded to Firebase Storage`);
+          } catch (uploadError) {
+            console.warn(`⚠️ [TWITTER] Profile pic upload failed, using direct URL:`, uploadError);
+            updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
+          }
         } else {
           updateData.profilePicture = videoData.profile_pic_url;
           console.log(`📸 [${video.platform.toUpperCase()}] Updating profile picture`);
+        }
+      }
+      
+      // Update cover pic if available (Twitter only)
+      if (videoData.cover_pic_url && video.platform === 'twitter') {
+        try {
+          console.log(`🖼️ [TWITTER] Downloading updated cover pic to Firebase Storage for @${videoData.username}...`);
+          const uploadedCoverPic = await downloadAndUploadThumbnail(
+            videoData.cover_pic_url,
+            orgId,
+            `twitter_cover_${videoData.username}.jpg`
+          );
+          updateData.coverPicture = uploadedCoverPic;
+          console.log(`✅ [TWITTER] Updated cover picture uploaded to Firebase Storage`);
+        } catch (uploadError) {
+          console.warn(`⚠️ [TWITTER] Cover pic upload failed, using direct URL:`, uploadError);
+          updateData.coverPicture = videoData.cover_pic_url; // Fallback to direct URL
         }
       }
       
