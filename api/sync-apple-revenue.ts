@@ -77,7 +77,7 @@ function generateAppleJWT(privateKey: string, keyId: string, issuerId: string): 
 }
 
 /**
- * Fetch sales reports from Apple App Store Connect API
+ * Fetch sales reports from Apple App Store Connect API with retry logic
  */
 async function fetchAppleSalesReports(
   token: string,
@@ -97,23 +97,66 @@ async function fetchAppleSalesReports(
     url: url.toString()
   });
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/a-gzip'
-    }
-  });
+  // Retry logic for 500 errors (Apple's server issues)
+  let lastError: Error | null = null;
+  const maxRetries = 3;
+  const baseDelay = 2000; // 2 seconds
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Apple API Error:', {
-      status: response.status,
-      statusText: response.statusText,
-      body: errorText
-    });
-    throw new Error(`Apple API request failed: ${response.status} ${response.statusText}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/a-gzip'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        
+        // Retry only on 500 errors (server-side issues)
+        if (response.status === 500 && attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff
+          console.warn(`⚠️ Apple API 500 error (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
+          lastError = new Error(`Apple API 500 error: ${errorText}`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry
+        }
+
+        // Don't retry for other errors (4xx, etc)
+        console.error('Apple API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Apple API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      // Success - return the response
+      return await parseAppleResponse(response);
+      
+    } catch (error: any) {
+      // Network errors - retry
+      if (attempt < maxRetries && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT')) {
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.warn(`⚠️ Network error (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
+        lastError = error;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
   }
+
+  // All retries failed
+  throw lastError || new Error('Failed to fetch Apple sales reports after retries');
+}
+
+/**
+ * Parse Apple API response (gzipped TSV or JSON)
+ */
+async function parseAppleResponse(response: Response): Promise<any[]> {
 
   // Apple returns gzipped TSV data
   // For now, we'll return the raw response

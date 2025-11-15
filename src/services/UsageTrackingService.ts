@@ -5,7 +5,12 @@ import {
   updateDoc, 
   increment,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  collection,
+  getDocs,
+  query,
+  where,
+  setDoc
 } from 'firebase/firestore';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
 import AdminService from './AdminService';
@@ -142,8 +147,6 @@ class UsageTrackingService {
    * Update usage cache in background (non-blocking)
    */
   private static async updateUsageCache(orgId: string): Promise<void> {
-    const { collection, getDocs, query, where, setDoc: setDocFirestore } = await import('firebase/firestore');
-    
     const projectsRef = collection(db, 'organizations', orgId, 'projects');
     const projectsSnapshot = await getDocs(projectsRef);
     
@@ -182,7 +185,7 @@ class UsageTrackingService {
     
     // Update cache
     const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
-    await setDocFirestore(usageRef, {
+    await setDoc(usageRef, {
       trackedAccounts: totalAccounts,
       trackedVideos: totalVideos,
       trackedLinks: totalLinks,

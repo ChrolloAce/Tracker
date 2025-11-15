@@ -25,6 +25,7 @@ import {
 } from '../types/firestore';
 import { VideoSnapshot } from '../types/index';
 import AdminService from './AdminService';
+import UsageTrackingService from './UsageTrackingService';
 
 /**
  * FirestoreDataService - Manages videos, tracked accounts, and links within projects
@@ -87,7 +88,6 @@ class FirestoreDataService {
     
     // Increment organization usage counter
     try {
-      const UsageTrackingService = (await import('./UsageTrackingService')).default;
       await UsageTrackingService.incrementUsage(orgId, 'trackedAccounts', 1);
       console.log(`✅ Incremented usage counter for org ${orgId}`);
     } catch (error) {
@@ -199,7 +199,6 @@ class FirestoreDataService {
     
     // Decrement organization usage counter
     try {
-      const UsageTrackingService = (await import('./UsageTrackingService')).default;
       await UsageTrackingService.decrementUsage(orgId, 'trackedAccounts', 1);
       console.log(`✅ Decremented usage counter for org ${orgId}`);
     } catch (error) {

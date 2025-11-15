@@ -5,6 +5,7 @@ import OutlierDetectionService from './OutlierDetectionService';
 import YoutubeAccountService from './YoutubeAccountService';
 import TwitterApiService from './TwitterApiService';
 import { Timestamp, writeBatch, doc, collection } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
 
 /**
@@ -1232,7 +1233,6 @@ export class AccountTrackingServiceFirebase {
       console.log(`🗑️ Removing account ${accountId} immediately via API...`);
       
       // Get Firebase ID token for authentication
-      const { getAuth } = await import('firebase/auth');
       const user = getAuth().currentUser;
       if (!user) {
         throw new Error('User not authenticated');

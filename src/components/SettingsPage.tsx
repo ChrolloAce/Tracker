@@ -11,6 +11,7 @@ import DeleteOrganizationModal from './DeleteOrganizationModal';
 import OrganizationSwitcher from './OrganizationSwitcher';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
+import UsageTrackingService from '../services/UsageTrackingService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
@@ -56,10 +57,7 @@ const BillingTabContent: React.FC = () => {
       const [tier, sub, usage] = await Promise.all([
         SubscriptionService.getPlanTier(currentOrgId),
         SubscriptionService.getSubscription(currentOrgId),
-        (async () => {
-          const { default: UsageTrackingService } = await import('../services/UsageTrackingService');
-          return UsageTrackingService.getUsageStatus(currentOrgId);
-        })()
+        UsageTrackingService.getUsageStatus(currentOrgId)
       ]);
       
       setCurrentPlan(tier);
