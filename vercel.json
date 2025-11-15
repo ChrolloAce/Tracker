@@ -16,10 +16,19 @@
       "maxDuration": 300
     },
     "api/cron-orchestrator.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
+    },
+    "api/process-organization.ts": {
+      "maxDuration": 60
+    },
+    "api/process-project.ts": {
+      "maxDuration": 60
     },
     "api/trigger-orchestrator.ts": {
       "maxDuration": 10
+    },
+    "api/cron-check-orphaned-sessions.ts": {
+      "maxDuration": 60
     },
     "api/refresh-account.ts": {
       "maxDuration": 180
@@ -70,7 +79,11 @@
   "crons": [
     {
       "path": "/api/cron-orchestrator",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 0,12 * * *"
+    },
+    {
+      "path": "/api/cron-check-orphaned-sessions",
+      "schedule": "0 * * * *"
     }
   ],
   "routes": [

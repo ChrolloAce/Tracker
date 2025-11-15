@@ -1487,6 +1487,85 @@ export default async function handler(
       // Don't fail the request if cleanup fails
     }
 
+    // ===============================================================================
+    // 📊 SESSION TRACKING & "LAST ONE OUT" EMAIL
+    // ===============================================================================
+    // If this sync is part of a coordinated refresh session (from cron orchestrator),
+    // track progress and send email when ALL accounts in the org have completed.
+    const { sessionId } = req.body;
+    
+    if (sessionId) {
+      try {
+        console.log(`📊 Updating session progress: ${sessionId}`);
+        
+        // Get current account stats for email
+        const accountSnapshot = await accountRef.get();
+        const accountData = accountSnapshot.data() as any;
+        const currentViews = accountData?.totalViews || 0;
+        const currentLikes = accountData?.totalLikes || 0;
+        const currentComments = accountData?.totalComments || 0;
+        const currentShares = accountData?.totalShares || 0;
+        
+        const sessionRef = db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('refreshSessions')
+          .doc(sessionId);
+        
+        // Atomically increment completed count and add account stats
+        await sessionRef.update({
+          completedAccounts: FieldValue.increment(1),
+          totalVideos: FieldValue.increment(savedCount),
+          totalViews: FieldValue.increment(currentViews),
+          totalLikes: FieldValue.increment(currentLikes),
+          totalComments: FieldValue.increment(currentComments),
+          totalShares: FieldValue.increment(currentShares),
+          [`accountStats.${accountId}`]: {
+            username: account.username,
+            platform: account.platform,
+            videosSynced: savedCount,
+            views: currentViews,
+            likes: currentLikes,
+            comments: currentComments,
+            shares: currentShares,
+            displayName: accountData?.displayName || account.username,
+            profilePicture: accountData?.profilePicture || ''
+          }
+        });
+        
+        // Check if this is the last account to complete ("last one out")
+        const sessionSnapshot = await sessionRef.get();
+        const session = sessionSnapshot.data() as any;
+        
+        if (session && session.completedAccounts === session.totalAccounts) {
+          console.log(`🎉 Last account completed! Sending summary email...`);
+          
+          // Mark session as completed
+          await sessionRef.update({
+            status: 'completed',
+            completedAt: Timestamp.now()
+          });
+          
+          // Send summary email
+          await sendRefreshSummaryEmail(session, db);
+          
+          // Mark email as sent
+          await sessionRef.update({
+            emailSent: true,
+            emailSentAt: Timestamp.now()
+          });
+          
+          console.log(`✅ Summary email sent successfully`);
+        } else {
+          console.log(`⏳ Session progress: ${session?.completedAccounts || 0}/${session?.totalAccounts || 0} accounts`);
+        }
+        
+      } catch (sessionError: any) {
+        console.error('❌ Session tracking failed (non-critical):', sessionError.message);
+        // Don't fail the request if session tracking fails
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Account synced successfully',
@@ -1546,6 +1625,198 @@ export default async function handler(
       error: error.message || String(error),
       message: 'Sync failed - admin notified'
     });
+  }
+}
+
+/**
+ * Send refresh summary email after all accounts in an organization have completed syncing
+ * This implements the "last one out" pattern - only the final account to complete triggers the email
+ */
+async function sendRefreshSummaryEmail(session: any, db: any) {
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  
+  if (!RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY not set - skipping email');
+    return;
+  }
+  
+  if (!session.ownerEmail) {
+    console.warn('⚠️ No owner email found - skipping email');
+    return;
+  }
+  
+  const timeSinceStart = Date.now() - session.startedAt.toMillis();
+  const minutesElapsed = Math.round(timeSinceStart / (1000 * 60));
+  
+  // Sort accounts by views (top performers first)
+  const accountStats = Object.values(session.accountStats || {}) as any[];
+  const topPerformers = accountStats
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
+    .slice(0, 5);
+  
+  // Generate top performers HTML
+  const topPerformersHtml = topPerformers
+    .map((acc, index) => {
+      const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+      const platformEmoji = acc.platform === 'tiktok' ? '📱' : acc.platform === 'youtube' ? '▶️' : acc.platform === 'instagram' ? '📷' : '🐦';
+      
+      return `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              ${acc.profilePicture ? `<img src="${acc.profilePicture}" alt="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` : ''}
+              <div>
+                <div style="font-weight: 600; color: #111827;">${rankEmoji} @${acc.username}</div>
+                <div style="font-size: 12px; color: #6b7280;">${platformEmoji} ${acc.platform.charAt(0).toUpperCase() + acc.platform.slice(1)}</div>
+              </div>
+            </div>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+            <div style="font-weight: 600; color: #111827;">${(acc.views || 0).toLocaleString()}</div>
+            <div style="font-size: 12px; color: #6b7280;">views</div>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+            <div style="font-weight: 600; color: #111827;">${(acc.likes || 0).toLocaleString()}</div>
+            <div style="font-size: 12px; color: #6b7280;">likes</div>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+            <div style="font-weight: 600; color: #f5576c;">${acc.videosSynced || 0}</div>
+            <div style="font-size: 12px; color: #6b7280;">new</div>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+  
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
+                    <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 42px; width: auto; margin-bottom: 15px;" />
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                      🎉 Refresh Complete!
+                    </h1>
+                    <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                      ${session.orgName || 'Your organization'}'s data has been updated
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Summary Stats -->
+                <tr>
+                  <td style="padding: 40px;">
+                    <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #374151;">
+                      Great news! We've successfully refreshed all your tracked accounts with the latest data.
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 30px 0;">
+                      <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 5px;">Accounts</div>
+                        <div style="color: #ffffff; font-size: 32px; font-weight: 700;">${session.completedAccounts || 0}</div>
+                      </div>
+                      <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 5px;">New Videos</div>
+                        <div style="color: #ffffff; font-size: 32px; font-weight: 700;">${session.totalVideos || 0}</div>
+                      </div>
+                      <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="color: #374151; font-size: 14px; margin-bottom: 5px;">Total Views</div>
+                        <div style="color: #111827; font-size: 32px; font-weight: 700;">${(session.totalViews || 0).toLocaleString()}</div>
+                      </div>
+                      <div style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="color: #374151; font-size: 14px; margin-bottom: 5px;">Total Likes</div>
+                        <div style="color: #111827; font-size: 32px; font-weight: 700;">${(session.totalLikes || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    
+                    <!-- Top Performers -->
+                    ${topPerformers.length > 0 ? `
+                    <div style="margin: 40px 0 30px;">
+                      <h2 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #111827;">
+                        🏆 Top Performers
+                      </h2>
+                      <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                        ${topPerformersHtml}
+                      </table>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 40px 0 20px;">
+                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                        View Full Dashboard →
+                      </a>
+                    </div>
+                    
+                    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center; margin-top: 30px;">
+                      <p style="margin: 0; font-size: 13px; color: #6b7280;">
+                        ⏱️ Refresh completed in ${minutesElapsed} ${minutesElapsed === 1 ? 'minute' : 'minutes'}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-size: 14px; color: #6b7280;">
+                      ViewTrack - Social Media Analytics
+                    </p>
+                    <p style="margin: 10px 0 0; font-size: 12px; color: #9ca3af;">
+                      Automated refresh • ${new Date().toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+  
+  try {
+    const emailResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'ViewTrack <team@viewtrack.app>',
+        to: [session.ownerEmail],
+        subject: `🎉 ${session.orgName || 'Your Organization'} - Refresh Complete${session.totalVideos > 0 ? ` (+${session.totalVideos} New Videos)` : ''}`,
+        html: emailHtml
+      })
+    });
+    
+    if (!emailResponse.ok) {
+      throw new Error(`Email API returned ${emailResponse.status}`);
+    }
+    
+    console.log(`✅ Refresh summary email sent to ${session.ownerEmail}`);
+    
+  } catch (error: any) {
+    console.error('❌ Failed to send refresh summary email:', error.message);
+    throw error;
   }
 }
 
