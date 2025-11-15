@@ -49,6 +49,7 @@ interface VideoData {
   share_count?: number;
   save_count?: number; // ✅ ADD BOOKMARKS/SAVES
   profile_pic_url?: string;
+  cover_pic_url?: string; // ✅ ADD COVER/BANNER IMAGE (Twitter profile banners, etc)
   display_name?: string;
   follower_count?: number;
 }
@@ -386,6 +387,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uploader: videoData.display_name || videoData.username || 'Unknown',
       uploaderHandle: videoData.username || '',
       uploaderProfilePicture: videoData.profile_pic_url || '', // May be empty for alpha-scraper
+      uploaderCoverPicture: videoData.cover_pic_url || '', // ✅ ADD COVER/BANNER IMAGE
       uploadDate: Timestamp.fromDate(uploadDate),
       views: videoData.view_count || 0,
       likes: videoData.like_count || 0,
@@ -798,6 +800,7 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       share_count: rawData.retweetCount || 0,
       timestamp: rawData.createdAt || new Date().toISOString(),
       profile_pic_url: rawData.author?.profilePicture || '',
+      cover_pic_url: rawData.author?.coverPicture || '', // ✅ EXTRACT COVER/BANNER IMAGE
       display_name: rawData.author?.name || username,
       follower_count: rawData.author?.followers || 0
     };

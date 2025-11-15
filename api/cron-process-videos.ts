@@ -38,6 +38,7 @@ interface VideoData {
   share_count?: number;
   save_count?: number; // ✅ ADD BOOKMARKS/SAVES
   profile_pic_url?: string;
+  cover_pic_url?: string; // ✅ ADD COVER/BANNER IMAGE (Twitter profile banners, etc)
   display_name?: string;
   follower_count?: number;
 }
@@ -142,6 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             platform: video.platform,
             displayName: videoData.display_name || videoData.username,
             profilePicture: videoData.profile_pic_url || '',
+            coverPicture: videoData.cover_pic_url || '', // ✅ ADD COVER/BANNER IMAGE
             followerCount: videoData.follower_count || 0,
             isActive: true,
             isRead: false,
@@ -188,6 +190,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (videoData.profile_pic_url) {
             updateData.profilePicture = videoData.profile_pic_url;
             console.log(`📸 Updating profile picture`);
+          }
+          
+          // Update cover pic if available
+          if (videoData.cover_pic_url) {
+            updateData.coverPicture = videoData.cover_pic_url;
+            console.log(`🖼️ Updating cover picture`);
           }
           
           // Update display name if available
@@ -444,6 +452,7 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       share_count: rawData.retweetCount || 0,
       timestamp: rawData.createdAt || new Date().toISOString(),
       profile_pic_url: rawData.author?.profilePicture || '',
+      cover_pic_url: rawData.author?.coverPicture || '', // ✅ EXTRACT COVER/BANNER IMAGE
       display_name: rawData.author?.name || '',
       follower_count: rawData.author?.followers || 0
     };
