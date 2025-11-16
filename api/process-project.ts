@@ -147,14 +147,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Dispatch account sync jobs (fire-and-forget)
+    // Dispatch account sync jobs (fire-and-forget with improved logging)
     const baseUrl = 'https://www.viewtrack.app';
     let dispatchedCount = 0;
     
     for (const accountDoc of accountsToRefresh) {
       const accountData = accountDoc.data();
       
-      console.log(`      ⚡ Dispatching @${accountData.username}`);
+      console.log(`      ⚡ Dispatching @${accountData.username} (${accountDoc.id})`);
+      
+      const payload = {
+        orgId,
+        projectId,
+        accountId: accountDoc.id,
+        sessionId
+      };
+      
+      console.log(`        📤 POST ${baseUrl}/api/sync-single-account`);
+      console.log(`        📦 Payload:`, JSON.stringify(payload, null, 2));
       
       fetch(`${baseUrl}/api/sync-single-account`, {
         method: 'POST',
@@ -162,15 +172,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'Authorization': cronSecret, // Direct secret, not Bearer
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          orgId,
-          projectId,
-          accountId: accountDoc.id,
-          sessionId
+        body: JSON.stringify(payload)
+      })
+        .then(response => {
+          if (!response.ok) {
+            console.error(`        ❌ HTTP ${response.status} for @${accountData.username}`);
+          } else {
+            console.log(`        ✅ Dispatched @${accountData.username} successfully`);
+          }
         })
-      }).catch(err => {
-        console.error(`        ❌ Failed to dispatch @${accountData.username}:`, err.message);
-      });
+        .catch(err => {
+          console.error(`        ❌ Fetch failed for @${accountData.username}:`, err.message);
+        });
       
       dispatchedCount++;
     }

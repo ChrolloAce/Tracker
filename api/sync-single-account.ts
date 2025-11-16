@@ -204,11 +204,15 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { accountId, orgId, projectId } = req.body;
+  const { accountId, orgId, projectId, sessionId } = req.body;
+
+  console.log(`\n🎯 [SYNC-ACCOUNT] Received request for account: ${accountId}`);
+  console.log(`   📦 Org: ${orgId}, Project: ${projectId}, Session: ${sessionId || 'none'}`);
 
   // Validate required fields
   const validation = validateRequiredFields(req.body, ['accountId', 'orgId', 'projectId']);
   if (!validation.valid) {
+    console.error(`❌ [SYNC-ACCOUNT] Validation failed: ${validation.missing.join(', ')}`);
     return res.status(400).json({ 
       error: 'Missing required parameters', 
       missing: validation.missing 
@@ -220,6 +224,8 @@ export default async function handler(
   const cronSecret = process.env.CRON_SECRET;
   const isCronRequest = authHeader === cronSecret;
   const isManualSync = !isCronRequest; // Manual = user triggered, Scheduled = cron triggered
+  
+  console.log(`   🔐 Auth: ${isCronRequest ? 'CRON' : 'USER'} | Manual: ${isManualSync}`);
   
   if (isCronRequest) {
     console.log(`🔒 Authenticated as CRON job for sync request (SCHEDULED REFRESH)`);
