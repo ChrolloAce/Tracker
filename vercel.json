@@ -80,10 +80,6 @@
     {
       "path": "/api/cron-orchestrator",
       "schedule": "0 0,12 * * *"
-    },
-    {
-      "path": "/api/cron-check-orphaned-sessions",
-      "schedule": "0 * * * *"
     }
   ],
   "routes": [
