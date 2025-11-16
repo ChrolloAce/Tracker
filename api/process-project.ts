@@ -160,6 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Dispatch account sync jobs (fire-and-forget with improved logging)
     const baseUrl = 'https://www.viewtrack.app';
     let dispatchedCount = 0;
+    const dispatchPromises: Promise<void>[] = [];
     
     for (const accountDoc of accountsToRefresh) {
       const accountData = accountDoc.data();
@@ -173,10 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessionId
       };
       
-      console.log(`        📤 POST ${baseUrl}/api/sync-single-account`);
-      console.log(`        📦 Payload:`, JSON.stringify(payload, null, 2));
-      
-      fetch(`${baseUrl}/api/sync-single-account`, {
+      const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
         method: 'POST',
         headers: {
           'Authorization': cronSecret, // Direct secret, not Bearer
@@ -188,15 +186,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!response.ok) {
             console.error(`        ❌ HTTP ${response.status} for @${accountData.username}`);
           } else {
-            console.log(`        ✅ Dispatched @${accountData.username} successfully`);
+            console.log(`        ✅ HTTP 200 - @${accountData.username} sync started`);
           }
         })
         .catch(err => {
           console.error(`        ❌ Fetch failed for @${accountData.username}:`, err.message);
         });
       
+      dispatchPromises.push(dispatchPromise);
       dispatchedCount++;
     }
+    
+    // Wait for all dispatch confirmations (just HTTP responses, not actual syncs)
+    console.log(`      ⏳ Waiting for ${dispatchPromises.length} dispatch confirmations...`);
+    await Promise.all(dispatchPromises);
+    console.log(`      ✅ All dispatches confirmed!`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
