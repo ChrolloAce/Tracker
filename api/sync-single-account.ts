@@ -1503,7 +1503,7 @@ export default async function handler(
     // ===============================================================================
     // If this sync is part of a coordinated refresh session (from cron orchestrator),
     // track progress and send email when ALL accounts in the org have completed.
-    const { sessionId } = req.body;
+    // sessionId is already extracted at the top of the function
     
     if (sessionId) {
       try {
