@@ -185,7 +185,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Authorization': `Bearer ${cronSecret}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ orgId })
+          body: JSON.stringify({ 
+            orgId,
+            manual: isManualTrigger // Pass manual flag down the chain
+          })
         }).catch(err => {
           console.error(`  ❌ Failed to dispatch ${orgId}:`, err.message);
         });

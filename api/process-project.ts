@@ -62,13 +62,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
     
-    const { orgId, projectId, sessionId } = req.body;
+    const { orgId, projectId, sessionId, manual } = req.body;
     
     if (!orgId || !projectId || !sessionId) {
       return res.status(400).json({ 
         error: 'Missing required fields: orgId, projectId, sessionId' 
       });
     }
+    
+    const isManualRefresh = manual === true;
     
     // Get project data
     const projectDoc = await db
@@ -118,10 +120,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Filter accounts that need refresh
+    // Filter accounts that need refresh (skip interval check for manual refreshes)
     const now = Date.now();
     const accountsToRefresh = accountsSnapshot.docs.filter(doc => {
       const accountData = doc.data();
+      
+      // Manual refreshes bypass time interval checks
+      if (isManualRefresh) {
+        console.log(`      ✅ @${accountData.username} [MANUAL - FORCE REFRESH]`);
+        return true;
+      }
+      
+      // Scheduled refreshes check time intervals
       const lastRefreshed = accountData.lastRefreshed?.toMillis() || 0;
       const timeSinceRefresh = now - lastRefreshed;
       

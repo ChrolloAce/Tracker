@@ -54,13 +54,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
     
-    const { orgId } = req.body;
+    const { orgId, manual } = req.body;
     
     if (!orgId) {
       return res.status(400).json({ error: 'Missing required field: orgId' });
     }
     
-    console.log(`\n🏢 Processing organization: ${orgId}`);
+    console.log(`\n🏢 Processing organization: ${orgId}${manual ? ' [MANUAL]' : ' [SCHEDULED]'}`);
     
     // Get organization data
     const orgDoc = await db.collection('organizations').doc(orgId).get();
@@ -166,7 +166,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify({
           orgId,
           projectId,
-          sessionId: sessionRef.id
+          sessionId: sessionRef.id,
+          manual: manual || false // Pass manual flag
         })
       }).catch(err => {
         console.error(`    ❌ Failed to dispatch project ${projectId}:`, err.message);
