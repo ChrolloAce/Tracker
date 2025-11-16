@@ -174,13 +174,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Dispatch account sync jobs
+    // Dispatch account sync jobs with ensured initiation
     const baseUrl = 'https://www.viewtrack.app';
-    let dispatchedCount = 0;
     
     console.log(`      🚀 Starting dispatch of ${accountsToRefresh.length} accounts...`);
     
-    for (const accountDoc of accountsToRefresh) {
+    // Create all fetch promises (this ensures they're initiated before function returns)
+    const dispatchPromises = accountsToRefresh.map((accountDoc, index) => {
       const accountData = accountDoc.data();
       
       const payload = {
@@ -190,36 +190,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessionId
       };
       
-      console.log(`      ⚡ [${dispatchedCount + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username}`);
-      console.log(`         📦 Payload: ${JSON.stringify(payload)}`);
+      console.log(`      ⚡ [${index + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username}`);
       
-      try {
-        // Fire-and-forget: dispatch but don't wait for response
-        fetch(`${baseUrl}/api/sync-single-account`, {
-          method: 'POST',
-          headers: {
-            'Authorization': cronSecret, // Direct secret, not Bearer
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        }).then(() => {
-          console.log(`         ✅ Dispatch sent for @${accountData.username}`);
-        }).catch(err => {
-          console.error(`         ❌ Dispatch failed for @${accountData.username}:`, err.message);
-        });
-        
-        dispatchedCount++;
-      } catch (err: any) {
-        console.error(`         ❌ Dispatch error for @${accountData.username}:`, err.message);
-      }
-    }
+      // Return the fetch promise (fire-and-forget but ensure it starts)
+      return fetch(`${baseUrl}/api/sync-single-account`, {
+        method: 'POST',
+        headers: {
+          'Authorization': cronSecret,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }).catch(err => {
+        console.error(`         ❌ Dispatch failed for @${accountData.username}:`, err.message);
+      });
+    });
     
-    console.log(`      ✅ All ${dispatchedCount} dispatches initiated`);
+    // Give dispatches 100ms to initiate before returning (prevents Vercel from killing them)
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log(`      ✅ All ${accountsToRefresh.length} dispatches initiated`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
     console.log(`      ✅ Project complete: ${duration}s`);
-    console.log(`      📤 Dispatched: ${dispatchedCount} account job(s)\n`);
+    console.log(`      📤 Dispatched: ${accountsToRefresh.length} account job(s)\n`);
     
     return res.status(200).json({
       success: true,
