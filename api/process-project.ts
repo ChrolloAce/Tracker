@@ -174,10 +174,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Dispatch account sync jobs (fire-and-forget with improved logging)
+    // Dispatch account sync jobs (true fire-and-forget - no waiting)
     const baseUrl = 'https://www.viewtrack.app';
     let dispatchedCount = 0;
-    const dispatchPromises: Promise<void>[] = [];
     
     for (const accountDoc of accountsToRefresh) {
       const accountData = accountDoc.data();
@@ -191,33 +190,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessionId
       };
       
-      const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
+      // Fire-and-forget: dispatch but don't wait for response
+      fetch(`${baseUrl}/api/sync-single-account`, {
         method: 'POST',
         headers: {
           'Authorization': cronSecret, // Direct secret, not Bearer
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
-      })
-        .then(response => {
-          if (!response.ok) {
-            console.error(`        ❌ HTTP ${response.status} for @${accountData.username}`);
-          } else {
-            console.log(`        ✅ HTTP 200 - @${accountData.username} sync started`);
-          }
-        })
-        .catch(err => {
-          console.error(`        ❌ Fetch failed for @${accountData.username}:`, err.message);
-        });
+      }).catch(err => {
+        // Log errors but don't block
+        console.error(`        ❌ Dispatch failed for @${accountData.username}:`, err.message);
+      });
       
-      dispatchPromises.push(dispatchPromise);
       dispatchedCount++;
     }
-    
-    // Wait for all dispatch confirmations (just HTTP responses, not actual syncs)
-    console.log(`      ⏳ Waiting for ${dispatchPromises.length} dispatch confirmations...`);
-    await Promise.all(dispatchPromises);
-    console.log(`      ✅ All dispatches confirmed!`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
