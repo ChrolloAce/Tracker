@@ -211,9 +211,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      ✅ All ${accountsToRefresh.length} dispatches initiated`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    const dispatchedCount = accountsToRefresh.length;
     
     console.log(`      ✅ Project complete: ${duration}s`);
-    console.log(`      📤 Dispatched: ${accountsToRefresh.length} account job(s)\n`);
+    console.log(`      📤 Dispatched: ${dispatchedCount} account job(s)\n`);
     
     return res.status(200).json({
       success: true,

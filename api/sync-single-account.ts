@@ -204,7 +204,8 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { accountId, orgId, projectId, sessionId } = req.body;
+  const { accountId, orgId, projectId } = req.body;
+  const sessionId = req.body.sessionId || null;
 
   console.log(`\n🎯 [SYNC-ACCOUNT] Received request for account: ${accountId}`);
   console.log(`   📦 Org: ${orgId}, Project: ${projectId}, Session: ${sessionId || 'none'}`);
