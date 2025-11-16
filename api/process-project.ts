@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const projectData = projectDoc.data();
     const projectName = projectData?.name || 'Default Project';
     
-    console.log(`    📦 Processing project: ${projectName} (${projectId})`);
+    console.log(`    📦 Processing project: ${projectName} (${projectId})${isManualRefresh ? ' [MANUAL]' : ' [SCHEDULED]'}`);
     
     // Get organization's plan tier to determine refresh interval
     const subscriptionDoc = await db
@@ -99,7 +99,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`      📋 Plan: ${planTier} (refresh every ${refreshIntervalHours}h)`);
     
-    // Get all active accounts
+    // Get ALL accounts first to see what we have
+    const allAccountsSnapshot = await db
+      .collection('organizations')
+      .doc(orgId)
+      .collection('projects')
+      .doc(projectId)
+      .collection('trackedAccounts')
+      .get();
+    
+    console.log(`      📊 Total accounts in project: ${allAccountsSnapshot.size}`);
+    
+    // Get only active accounts
     const accountsSnapshot = await db
       .collection('organizations')
       .doc(orgId)
@@ -109,14 +120,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .where('isActive', '==', true)
       .get();
     
-    console.log(`      👥 Total accounts: ${accountsSnapshot.size}`);
+    console.log(`      👥 Active accounts: ${accountsSnapshot.size}`);
     
     if (accountsSnapshot.empty) {
-      console.log(`      ⏭️  No accounts to process`);
+      if (allAccountsSnapshot.size > 0) {
+        console.log(`      ⚠️  All ${allAccountsSnapshot.size} accounts are inactive (isActive: false)`);
+      } else {
+        console.log(`      ℹ️  No accounts exist in this project`);
+      }
       return res.status(200).json({
         success: true,
-        message: 'No accounts in project',
-        projectId
+        message: 'No active accounts in project',
+        projectId,
+        totalAccounts: allAccountsSnapshot.size,
+        activeAccounts: 0
       });
     }
     
