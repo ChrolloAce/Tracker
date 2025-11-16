@@ -127,6 +127,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
     console.log(`🕐 Current hour: ${currentHour}:00 UTC`);
 
+    // Determine if this is a manual trigger (bypasses time restrictions)
+    const isManualTrigger = authMethod === 'Cron Secret' || authMethod === 'Firebase User';
+    
+    if (isManualTrigger) {
+      console.log(`⚡ Manual trigger detected - processing ALL organizations immediately\n`);
+    } else {
+      console.log(`⏰ Scheduled cron - processing based on plan tier and time\n`);
+    }
+
     // Always use production URL
     const baseUrl = 'https://www.viewtrack.app';
 
@@ -152,14 +161,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         const planTier = subscriptionDoc.data()?.planTier || 'free';
         
-        // Determine if this org should be processed at this time
-        const isPremium = planTier === 'ultra' || planTier === 'enterprise';
-        const shouldProcess = isPremium || currentHour === 12;
+        // Determine if this org should be processed
+        let shouldProcess = true;
         
-        if (!shouldProcess) {
-          console.log(`⏭️  Skip ${orgId} (${planTier} - not their refresh time)`);
-          skippedCount++;
-          continue;
+        // For scheduled cron (not manual), check time-based restrictions
+        if (!isManualTrigger) {
+          const isPremium = planTier === 'ultra' || planTier === 'enterprise';
+          shouldProcess = isPremium || currentHour === 12;
+          
+          if (!shouldProcess) {
+            console.log(`⏭️  Skip ${orgId} (${planTier} - not their refresh time)`);
+            skippedCount++;
+            continue;
+          }
         }
         
         console.log(`✅ Dispatch ${orgId} (${planTier})`);
