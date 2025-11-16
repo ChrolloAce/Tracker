@@ -174,14 +174,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Dispatch account sync jobs (true fire-and-forget - no waiting)
+    // Dispatch account sync jobs
     const baseUrl = 'https://www.viewtrack.app';
     let dispatchedCount = 0;
     
+    console.log(`      🚀 Starting dispatch of ${accountsToRefresh.length} accounts...`);
+    
     for (const accountDoc of accountsToRefresh) {
       const accountData = accountDoc.data();
-      
-      console.log(`      ⚡ Dispatching @${accountData.username} (${accountDoc.id})`);
       
       const payload = {
         orgId,
@@ -190,21 +190,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessionId
       };
       
-      // Fire-and-forget: dispatch but don't wait for response
-      fetch(`${baseUrl}/api/sync-single-account`, {
-        method: 'POST',
-        headers: {
-          'Authorization': cronSecret, // Direct secret, not Bearer
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      }).catch(err => {
-        // Log errors but don't block
-        console.error(`        ❌ Dispatch failed for @${accountData.username}:`, err.message);
-      });
+      console.log(`      ⚡ [${dispatchedCount + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username}`);
+      console.log(`         📦 Payload: ${JSON.stringify(payload)}`);
       
-      dispatchedCount++;
+      try {
+        // Fire-and-forget: dispatch but don't wait for response
+        fetch(`${baseUrl}/api/sync-single-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': cronSecret, // Direct secret, not Bearer
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }).then(() => {
+          console.log(`         ✅ Dispatch sent for @${accountData.username}`);
+        }).catch(err => {
+          console.error(`         ❌ Dispatch failed for @${accountData.username}:`, err.message);
+        });
+        
+        dispatchedCount++;
+      } catch (err: any) {
+        console.error(`         ❌ Dispatch error for @${accountData.username}:`, err.message);
+      }
     }
+    
+    console.log(`      ✅ All ${dispatchedCount} dispatches initiated`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
