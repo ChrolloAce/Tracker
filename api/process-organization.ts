@@ -100,6 +100,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
+    // Log project names for visibility
+    console.log(`  📋 Projects:`);
+    for (const projectDoc of projectsSnapshot.docs) {
+      const projectData = projectDoc.data();
+      console.log(`    - ${projectData.name || 'Unnamed'} (${projectDoc.id})`);
+    }
+    
     // Count total accounts across all projects
     let totalAccounts = 0;
     for (const projectDoc of projectsSnapshot.docs) {
