@@ -243,7 +243,7 @@ export default async function handler(
     }
   }
 
-  console.log(`⚡ Sync started for account: ${accountId} [${isManualSync ? 'MANUAL' : 'SCHEDULED'}]`);
+    console.log(`⚡ Sync started for account: ${accountId} [${isManualSync ? 'MANUAL' : 'SCHEDULED'}]`);
 
   try {
     const accountRef = db
@@ -257,10 +257,13 @@ export default async function handler(
     const accountDoc = await accountRef.get();
 
     if (!accountDoc.exists) {
+      console.error(`❌ Account ${accountId} not found in Firestore!`);
       return res.status(404).json({ error: 'Account not found' });
     }
 
     const account = accountDoc.data() as any;
+    
+    console.log(`📊 Account info: @${account.username} (${account.platform}) - Last synced: ${account.lastRefreshed?.toDate() || 'Never'}`);
     
     // Get maxVideos from account settings, default to 100 if not set
     const maxVideos = account.maxVideos || 100;
@@ -1478,6 +1481,7 @@ export default async function handler(
     });
 
     console.log(`✅ Completed immediate sync: ${account.username} - ${savedCount} videos saved`);
+    console.log(`📊 Summary: Org=${orgId}, Project=${projectId}, Account=${accountId}, Videos=${savedCount}, Session=${sessionId || 'none'}`);
 
     // NOTE: Email notifications are handled by cron-orchestrator.ts
     // which sends a single summary email per organization instead of individual emails per account.
