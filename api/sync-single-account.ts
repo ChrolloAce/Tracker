@@ -422,15 +422,19 @@ export default async function handler(
           
           console.log(`✅ [TIKTOK] Progressive fetch complete: ${newTikTokVideos.length} new videos found`);
           
-          // SECOND API CALL: Refresh metrics for ALL existing TikTok videos (like Instagram does)
+          // SECOND API CALL: Refresh metrics for RECENT existing TikTok videos
+          // Only refresh the most recent 20 videos (older videos rarely change)
           if (existingVideoIds.size > 0) {
-            console.log(`🔄 [TIKTOK] Refreshing ${existingVideoIds.size} existing videos...`);
+            const MAX_VIDEOS_TO_REFRESH = 20;
+            const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
+            
+            console.log(`🔄 [TIKTOK] Refreshing ${videosToRefresh} most recent videos (out of ${existingVideoIds.size} total)...`);
             
             try {
-              // Build video URLs for existing videos
-              const videoUrls = Array.from(existingVideoIds).map(id => 
-                `https://www.tiktok.com/@${username}/video/${id}`
-              );
+              // Build video URLs for RECENT existing videos only
+              const videoUrls = Array.from(existingVideoIds)
+                .slice(0, MAX_VIDEOS_TO_REFRESH) // Only take first 20
+                .map(id => `https://www.tiktok.com/@${username}/video/${id}`);
               
               console.log(`📊 [TIKTOK] Fetching updated metrics for ${videoUrls.length} existing videos...`);
               
@@ -438,7 +442,7 @@ export default async function handler(
                 actorId: 'apidojo/tiktok-scraper',
                 input: {
                   startUrls: videoUrls,
-                  maxItems: videoUrls.length,
+                  maxItems: videoUrls.length, // Now capped at 20
                   sortType: 'RELEVANCE',
                   dateRange: 'DEFAULT',
                   location: 'US',
