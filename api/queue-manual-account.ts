@@ -151,6 +151,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error(`   ❌ Failed to dispatch job:`, err.message);
       });
       
+      // IMPORTANT: Also trigger queue-worker to process any other pending jobs
+      // (e.g., if user added multiple accounts at once)
+      console.log(`   🔔 Triggering queue-worker to check for additional pending jobs...`);
+      fetch(`${baseUrl}/api/queue-worker`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${cronSecret}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ trigger: 'manual_account_added' })
+      }).catch(err => {
+        console.warn(`   ⚠️  Queue worker trigger failed (non-critical):`, err.message);
+      });
+      
       return res.status(200).json({
         success: true,
         message: 'Account dispatched for immediate scraping',

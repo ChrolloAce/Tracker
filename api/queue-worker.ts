@@ -56,21 +56,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const authHeader = req.headers.authorization;
     const isVercelCron = req.headers['x-vercel-cron'] === '1';
     
-    // Handle GET requests (health checks, monitoring)
-    if (req.method === 'GET') {
-      return res.status(200).json({
-        status: 'ok',
-        message: 'Queue worker is running',
-        timestamp: new Date().toISOString()
-      });
+    // Allow both GET (cron) and POST (manual trigger) requests
+    if (req.method !== 'POST' && req.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed - use GET or POST' });
     }
     
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed - use POST' });
-    }
+    // Authenticate: Allow Vercel cron (GET with x-vercel-cron header) or POST with Bearer token
+    const isAuthenticated = (authHeader === `Bearer ${cronSecret}`) || isVercelCron;
     
-    if (authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+    if (!isAuthenticated) {
       console.error('❌ Unauthorized request to queue-worker');
+      console.error(`   Method: ${req.method}, Has auth: ${!!authHeader}, Is cron: ${isVercelCron}`);
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
