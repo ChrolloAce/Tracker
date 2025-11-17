@@ -52,12 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const db = initializeFirebase();
   
   try {
-    // Authenticate user
-    const authResult = await authenticateAndVerifyOrg(req, db);
-    if (!authResult.authenticated || !authResult.userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
+    // Extract orgId first for authentication
     const { orgId, projectId, accountId, sessionId } = req.body;
     
     if (!orgId || !projectId || !accountId) {
@@ -65,6 +60,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'Missing required fields: orgId, projectId, accountId' 
       });
     }
+    
+    // Authenticate user and verify org access
+    const { user } = await authenticateAndVerifyOrg(req, orgId);
+    console.log(`🔒 Authenticated user ${user.userId} for manual account queue`);
+
     
     console.log(`🚀 [MANUAL-ACCOUNT] Queueing high-priority sync for account: ${accountId}`);
     

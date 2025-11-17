@@ -52,12 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const db = initializeFirebase();
   
   try {
-    // Authenticate user
-    const authResult = await authenticateAndVerifyOrg(req, db);
-    if (!authResult.authenticated || !authResult.userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
+    // Extract orgId first for authentication
     const { url, orgId, projectId } = req.body;
     
     if (!url || !orgId || !projectId) {
@@ -65,6 +60,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'Missing required fields: url, orgId, projectId' 
       });
     }
+    
+    // Authenticate user and verify org access
+    const { user } = await authenticateAndVerifyOrg(req, orgId);
+    console.log(`🔒 Authenticated user ${user.userId} for manual video queue`);
     
     console.log(`🚀 [MANUAL-VIDEO] Queueing high-priority video processing: ${url}`);
     
