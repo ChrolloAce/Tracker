@@ -100,29 +100,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Log project names for visibility
-    console.log(`  📋 Projects:`);
-    for (const projectDoc of projectsSnapshot.docs) {
-      const projectData = projectDoc.data();
-      console.log(`    - ${projectData.name || 'Unnamed'} (${projectDoc.id})`);
-    }
-    
-    // Count total accounts across all projects
-    let totalAccounts = 0;
-    for (const projectDoc of projectsSnapshot.docs) {
-      const accountsSnapshot = await db
-        .collection('organizations')
-        .doc(orgId)
-        .collection('projects')
-        .doc(projectDoc.id)
-        .collection('trackedAccounts')
-        .where('isActive', '==', true)
-        .get();
+      // Log project names and account counts for visibility
+      console.log(`  📋 Projects with account counts:`);
+      let totalAccounts = 0;
+      const projectDetails: { name: string; id: string; accounts: number }[] = [];
       
-      totalAccounts += accountsSnapshot.size;
-    }
-    
-    console.log(`  👥 Total accounts: ${totalAccounts}`);
+      for (const projectDoc of projectsSnapshot.docs) {
+        const projectData = projectDoc.data();
+        const projectName = projectData.name || 'Unnamed Project';
+        
+        const accountsSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectDoc.id)
+          .collection('trackedAccounts')
+          .where('isActive', '==', true)
+          .get();
+        
+        const accountCount = accountsSnapshot.size;
+        totalAccounts += accountCount;
+        
+        projectDetails.push({
+          name: projectName,
+          id: projectDoc.id,
+          accounts: accountCount
+        });
+        
+        console.log(`    - ${projectName} (${projectDoc.id}): ${accountCount} account(s)`);
+      }
+      
+      console.log(`  👥 Total accounts: ${totalAccounts}`);
     
     // Create refresh session for tracking progress
     const sessionRef = db
@@ -158,11 +166,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const baseUrl = 'https://www.viewtrack.app';
     let dispatchedCount = 0;
     
+    console.log(`\n  🚀 Starting project dispatches...`);
+    
     for (const projectDoc of projectsSnapshot.docs) {
       const projectId = projectDoc.id;
       const projectData = projectDoc.data();
+      const projectName = projectData.name || 'Unnamed Project';
       
-      console.log(`  📤 Dispatching project: ${projectData.name || projectId}`);
+      // Find account count for this project
+      const projectDetail = projectDetails.find(p => p.id === projectId);
+      const accountCount = projectDetail?.accounts || 0;
+      
+      console.log(`  📤 [${dispatchedCount + 1}/${projectsSnapshot.size}] Dispatching "${projectName}" (${accountCount} accounts)`);
       
       fetch(`${baseUrl}/api/process-project`, {
         method: 'POST',
@@ -176,8 +191,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sessionId: sessionRef.id,
           manual: manual || false // Pass manual flag
         })
+      }).then(response => {
+        if (response.ok) {
+          console.log(`     ✅ "${projectName}" dispatched successfully (HTTP ${response.status})`);
+        } else {
+          console.error(`     ❌ "${projectName}" dispatch failed: ${response.status} ${response.statusText}`);
+        }
       }).catch(err => {
-        console.error(`    ❌ Failed to dispatch project ${projectId}:`, err.message);
+        console.error(`     ❌ "${projectName}" dispatch error:`, err.message);
       });
       
       dispatchedCount++;
