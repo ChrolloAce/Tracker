@@ -112,15 +112,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Validate running jobs (check if they're actually still running)
     console.log(`\n🔍 Validating ${runningCount} running jobs...`);
     
-    const JOB_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const JOB_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes (reduced from 10)
     const now = Date.now();
     let validatedCount = 0;
     let markedFailedCount = 0;
-    let markedCompletedCount = 0;
+    let accountDeletedCount = 0;
     
     for (const jobDoc of runningJobsSnapshot.docs) {
       const job = jobDoc.data();
       const jobId = jobDoc.id;
+      
+      // Check if account still exists (may have been deleted)
+      try {
+        const accountRef = db
+          .collection('organizations').doc(job.orgId)
+          .collection('projects').doc(job.projectId)
+          .collection('trackedAccounts').doc(job.accountId);
+        
+        const accountDoc = await accountRef.get();
+        
+        if (!accountDoc.exists) {
+          console.log(`   🗑️  Job ${jobId}: Account deleted - removing job`);
+          await jobDoc.ref.delete();
+          accountDeletedCount++;
+          continue;
+        }
+      } catch (error: any) {
+        console.error(`   ⚠️  Error checking account for job ${jobId}:`, error.message);
+      }
       
       // Check if job has been running for too long
       const startedAt = job.startedAt?.toMillis() || 0;
@@ -134,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await jobDoc.ref.update({
             status: 'pending',
             attempts: job.attempts + 1,
-            error: 'Job timed out after 10 minutes',
+            error: 'Job timed out after 3 minutes',
             startedAt: null
           });
           console.log(`   🔄 Reset to pending for retry (attempt ${job.attempts + 1}/${job.maxAttempts})`);
@@ -142,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await jobDoc.ref.update({
             status: 'failed',
             completedAt: Timestamp.now(),
-            error: 'Job timed out after 10 minutes - max retries exceeded'
+            error: 'Job timed out after 3 minutes - max retries exceeded'
           });
           console.log(`   ❌ Marked as failed (max retries exceeded)`);
           markedFailedCount++;
@@ -154,11 +173,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       validatedCount++;
     }
     
+    if (accountDeletedCount > 0) {
+      console.log(`🗑️  Cleaned up ${accountDeletedCount} job(s) for deleted accounts`);
+    }
     console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedFailedCount} failed`);
     
     // Calculate available slots for new jobs
     const APIFY_CONCURRENCY_LIMIT = 6;
-    const actualRunningCount = runningCount - markedFailedCount;
+    const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount;
     const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
     
     console.log(`\n📊 Capacity: ${actualRunningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);

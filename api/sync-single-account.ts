@@ -325,23 +325,48 @@ export default async function handler(
     const maxVideos = account.maxVideos || 100;
     console.log(`📊 Will scrape up to ${maxVideos} videos for @${account.username}`);
 
-    // Update to syncing status
-    await accountRef.update({
-      syncStatus: 'syncing',
-      syncProgress: {
-        current: 10,
-        total: 100,
-        message: 'Starting sync...'
+    // Update to syncing status (check account still exists first)
+    try {
+      const accountCheckDoc = await accountRef.get();
+      if (!accountCheckDoc.exists) {
+        console.log(`⚠️  Account ${accountId} was deleted before sync started`);
+        if (jobId) {
+          await db.collection('syncQueue').doc(jobId).delete();
+          console.log(`✅ Job ${jobId} deleted (account deleted before sync)`);
+        }
+        return res.status(404).json({ 
+          error: 'Account not found',
+          message: 'Account may have been deleted'
+        });
       }
-    });
+      
+      await accountRef.update({
+        syncStatus: 'syncing',
+        syncProgress: {
+          current: 10,
+          total: 100,
+          message: 'Starting sync...'
+        }
+      });
+    } catch (error: any) {
+      console.error(`❌ Error updating account to syncing:`, error.message);
+      throw error;
+    }
 
     // Fetch profile data if needed
     if (!account.displayName || account.displayName === account.username) {
       console.log(`👤 Fetching profile data for ${account.username}...`);
       
-      await accountRef.update({
-        displayName: account.username.charAt(0).toUpperCase() + account.username.slice(1)
-      });
+      try {
+        const accountCheckDoc = await accountRef.get();
+        if (accountCheckDoc.exists) {
+          await accountRef.update({
+            displayName: account.username.charAt(0).toUpperCase() + account.username.slice(1)
+          });
+        }
+      } catch (error: any) {
+        console.warn(`⚠️  Could not update display name:`, error.message);
+      }
     }
 
     // Fetch videos based on platform
@@ -1758,22 +1783,47 @@ export default async function handler(
       await batch.commit();
     }
 
-    // Mark as completed
-    await accountRef.update({
-      syncStatus: 'completed',
-      lastSyncAt: Timestamp.now(),
-      lastSynced: Timestamp.now(),
-      lastSyncError: null,
-      syncRetryCount: 0,
-      syncProgress: {
-        current: 100,
-        total: 100,
-        message: `Successfully synced ${savedCount} videos`
+    // Mark as completed (but first check if account still exists)
+    try {
+      const accountCheckDoc = await accountRef.get();
+      
+      if (!accountCheckDoc.exists) {
+        console.log(`⚠️  Account ${accountId} was deleted during sync - discarding results`);
+        
+        // Delete job if it exists
+        if (jobId) {
+          await db.collection('syncQueue').doc(jobId).delete();
+          console.log(`✅ Job ${jobId} deleted (account was deleted during sync)`);
+        }
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Account was deleted during sync - results discarded',
+          accountId,
+          videosSynced: 0
+        });
       }
-    });
+      
+      // Account still exists - update it
+      await accountRef.update({
+        syncStatus: 'completed',
+        lastSyncAt: Timestamp.now(),
+        lastSynced: Timestamp.now(),
+        lastSyncError: null,
+        syncRetryCount: 0,
+        syncProgress: {
+          current: 100,
+          total: 100,
+          message: `Successfully synced ${savedCount} videos`
+        }
+      });
 
-    console.log(`✅ Completed immediate sync: ${account.username} - ${savedCount} videos saved`);
-    console.log(`📊 Summary: Org=${orgId}, Project=${projectId}, Account=${accountId}, Videos=${savedCount}, Session=${sessionId || 'none'}`);
+      console.log(`✅ Completed immediate sync: ${account.username} - ${savedCount} videos saved`);
+      console.log(`📊 Summary: Org=${orgId}, Project=${projectId}, Account=${accountId}, Videos=${savedCount}, Session=${sessionId || 'none'}`);
+    } catch (checkError: any) {
+      console.error(`❌ Error checking/updating account status:`, checkError.message);
+      // Continue anyway - don't fail the whole sync
+    }
 
     // NOTE: Email notifications are handled by cron-orchestrator.ts
     // which sends a single summary email per organization instead of individual emails per account.
