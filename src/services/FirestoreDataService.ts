@@ -115,9 +115,9 @@ class FirestoreDataService {
   }
 
   /**
-   * Trigger immediate sync for an account (fire and forget)
+   * Queue high-priority sync for an account through the job queue
    * This provides instant feedback to users when they add accounts
-   * Falls back to cron job if immediate sync fails
+   * Falls back to cron job if queueing fails
    */
   private static async triggerImmediateSync(
     orgId: string, 
@@ -130,14 +130,41 @@ class FirestoreDataService {
     const accountLabel = username ? `@${username}` : accountId;
     
     try {
-      console.log(`🔄 [${platformLabel}] Starting immediate sync for ${accountLabel}...`);
-      console.log(`📡 [${platformLabel}] Calling /api/sync-single-account for ${accountLabel}...`);
-      const result = await AuthenticatedApiService.syncAccount(accountId, orgId, projectId);
+      console.log(`🚀 [${platformLabel}] Queueing high-priority sync for ${accountLabel}...`);
+      console.log(`📡 [${platformLabel}] Calling /api/queue-manual-account for ${accountLabel}...`);
       
-      console.log(`✅ [${platformLabel}] Immediate sync triggered successfully for ${accountLabel}!`);
-      console.log(`   Response:`, result);
+      // Queue through the new priority-based system
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('No auth token available');
+      }
+      
+      const response = await fetch('/api/queue-manual-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orgId,
+          projectId,
+          accountId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      console.log(`✅ [${platformLabel}] Account queued successfully for ${accountLabel}!`);
+      console.log(`   Status: ${result.status || 'queued'}`);
+      console.log(`   Priority: ${result.priority || 100}`);
+      console.log(`   Job ID: ${result.jobId || 'unknown'}`);
     } catch (error: any) {
-      console.error(`❌ [${platformLabel}] Failed to trigger immediate sync for ${accountLabel}:`, error);
+      console.error(`❌ [${platformLabel}] Failed to queue sync for ${accountLabel}:`, error);
       console.error(`   Error type: ${error.constructor.name}`);
       console.error(`   Error message: ${error.message}`);
       console.error(`   Full error:`, error);

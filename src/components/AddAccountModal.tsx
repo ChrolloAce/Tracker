@@ -153,7 +153,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       // Process each account in parallel
       const results = await Promise.allSettled(
         accountsToAdd.map(async (acc) => {
-          const accountId = await AccountTrackingServiceFirebase.addAccount(
+          // AccountTrackingServiceFirebase.addAccount now handles queueing automatically
+          await AccountTrackingServiceFirebase.addAccount(
             orgId,
             projectId,
             user.uid,
@@ -162,27 +163,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             'my', // Default to 'my' account type
             acc.videoCount // Pass each account's specific video count
           );
-
-          // Queue high-priority scraping job for this account
-          if (accountId) {
-            try {
-              const token = await user.getIdToken();
-              await fetch('/api/queue-manual-account', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  orgId,
-                  projectId,
-                  accountId
-                })
-              });
-            } catch (queueError) {
-              console.warn('Failed to queue account sync (will be picked up by scheduled refresh):', queueError);
-            }
-          }
 
           return { success: true, username: acc.username };
         })

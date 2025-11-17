@@ -108,28 +108,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ [MANUAL-ACCOUNT] Job ${jobRef.id} queued with priority ${JOB_PRIORITIES.USER_INITIATED}`);
     console.log(`   📊 Account: @${accountData?.username} (${accountData?.platform})`);
     
-    // Trigger queue worker to process immediately
     const baseUrl = 'https://www.viewtrack.app';
     const cronSecret = process.env.CRON_SECRET;
     
-    fetch(`${baseUrl}/api/queue-worker`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${cronSecret}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ trigger: 'manual_account_added' })
-    }).catch(err => {
-      console.warn(`⚠️  Failed to trigger queue worker (non-critical):`, err.message);
-    });
+    // Check current queue capacity
+    const runningJobs = await db.collection('syncQueue').where('status', '==', 'running').get();
+    const runningCount = runningJobs.size;
+    const APIFY_CONCURRENCY_LIMIT = 6;
+    const availableSlots = APIFY_CONCURRENCY_LIMIT - runningCount;
     
-    return res.status(200).json({
-      success: true,
-      message: 'Account queued for high-priority scraping',
-      jobId: jobRef.id,
-      priority: JOB_PRIORITIES.USER_INITIATED,
-      estimatedWaitTime: 'Processing will begin immediately'
-    });
+    console.log(`   📊 Queue capacity: ${runningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
+    
+    if (availableSlots > 0) {
+      // Capacity available - dispatch immediately
+      console.log(`   🚀 Capacity available - dispatching immediately`);
+      
+      // Update job status to running
+      await jobRef.update({
+        status: 'running',
+        startedAt: Timestamp.now()
+      });
+      
+      // Dispatch to sync-single-account immediately
+      fetch(`${baseUrl}/api/sync-single-account`, {
+        method: 'POST',
+        headers: {
+          'Authorization': cronSecret,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orgId,
+          projectId,
+          accountId,
+          sessionId: sessionId || null,
+          jobId: jobRef.id
+        })
+      }).catch(err => {
+        console.error(`   ❌ Failed to dispatch job:`, err.message);
+      });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Account dispatched for immediate scraping',
+        jobId: jobRef.id,
+        priority: JOB_PRIORITIES.USER_INITIATED,
+        status: 'processing',
+        estimatedWaitTime: 'Processing now'
+      });
+    } else {
+      // No capacity - trigger queue worker to pick it up
+      console.log(`   ⏸️  No capacity available - queue worker will process when slots open`);
+      
+      fetch(`${baseUrl}/api/queue-worker`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${cronSecret}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ trigger: 'manual_account_added' })
+      }).catch(err => {
+        console.warn(`   ⚠️  Failed to trigger queue worker (non-critical):`, err.message);
+      });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Account queued for high-priority scraping',
+        jobId: jobRef.id,
+        priority: JOB_PRIORITIES.USER_INITIATED,
+        status: 'queued',
+        estimatedWaitTime: 'Will process when capacity available (typically within 1 minute)'
+      });
+    }
     
   } catch (error: any) {
     console.error('❌ [MANUAL-ACCOUNT] Error:', error);
