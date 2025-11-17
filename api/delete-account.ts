@@ -179,7 +179,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await accountRef.delete();
     console.log(`  ✅ Deleted account document: ${accountId}`);
 
-    // Step 4: Update project counters
+    // Step 4: Cancel any running/pending jobs for this account in the queue
+    let jobsCancelled = 0;
+    try {
+      console.log(`  🛑 Checking for active jobs to cancel...`);
+      
+      // Find all pending or running jobs for this account
+      const jobsSnapshot = await db.collection('syncQueue')
+        .where('accountId', '==', accountId)
+        .where('status', 'in', ['pending', 'running'])
+        .get();
+      
+      if (!jobsSnapshot.empty) {
+        console.log(`    📋 Found ${jobsSnapshot.size} job(s) to cancel`);
+        
+        const batch = db.batch();
+        
+        for (const jobDoc of jobsSnapshot.docs) {
+          const jobData = jobDoc.data();
+          console.log(`      ❌ Cancelling job ${jobDoc.id} (${jobData.status}) for @${jobData.accountUsername}`);
+          
+          // Delete the job from queue (will prevent further processing)
+          batch.delete(jobDoc.ref);
+          jobsCancelled++;
+        }
+        
+        await batch.commit();
+        console.log(`    ✅ Cancelled and deleted ${jobsCancelled} job(s) from queue`);
+      } else {
+        console.log(`    ℹ️  No active jobs found for this account`);
+      }
+    } catch (jobError: any) {
+      console.error(`    ⚠️  Failed to cancel jobs (non-critical):`, jobError.message);
+      // Don't fail the whole deletion if job cancellation fails
+    }
+
+    // Step 5: Update project counters
     try {
       const projectRef = db
         .collection('organizations')
@@ -224,14 +259,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`✅ Account deletion completed for ${accountId} in ${duration}s`);
+    console.log(`   📊 Stats: ${videosDeleted} videos, ${snapshotsDeleted} snapshots, ${thumbnailsDeleted} thumbnails, ${jobsCancelled} jobs cancelled`);
 
     return res.status(200).json({
       success: true,
-      message: `Account @${username} deleted successfully`,
+      message: `Account @${username} deleted successfully${jobsCancelled > 0 ? ` (${jobsCancelled} active job(s) cancelled)` : ''}`,
       accountId,
       videosDeleted,
       snapshotsDeleted,
       thumbnailsDeleted,
+      jobsCancelled,
       duration: parseFloat(duration)
     });
 

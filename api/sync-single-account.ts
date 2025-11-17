@@ -294,7 +294,22 @@ export default async function handler(
 
     if (!accountDoc.exists) {
       console.error(`❌ Account ${accountId} not found in Firestore!`);
-      return res.status(404).json({ error: 'Account not found' });
+      console.log(`   ℹ️  Account may have been deleted - cleaning up job if it exists...`);
+      
+      // If job exists, delete it (account was deleted)
+      if (jobId) {
+        try {
+          await db.collection('syncQueue').doc(jobId).delete();
+          console.log(`   ✅ Job ${jobId} deleted (account no longer exists)`);
+        } catch (jobError: any) {
+          console.warn(`   ⚠️  Failed to delete job (non-critical):`, jobError.message);
+        }
+      }
+      
+      return res.status(404).json({ 
+        error: 'Account not found',
+        message: 'Account may have been deleted'
+      });
     }
 
     const account = accountDoc.data() as any;
