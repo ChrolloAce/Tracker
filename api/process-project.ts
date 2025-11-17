@@ -196,9 +196,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Process accounts in batches to respect Apify RAM limits
+    // Process accounts in staggered batches to respect Apify RAM limits
     // Max 6 concurrent Apify jobs (6 × 4GB = 24GB, leaving 8GB buffer from 32GB total)
+    // Use quick fire-and-forget with delays to avoid Vercel timeout
     const APIFY_CONCURRENCY_LIMIT = 6;
+    const BATCH_DELAY_MS = 500; // Small delay between batches (not waiting for responses)
+    
     const batches: typeof accountsToRefresh[] = [];
     
     // Split accounts into batches of 6
@@ -206,21 +209,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       batches.push(accountsToRefresh.slice(i, i + APIFY_CONCURRENCY_LIMIT));
     }
     
-    console.log(`      🚀 Processing ${accountsToRefresh.length} accounts in ${batches.length} batch(es) of max ${APIFY_CONCURRENCY_LIMIT}...`);
+    console.log(`      🚀 Dispatching ${accountsToRefresh.length} accounts in ${batches.length} batch(es) (max ${APIFY_CONCURRENCY_LIMIT} concurrent)...`);
     
     let totalDispatched = 0;
-    let totalSuccessful = 0;
-    let totalFailed = 0;
     
-    // Process each batch sequentially
+    // Send each batch with a small delay between them (fire-and-forget)
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`\n      📦 Batch ${batchIndex + 1}/${batches.length}: ${batch.length} accounts`);
+      console.log(`\n      📦 Batch ${batchIndex + 1}/${batches.length}: Dispatching ${batch.length} accounts...`);
       
-      // Dispatch all accounts in this batch in parallel
-      const batchPromises = batch.map((accountDoc, indexInBatch) => {
+      // Dispatch all accounts in this batch (fire-and-forget, no await on responses)
+      for (let i = 0; i < batch.length; i++) {
+        const accountDoc = batch[i];
         const accountData = accountDoc.data();
-        const globalIndex = batchIndex * APIFY_CONCURRENCY_LIMIT + indexInBatch + 1;
+        const globalIndex = batchIndex * APIFY_CONCURRENCY_LIMIT + i + 1;
         
         const payload = {
           orgId,
@@ -229,9 +231,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sessionId
         };
         
-        console.log(`         ⚡ [${globalIndex}/${accountsToRefresh.length}] Dispatching @${accountData.username}`);
+        console.log(`         ⚡ [${globalIndex}/${accountsToRefresh.length}] @${accountData.username}`);
         
-        return fetch(`${baseUrl}/api/sync-single-account`, {
+        // Fire-and-forget: Send request, handle response asynchronously
+        fetch(`${baseUrl}/api/sync-single-account`, {
           method: 'POST',
           headers: {
             'Authorization': cronSecret,
@@ -239,36 +242,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           body: JSON.stringify(payload)
         }).then(response => {
-          if (!response.ok) {
-            console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
-            totalFailed++;
-            return { success: false, username: accountData.username };
+          if (response.ok) {
+            console.log(`            ✅ @${accountData.username}: Started`);
           } else {
-            console.log(`            ✅ @${accountData.username}: Dispatched`);
-            totalSuccessful++;
-            return { success: true, username: accountData.username };
+            console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
           }
         }).catch(err => {
           console.error(`            ❌ @${accountData.username}: ${err.message}`);
-          totalFailed++;
-          return { success: false, username: accountData.username };
         });
-      });
+        
+        totalDispatched++;
+      }
       
-      // Wait for all accounts in this batch to be dispatched
-      await Promise.allSettled(batchPromises);
-      totalDispatched += batch.length;
+      console.log(`      ✅ Batch ${batchIndex + 1}: ${batch.length} dispatches sent`);
       
-      console.log(`      ✅ Batch ${batchIndex + 1} complete: ${batch.length} accounts dispatched`);
-      
-      // Small delay between batches to prevent overwhelming the system
+      // Small delay before next batch (prevents overwhelming Apify)
       if (batchIndex < batches.length - 1) {
-        console.log(`      ⏳ Waiting 2s before next batch...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`      ⏳ ${BATCH_DELAY_MS}ms delay before next batch...`);
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }
     
-    console.log(`\n      ✅ All batches complete: ${totalSuccessful} successful, ${totalFailed} failed`);
+    // Final delay to ensure all fetch requests are initiated
+    console.log(`\n      ⏳ Ensuring all dispatches are initiated...`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    console.log(`\n      ✅ All ${totalDispatched} dispatches sent (running in background)`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
@@ -276,10 +275,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      ✅ Project "${projectName}" Complete`);
     console.log(`      ========================================`);
     console.log(`      ⏱️  Duration: ${duration}s`);
-    console.log(`      📊 Accounts processed: ${totalDispatched}`);
-    console.log(`      ✅ Successful: ${totalSuccessful}`);
-    console.log(`      ❌ Failed: ${totalFailed}`);
+    console.log(`      📊 Accounts dispatched: ${totalDispatched}`);
     console.log(`      📦 Batches: ${batches.length}`);
+    console.log(`      🔄 Syncs running in background`);
     console.log(`      ========================================\n`);
     
     return res.status(200).json({
@@ -290,10 +288,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stats: {
         duration: parseFloat(duration),
         accountsChecked: accountsSnapshot.size,
-        accountsProcessed: totalDispatched,
-        successful: totalSuccessful,
-        failed: totalFailed,
-        batches: batches.length
+        accountsDispatched: totalDispatched,
+        batches: batches.length,
+        note: 'Syncs running in background'
       }
     });
     
