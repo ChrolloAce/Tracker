@@ -1401,7 +1401,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setDeleteConfirmText('');
   }, [filteredAccounts]);
 
-  const retryFailedAccount = useCallback(async (accountId: string, username: string, platform: string) => {
+  const retryFailedAccount = useCallback(async (accountId: string, username: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
     
     try {
@@ -2196,7 +2196,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                     <button
                                       onClick={async (e) => {
                                         e.stopPropagation();
-                                        await retryFailedAccount(account.id, account.username, account.platform);
+                                        await retryFailedAccount(account.id, account.username);
                                       }}
                                       className="flex items-center gap-1 px-2 py-0.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
                                       title="Retry sync"
