@@ -77,6 +77,9 @@
     },
     "api/queue-worker.ts": {
       "maxDuration": 60
+    },
+    "api/queue-status.ts": {
+      "maxDuration": 10
     }
   },
   "crons": [

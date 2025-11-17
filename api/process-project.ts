@@ -200,8 +200,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // This ensures jobs are persisted and won't be lost if Vercel times out
     console.log(`      📝 Queueing ${accountsToRefresh.length} accounts as jobs in Firestore...`);
     
-    const batch = db.batch();
+    let batch = db.batch();
     let queuedCount = 0;
+    let batchCount = 0;
     const jobIds: string[] = [];
     
     for (let i = 0; i < accountsToRefresh.length; i++) {
@@ -233,17 +234,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log(`         📝 [${i + 1}/${accountsToRefresh.length}] Queued @${accountData.username} (job: ${jobId})`);
       queuedCount++;
+      batchCount++;
       
       // Commit batch every 500 operations (Firestore limit)
-      if (queuedCount % 500 === 0) {
+      if (batchCount >= 500) {
         await batch.commit();
-        console.log(`         ✅ Committed ${queuedCount} jobs to queue`);
+        console.log(`         ✅ Committed ${queuedCount} jobs to queue (batch complete)`);
+        batch = db.batch(); // Create new batch
+        batchCount = 0; // Reset batch counter
       }
     }
     
     // Commit remaining jobs
-    if (queuedCount % 500 !== 0) {
+    if (batchCount > 0) {
       await batch.commit();
+      console.log(`         ✅ Committed final ${batchCount} jobs to queue`);
     }
     
     console.log(`\n      ✅ All ${queuedCount} accounts queued in Firestore`);
