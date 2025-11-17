@@ -162,13 +162,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`  📝 Created session: ${sessionRef.id}`);
     
-    // Dispatch project jobs (fire-and-forget)
+    // Dispatch project jobs - collect all promises to ensure they all fire
     const baseUrl = 'https://www.viewtrack.app';
-    let dispatchedCount = 0;
+    const dispatchPromises: Promise<void>[] = [];
     
     console.log(`\n  🚀 Starting project dispatches...`);
     
-    for (const projectDoc of projectsSnapshot.docs) {
+    for (let i = 0; i < projectsSnapshot.docs.length; i++) {
+      const projectDoc = projectsSnapshot.docs[i];
       const projectId = projectDoc.id;
       const projectData = projectDoc.data();
       const projectName = projectData.name || 'Unnamed Project';
@@ -177,9 +178,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const projectDetail = projectDetails.find(p => p.id === projectId);
       const accountCount = projectDetail?.accounts || 0;
       
-      console.log(`  📤 [${dispatchedCount + 1}/${projectsSnapshot.size}] Dispatching "${projectName}" (${accountCount} accounts)`);
+      console.log(`  📤 [${i + 1}/${projectsSnapshot.size}] Dispatching "${projectName}" (${accountCount} accounts)`);
       
-      fetch(`${baseUrl}/api/process-project`, {
+      // Create promise for this dispatch
+      const dispatchPromise = fetch(`${baseUrl}/api/process-project`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${cronSecret}`,
@@ -189,25 +191,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           orgId,
           projectId,
           sessionId: sessionRef.id,
-          manual: manual || false // Pass manual flag
+          manual: manual || false
         })
-      }).then(response => {
+      })
+      .then(response => {
         if (response.ok) {
-          console.log(`     ✅ "${projectName}" dispatched successfully (HTTP ${response.status})`);
+          console.log(`     ✅ "${projectName}" dispatched (HTTP ${response.status})`);
         } else {
-          console.error(`     ❌ "${projectName}" dispatch failed: ${response.status} ${response.statusText}`);
+          console.error(`     ❌ "${projectName}" failed: HTTP ${response.status}`);
         }
-      }).catch(err => {
-        console.error(`     ❌ "${projectName}" dispatch error:`, err.message);
+      })
+      .catch(err => {
+        console.error(`     ❌ "${projectName}" error:`, err.message);
       });
       
-      dispatchedCount++;
+      dispatchPromises.push(dispatchPromise);
     }
+    
+    // Wait for all dispatches to be accepted (not completed, just accepted)
+    console.log(`\n  ⏳ Ensuring all ${dispatchPromises.length} project dispatches fire...`);
+    await Promise.allSettled(dispatchPromises);
+    console.log(`  ✅ All project dispatches initiated`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
     console.log(`  ✅ Organization complete: ${duration}s`);
-    console.log(`  📤 Dispatched: ${dispatchedCount} project job(s)\n`);
+    console.log(`  📤 Dispatched: ${dispatchPromises.length} project job(s)\n`);
     
     return res.status(200).json({
       success: true,
