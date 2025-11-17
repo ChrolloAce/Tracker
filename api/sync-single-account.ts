@@ -493,6 +493,15 @@ export default async function handler(
               
             } catch (fetchError: any) {
               console.error(`❌ [TIKTOK] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+              
+              // Check if it's a memory limit error (402) - throw to trigger retry
+              if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
+                  fetchError.message?.includes('402') ||
+                  fetchError.statusCode === 402) {
+                console.error(`💾 Apify memory limit exceeded - will retry later`);
+                throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
+              }
+              
               break;
             }
           }
@@ -821,6 +830,15 @@ export default async function handler(
               
             } catch (fetchError: any) {
               console.error(`❌ [YOUTUBE] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+              
+              // Check if it's a memory limit error (402) - throw to trigger retry
+              if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
+                  fetchError.message?.includes('402') ||
+                  fetchError.statusCode === 402) {
+                console.error(`💾 Apify memory limit exceeded - will retry later`);
+                throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
+              }
+              
               break;
             }
           }
@@ -1367,6 +1385,15 @@ export default async function handler(
               
             } catch (fetchError: any) {
               console.error(`❌ [INSTAGRAM] Fetch failed at batch size ${batchSize}:`, fetchError.message);
+              
+              // Check if it's a memory limit error (402) - throw to trigger retry
+              if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
+                  fetchError.message?.includes('402') ||
+                  fetchError.statusCode === 402) {
+                console.error(`💾 Apify memory limit exceeded - will retry later`);
+                throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
+              }
+              
               break;
             }
           }

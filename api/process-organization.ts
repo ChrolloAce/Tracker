@@ -224,7 +224,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sessionId: sessionRef.id,
       stats: {
         duration: parseFloat(duration),
-        projectsDispatched: dispatchedCount,
+        projectsDispatched: dispatchPromises.length,
         totalAccounts
       }
     });

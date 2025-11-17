@@ -243,56 +243,79 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`\n      ✅ All ${queuedCount} accounts queued in Firestore`);
     console.log(`      📊 Total jobs created: ${jobIds.length}`);
     
-    // Immediately dispatch first 6 jobs (max concurrent Apify jobs)
+    // Conditional dispatch based on manual vs scheduled refresh
     const APIFY_CONCURRENCY_LIMIT = 6;
-    const immediateJobIds = jobIds.slice(0, APIFY_CONCURRENCY_LIMIT);
+    let immediatelyDispatched = 0;
     
-    if (immediateJobIds.length > 0) {
-      console.log(`\n      🚀 Immediately starting first ${immediateJobIds.length} jobs...`);
+    if (isManualRefresh) {
+      // 🚀 MANUAL TRIGGER: Dispatch immediately for instant user feedback
+      console.log(`\n      ⚡ MANUAL REFRESH: Checking global capacity for immediate dispatch...`);
       
-      for (let i = 0; i < immediateJobIds.length; i++) {
-        const jobId = immediateJobIds[i];
-        const accountDoc = accountsToRefresh[i];
-        const accountData = accountDoc.data();
+      // Check global capacity first
+      const runningJobsSnapshot = await db.collection('syncQueue')
+        .where('status', '==', 'running')
+        .get();
+      
+      const runningCount = runningJobsSnapshot.size;
+      const availableSlots = Math.max(0, APIFY_CONCURRENCY_LIMIT - runningCount);
+      
+      console.log(`      📊 Global capacity: ${runningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
+      
+      if (availableSlots > 0) {
+        const immediateJobIds = jobIds.slice(0, availableSlots); // Only dispatch what fits
         
-        console.log(`         ⚡ [${i + 1}/${immediateJobIds.length}] Starting @${accountData.username}`);
+        console.log(`      🚀 Immediately starting first ${immediateJobIds.length} jobs...`);
         
-        // Update job status to running
-        await db.collection('syncQueue').doc(jobId).update({
-          status: 'running',
-          startedAt: Timestamp.now()
-        });
+        for (let i = 0; i < immediateJobIds.length; i++) {
+          const jobId = immediateJobIds[i];
+          const accountDoc = accountsToRefresh[i];
+          const accountData = accountDoc.data();
+          
+          console.log(`         ⚡ [${i + 1}/${immediateJobIds.length}] Starting @${accountData.username}`);
+          
+          // Update job status to running
+          await db.collection('syncQueue').doc(jobId).update({
+            status: 'running',
+            startedAt: Timestamp.now()
+          });
+          
+          // Dispatch to sync-single-account
+          fetch(`${baseUrl}/api/sync-single-account`, {
+            method: 'POST',
+            headers: {
+              'Authorization': cronSecret,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              orgId,
+              projectId,
+              accountId: accountDoc.id,
+              sessionId,
+              jobId
+            })
+          }).then(response => {
+            if (response.ok) {
+              console.log(`            ✅ @${accountData.username}: Started`);
+            } else {
+              console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
+            }
+          }).catch(err => {
+            console.error(`            ❌ @${accountData.username}: ${err.message}`);
+          });
+        }
         
-        // Dispatch to sync-single-account
-        fetch(`${baseUrl}/api/sync-single-account`, {
-          method: 'POST',
-          headers: {
-            'Authorization': cronSecret,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            orgId,
-            projectId,
-            accountId: accountDoc.id,
-            sessionId,
-            jobId // Include jobId so sync-single-account can update job status
-          })
-        }).then(response => {
-          if (response.ok) {
-            console.log(`            ✅ @${accountData.username}: Started`);
-          } else {
-            console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
-          }
-        }).catch(err => {
-          console.error(`            ❌ @${accountData.username}: ${err.message}`);
-        });
+        immediatelyDispatched = immediateJobIds.length;
+        console.log(`      ✅ First ${immediatelyDispatched} jobs dispatched immediately`);
+      } else {
+        console.log(`      ⏸️  No available slots (all ${APIFY_CONCURRENCY_LIMIT} occupied) - queue-worker will pick up when ready`);
       }
-      
-      console.log(`      ✅ First ${immediateJobIds.length} jobs dispatched`);
+    } else {
+      // 📅 SCHEDULED REFRESH: Just queue, let queue-worker dispatch based on global capacity
+      console.log(`\n      📅 SCHEDULED REFRESH: All jobs queued - queue-worker will dispatch based on global capacity`);
     }
     
-    // Trigger queue worker (fire-and-forget to avoid timeouts)
-    console.log(`\n      🔔 Triggering queue worker to process remaining jobs...`);
+    // Always trigger queue-worker (for both manual and scheduled)
+    console.log(`\n      🔔 Triggering queue worker to process ${isManualRefresh ? 'remaining' : 'all'} jobs...`);
     fetch(`${baseUrl}/api/queue-worker`, {
       method: 'POST',
       headers: {
@@ -300,7 +323,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
-        trigger: 'project_complete',
+        trigger: isManualRefresh ? 'manual_refresh' : 'scheduled_refresh',
         projectId,
         sessionId
       })
@@ -324,9 +347,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      ========================================`);
     console.log(`      ⏱️  Duration: ${duration}s`);
     console.log(`      📊 Accounts queued: ${queuedCount}`);
-    console.log(`      🚀 Immediate dispatches: ${immediateJobIds.length}`);
-    console.log(`      ⏳ Pending in queue: ${queuedCount - immediateJobIds.length}`);
-    console.log(`      🔄 Queue worker will process remaining jobs`);
+    console.log(`      🚀 Immediate dispatches: ${immediatelyDispatched}`);
+    console.log(`      ⏳ Pending in queue: ${queuedCount - immediatelyDispatched}`);
+    console.log(`      ${isManualRefresh ? '⚡ Manual refresh - immediate feedback enabled' : '📅 Scheduled refresh - queue worker handles all dispatching'}`);
     console.log(`      ========================================\n`);
     
     return res.status(200).json({
@@ -338,9 +361,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         duration: parseFloat(duration),
         accountsChecked: accountsSnapshot.size,
         accountsQueued: queuedCount,
-        immediateDispatches: immediateJobIds.length,
-        pendingInQueue: queuedCount - immediateJobIds.length,
-        note: 'Jobs queued for worker processing'
+        immediateDispatches: immediatelyDispatched,
+        pendingInQueue: queuedCount - immediatelyDispatched,
+        refreshType: isManualRefresh ? 'manual' : 'scheduled'
       }
     });
     
