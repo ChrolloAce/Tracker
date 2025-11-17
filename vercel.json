@@ -80,6 +80,9 @@
     },
     "api/queue-status.ts": {
       "maxDuration": 10
+    },
+    "api/trigger-queue-worker.ts": {
+      "maxDuration": 10
     }
   },
   "crons": [
