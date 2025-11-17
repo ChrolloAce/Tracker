@@ -94,43 +94,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`📊 Job status: ${pendingCount} pending, ${runningCount} running`);
     
-    // If no jobs exist, cleanup and stop
+    // If no jobs exist, stop
     if (pendingCount === 0 && runningCount === 0) {
-      console.log(`\n✨ No pending or running jobs found`);
-      console.log(`🧹 Deleting all completed jobs...`);
-      
-      // Delete all completed jobs
-      const completedJobsSnapshot = await db
-        .collection('syncQueue')
-        .where('status', '==', 'completed')
-        .get();
-      
-      if (!completedJobsSnapshot.empty) {
-        const batch = db.batch();
-        let deleteCount = 0;
-        
-        completedJobsSnapshot.docs.forEach(doc => {
-          batch.delete(doc.ref);
-          deleteCount++;
-        });
-        
-        await batch.commit();
-        console.log(`✅ Deleted ${deleteCount} completed jobs`);
-      } else {
-        console.log(`ℹ️  No completed jobs to delete`);
-      }
+      console.log(`\n✨ No pending or running jobs found - queue is empty`);
       
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`\n✅ Queue worker complete: ${duration}s - Queue is empty, worker stopped\n`);
+      console.log(`✅ Queue worker complete: ${duration}s - worker stopped\n`);
       
       return res.status(200).json({
         success: true,
-        message: 'Queue empty - worker stopped and cleaned up',
+        message: 'Queue empty - worker stopped',
         stats: {
           duration: parseFloat(duration),
           pendingJobs: 0,
           runningJobs: 0,
-          deletedJobs: completedJobsSnapshot.size,
           dispatchedJobs: 0
         }
       });
@@ -177,44 +154,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
       
-      // Check account sync status to validate job status
-      try {
-        const accountDoc = await db
-          .collection('organizations')
-          .doc(job.orgId)
-          .collection('projects')
-          .doc(job.projectId)
-          .collection('trackedAccounts')
-          .doc(job.accountId)
-          .get();
-        
-        if (accountDoc.exists) {
-          const accountData = accountDoc.data();
-          
-          // If account shows completed but job is still running, mark job as completed
-          if (accountData?.syncStatus === 'completed') {
-            await jobDoc.ref.update({
-              status: 'completed',
-              completedAt: Timestamp.now()
-            });
-            console.log(`   ✅ Job ${jobId} (@${job.accountUsername}) validated as completed via account status`);
-            markedCompletedCount++;
-            continue;
-          }
-        }
-        
-        validatedCount++;
-        
-      } catch (error: any) {
-        console.error(`   ⚠️  Error validating job ${jobId}:`, error.message);
-      }
+      // Job is still running and not timed out - consider it valid
+      validatedCount++;
     }
     
-    console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedCompletedCount} complete, ${markedFailedCount} failed`);
+    console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedFailedCount} failed`);
     
     // Calculate available slots for new jobs
     const APIFY_CONCURRENCY_LIMIT = 6;
-    const actualRunningCount = runningCount - markedCompletedCount - markedFailedCount;
+    const actualRunningCount = runningCount - markedFailedCount;
     const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
     
     console.log(`\n📊 Capacity: ${actualRunningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);

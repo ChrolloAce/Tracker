@@ -610,17 +610,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Don't fail the request if cleanup fails
     }
 
-    // Mark job as completed if jobId provided
+    // Delete completed job from queue
     if (jobId) {
       try {
-        await db.collection('syncQueue').doc(jobId).update({
-          status: 'completed',
-          completedAt: Timestamp.now(),
-          result: 'success'
-        });
-        console.log(`   ✅ Job ${jobId} marked as completed`);
+        await db.collection('syncQueue').doc(jobId).delete();
+        console.log(`   ✅ Job ${jobId} deleted from queue`);
       } catch (jobError: any) {
-        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+        console.warn(`   ⚠️  Failed to delete job (non-critical):`, jobError.message);
       }
     }
 
