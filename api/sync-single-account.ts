@@ -1596,13 +1596,18 @@ export default async function handler(
       }
     }
 
-    // Delete completed job to keep syncQueue clean
+    // Mark job as completed (don't delete - queue-worker needs to see it)
     if (jobId) {
       try {
-        await db.collection('syncQueue').doc(jobId).delete();
-        console.log(`   ✅ Job ${jobId} completed and deleted (${savedCount} videos synced)`);
+        await db.collection('syncQueue').doc(jobId).update({
+          status: 'completed',
+          completedAt: Timestamp.now(),
+          videosSynced: savedCount,
+          result: savedCount > 0 ? 'success' : 'no_new_videos'
+        });
+        console.log(`   ✅ Job ${jobId} marked as completed (${savedCount} videos synced)`);
       } catch (jobError: any) {
-        console.warn(`   ⚠️  Failed to delete job (non-critical):`, jobError.message);
+        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
       }
     }
     
