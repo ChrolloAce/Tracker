@@ -196,8 +196,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Create all fetch promises (this ensures they're initiated before function returns)
-    const dispatchPromises = accountsToRefresh.map((accountDoc, index) => {
+    // Dispatch all accounts and WAIT for HTTP responses to ensure they reach the endpoint
+    // (We don't wait for the actual sync to complete, just for the HTTP request to be accepted)
+    const dispatchPromises: Promise<any>[] = [];
+    
+    for (let i = 0; i < accountsToRefresh.length; i++) {
+      const accountDoc = accountsToRefresh[i];
       const accountData = accountDoc.data();
       
       const payload = {
@@ -207,10 +211,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessionId
       };
       
-      console.log(`      ⚡ [${index + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username} (ID: ${accountDoc.id})`);
+      console.log(`      ⚡ [${i + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username} (ID: ${accountDoc.id})`);
       
-      // Return the fetch promise (fire-and-forget but ensure it starts)
-      return fetch(`${baseUrl}/api/sync-single-account`, {
+      const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
         method: 'POST',
         headers: {
           'Authorization': cronSecret,
@@ -221,18 +224,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!response.ok) {
           console.error(`         ❌ Dispatch HTTP error for @${accountData.username}: ${response.status} ${response.statusText}`);
         } else {
-          console.log(`         ✅ Dispatch successful for @${accountData.username}`);
+          console.log(`         ✅ Dispatch successful for @${accountData.username} (HTTP ${response.status})`);
         }
         return response;
       }).catch(err => {
         console.error(`         ❌ Dispatch network error for @${accountData.username}:`, err.message);
       });
-    });
+      
+      dispatchPromises.push(dispatchPromise);
+    }
     
-    // Give dispatches 100ms to initiate before returning (prevents Vercel from killing them)
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    console.log(`      ✅ All ${accountsToRefresh.length} dispatches initiated`);
+    // Wait for ALL dispatches to be accepted by the endpoint
+    console.log(`      ⏳ Waiting for ${dispatchPromises.length} dispatches to be accepted...`);
+    await Promise.allSettled(dispatchPromises);
+    console.log(`      ✅ All ${accountsToRefresh.length} dispatches accepted by endpoint`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     const dispatchedCount = accountsToRefresh.length;
