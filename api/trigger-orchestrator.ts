@@ -14,10 +14,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('🚀 Triggering orchestrator...');
 
-    // Get the base URL
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://www.viewtrack.app';
+    // Always use production URL to avoid auth issues with preview deployments
+    const baseUrl = 'https://www.viewtrack.app';
 
     const cronSecret = process.env.CRON_SECRET;
     
