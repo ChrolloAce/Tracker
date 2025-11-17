@@ -196,78 +196,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Process accounts in staggered batches to respect Apify RAM limits
-    // Max 6 concurrent Apify jobs (6 × 4GB = 24GB, leaving 8GB buffer from 32GB total)
-    // Use quick fire-and-forget with delays to avoid Vercel timeout
-    const APIFY_CONCURRENCY_LIMIT = 6;
-    const BATCH_DELAY_MS = 500; // Small delay between batches (not waiting for responses)
+    // Write account sync jobs to Firestore queue (reliable, doesn't get killed by Vercel)
+    // Jobs will be processed by a separate queue worker
+    console.log(`      🚀 Queueing ${accountsToRefresh.length} accounts for sync...`);
     
-    const batches: typeof accountsToRefresh[] = [];
+    const batch = db.batch();
+    let queuedCount = 0;
     
-    // Split accounts into batches of 6
-    for (let i = 0; i < accountsToRefresh.length; i += APIFY_CONCURRENCY_LIMIT) {
-      batches.push(accountsToRefresh.slice(i, i + APIFY_CONCURRENCY_LIMIT));
-    }
-    
-    console.log(`      🚀 Dispatching ${accountsToRefresh.length} accounts in ${batches.length} batch(es) (max ${APIFY_CONCURRENCY_LIMIT} concurrent)...`);
-    
-    let totalDispatched = 0;
-    
-    // Send each batch with a small delay between them (fire-and-forget)
-    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-      const batch = batches[batchIndex];
-      console.log(`\n      📦 Batch ${batchIndex + 1}/${batches.length}: Dispatching ${batch.length} accounts...`);
+    for (let i = 0; i < accountsToRefresh.length; i++) {
+      const accountDoc = accountsToRefresh[i];
+      const accountData = accountDoc.data();
       
-      // Dispatch all accounts in this batch (fire-and-forget, no await on responses)
-      for (let i = 0; i < batch.length; i++) {
-        const accountDoc = batch[i];
-        const accountData = accountDoc.data();
-        const globalIndex = batchIndex * APIFY_CONCURRENCY_LIMIT + i + 1;
-        
-        const payload = {
-          orgId,
-          projectId,
-          accountId: accountDoc.id,
-          sessionId
-        };
-        
-        console.log(`         ⚡ [${globalIndex}/${accountsToRefresh.length}] @${accountData.username}`);
-        
-        // Fire-and-forget: Send request, handle response asynchronously
-        fetch(`${baseUrl}/api/sync-single-account`, {
-          method: 'POST',
-          headers: {
-            'Authorization': cronSecret,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        }).then(response => {
-          if (response.ok) {
-            console.log(`            ✅ @${accountData.username}: Started`);
-          } else {
-            console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
-          }
-        }).catch(err => {
-          console.error(`            ❌ @${accountData.username}: ${err.message}`);
-        });
-        
-        totalDispatched++;
-      }
+      console.log(`         📝 [${i + 1}/${accountsToRefresh.length}] Queueing @${accountData.username}`);
       
-      console.log(`      ✅ Batch ${batchIndex + 1}: ${batch.length} dispatches sent`);
+      // Create a job document in Firestore
+      const jobRef = db
+        .collection('syncQueue')
+        .doc(); // Auto-generate ID
       
-      // Small delay before next batch (prevents overwhelming Apify)
-      if (batchIndex < batches.length - 1) {
-        console.log(`      ⏳ ${BATCH_DELAY_MS}ms delay before next batch...`);
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+      batch.set(jobRef, {
+        type: 'account_sync',
+        status: 'pending',
+        orgId,
+        projectId,
+        accountId: accountDoc.id,
+        sessionId,
+        accountUsername: accountData.username,
+        accountPlatform: accountData.platform,
+        createdAt: Timestamp.now(),
+        attempts: 0,
+        maxAttempts: 3,
+        priority: isManualRefresh ? 10 : 5 // Higher priority for manual refreshes
+      });
+      
+      queuedCount++;
+      
+      // Commit batch every 500 operations (Firestore limit)
+      if (queuedCount % 500 === 0) {
+        await batch.commit();
+        console.log(`         ✅ Committed ${queuedCount} jobs to queue`);
       }
     }
     
-    // Final delay to ensure all fetch requests are initiated
-    console.log(`\n      ⏳ Ensuring all dispatches are initiated...`);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Commit remaining jobs
+    if (queuedCount % 500 !== 0) {
+      await batch.commit();
+    }
     
-    console.log(`\n      ✅ All ${totalDispatched} dispatches sent (running in background)`);
+    console.log(`\n      ✅ All ${queuedCount} accounts queued in Firestore`);
+    
+    // Trigger the queue worker to start processing
+    console.log(`      🔔 Triggering queue worker...`);
+    fetch(`${baseUrl}/api/queue-worker`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ trigger: 'project_complete', projectId, sessionId })
+    }).catch(err => {
+      console.error(`      ⚠️  Failed to trigger queue worker (non-critical):`, err.message);
+    });
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
@@ -275,9 +264,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      ✅ Project "${projectName}" Complete`);
     console.log(`      ========================================`);
     console.log(`      ⏱️  Duration: ${duration}s`);
-    console.log(`      📊 Accounts dispatched: ${totalDispatched}`);
-    console.log(`      📦 Batches: ${batches.length}`);
-    console.log(`      🔄 Syncs running in background`);
+    console.log(`      📊 Accounts queued: ${queuedCount}`);
+    console.log(`      🔄 Jobs queued for worker processing`);
     console.log(`      ========================================\n`);
     
     return res.status(200).json({
@@ -288,9 +276,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stats: {
         duration: parseFloat(duration),
         accountsChecked: accountsSnapshot.size,
-        accountsDispatched: totalDispatched,
-        batches: batches.length,
-        note: 'Syncs running in background'
+        accountsQueued: queuedCount,
+        note: 'Jobs queued for worker processing'
       }
     });
     

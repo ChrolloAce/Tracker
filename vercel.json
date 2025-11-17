@@ -74,12 +74,19 @@
     },
     "api/cleanup-stuck-items.ts": {
       "maxDuration": 60
+    },
+    "api/queue-worker.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
     {
       "path": "/api/cron-orchestrator",
       "schedule": "0 0,12 * * *"
+    },
+    {
+      "path": "/api/queue-worker",
+      "schedule": "*/5 * * * *"
     }
   ],
   "routes": [
