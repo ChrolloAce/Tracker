@@ -25,14 +25,9 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-// Plan-based refresh intervals (must match subscription.ts)
-const PLAN_REFRESH_INTERVALS: Record<string, number> = {
-  free: 48,         // 48 hours
-  basic: 24,        // 24 hours
-  pro: 24,          // 24 hours
-  ultra: 12,        // 12 hours
-  enterprise: 6,    // 6 hours
-};
+// Note: We queue ALL active accounts every time (no time-based filtering)
+// The orchestrator controls when refreshes happen (noon/midnight UTC)
+// and which orgs get processed (plan-based at orchestrator level)
 
 /**
  * Process Project
@@ -94,10 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .get();
     
     const planTier = subscriptionDoc.data()?.planTier || 'free';
-    const refreshIntervalHours = PLAN_REFRESH_INTERVALS[planTier];
-    const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
     
-    console.log(`      📋 Plan: ${planTier} (refresh every ${refreshIntervalHours}h)`);
+    console.log(`      📋 Plan: ${planTier}`);
     
     // Get ALL accounts first to see what we have
     const allAccountsSnapshot = await db
@@ -143,29 +136,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Filter accounts that need refresh (skip interval check for manual refreshes)
-    const now = Date.now();
-    const accountsToRefresh = accountsSnapshot.docs.filter(doc => {
-      const accountData = doc.data();
-      
-      // Manual refreshes bypass time interval checks
-      if (isManualRefresh) {
-        console.log(`      ✅ @${accountData.username} [MANUAL - FORCE REFRESH]`);
-        return true;
-      }
-      
-      // Scheduled refreshes check time intervals
-      const lastRefreshed = accountData.lastRefreshed?.toMillis() || 0;
-      const timeSinceRefresh = now - lastRefreshed;
-      
-      if (timeSinceRefresh < refreshIntervalMs) {
-        const hoursRemaining = ((refreshIntervalMs - timeSinceRefresh) / (1000 * 60 * 60)).toFixed(1);
-        console.log(`      ⏭️  Skip @${accountData.username} (${hoursRemaining}h remaining)`);
-        return false;
-      }
-      
-      return true;
-    });
+    // Queue ALL active accounts (no time-based filtering)
+    // The "Last One Out" pattern means we process everything, then send one summary email
+    const accountsToRefresh = accountsSnapshot.docs;
+    
+    console.log(`      📝 Will queue ALL ${accountsToRefresh.length} active accounts`);
     
     console.log(`      🎯 Accounts to refresh: ${accountsToRefresh.length}`);
     
