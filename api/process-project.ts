@@ -196,9 +196,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Dispatch all accounts and WAIT for HTTP responses to ensure they reach the endpoint
-    // (We don't wait for the actual sync to complete, just for the HTTP request to be accepted)
-    const dispatchPromises: Promise<any>[] = [];
+    // Dispatch all accounts in parallel (fire-and-forget with guaranteed initiation)
+    // We send all requests simultaneously and give them time to start, but don't wait for completion
+    console.log(`      🚀 Dispatching ${accountsToRefresh.length} accounts in parallel...`);
     
     for (let i = 0; i < accountsToRefresh.length; i++) {
       const accountDoc = accountsToRefresh[i];
@@ -213,7 +213,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log(`      ⚡ [${i + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username} (ID: ${accountDoc.id})`);
       
-      const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
+      // Fire-and-forget: Send request but don't await response
+      fetch(`${baseUrl}/api/sync-single-account`, {
         method: 'POST',
         headers: {
           'Authorization': cronSecret,
@@ -222,22 +223,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify(payload)
       }).then(response => {
         if (!response.ok) {
-          console.error(`         ❌ Dispatch HTTP error for @${accountData.username}: ${response.status} ${response.statusText}`);
+          console.error(`         ❌ @${accountData.username} dispatch failed: HTTP ${response.status}`);
         } else {
-          console.log(`         ✅ Dispatch successful for @${accountData.username} (HTTP ${response.status})`);
+          console.log(`         ✅ @${accountData.username} dispatch accepted (HTTP ${response.status})`);
         }
-        return response;
       }).catch(err => {
-        console.error(`         ❌ Dispatch network error for @${accountData.username}:`, err.message);
+        console.error(`         ❌ @${accountData.username} network error:`, err.message);
       });
-      
-      dispatchPromises.push(dispatchPromise);
     }
     
-    // Wait for ALL dispatches to be accepted by the endpoint
-    console.log(`      ⏳ Waiting for ${dispatchPromises.length} dispatches to be accepted...`);
-    await Promise.allSettled(dispatchPromises);
-    console.log(`      ✅ All ${accountsToRefresh.length} dispatches accepted by endpoint`);
+    // Give dispatches 1 second to initiate before returning (prevents Vercel from killing them)
+    // This is enough time for fetch to send HTTP requests, but not wait for responses
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log(`      ✅ All ${accountsToRefresh.length} dispatches initiated (running in background)`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     const dispatchedCount = accountsToRefresh.length;
