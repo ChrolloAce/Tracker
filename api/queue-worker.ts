@@ -32,155 +32,236 @@ function initializeFirebase() {
 }
 
 /**
- * Queue Worker - Processes account sync jobs from Firestore queue
+ * Queue Worker - Processes jobs in batches of 6 (max Apify concurrency)
  * 
- * This worker:
- * 1. Fetches pending jobs from Firestore (max 6 at a time for Apify concurrency)
- * 2. Dispatches each job to sync-single-account
- * 3. Waits for completion before processing next batch
- * 4. Updates job status and handles retries
+ * Runs every 1 minute via Vercel cron
+ * 
+ * Responsibilities:
+ * 1. Find all pending/running jobs
+ * 2. If no jobs exist, delete completed jobs and stop
+ * 3. Count currently running jobs
+ * 4. Dispatch new jobs to fill available slots (max 6 concurrent)
+ * 5. Validate running jobs against account sync status
+ * 6. Mark stale jobs as failed and retry
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const db = initializeFirebase();
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.authorization;
-
-  // Authenticate
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    console.error('❌ Unauthorized request to queue-worker');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-  
-  console.log(`\n🔄 Queue Worker Started at ${new Date().toISOString()}`);
   const startTime = Date.now();
   
-  const APIFY_CONCURRENCY_LIMIT = 6; // Max concurrent Apify jobs
-  const baseUrl = 'https://www.viewtrack.app';
-  
-  let totalProcessed = 0;
-  let totalSuccessful = 0;
-  let totalFailed = 0;
-  let batchNumber = 0;
-  
   try {
-    // Keep processing batches until no more pending jobs
-    while (true) {
-      batchNumber++;
+    const db = initializeFirebase();
+    const cronSecret = process.env.CRON_SECRET;
+    const baseUrl = 'https://www.viewtrack.app';
+    
+    // Authenticate
+    const authHeader = req.headers.authorization;
+    const isVercelCron = req.headers['x-vercel-cron'] === '1';
+    
+    if (authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+      console.error('❌ Unauthorized request to queue-worker');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+    
+    console.log(`\n🔄 [QUEUE-WORKER] Starting at ${new Date().toISOString()}`);
+    
+    // Get all pending and running jobs
+    const pendingJobsSnapshot = await db
+      .collection('syncQueue')
+      .where('status', '==', 'pending')
+      .orderBy('priority', 'desc')
+      .orderBy('createdAt', 'asc')
+      .get();
+    
+    const runningJobsSnapshot = await db
+      .collection('syncQueue')
+      .where('status', '==', 'running')
+      .get();
+    
+    const pendingCount = pendingJobsSnapshot.size;
+    const runningCount = runningJobsSnapshot.size;
+    
+    console.log(`📊 Job status: ${pendingCount} pending, ${runningCount} running`);
+    
+    // If no jobs exist, cleanup and stop
+    if (pendingCount === 0 && runningCount === 0) {
+      console.log(`\n✨ No pending or running jobs found`);
+      console.log(`🧹 Deleting all completed jobs...`);
       
-      // Fetch next batch of pending jobs (sorted by priority, then created time)
-      const pendingJobs = await db
+      // Delete all completed jobs
+      const completedJobsSnapshot = await db
         .collection('syncQueue')
-        .where('status', '==', 'pending')
-        .where('attempts', '<', 3) // Max 3 attempts
-        .orderBy('priority', 'desc')
-        .orderBy('createdAt', 'asc')
-        .limit(APIFY_CONCURRENCY_LIMIT)
+        .where('status', '==', 'completed')
         .get();
       
-      if (pendingJobs.empty) {
-        console.log(`✅ No more pending jobs - queue is empty`);
-        break;
+      if (!completedJobsSnapshot.empty) {
+        const batch = db.batch();
+        let deleteCount = 0;
+        
+        completedJobsSnapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+          deleteCount++;
+        });
+        
+        await batch.commit();
+        console.log(`✅ Deleted ${deleteCount} completed jobs`);
+      } else {
+        console.log(`ℹ️  No completed jobs to delete`);
       }
       
-      console.log(`\n📦 Batch ${batchNumber}: Processing ${pendingJobs.size} jobs`);
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`\n✅ Queue worker complete: ${duration}s - Queue is empty, worker stopped\n`);
       
-      // Mark jobs as processing
-      const batch = db.batch();
-      pendingJobs.docs.forEach(doc => {
-        batch.update(doc.ref, {
-          status: 'processing',
-          startedAt: Timestamp.now(),
-          attempts: (doc.data().attempts || 0) + 1
-        });
-      });
-      await batch.commit();
-      
-      // Process all jobs in this batch in parallel
-      const jobPromises = pendingJobs.docs.map(async (jobDoc) => {
-        const job = jobDoc.data();
-        
-        console.log(`   ⚡ Processing @${job.accountUsername} (${job.accountPlatform})`);
-        
-        try {
-          const response = await fetch(`${baseUrl}/api/sync-single-account`, {
-            method: 'POST',
-            headers: {
-              'Authorization': cronSecret,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              orgId: job.orgId,
-              projectId: job.projectId,
-              accountId: job.accountId,
-              sessionId: job.sessionId
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          
-          const result = await response.json();
-          
-          // Mark job as completed
-          await jobDoc.ref.update({
-            status: 'completed',
-            completedAt: Timestamp.now(),
-            result: result,
-            error: null
-          });
-          
-          console.log(`      ✅ @${job.accountUsername}: ${result.videosCount || 0} videos synced`);
-          totalSuccessful++;
-          
-          return { success: true, job };
-          
-        } catch (error: any) {
-          console.error(`      ❌ @${job.accountUsername}: ${error.message}`);
-          
-          // Mark job as failed (or retry if attempts < maxAttempts)
-          const shouldRetry = job.attempts < job.maxAttempts;
-          
-          await jobDoc.ref.update({
-            status: shouldRetry ? 'pending' : 'failed',
-            error: error.message,
-            lastAttemptAt: Timestamp.now(),
-            ...(shouldRetry ? {} : { failedAt: Timestamp.now() })
-          });
-          
-          if (!shouldRetry) {
-            totalFailed++;
-          }
-          
-          return { success: false, job, error: error.message };
+      return res.status(200).json({
+        success: true,
+        message: 'Queue empty - worker stopped and cleaned up',
+        stats: {
+          duration: parseFloat(duration),
+          pendingJobs: 0,
+          runningJobs: 0,
+          deletedJobs: completedJobsSnapshot.size,
+          dispatchedJobs: 0
         }
       });
+    }
+    
+    // Validate running jobs (check if they're actually still running)
+    console.log(`\n🔍 Validating ${runningCount} running jobs...`);
+    
+    const JOB_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const now = Date.now();
+    let validatedCount = 0;
+    let markedFailedCount = 0;
+    let markedCompletedCount = 0;
+    
+    for (const jobDoc of runningJobsSnapshot.docs) {
+      const job = jobDoc.data();
+      const jobId = jobDoc.id;
       
-      // Wait for all jobs in this batch to complete
-      await Promise.allSettled(jobPromises);
-      totalProcessed += pendingJobs.size;
+      // Check if job has been running for too long
+      const startedAt = job.startedAt?.toMillis() || 0;
+      const runningTime = now - startedAt;
       
-      console.log(`   ✅ Batch ${batchNumber} complete`);
-      
-      // Small delay before next batch
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Prevent infinite loops - max 100 batches per run (600 jobs)
-      if (batchNumber >= 100) {
-        console.log(`⚠️  Reached batch limit (100) - stopping for now`);
-        break;
+      if (runningTime > JOB_TIMEOUT_MS) {
+        console.log(`   ⚠️  Job ${jobId} (@${job.accountUsername}) timed out after ${Math.round(runningTime / 60000)}min`);
+        
+        // Mark as failed and reset to pending for retry if attempts < maxAttempts
+        if (job.attempts < job.maxAttempts) {
+          await jobDoc.ref.update({
+            status: 'pending',
+            attempts: job.attempts + 1,
+            error: 'Job timed out after 10 minutes',
+            startedAt: null
+          });
+          console.log(`   🔄 Reset to pending for retry (attempt ${job.attempts + 1}/${job.maxAttempts})`);
+        } else {
+          await jobDoc.ref.update({
+            status: 'failed',
+            completedAt: Timestamp.now(),
+            error: 'Job timed out after 10 minutes - max retries exceeded'
+          });
+          console.log(`   ❌ Marked as failed (max retries exceeded)`);
+          markedFailedCount++;
+        }
+        continue;
       }
       
-      // Timeout protection - stop after 4 minutes (leave 1 min buffer for 5 min timeout)
-      const elapsed = (Date.now() - startTime) / 1000;
-      if (elapsed > 240) {
-        console.log(`⚠️  Approaching timeout (${elapsed.toFixed(0)}s) - stopping for now`);
-        break;
+      // Check account sync status to validate job status
+      try {
+        const accountDoc = await db
+          .collection('organizations')
+          .doc(job.orgId)
+          .collection('projects')
+          .doc(job.projectId)
+          .collection('trackedAccounts')
+          .doc(job.accountId)
+          .get();
+        
+        if (accountDoc.exists) {
+          const accountData = accountDoc.data();
+          
+          // If account shows completed but job is still running, mark job as completed
+          if (accountData?.syncStatus === 'completed') {
+            await jobDoc.ref.update({
+              status: 'completed',
+              completedAt: Timestamp.now()
+            });
+            console.log(`   ✅ Job ${jobId} (@${job.accountUsername}) validated as completed via account status`);
+            markedCompletedCount++;
+            continue;
+          }
+        }
+        
+        validatedCount++;
+        
+      } catch (error: any) {
+        console.error(`   ⚠️  Error validating job ${jobId}:`, error.message);
       }
+    }
+    
+    console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedCompletedCount} complete, ${markedFailedCount} failed`);
+    
+    // Calculate available slots for new jobs
+    const APIFY_CONCURRENCY_LIMIT = 6;
+    const actualRunningCount = runningCount - markedCompletedCount - markedFailedCount;
+    const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
+    
+    console.log(`\n📊 Capacity: ${actualRunningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
+    
+    // Dispatch new jobs to fill available slots
+    let dispatchedCount = 0;
+    
+    if (availableSlots > 0 && pendingCount > 0) {
+      console.log(`\n🚀 Dispatching up to ${availableSlots} new jobs...`);
+      
+      const jobsToDispatch = pendingJobsSnapshot.docs.slice(0, availableSlots);
+      
+      for (const jobDoc of jobsToDispatch) {
+        const job = jobDoc.data();
+        const jobId = jobDoc.id;
+        
+        console.log(`   ⚡ Dispatching job ${jobId}: @${job.accountUsername} (${job.accountPlatform})`);
+        
+        // Update job status to running
+        await jobDoc.ref.update({
+          status: 'running',
+          startedAt: Timestamp.now()
+        });
+        
+        // Dispatch to sync-single-account
+        fetch(`${baseUrl}/api/sync-single-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': cronSecret,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            orgId: job.orgId,
+            projectId: job.projectId,
+            accountId: job.accountId,
+            sessionId: job.sessionId,
+            jobId: jobId
+          })
+        }).then(response => {
+          if (response.ok) {
+            console.log(`      ✅ @${job.accountUsername}: Started`);
+          } else {
+            console.error(`      ❌ @${job.accountUsername}: HTTP ${response.status}`);
+          }
+        }).catch(err => {
+          console.error(`      ❌ @${job.accountUsername}:`, err.message);
+        });
+        
+        dispatchedCount++;
+      }
+      
+      console.log(`✅ Dispatched ${dispatchedCount} new jobs`);
+    } else if (availableSlots <= 0) {
+      console.log(`⏸️  No available slots - all ${APIFY_CONCURRENCY_LIMIT} slots occupied`);
+    } else {
+      console.log(`ℹ️  No pending jobs to dispatch`);
     }
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -189,20 +270,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Queue Worker Complete`);
     console.log(`========================================`);
     console.log(`⏱️  Duration: ${duration}s`);
-    console.log(`📦 Batches: ${batchNumber}`);
-    console.log(`📊 Jobs processed: ${totalProcessed}`);
-    console.log(`✅ Successful: ${totalSuccessful}`);
-    console.log(`❌ Failed: ${totalFailed}`);
+    console.log(`📊 Pending: ${pendingCount - dispatchedCount}`);
+    console.log(`🔄 Running: ${actualRunningCount + dispatchedCount}`);
+    console.log(`🚀 Dispatched: ${dispatchedCount}`);
+    console.log(`✅ Validated: ${validatedCount}`);
     console.log(`========================================\n`);
     
     return res.status(200).json({
       success: true,
+      message: 'Queue worker processed successfully',
       stats: {
         duration: parseFloat(duration),
-        batches: batchNumber,
-        processed: totalProcessed,
-        successful: totalSuccessful,
-        failed: totalFailed
+        pendingJobs: pendingCount - dispatchedCount,
+        runningJobs: actualRunningCount + dispatchedCount,
+        dispatchedJobs: dispatchedCount,
+        validatedJobs: validatedCount,
+        markedCompleted: markedCompletedCount,
+        markedFailed: markedFailedCount
       }
     });
     
@@ -210,12 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error(`❌ Queue worker error:`, error);
     return res.status(500).json({
       success: false,
-      error: error.message,
-      stats: {
-        processed: totalProcessed,
-        successful: totalSuccessful,
-        failed: totalFailed
-      }
+      error: error.message
     });
   }
 }

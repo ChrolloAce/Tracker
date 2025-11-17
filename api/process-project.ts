@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -196,23 +196,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Write account sync jobs to Firestore queue (reliable, doesn't get killed by Vercel)
-    // Jobs will be processed by a separate queue worker
-    console.log(`      🚀 Queueing ${accountsToRefresh.length} accounts for sync...`);
+    // Queue all accounts as jobs in Firestore
+    // This ensures jobs are persisted and won't be lost if Vercel times out
+    console.log(`      📝 Queueing ${accountsToRefresh.length} accounts as jobs in Firestore...`);
     
     const batch = db.batch();
     let queuedCount = 0;
+    const jobIds: string[] = [];
     
     for (let i = 0; i < accountsToRefresh.length; i++) {
       const accountDoc = accountsToRefresh[i];
       const accountData = accountDoc.data();
       
-      console.log(`         📝 [${i + 1}/${accountsToRefresh.length}] Queueing @${accountData.username}`);
-      
-      // Create a job document in Firestore
-      const jobRef = db
-        .collection('syncQueue')
-        .doc(); // Auto-generate ID
+      // Create job document in syncQueue collection
+      const jobRef = db.collection('syncQueue').doc(); // Auto-generate ID
+      const jobId = jobRef.id;
+      jobIds.push(jobId);
       
       batch.set(jobRef, {
         type: 'account_sync',
@@ -224,11 +223,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         accountUsername: accountData.username,
         accountPlatform: accountData.platform,
         createdAt: Timestamp.now(),
+        startedAt: null,
+        completedAt: null,
         attempts: 0,
         maxAttempts: 3,
-        priority: isManualRefresh ? 10 : 5 // Higher priority for manual refreshes
+        priority: isManualRefresh ? 10 : 5, // Higher priority for manual refreshes
+        error: null
       });
       
+      console.log(`         📝 [${i + 1}/${accountsToRefresh.length}] Queued @${accountData.username} (job: ${jobId})`);
       queuedCount++;
       
       // Commit batch every 500 operations (Firestore limit)
@@ -245,15 +248,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`\n      ✅ All ${queuedCount} accounts queued in Firestore`);
     
-    // Trigger the queue worker to start processing
-    console.log(`      🔔 Triggering queue worker...`);
+    // Immediately dispatch first 6 jobs (max concurrent Apify jobs)
+    const APIFY_CONCURRENCY_LIMIT = 6;
+    const immediateJobIds = jobIds.slice(0, APIFY_CONCURRENCY_LIMIT);
+    
+    if (immediateJobIds.length > 0) {
+      console.log(`\n      🚀 Immediately starting first ${immediateJobIds.length} jobs...`);
+      
+      for (let i = 0; i < immediateJobIds.length; i++) {
+        const jobId = immediateJobIds[i];
+        const accountDoc = accountsToRefresh[i];
+        const accountData = accountDoc.data();
+        
+        console.log(`         ⚡ [${i + 1}/${immediateJobIds.length}] Starting @${accountData.username}`);
+        
+        // Update job status to running
+        await db.collection('syncQueue').doc(jobId).update({
+          status: 'running',
+          startedAt: Timestamp.now()
+        });
+        
+        // Dispatch to sync-single-account
+        fetch(`${baseUrl}/api/sync-single-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': cronSecret,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            orgId,
+            projectId,
+            accountId: accountDoc.id,
+            sessionId,
+            jobId // Include jobId so sync-single-account can update job status
+          })
+        }).then(response => {
+          if (response.ok) {
+            console.log(`            ✅ @${accountData.username}: Started`);
+          } else {
+            console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
+          }
+        }).catch(err => {
+          console.error(`            ❌ @${accountData.username}: ${err.message}`);
+        });
+      }
+      
+      console.log(`      ✅ First ${immediateJobIds.length} jobs dispatched`);
+    }
+    
+    // Trigger queue worker to start monitoring and processing remaining jobs
+    console.log(`\n      🔔 Triggering queue worker to process remaining jobs...`);
     fetch(`${baseUrl}/api/queue-worker`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cronSecret}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ trigger: 'project_complete', projectId, sessionId })
+      body: JSON.stringify({ 
+        trigger: 'project_complete',
+        projectId,
+        sessionId
+      })
     }).catch(err => {
       console.error(`      ⚠️  Failed to trigger queue worker (non-critical):`, err.message);
     });
@@ -265,7 +320,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      ========================================`);
     console.log(`      ⏱️  Duration: ${duration}s`);
     console.log(`      📊 Accounts queued: ${queuedCount}`);
-    console.log(`      🔄 Jobs queued for worker processing`);
+    console.log(`      🚀 Immediate dispatches: ${immediateJobIds.length}`);
+    console.log(`      ⏳ Pending in queue: ${queuedCount - immediateJobIds.length}`);
+    console.log(`      🔄 Queue worker will process remaining jobs`);
     console.log(`      ========================================\n`);
     
     return res.status(200).json({
@@ -277,6 +334,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         duration: parseFloat(duration),
         accountsChecked: accountsSnapshot.size,
         accountsQueued: queuedCount,
+        immediateDispatches: immediateJobIds.length,
+        pendingInQueue: queuedCount - immediateJobIds.length,
         note: 'Jobs queued for worker processing'
       }
     });

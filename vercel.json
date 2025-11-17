@@ -76,7 +76,7 @@
       "maxDuration": 60
     },
     "api/queue-worker.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -86,7 +86,7 @@
     },
     {
       "path": "/api/queue-worker",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ],
   "routes": [

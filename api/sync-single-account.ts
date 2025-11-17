@@ -206,9 +206,10 @@ export default async function handler(
 
   const { accountId, orgId, projectId } = req.body;
   const sessionId = req.body.sessionId || null;
+  const jobId = req.body.jobId || null;
 
   console.log(`\n🎯 [SYNC-ACCOUNT] Received request for account: ${accountId}`);
-  console.log(`   📦 Org: ${orgId}, Project: ${projectId}, Session: ${sessionId || 'none'}`);
+  console.log(`   📦 Org: ${orgId}, Project: ${projectId}, Session: ${sessionId || 'none'}, Job: ${jobId || 'none'}`);
 
   // Validate required fields
   const validation = validateRequiredFields(req.body, ['accountId', 'orgId', 'projectId']);
@@ -247,6 +248,19 @@ export default async function handler(
     console.log(`⚡ Sync started for account: ${accountId} [${isManualSync ? 'MANUAL' : 'SCHEDULED'}]`);
 
   try {
+    // Update job status to running if jobId provided
+    if (jobId) {
+      try {
+        await db.collection('syncQueue').doc(jobId).update({
+          status: 'running',
+          startedAt: Timestamp.now()
+        });
+        console.log(`   📝 Job ${jobId} marked as running`);
+      } catch (jobError: any) {
+        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+      }
+    }
+    
     const accountRef = db
       .collection('organizations')
       .doc(orgId)
@@ -1577,8 +1591,21 @@ export default async function handler(
       }
     }
 
+    // Update job status to completed if jobId provided
+    if (jobId) {
+      try {
+        await db.collection('syncQueue').doc(jobId).update({
+          status: 'completed',
+          completedAt: Timestamp.now()
+        });
+        console.log(`   ✅ Job ${jobId} marked as completed`);
+      } catch (jobError: any) {
+        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+      }
+    }
+    
     console.log(`\n✅ [SYNC-ACCOUNT] Successfully completed sync for @${account.username}`);
-    console.log(`   📊 Final stats: ${savedCount} videos, Session: ${sessionId || 'none'}\n`);
+    console.log(`   📊 Final stats: ${savedCount} videos, Session: ${sessionId || 'none'}, Job: ${jobId || 'none'}\n`);
     
     return res.status(200).json({
       success: true,
@@ -1590,6 +1617,41 @@ export default async function handler(
   } catch (error: any) {
     console.error(`❌ [SYNC-ACCOUNT] Error for account ${accountId}:`, error.message);
     console.error(`   Stack trace:`, error.stack);
+
+    // Update job status on error if jobId provided
+    if (jobId) {
+      try {
+        const jobDoc = await db.collection('syncQueue').doc(jobId).get();
+        const jobData = jobDoc.data();
+        
+        if (jobData) {
+          const attempts = jobData.attempts || 0;
+          const maxAttempts = jobData.maxAttempts || 3;
+          
+          if (attempts + 1 >= maxAttempts) {
+            // Max retries exceeded - mark as failed
+            await db.collection('syncQueue').doc(jobId).update({
+              status: 'failed',
+              completedAt: Timestamp.now(),
+              attempts: attempts + 1,
+              error: error.message || String(error)
+            });
+            console.log(`   ❌ Job ${jobId} marked as failed (max retries exceeded)`);
+          } else {
+            // Reset to pending for retry
+            await db.collection('syncQueue').doc(jobId).update({
+              status: 'pending',
+              attempts: attempts + 1,
+              error: error.message || String(error),
+              startedAt: null
+            });
+            console.log(`   🔄 Job ${jobId} reset to pending for retry (attempt ${attempts + 1}/${maxAttempts})`);
+          }
+        }
+      } catch (jobError: any) {
+        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+      }
+    }
 
     // Mark account with error status and send notifications
     try {
