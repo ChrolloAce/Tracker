@@ -185,6 +185,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`      🚀 Starting dispatch of ${accountsToRefresh.length} accounts...`);
     
+    // Log account details before dispatching
+    accountsToRefresh.forEach((accountDoc, index) => {
+      const accountData = accountDoc.data();
+      const lastRefreshed = accountData.lastRefreshed?.toDate();
+      const lastRefreshedStr = lastRefreshed 
+        ? `${Math.round((Date.now() - lastRefreshed.getTime()) / (1000 * 60 * 60))}h ago`
+        : 'Never';
+      
+      console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
+    });
+    
     // Create all fetch promises (this ensures they're initiated before function returns)
     const dispatchPromises = accountsToRefresh.map((accountDoc, index) => {
       const accountData = accountDoc.data();
@@ -196,7 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessionId
       };
       
-      console.log(`      ⚡ [${index + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username}`);
+      console.log(`      ⚡ [${index + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username} (ID: ${accountDoc.id})`);
       
       // Return the fetch promise (fire-and-forget but ensure it starts)
       return fetch(`${baseUrl}/api/sync-single-account`, {
@@ -206,8 +217,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
+      }).then(response => {
+        if (!response.ok) {
+          console.error(`         ❌ Dispatch HTTP error for @${accountData.username}: ${response.status} ${response.statusText}`);
+        } else {
+          console.log(`         ✅ Dispatch successful for @${accountData.username}`);
+        }
+        return response;
       }).catch(err => {
-        console.error(`         ❌ Dispatch failed for @${accountData.username}:`, err.message);
+        console.error(`         ❌ Dispatch network error for @${accountData.username}:`, err.message);
       });
     });
     

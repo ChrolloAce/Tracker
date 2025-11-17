@@ -1577,6 +1577,9 @@ export default async function handler(
       }
     }
 
+    console.log(`\n✅ [SYNC-ACCOUNT] Successfully completed sync for @${account.username}`);
+    console.log(`   📊 Final stats: ${savedCount} videos, Session: ${sessionId || 'none'}\n`);
+    
     return res.status(200).json({
       success: true,
       message: 'Account synced successfully',
@@ -1585,7 +1588,8 @@ export default async function handler(
     });
 
   } catch (error: any) {
-    console.error(`❌ Error in immediate sync:`, error);
+    console.error(`❌ [SYNC-ACCOUNT] Error for account ${accountId}:`, error.message);
+    console.error(`   Stack trace:`, error.stack);
 
     // Mark account with error status and send notifications
     try {
