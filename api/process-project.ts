@@ -302,21 +302,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Trigger queue worker to start monitoring and processing remaining jobs
+    // IMPORTANT: We await the trigger to ensure the HTTP request actually fires
+    // (Without await, Vercel might kill the request when this function returns)
     console.log(`\n      🔔 Triggering queue worker to process remaining jobs...`);
-    fetch(`${baseUrl}/api/queue-worker`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${cronSecret}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        trigger: 'project_complete',
-        projectId,
-        sessionId
-      })
-    }).catch(err => {
-      console.error(`      ⚠️  Failed to trigger queue worker (non-critical):`, err.message);
-    });
+    try {
+      const workerResponse = await fetch(`${baseUrl}/api/queue-worker`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${cronSecret}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          trigger: 'project_complete',
+          projectId,
+          sessionId
+        })
+      });
+      
+      if (workerResponse.ok) {
+        const workerResult = await workerResponse.json();
+        console.log(`      ✅ Queue worker triggered successfully`);
+        console.log(`      📊 Worker dispatched: ${workerResult.stats?.dispatchedJobs || 0} additional jobs`);
+      } else {
+        console.error(`      ⚠️  Queue worker returned ${workerResponse.status}`);
+      }
+    } catch (err: any) {
+      console.error(`      ⚠️  Failed to trigger queue worker:`, err.message);
+    }
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     

@@ -285,12 +285,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Validated: ${validatedCount}`);
     console.log(`========================================\n`);
     
+    const remainingJobs = pendingCount - dispatchedCount;
+    
+    // Log status
+    if (remainingJobs > 0) {
+      console.log(`\n⏳ ${remainingJobs} jobs still pending - will be processed by next worker cycle (Vercel cron every 1min)`);
+    } else {
+      console.log(`\n✅ Queue empty - all jobs processed`);
+    }
+    
     return res.status(200).json({
       success: true,
       message: 'Queue worker processed successfully',
       stats: {
         duration: parseFloat(duration),
-        pendingJobs: pendingCount - dispatchedCount,
+        pendingJobs: remainingJobs,
         runningJobs: actualRunningCount + dispatchedCount,
         dispatchedJobs: dispatchedCount,
         validatedJobs: validatedCount,
