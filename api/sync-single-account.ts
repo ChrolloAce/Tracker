@@ -278,7 +278,12 @@ export default async function handler(
 
     const account = accountDoc.data() as any;
     
-    console.log(`📊 Account info: @${account.username} (${account.platform}) - Last synced: ${account.lastRefreshed?.toDate() || 'Never'}`);
+    console.log(`📊 Account info: @${account.username} (${account.platform})`);
+    console.log(`   🔹 Creator Type: ${account.creatorType || 'automatic'}`);
+    console.log(`   🔹 Is Active: ${account.isActive}`);
+    console.log(`   🔹 Last synced: ${account.lastRefreshed?.toDate() || 'Never'}`);
+    console.log(`   🔹 Total Videos: ${account.totalVideos || 0}`);
+    console.log(`   🔹 Sync Status: ${account.syncStatus || 'unknown'}`);
     
     // Get maxVideos from account settings, default to 100 if not set
     const maxVideos = account.maxVideos || 100;
@@ -1596,9 +1601,11 @@ export default async function handler(
       try {
         await db.collection('syncQueue').doc(jobId).update({
           status: 'completed',
-          completedAt: Timestamp.now()
+          completedAt: Timestamp.now(),
+          videosSynced: savedCount, // Add this so we can see in Firestore
+          result: savedCount > 0 ? 'success' : 'no_new_videos'
         });
-        console.log(`   ✅ Job ${jobId} marked as completed`);
+        console.log(`   ✅ Job ${jobId} marked as completed (${savedCount} videos synced)`);
       } catch (jobError: any) {
         console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
       }

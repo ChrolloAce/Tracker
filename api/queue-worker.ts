@@ -56,13 +56,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const authHeader = req.headers.authorization;
     const isVercelCron = req.headers['x-vercel-cron'] === '1';
     
-    if (authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
-      console.error('❌ Unauthorized request to queue-worker');
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Handle GET requests (health checks, monitoring)
+    if (req.method === 'GET') {
+      return res.status(200).json({
+        status: 'ok',
+        message: 'Queue worker is running',
+        timestamp: new Date().toISOString()
+      });
     }
     
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return res.status(405).json({ error: 'Method not allowed - use POST' });
+    }
+    
+    if (authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+      console.error('❌ Unauthorized request to queue-worker');
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     
     console.log(`\n🔄 [QUEUE-WORKER] Starting at ${new Date().toISOString()}`);
