@@ -121,24 +121,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const jobDoc of runningJobsSnapshot.docs) {
       const job = jobDoc.data();
       const jobId = jobDoc.id;
+      const jobType = job.type || 'account_sync';
       
-      // Check if account still exists (may have been deleted)
-      try {
-        const accountRef = db
-          .collection('organizations').doc(job.orgId)
-          .collection('projects').doc(job.projectId)
-          .collection('trackedAccounts').doc(job.accountId);
-        
-        const accountDoc = await accountRef.get();
-        
-        if (!accountDoc.exists) {
-          console.log(`   🗑️  Job ${jobId}: Account deleted - removing job`);
-          await jobDoc.ref.delete();
-          accountDeletedCount++;
-          continue;
+      // Check if account still exists (may have been deleted) - ONLY for account jobs
+      if (jobType === 'account_sync' && job.accountId) {
+        try {
+          const accountRef = db
+            .collection('organizations').doc(job.orgId)
+            .collection('projects').doc(job.projectId)
+            .collection('trackedAccounts').doc(job.accountId);
+          
+          const accountDoc = await accountRef.get();
+          
+          if (!accountDoc.exists) {
+            console.log(`   🗑️  Job ${jobId}: Account deleted - removing job`);
+            await jobDoc.ref.delete();
+            accountDeletedCount++;
+            continue;
+          }
+        } catch (error: any) {
+          console.error(`   ⚠️  Error checking account for job ${jobId}:`, error.message);
         }
-      } catch (error: any) {
-        console.error(`   ⚠️  Error checking account for job ${jobId}:`, error.message);
       }
       
       // Check if job has been running for too long
@@ -217,7 +220,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           fetch(`${baseUrl}/api/process-single-video`, {
             method: 'POST',
             headers: {
-              'Authorization': cronSecret,
+              'Authorization': cronSecret, // Raw secret (no Bearer prefix)
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -240,7 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           fetch(`${baseUrl}/api/sync-single-account`, {
             method: 'POST',
             headers: {
-              'Authorization': cronSecret,
+              'Authorization': cronSecret, // Raw secret (no Bearer prefix)
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -301,7 +304,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         runningJobs: actualRunningCount + dispatchedCount,
         dispatchedJobs: dispatchedCount,
         validatedJobs: validatedCount,
-        markedCompleted: markedCompletedCount,
+        accountsDeleted: accountDeletedCount,
         markedFailed: markedFailedCount
       }
     });
