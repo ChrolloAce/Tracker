@@ -190,9 +190,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const jobId = jobRef.id;
       jobIds.push(jobId);
       
+      // Determine sync strategy based on account type
+      // automatic accounts: progressive spiderweb search (5→10→15→20)
+      // static accounts: refresh_only (no new video discovery)
+      const syncStrategy = accountData.creatorType === 'automatic' ? 'progressive' : 'refresh_only';
+      
       batch.set(jobRef, {
         type: 'account_sync',
         status: 'pending',
+        syncStrategy: syncStrategy,
+        isSpiderwebPhase: false, // Initial job - spiderweb phases will be spawned
+        spiderwebPhase: syncStrategy === 'progressive' ? 1 : null, // Start at phase 1 (fetch 5)
         orgId,
         projectId,
         accountId: accountDoc.id,

@@ -13,13 +13,25 @@ export const JOB_PRIORITIES = {
   USER_INITIATED: 100,
   
   /**
-   * Admin/user triggers manual refresh.
-   * MEDIUM priority - manual action but not immediate user addition.
+   * Admin/user triggers manual refresh OR refreshing existing video metrics.
+   * HIGH priority - manual action or maintaining existing data accuracy.
    */
-  MANUAL_REFRESH: 10,
+  MANUAL_REFRESH: 50,
   
   /**
-   * Automated cron job refreshes.
+   * Refreshing metrics for existing videos during scheduled runs.
+   * MEDIUM priority - important for data freshness.
+   */
+  REFRESH_EXISTING: 50,
+  
+  /**
+   * Progressive spiderweb search phases (5→10→15→20 videos).
+   * LOW priority - discovery of new content, runs after all refreshes.
+   */
+  SPIDERWEB_SEARCH: 10,
+  
+  /**
+   * Automated cron job refreshes (baseline).
    * LOWEST priority - background maintenance.
    */
   SCHEDULED_REFRESH: 5
