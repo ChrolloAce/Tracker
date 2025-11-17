@@ -222,11 +222,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Commit remaining jobs
     if (batchCount > 0) {
-      await batch.commit();
-      console.log(`         ✅ Committed final ${batchCount} jobs to queue`);
+      try {
+        await batch.commit();
+        console.log(`         ✅ Committed final ${batchCount} jobs to queue`);
+      } catch (commitError: any) {
+        console.error(`         ❌ Failed to commit final batch:`, commitError.message);
+        throw commitError; // Rethrow to trigger error handler
+      }
     }
     
     console.log(`\n      ✅ All ${queuedCount} accounts queued in Firestore`);
+    console.log(`      📊 Total jobs created: ${jobIds.length}`);
     
     // Immediately dispatch first 6 jobs (max concurrent Apify jobs)
     const APIFY_CONCURRENCY_LIMIT = 6;
@@ -276,34 +282,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      ✅ First ${immediateJobIds.length} jobs dispatched`);
     }
     
-    // Trigger queue worker to start monitoring and processing remaining jobs
-    // IMPORTANT: We await the trigger to ensure the HTTP request actually fires
-    // (Without await, Vercel might kill the request when this function returns)
+    // Trigger queue worker (fire-and-forget to avoid timeouts)
     console.log(`\n      🔔 Triggering queue worker to process remaining jobs...`);
-    try {
-      const workerResponse = await fetch(`${baseUrl}/api/queue-worker`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${cronSecret}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          trigger: 'project_complete',
-          projectId,
-          sessionId
-        })
-      });
-      
-      if (workerResponse.ok) {
-        const workerResult = await workerResponse.json();
-        console.log(`      ✅ Queue worker triggered successfully`);
-        console.log(`      📊 Worker dispatched: ${workerResult.stats?.dispatchedJobs || 0} additional jobs`);
+    fetch(`${baseUrl}/api/queue-worker`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        trigger: 'project_complete',
+        projectId,
+        sessionId
+      })
+    }).then(response => {
+      if (response.ok) {
+        console.log(`      ✅ Queue worker triggered (HTTP ${response.status})`);
       } else {
-        console.error(`      ⚠️  Queue worker returned ${workerResponse.status}`);
+        console.error(`      ⚠️  Queue worker failed: HTTP ${response.status}`);
       }
-    } catch (err: any) {
-      console.error(`      ⚠️  Failed to trigger queue worker:`, err.message);
-    }
+    }).catch(err => {
+      console.error(`      ⚠️  Queue worker trigger failed:`, err.message);
+    });
+    
+    // Small delay to ensure fetch initiates before function returns
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
