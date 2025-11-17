@@ -187,6 +187,7 @@ export interface TrackedAccount {
   };
   lastSyncAt?: Timestamp;
   lastSyncError?: string;
+  hasError?: boolean; // Quick flag for error state
   syncRequestedBy?: string; // userId who requested the sync
   syncRequestedAt?: Timestamp;
   syncRetryCount?: number;

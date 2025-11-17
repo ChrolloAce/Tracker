@@ -1401,6 +1401,48 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setDeleteConfirmText('');
   }, [filteredAccounts]);
 
+  const retryFailedAccount = useCallback(async (accountId: string, username: string, platform: string) => {
+    if (!currentOrgId || !currentProjectId || !user) return;
+    
+    try {
+      console.log(`🔄 Retrying failed account: @${username}`);
+      
+      // Clear error status
+      const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', accountId);
+      await updateDoc(accountRef, {
+        syncStatus: 'idle',
+        hasError: false,
+        lastSyncError: null,
+        syncRetryCount: 0
+      });
+      
+      // Queue for immediate re-sync
+      const token = await user.getIdToken();
+      const response = await fetch('/api/queue-manual-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orgId: currentOrgId,
+          projectId: currentProjectId,
+          accountId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to queue account retry');
+      }
+      
+      console.log(`✅ Account @${username} queued for retry`);
+      
+    } catch (error) {
+      console.error('Failed to retry account:', error);
+      alert('Failed to retry account. Please try again.');
+    }
+  }, [currentOrgId, currentProjectId, user]);
+
   const confirmDeleteAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !accountToDelete) return;
     
@@ -2128,6 +2170,39 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                       title="Cancel sync"
                                     >
                                       Cancel
+                                    </button>
+                                  </div>
+                                )}
+                                {(account.syncStatus === 'error' || account.hasError) && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 group relative">
+                                      <span className="inline-block w-1.5 h-1.5 bg-red-400 rounded-full"></span>
+                                      <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                                      <span className="text-xs text-red-400 font-medium">
+                                        Sync Failed
+                                      </span>
+                                      {account.lastSyncError && (
+                                        <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl border border-gray-700">
+                                          <div className="font-semibold mb-1">Error Details:</div>
+                                          <div className="text-gray-300">{account.lastSyncError}</div>
+                                          {account.syncRetryCount && account.syncRetryCount > 0 && (
+                                            <div className="text-gray-400 mt-1">
+                                              Retry attempts: {account.syncRetryCount}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await retryFailedAccount(account.id, account.username, account.platform);
+                                      }}
+                                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
+                                      title="Retry sync"
+                                    >
+                                      <RefreshCw className="w-3 h-3" />
+                                      Retry
                                     </button>
                                   </div>
                                 )}
