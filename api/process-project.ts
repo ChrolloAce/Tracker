@@ -124,14 +124,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (accountsSnapshot.empty) {
       if (allAccountsSnapshot.size > 0) {
-        console.log(`      ⚠️  All ${allAccountsSnapshot.size} accounts are inactive (isActive: false)`);
+        console.log(`      ⚠️  Project "${projectName}" has ${allAccountsSnapshot.size} accounts but ALL are inactive (isActive: false)`);
+        // List the inactive accounts
+        allAccountsSnapshot.docs.forEach(doc => {
+          const acc = doc.data();
+          console.log(`         - @${acc.username} (${acc.platform}) - inactive`);
+        });
       } else {
-        console.log(`      ℹ️  No accounts exist in this project`);
+        console.log(`      ℹ️  Project "${projectName}" has NO accounts`);
       }
       return res.status(200).json({
         success: true,
         message: 'No active accounts in project',
         projectId,
+        projectName,
         totalAccounts: allAccountsSnapshot.size,
         activeAccounts: 0
       });
