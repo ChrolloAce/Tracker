@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { JOB_PRIORITIES } from './constants/priorities.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -203,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         completedAt: null,
         attempts: 0,
         maxAttempts: 3,
-        priority: isManualRefresh ? 10 : 5, // Higher priority for manual refreshes
+        priority: isManualRefresh ? JOB_PRIORITIES.MANUAL_REFRESH : JOB_PRIORITIES.SCHEDULED_REFRESH,
         error: null
       });
       

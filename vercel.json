@@ -83,6 +83,12 @@
     },
     "api/trigger-queue-worker.ts": {
       "maxDuration": 10
+    },
+    "api/queue-manual-account.ts": {
+      "maxDuration": 10
+    },
+    "api/queue-manual-video.ts": {
+      "maxDuration": 10
     }
   },
   "crons": [

@@ -71,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { videoId, orgId, projectId } = req.body;
+  const { videoId, orgId, projectId, jobId } = req.body;
 
   // Validate required fields
   const validation = validateRequiredFields(req.body, ['videoId', 'orgId', 'projectId']);
@@ -80,6 +80,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: 'Missing required fields', 
       missing: validation.missing 
     });
+  }
+  
+  // If jobId provided, update job status to running
+  if (jobId) {
+    try {
+      await db.collection('syncQueue').doc(jobId).update({
+        status: 'running',
+        startedAt: Timestamp.now()
+      });
+      console.log(`   📝 Job ${jobId} marked as running`);
+    } catch (jobError: any) {
+      console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+    }
   }
 
   // 🔒 Authenticate user and verify organization access
@@ -597,6 +610,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Don't fail the request if cleanup fails
     }
 
+    // Mark job as completed if jobId provided
+    if (jobId) {
+      try {
+        await db.collection('syncQueue').doc(jobId).update({
+          status: 'completed',
+          completedAt: Timestamp.now(),
+          result: 'success'
+        });
+        console.log(`   ✅ Job ${jobId} marked as completed`);
+      } catch (jobError: any) {
+        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Video processed successfully',
@@ -636,6 +663,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     } catch (updateError) {
       console.error('Failed to update video with error:', updateError);
+    }
+
+    // Mark job as failed if jobId provided
+    if (jobId) {
+      try {
+        const jobDoc = await db.collection('syncQueue').doc(jobId).get();
+        const jobData = jobDoc.data();
+        
+        if (jobData) {
+          const attempts = jobData.attempts || 0;
+          const maxAttempts = jobData.maxAttempts || 3;
+          
+          if (attempts + 1 >= maxAttempts) {
+            // Max retries exceeded - mark as failed
+            await db.collection('syncQueue').doc(jobId).update({
+              status: 'failed',
+              completedAt: Timestamp.now(),
+              attempts: attempts + 1,
+              error: error instanceof Error ? error.message : String(error)
+            });
+            console.log(`   ❌ Job ${jobId} marked as failed (max retries exceeded)`);
+          } else {
+            // Reset to pending for retry
+            await db.collection('syncQueue').doc(jobId).update({
+              status: 'pending',
+              attempts: attempts + 1,
+              error: error instanceof Error ? error.message : String(error),
+              startedAt: null
+            });
+            console.log(`   🔄 Job ${jobId} reset to pending for retry (attempt ${attempts + 1}/${maxAttempts})`);
+          }
+        }
+      } catch (jobError: any) {
+        console.warn(`   ⚠️  Failed to update job status (non-critical):`, jobError.message);
+      }
     }
 
     return res.status(500).json({

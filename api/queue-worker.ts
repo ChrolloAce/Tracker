@@ -230,8 +230,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const jobDoc of jobsToDispatch) {
         const job = jobDoc.data();
         const jobId = jobDoc.id;
+        const jobType = job.type || 'account_sync';
         
-        console.log(`   ⚡ Dispatching job ${jobId}: @${job.accountUsername} (${job.accountPlatform})`);
+        // Log based on job type
+        if (jobType === 'single_video') {
+          console.log(`   ⚡ Dispatching video job ${jobId}: ${job.videoUrl}`);
+        } else {
+          console.log(`   ⚡ Dispatching account job ${jobId}: @${job.accountUsername} (${job.accountPlatform})`);
+        }
         
         // Update job status to running
         await jobDoc.ref.update({
@@ -239,29 +245,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           startedAt: Timestamp.now()
         });
         
-        // Dispatch to sync-single-account
-        fetch(`${baseUrl}/api/sync-single-account`, {
-          method: 'POST',
-          headers: {
-            'Authorization': cronSecret,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            orgId: job.orgId,
-            projectId: job.projectId,
-            accountId: job.accountId,
-            sessionId: job.sessionId,
-            jobId: jobId
-          })
-        }).then(response => {
-          if (response.ok) {
-            console.log(`      ✅ @${job.accountUsername}: Started`);
-          } else {
-            console.error(`      ❌ @${job.accountUsername}: HTTP ${response.status}`);
-          }
-        }).catch(err => {
-          console.error(`      ❌ @${job.accountUsername}:`, err.message);
-        });
+        // Dispatch based on job type
+        if (jobType === 'single_video') {
+          // Dispatch to process-single-video for video jobs
+          fetch(`${baseUrl}/api/process-single-video`, {
+            method: 'POST',
+            headers: {
+              'Authorization': cronSecret,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              videoId: job.videoUrl, // process-single-video expects videoId (which is the URL)
+              orgId: job.orgId,
+              projectId: job.projectId,
+              jobId: jobId
+            })
+          }).then(response => {
+            if (response.ok) {
+              console.log(`      ✅ Video job started`);
+            } else {
+              console.error(`      ❌ Video job failed: HTTP ${response.status}`);
+            }
+          }).catch(err => {
+            console.error(`      ❌ Video job error:`, err.message);
+          });
+        } else {
+          // Dispatch to sync-single-account for account sync jobs
+          fetch(`${baseUrl}/api/sync-single-account`, {
+            method: 'POST',
+            headers: {
+              'Authorization': cronSecret,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              orgId: job.orgId,
+              projectId: job.projectId,
+              accountId: job.accountId,
+              sessionId: job.sessionId,
+              jobId: jobId
+            })
+          }).then(response => {
+            if (response.ok) {
+              console.log(`      ✅ @${job.accountUsername}: Started`);
+            } else {
+              console.error(`      ❌ @${job.accountUsername}: HTTP ${response.status}`);
+            }
+          }).catch(err => {
+            console.error(`      ❌ @${job.accountUsername}:`, err.message);
+          });
+        }
         
         dispatchedCount++;
       }
