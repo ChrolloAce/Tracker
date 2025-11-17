@@ -196,61 +196,104 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Dispatch all accounts in parallel (fire-and-forget with guaranteed initiation)
-    // We send all requests simultaneously and give them time to start, but don't wait for completion
-    console.log(`      🚀 Dispatching ${accountsToRefresh.length} accounts in parallel...`);
+    // Process accounts in batches to respect Apify RAM limits
+    // Max 6 concurrent Apify jobs (6 × 4GB = 24GB, leaving 8GB buffer from 32GB total)
+    const APIFY_CONCURRENCY_LIMIT = 6;
+    const batches: typeof accountsToRefresh[] = [];
     
-    for (let i = 0; i < accountsToRefresh.length; i++) {
-      const accountDoc = accountsToRefresh[i];
-      const accountData = accountDoc.data();
-      
-      const payload = {
-        orgId,
-        projectId,
-        accountId: accountDoc.id,
-        sessionId
-      };
-      
-      console.log(`      ⚡ [${i + 1}/${accountsToRefresh.length}] Dispatching @${accountData.username} (ID: ${accountDoc.id})`);
-      
-      // Fire-and-forget: Send request but don't await response
-      fetch(`${baseUrl}/api/sync-single-account`, {
-        method: 'POST',
-        headers: {
-          'Authorization': cronSecret,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      }).then(response => {
-        if (!response.ok) {
-          console.error(`         ❌ @${accountData.username} dispatch failed: HTTP ${response.status}`);
-        } else {
-          console.log(`         ✅ @${accountData.username} dispatch accepted (HTTP ${response.status})`);
-        }
-      }).catch(err => {
-        console.error(`         ❌ @${accountData.username} network error:`, err.message);
-      });
+    // Split accounts into batches of 6
+    for (let i = 0; i < accountsToRefresh.length; i += APIFY_CONCURRENCY_LIMIT) {
+      batches.push(accountsToRefresh.slice(i, i + APIFY_CONCURRENCY_LIMIT));
     }
     
-    // Give dispatches 1 second to initiate before returning (prevents Vercel from killing them)
-    // This is enough time for fetch to send HTTP requests, but not wait for responses
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log(`      ✅ All ${accountsToRefresh.length} dispatches initiated (running in background)`);
+    console.log(`      🚀 Processing ${accountsToRefresh.length} accounts in ${batches.length} batch(es) of max ${APIFY_CONCURRENCY_LIMIT}...`);
+    
+    let totalDispatched = 0;
+    let totalSuccessful = 0;
+    let totalFailed = 0;
+    
+    // Process each batch sequentially
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`\n      📦 Batch ${batchIndex + 1}/${batches.length}: ${batch.length} accounts`);
+      
+      // Dispatch all accounts in this batch in parallel
+      const batchPromises = batch.map((accountDoc, indexInBatch) => {
+        const accountData = accountDoc.data();
+        const globalIndex = batchIndex * APIFY_CONCURRENCY_LIMIT + indexInBatch + 1;
+        
+        const payload = {
+          orgId,
+          projectId,
+          accountId: accountDoc.id,
+          sessionId
+        };
+        
+        console.log(`         ⚡ [${globalIndex}/${accountsToRefresh.length}] Dispatching @${accountData.username}`);
+        
+        return fetch(`${baseUrl}/api/sync-single-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': cronSecret,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }).then(response => {
+          if (!response.ok) {
+            console.error(`            ❌ @${accountData.username}: HTTP ${response.status}`);
+            totalFailed++;
+            return { success: false, username: accountData.username };
+          } else {
+            console.log(`            ✅ @${accountData.username}: Dispatched`);
+            totalSuccessful++;
+            return { success: true, username: accountData.username };
+          }
+        }).catch(err => {
+          console.error(`            ❌ @${accountData.username}: ${err.message}`);
+          totalFailed++;
+          return { success: false, username: accountData.username };
+        });
+      });
+      
+      // Wait for all accounts in this batch to be dispatched
+      await Promise.allSettled(batchPromises);
+      totalDispatched += batch.length;
+      
+      console.log(`      ✅ Batch ${batchIndex + 1} complete: ${batch.length} accounts dispatched`);
+      
+      // Small delay between batches to prevent overwhelming the system
+      if (batchIndex < batches.length - 1) {
+        console.log(`      ⏳ Waiting 2s before next batch...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    console.log(`\n      ✅ All batches complete: ${totalSuccessful} successful, ${totalFailed} failed`);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    const dispatchedCount = accountsToRefresh.length;
     
-    console.log(`      ✅ Project complete: ${duration}s`);
-    console.log(`      📤 Dispatched: ${dispatchedCount} account job(s)\n`);
+    console.log(`\n      ========================================`);
+    console.log(`      ✅ Project "${projectName}" Complete`);
+    console.log(`      ========================================`);
+    console.log(`      ⏱️  Duration: ${duration}s`);
+    console.log(`      📊 Accounts processed: ${totalDispatched}`);
+    console.log(`      ✅ Successful: ${totalSuccessful}`);
+    console.log(`      ❌ Failed: ${totalFailed}`);
+    console.log(`      📦 Batches: ${batches.length}`);
+    console.log(`      ========================================\n`);
     
     return res.status(200).json({
       success: true,
       projectId,
+      projectName,
       sessionId,
       stats: {
         duration: parseFloat(duration),
         accountsChecked: accountsSnapshot.size,
-        accountsDispatched: dispatchedCount
+        accountsProcessed: totalDispatched,
+        successful: totalSuccessful,
+        failed: totalFailed,
+        batches: batches.length
       }
     });
     
