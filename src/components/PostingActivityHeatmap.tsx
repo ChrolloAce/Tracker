@@ -32,8 +32,8 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
 
-  // Calculate date range based on filter
-  const dateRange = useMemo(() => {
+  // Calculate FILTER range for data (what to show activity for)
+  const dataFilterRange = useMemo(() => {
     const today = startOfDay(new Date());
     let startDate: Date;
 
@@ -78,12 +78,13 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     return { start: startDate, end: today };
   }, [dateFilter, customDateRange]);
 
-  // Calculate heatmap data based on date range
+  // Calculate heatmap data - ALWAYS use full year for grid, but filter data
   const heatmapData = useMemo(() => {
-    const { start, end } = dateRange;
+    const today = startOfDay(new Date());
+    const yearAgo = startOfDay(subYears(today, 1));
     
-    // Get all days in the range
-    const allDays = eachDayOfInterval({ start, end });
+    // ALWAYS generate full year of squares for consistent aesthetic
+    const allDays = eachDayOfInterval({ start: yearAgo, end: today });
     
     // Group submissions by day - deduplicate videos first
     const uniqueVideos = new Map<string, VideoSubmission>();
@@ -94,11 +95,20 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       }
     });
     
+    // Filter videos to only those within the selected date range
+    const { start: filterStart, end: filterEnd } = dataFilterRange;
+    const filteredVideos = Array.from(uniqueVideos.values()).filter(video => {
+      const pubDate = video.uploadDate || video.dateSubmitted;
+      if (!pubDate) return false;
+      const videoDate = startOfDay(new Date(pubDate));
+      return videoDate >= filterStart && videoDate <= filterEnd;
+    });
+    
     const dayMap = new Map<string, VideoSubmission[]>();
     let usingUploadDateCount = 0;
     let usingSubmittedCount = 0;
     
-    uniqueVideos.forEach(sub => {
+    filteredVideos.forEach(sub => {
       // Use uploadDate (actual upload date from platform), fall back to dateSubmitted
       // This ensures ALL videos show up in the heatmap
       const hasUploadDate = !!sub.uploadDate;
@@ -135,16 +145,18 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     
     // Debug: Show first 10 dates with posts
     const datesWithPosts = Array.from(dayMap.keys()).sort();
-    const videosWithUploadDate = Array.from(uniqueVideos.values()).filter(v => v.uploadDate).length;
-    const videosWithoutUploadDate = uniqueVideos.size - videosWithUploadDate;
+    const videosWithUploadDate = filteredVideos.filter(v => v.uploadDate).length;
+    const videosWithoutUploadDate = filteredVideos.length - videosWithUploadDate;
     
     console.log('📅 Heatmap Debug:', {
       totalSubmissions: submissions.length,
       uniqueVideos: uniqueVideos.size,
+      filteredVideos: filteredVideos.length,
       videosWithUploadDate,
       videosWithoutUploadDate,
       daysWithPosts: dayMap.size,
-      dateRange: `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`,
+      gridRange: `${format(yearAgo, 'MMM d, yyyy')} - ${format(today, 'MMM d, yyyy')} (always 1 year)`,
+      dataFilterRange: `${format(filterStart, 'MMM d, yyyy')} - ${format(filterEnd, 'MMM d, yyyy')}`,
       dateFilter,
       firstDatesWithPosts: datesWithPosts.slice(0, 10),
       lastDatesWithPosts: datesWithPosts.slice(-10),
@@ -163,7 +175,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     });
     
     return dayData;
-  }, [submissions, dateRange]);
+  }, [submissions, dataFilterRange]);
 
   // Organize data into weeks
   const weeks = useMemo(() => {
