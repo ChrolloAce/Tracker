@@ -2,7 +2,7 @@ import { VideoSubmission } from '../types';
 
 export class TrendCalculationService {
   /**
-   * Calculate trend data for a video's views (showing daily growth, not cumulative)
+   * Calculate trend data for a video's views (showing growth, aggregated if needed)
    * @param video - The video submission to analyze
    * @param days - Number of days to look back (default: 7)
    */
@@ -16,7 +16,7 @@ export class TrendCalculationService {
     const lookbackDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
 
     // Filter snapshots from the specified period and sort by date
-    const recentSnapshots = video.snapshots
+    let recentSnapshots = video.snapshots
       .filter(snapshot => new Date(snapshot.capturedAt) >= lookbackDate)
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
 
@@ -25,7 +25,17 @@ export class TrendCalculationService {
       return [video.views];
     }
 
-    // Calculate daily growth (difference from previous snapshot)
+    // Auto-aggregate based on period length (similar to VideoHistoricalMetricsChart)
+    if (days >= 90 && recentSnapshots.length > 12) {
+      // For 90+ days: Group by month
+      recentSnapshots = this.aggregateSnapshotsByMonth(recentSnapshots);
+    } else if (days >= 30 && recentSnapshots.length > 10) {
+      // For 30+ days: Group by week
+      recentSnapshots = this.aggregateSnapshotsByWeek(recentSnapshots);
+    }
+    // For < 30 days: Use all snapshots (daily)
+
+    // Calculate growth (difference from previous snapshot)
     const trendData: number[] = [];
     
     if (recentSnapshots.length === 1) {
@@ -60,7 +70,7 @@ export class TrendCalculationService {
   }
 
   /**
-   * Calculate trend data for a video's likes (showing daily growth, not cumulative)
+   * Calculate trend data for a video's likes (showing growth, aggregated if needed)
    * @param video - The video submission to analyze
    * @param days - Number of days to look back (default: 7)
    */
@@ -72,7 +82,7 @@ export class TrendCalculationService {
     const now = new Date();
     const lookbackDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
 
-    const recentSnapshots = video.snapshots
+    let recentSnapshots = video.snapshots
       .filter(snapshot => new Date(snapshot.capturedAt) >= lookbackDate)
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
 
@@ -80,7 +90,17 @@ export class TrendCalculationService {
       return [video.likes];
     }
 
-    // Calculate daily growth (difference from previous snapshot)
+    // Auto-aggregate based on period length (similar to VideoHistoricalMetricsChart)
+    if (days >= 90 && recentSnapshots.length > 12) {
+      // For 90+ days: Group by month
+      recentSnapshots = this.aggregateSnapshotsByMonth(recentSnapshots);
+    } else if (days >= 30 && recentSnapshots.length > 10) {
+      // For 30+ days: Group by week
+      recentSnapshots = this.aggregateSnapshotsByWeek(recentSnapshots);
+    }
+    // For < 30 days: Use all snapshots (daily)
+
+    // Calculate growth (difference from previous snapshot)
     const trendData: number[] = [];
     
     if (recentSnapshots.length === 1) {
@@ -141,6 +161,58 @@ export class TrendCalculationService {
     if (totalGrowth > 0) return 'up';
     if (totalGrowth < 0) return 'down';
     return 'flat';
+  }
+
+  /**
+   * Aggregate snapshots by week (take last snapshot of each week)
+   */
+  private static aggregateSnapshotsByWeek(snapshots: any[]): any[] {
+    if (snapshots.length === 0) return [];
+
+    const weekMap = new Map<string, any>();
+    
+    snapshots.forEach(snapshot => {
+      const date = new Date(snapshot.capturedAt);
+      // Get start of week (Sunday)
+      const startOfWeek = new Date(date);
+      startOfWeek.setDate(date.getDate() - date.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekKey = startOfWeek.toISOString().split('T')[0];
+      
+      // Keep the last (most recent) snapshot of each week
+      if (!weekMap.has(weekKey) || new Date(snapshot.capturedAt) > new Date(weekMap.get(weekKey).capturedAt)) {
+        weekMap.set(weekKey, snapshot);
+      }
+    });
+    
+    // Return aggregated snapshots sorted by date
+    return Array.from(weekMap.values()).sort((a, b) => 
+      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
+  }
+
+  /**
+   * Aggregate snapshots by month (take last snapshot of each month)
+   */
+  private static aggregateSnapshotsByMonth(snapshots: any[]): any[] {
+    if (snapshots.length === 0) return [];
+
+    const monthMap = new Map<string, any>();
+    
+    snapshots.forEach(snapshot => {
+      const date = new Date(snapshot.capturedAt);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Keep the last (most recent) snapshot of each month
+      if (!monthMap.has(monthKey) || new Date(snapshot.capturedAt) > new Date(monthMap.get(monthKey).capturedAt)) {
+        monthMap.set(monthKey, snapshot);
+      }
+    });
+    
+    // Return aggregated snapshots sorted by date
+    return Array.from(monthMap.values()).sort((a, b) => 
+      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
   }
 
 }
