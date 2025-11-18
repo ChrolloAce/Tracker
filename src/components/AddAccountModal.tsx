@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { X, ChevronDown, LinkIcon, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { X, ChevronDown, LinkIcon, RefreshCw, AlertCircle, Trash2, Plus, Minus, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
+import UsageTrackingService from '../services/UsageTrackingService';
 import { User } from 'firebase/auth';
 
 /**
@@ -95,6 +96,46 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     { id: '1', url: '', platform: null, error: null, videoCount: 10 }
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Video limit checking
+  const [videoLimitInfo, setVideoLimitInfo] = useState<{ current: number; limit: number; available: number } | null>(null);
+  const [checkingLimits, setCheckingLimits] = useState(true);
+
+  // Check video limits when modal opens
+  useEffect(() => {
+    const checkLimits = async () => {
+      if (!isOpen || !orgId) {
+        setCheckingLimits(false);
+        return;
+      }
+
+      try {
+        setCheckingLimits(true);
+        const [usage, limits] = await Promise.all([
+          UsageTrackingService.getUsage(orgId),
+          UsageTrackingService.getLimits(orgId)
+        ]);
+
+        const currentVideos = usage.trackedVideos;
+        const videoLimit = limits.maxVideos;
+        const available = videoLimit === -1 ? Infinity : Math.max(0, videoLimit - currentVideos);
+
+        setVideoLimitInfo({
+          current: currentVideos,
+          limit: videoLimit,
+          available: videoLimit === -1 ? Infinity : available
+        });
+
+        console.log(`📹 Video limits: ${currentVideos}/${videoLimit} (${available === Infinity ? '∞' : available} available)`);
+      } catch (error) {
+        console.error('Failed to check video limits:', error);
+      } finally {
+        setCheckingLimits(false);
+      }
+    };
+
+    checkLimits();
+  }, [isOpen, orgId]);
 
   // Handle URL input change and auto-detect platform
   const handleUrlChange = useCallback((url: string) => {
@@ -221,6 +262,47 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
+
+        {/* Video Limit Warning Banner */}
+        {!checkingLimits && videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
+          const totalVideosRequested = accountInputs.reduce((sum, input) => {
+            if (input.url.trim() && input.platform) {
+              return sum + input.videoCount;
+            }
+            return sum;
+          }, 0);
+          
+          const wouldExceedLimit = totalVideosRequested > videoLimitInfo.available;
+          const videosOver = totalVideosRequested - videoLimitInfo.available;
+          
+          if (wouldExceedLimit) {
+            return (
+              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-red-400 mb-1">
+                      Not Enough Video Space
+                    </div>
+                    <div className="text-xs text-red-400/80">
+                      You're requesting {totalVideosRequested.toLocaleString()} videos but only have {videoLimitInfo.available.toLocaleString()} slots available 
+                      ({videosOver.toLocaleString()} over limit). 
+                      Reduce video counts or upgrade your plan.
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="/settings?tab=billing"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-white text-black hover:bg-gray-100 dark:hover:bg-gray-100 text-sm font-semibold rounded-lg transition-all"
+                >
+                  <Crown className="w-4 h-4" />
+                  Upgrade Plan
+                </a>
+              </div>
+            );
+          }
+          return null;
+        })()}
         
         {/* Input Fields - Multiple */}
         <div className="space-y-3 mb-6 max-h-[400px] overflow-y-auto">
@@ -260,27 +342,58 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 )}
               </div>
               
-              {/* Video count selector */}
-              <div className="relative">
-                <select
-                  value={input.videoCount}
-                  onChange={(e) => {
+              {/* Video count selector - Hybrid dropdown + stepper */}
+              <div className="flex items-center gap-1.5">
+                {/* Minus button */}
+                <button
+                  type="button"
+                  onClick={() => {
                     const newInputs = [...accountInputs];
-                    newInputs[index].videoCount = Number(e.target.value);
+                    newInputs[index].videoCount = Math.max(1, newInputs[index].videoCount - 1);
                     setAccountInputs(newInputs);
                   }}
-                  className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
+                  className="p-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
+                  aria-label="Decrease video count"
                 >
-                  <option value={10}>10 videos</option>
-                  <option value={25}>25 videos</option>
-                  <option value={50}>50 videos</option>
-                  <option value={100}>100 videos</option>
-                  <option value={250}>250 videos</option>
-                  <option value={500}>500 videos</option>
-                  <option value={1000}>1000 videos</option>
-                  <option value={2000}>2000 videos</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Dropdown */}
+                <div className="relative">
+                  <select
+                    value={input.videoCount}
+                    onChange={(e) => {
+                      const newInputs = [...accountInputs];
+                      newInputs[index].videoCount = Number(e.target.value);
+                      setAccountInputs(newInputs);
+                    }}
+                    className="appearance-none pl-3 pr-8 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap min-w-[100px]"
+                  >
+                    <option value={10}>10 videos</option>
+                    <option value={25}>25 videos</option>
+                    <option value={50}>50 videos</option>
+                    <option value={100}>100 videos</option>
+                    <option value={250}>250 videos</option>
+                    <option value={500}>500 videos</option>
+                    <option value={1000}>1000 videos</option>
+                    <option value={2000}>2000 videos</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                </div>
+
+                {/* Plus button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newInputs = [...accountInputs];
+                    newInputs[index].videoCount = Math.min(5000, newInputs[index].videoCount + 1);
+                    setAccountInputs(newInputs);
+                  }}
+                  className="p-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
+                  aria-label="Increase video count"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
               </div>
 
               {/* Delete button for additional inputs */}
@@ -409,10 +522,49 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </button>
             <button
               onClick={handleAddAccount}
-              disabled={isSubmitting || usageLimits.isAtAccountLimit || (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform))}
-              className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+              disabled={(() => {
+                if (isSubmitting) return true;
+                if (usageLimits.isAtAccountLimit) return true;
+                if (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform)) return true;
+                
+                // Check video limit
+                if (videoLimitInfo && videoLimitInfo.limit !== -1) {
+                  const totalVideosRequested = accountInputs.reduce((sum, input) => {
+                    if (input.url.trim() && input.platform) {
+                      return sum + input.videoCount;
+                    }
+                    return sum;
+                  }, 0);
+                  if (totalVideosRequested > videoLimitInfo.available) return true;
+                }
+                
+                return false;
+              })()}
+              className={`px-4 py-2 text-sm font-bold rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
+                  const totalVideosRequested = accountInputs.reduce((sum, input) => {
+                    if (input.url.trim() && input.platform) {
+                      return sum + input.videoCount;
+                    }
+                    return sum;
+                  }, 0);
+                  return totalVideosRequested > videoLimitInfo.available;
+                })()
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'text-black bg-white hover:bg-gray-100'
+              }`}
             >
-              {isSubmitting ? 'Processing...' : usageLimits.isAtAccountLimit ? 'Limit Reached' : 'Track Accounts'}
+              {isSubmitting ? 'Processing...' : 
+               usageLimits.isAtAccountLimit ? 'Limit Reached' : 
+               videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
+                 const totalVideosRequested = accountInputs.reduce((sum, input) => {
+                   if (input.url.trim() && input.platform) {
+                     return sum + input.videoCount;
+                   }
+                   return sum;
+                 }, 0);
+                 return totalVideosRequested > videoLimitInfo.available ? 'Not Enough Space' : 'Track Accounts';
+               })() || 'Track Accounts'}
             </button>
           </div>
         </div>
