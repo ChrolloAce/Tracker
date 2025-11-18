@@ -2059,6 +2059,8 @@ export default async function handler(
 /**
  * Send refresh summary email after all accounts in an organization have completed syncing
  * This implements the "last one out" pattern - only the final account to complete triggers the email
+ * 
+ * Shows DELTA metrics (what changed since last refresh) not absolute totals
  */
 async function sendRefreshSummaryEmail(session: any, db: any) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -2073,43 +2075,92 @@ async function sendRefreshSummaryEmail(session: any, db: any) {
     return;
   }
   
-  const timeSinceStart = Date.now() - session.startedAt.toMillis();
-  const minutesElapsed = Math.round(timeSinceStart / (1000 * 60));
+  console.log(`📧 Preparing email for: ${session.ownerEmail} (Org: ${session.orgName})`);
+  console.log(`   Owner ID: ${session.ownerId || 'Not set'}`);
+  console.log(`   Org ID: ${session.orgId}`);
   
-  // Sort accounts by views (top performers first)
+  // Calculate time since last refresh (not this session duration)
+  let timeSinceLastRefreshText = 'first refresh';
+  let timeSinceLastRefreshMs = 0;
+  
+  if (session.previousRefreshTimestamp) {
+    timeSinceLastRefreshMs = Date.now() - session.previousRefreshTimestamp.toMillis();
+    const hours = Math.floor(timeSinceLastRefreshMs / (1000 * 60 * 60));
+    const minutes = Math.floor((timeSinceLastRefreshMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      timeSinceLastRefreshText = `${days}d`;
+    } else if (hours > 0) {
+      timeSinceLastRefreshText = `${hours}h`;
+    } else if (minutes > 0) {
+      timeSinceLastRefreshText = `${minutes}m`;
+    } else {
+      timeSinceLastRefreshText = '<1m';
+    }
+  }
+  
+  // Calculate DELTA metrics (what changed since last refresh)
+  const viewsGained = Math.max(0, (session.totalViews || 0) - (session.previousTotalViews || 0));
+  const likesGained = Math.max(0, (session.totalLikes || 0) - (session.previousTotalLikes || 0));
+  const commentsGained = Math.max(0, (session.totalComments || 0) - (session.previousTotalComments || 0));
+  const sharesGained = Math.max(0, (session.totalShares || 0) - (session.previousTotalShares || 0));
+  const linkClicksGained = Math.max(0, (session.totalLinkClicks || 0) - (session.previousTotalLinkClicks || 0));
+  
+  // Calculate engagement rate from deltas
+  const totalEngagement = likesGained + commentsGained + sharesGained;
+  const engagementRate = viewsGained > 0 
+    ? ((totalEngagement / viewsGained) * 100).toFixed(2)
+    : '0.00';
+  
+  // Get top 5 videos from THIS refresh cycle (sorted by views)
+  console.log(`🔍 Fetching top videos from this refresh...`);
+  const videosSnapshot = await db
+    .collectionGroup('videos')
+    .where('lastUpdatedAt', '>=', session.startedAt)
+    .orderBy('lastUpdatedAt', 'desc')
+    .orderBy('viewCount', 'desc')
+    .limit(50) // Get more to filter to org
+    .get();
+  
+  // Filter to only videos from this org
+  const orgVideos = videosSnapshot.docs.filter((doc: any) => {
+    const path = doc.ref.path;
+    return path.includes(`organizations/${session.orgId}/`);
+  });
+  
+  const topVideos = orgVideos.slice(0, 5);
+  console.log(`   Found ${topVideos.length} top videos from this refresh`);
+  
+  // Sort accounts by views gained (top performers)
   const accountStats = Object.values(session.accountStats || {}) as any[];
   const topPerformers = accountStats
     .sort((a, b) => (b.views || 0) - (a.views || 0))
     .slice(0, 5);
   
-  // Generate top performers HTML
-  const topPerformersHtml = topPerformers
-    .map((acc, index) => {
-      const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-      const platformEmoji = acc.platform === 'tiktok' ? '📱' : acc.platform === 'youtube' ? '▶️' : acc.platform === 'instagram' ? '📷' : '🐦';
+  // Generate top videos HTML from this refresh
+  const topVideosHtml = topVideos
+    .map((videoDoc: any, index: number) => {
+      const video = videoDoc.data();
+      const rankEmoji = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][index];
+      const platform = video.platform || 'unknown';
+      const platformEmoji = platform === 'tiktok' ? '📱' : platform === 'youtube' ? '▶️' : platform === 'instagram' ? '📷' : '🐦';
       
       return `
         <tr>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              ${acc.profilePicture ? `<img src="${acc.profilePicture}" alt="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` : ''}
-              <div>
-                <div style="font-weight: 600; color: #111827;">${rankEmoji} @${acc.username}</div>
-                <div style="font-size: 12px; color: #6b7280;">${platformEmoji} ${acc.platform.charAt(0).toUpperCase() + acc.platform.slice(1)}</div>
-              </div>
+            <div>
+              <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">${rankEmoji} ${video.title || 'Untitled'}</div>
+              <div style="font-size: 12px; color: #6b7280;">${platformEmoji} ${platform.charAt(0).toUpperCase() + platform.slice(1)} • @${video.accountUsername || 'Unknown'}</div>
             </div>
           </td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">
-            <div style="font-weight: 600; color: #111827;">${(acc.views || 0).toLocaleString()}</div>
-            <div style="font-size: 12px; color: #6b7280;">views</div>
+            <div style="font-weight: 600; color: #667eea;">${(video.viewCount || 0).toLocaleString()}</div>
+            <div style="font-size: 11px; color: #6b7280;">views</div>
           </td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">
-            <div style="font-weight: 600; color: #111827;">${(acc.likes || 0).toLocaleString()}</div>
-            <div style="font-size: 12px; color: #6b7280;">likes</div>
-          </td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">
-            <div style="font-weight: 600; color: #f5576c;">${acc.videosSynced || 0}</div>
-            <div style="font-size: 12px; color: #6b7280;">new</div>
+            <div style="font-weight: 600; color: #f56565;">${(video.likeCount || 0).toLocaleString()}</div>
+            <div style="font-size: 11px; color: #6b7280;">likes</div>
           </td>
         </tr>
       `;
@@ -2123,73 +2174,84 @@ async function sendRefreshSummaryEmail(session: any, db: any) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
       </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 40px 20px;">
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
           <tr>
             <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
                 
                 <!-- Header -->
                 <tr>
-                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
-                    <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 42px; width: auto; margin-bottom: 15px;" />
-                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
-                      🎉 Refresh Complete!
+                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 48px 40px; text-align: center;">
+                    <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 40px; width: auto; margin-bottom: 20px;" />
+                    <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">
+                      ${session.orgName}
                     </h1>
-                    <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
-                      ${session.orgName || 'Your organization'}'s data has been updated
+                    <p style="margin: 12px 0 0; color: rgba(255,255,255,0.95); font-size: 18px; font-weight: 500;">
+                      Data Refresh Complete
                     </p>
                   </td>
                 </tr>
                 
-                <!-- Summary Stats -->
+                <!-- Time Since Last Refresh Banner -->
+                <tr>
+                  <td style="background: #f9fafb; padding: 20px; text-align: center; border-bottom: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-size: 15px; color: #6b7280;">
+                      📊 In the last <strong style="color: #111827; font-weight: 700;">${timeSinceLastRefreshText}</strong>, you've gained:
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Delta Metrics -->
                 <tr>
                   <td style="padding: 40px;">
-                    <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #374151;">
-                      Great news! We've successfully refreshed all your tracked accounts with the latest data.
-                    </p>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 30px 0;">
-                      <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; text-align: center;">
-                        <div style="color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 5px;">Accounts</div>
-                        <div style="color: #ffffff; font-size: 32px; font-weight: 700;">${session.completedAccounts || 0}</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 32px;">
+                      <!-- Views Gained -->
+                      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 12px; text-align: center;">
+                        <div style="color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Views</div>
+                        <div style="color: #ffffff; font-size: 36px; font-weight: 800; margin-bottom: 4px;">+${viewsGained.toLocaleString()}</div>
+                        <div style="color: rgba(255,255,255,0.8); font-size: 12px;">gained</div>
                       </div>
-                      <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 10px; text-align: center;">
-                        <div style="color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 5px;">New Videos</div>
-                        <div style="color: #ffffff; font-size: 32px; font-weight: 700;">${session.totalVideos || 0}</div>
-                      </div>
-                      <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); padding: 20px; border-radius: 10px; text-align: center;">
-                        <div style="color: #374151; font-size: 14px; margin-bottom: 5px;">Total Views</div>
-                        <div style="color: #111827; font-size: 32px; font-weight: 700;">${(session.totalViews || 0).toLocaleString()}</div>
-                      </div>
-                      <div style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding: 20px; border-radius: 10px; text-align: center;">
-                        <div style="color: #374151; font-size: 14px; margin-bottom: 5px;">Total Likes</div>
-                        <div style="color: #111827; font-size: 32px; font-weight: 700;">${(session.totalLikes || 0).toLocaleString()}</div>
+                      
+                      <!-- Link Clicks -->
+                      <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 24px; border-radius: 12px; text-align: center;">
+                        <div style="color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Link Clicks</div>
+                        <div style="color: #ffffff; font-size: 36px; font-weight: 800; margin-bottom: 4px;">+${linkClicksGained.toLocaleString()}</div>
+                        <div style="color: rgba(255,255,255,0.8); font-size: 12px;">gained</div>
                       </div>
                     </div>
                     
-                    <!-- Top Performers -->
-                    ${topPerformers.length > 0 ? `
-                    <div style="margin: 40px 0 30px;">
-                      <h2 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #111827;">
-                        🏆 Top Performers
+                    <!-- Engagement Rate Card -->
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 28px; border-radius: 12px; text-align: center; margin-bottom: 32px;">
+                      <div style="color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Engagement Rate</div>
+                      <div style="color: #ffffff; font-size: 48px; font-weight: 800; margin-bottom: 4px;">${engagementRate}%</div>
+                      <div style="color: rgba(255,255,255,0.8); font-size: 13px;">${totalEngagement.toLocaleString()} total engagements (likes + comments + shares)</div>
+                    </div>
+                    
+                    <!-- Top Videos Section -->
+                    ${topVideos.length > 0 ? `
+                    <div style="margin: 40px 0;">
+                      <h2 style="margin: 0 0 20px; font-size: 22px; font-weight: 700; color: #111827; letter-spacing: -0.3px;">
+                        🔥 Top 5 Videos from this Refresh
                       </h2>
-                      <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-                        ${topPerformersHtml}
+                      <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                        ${topVideosHtml}
                       </table>
                     </div>
                     ` : ''}
                     
                     <!-- CTA Button -->
-                    <div style="text-align: center; margin: 40px 0 20px;">
-                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    <div style="text-align: center; margin: 48px 0 24px;">
+                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 16px; letter-spacing: 0.3px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
                         View Full Dashboard →
                       </a>
                     </div>
                     
-                    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center; margin-top: 30px;">
-                      <p style="margin: 0; font-size: 13px; color: #6b7280;">
-                        ⏱️ Refresh completed in ${minutesElapsed} ${minutesElapsed === 1 ? 'minute' : 'minutes'}
+                    <!-- Summary Footer -->
+                    <div style="background-color: #f9fafb; padding: 20px; border-radius: 10px; text-align: center;">
+                      <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+                        <strong style="color: #111827;">${session.completedAccounts || 0}</strong> account${session.completedAccounts !== 1 ? 's' : ''} refreshed • 
+                        <strong style="color: #111827;">${session.totalVideos || 0}</strong> new video${session.totalVideos !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </td>
@@ -2197,14 +2259,17 @@ async function sendRefreshSummaryEmail(session: any, db: any) {
                 
                 <!-- Footer -->
                 <tr>
-                  <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
-                    <p style="margin: 0; font-size: 14px; color: #6b7280;">
-                      ViewTrack - Social Media Analytics
+                  <td style="background-color: #111827; padding: 28px 40px; text-align: center;">
+                    <p style="margin: 0 0 8px; font-size: 15px; color: #ffffff; font-weight: 600;">
+                      ViewTrack
                     </p>
-                    <p style="margin: 10px 0 0; font-size: 12px; color: #9ca3af;">
+                    <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+                      Professional Social Media Analytics
+                    </p>
+                    <p style="margin: 16px 0 0; font-size: 12px; color: #6b7280;">
                       Automated refresh • ${new Date().toLocaleString('en-US', {
                         year: 'numeric',
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
@@ -2231,16 +2296,24 @@ async function sendRefreshSummaryEmail(session: any, db: any) {
       body: JSON.stringify({
         from: 'ViewTrack <team@viewtrack.app>',
         to: [session.ownerEmail],
-        subject: `🎉 ${session.orgName || 'Your Organization'} - Refresh Complete${session.totalVideos > 0 ? ` (+${session.totalVideos} New Videos)` : ''}`,
+        subject: `${session.orgName} - Data Refresh Complete (+${viewsGained.toLocaleString()} Views | ${engagementRate}% Engagement)`,
         html: emailHtml
       })
     });
     
     if (!emailResponse.ok) {
-      throw new Error(`Email API returned ${emailResponse.status}`);
+      const errorText = await emailResponse.text();
+      console.error(`❌ Email API error (${emailResponse.status}):`, errorText);
+      throw new Error(`Email API returned ${emailResponse.status}: ${errorText}`);
     }
     
-    console.log(`✅ Refresh summary email sent to ${session.ownerEmail}`);
+    const emailResult = await emailResponse.json();
+    console.log(`✅ Refresh summary email sent successfully!`);
+    console.log(`   📧 Recipient: ${session.ownerEmail}`);
+    console.log(`   🏢 Organization: ${session.orgName} (${session.orgId})`);
+    console.log(`   👤 Owner ID: ${session.ownerId || 'Not set'}`);
+    console.log(`   📊 Deltas: +${viewsGained.toLocaleString()} views, ${engagementRate}% engagement`);
+    console.log(`   📨 Email ID: ${emailResult.id || 'Unknown'}`);
     
   } catch (error: any) {
     console.error('❌ Failed to send refresh summary email:', error.message);

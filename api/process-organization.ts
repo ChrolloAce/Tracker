@@ -66,21 +66,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orgDoc = await db.collection('organizations').doc(orgId).get();
     const orgData = orgDoc.data();
     const orgName = orgData?.name || 'Your Organization';
+    const ownerId = orgData?.ownerId;
     
     // Get owner email for later email sending
-    const membersSnapshot = await db
-      .collection('organizations')
-      .doc(orgId)
-      .collection('members')
-      .where('role', '==', 'owner')
-      .limit(1)
-      .get();
+    // CRITICAL: Must be scoped to THIS organization only
+    let ownerEmail = null;
     
-    const ownerEmail = !membersSnapshot.empty 
-      ? membersSnapshot.docs[0].data().email 
-      : null;
+    if (ownerId) {
+      // Method 1: Get email from members collection using ownerId
+      const ownerMemberDoc = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('members')
+        .doc(ownerId)
+        .get();
+      
+      if (ownerMemberDoc.exists) {
+        ownerEmail = ownerMemberDoc.data()?.email;
+      }
+    }
     
+    // Fallback: Query by role if ownerId not found
+    if (!ownerEmail) {
+      const membersSnapshot = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('members')
+        .where('role', '==', 'owner')
+        .limit(1)
+        .get();
+      
+      ownerEmail = !membersSnapshot.empty 
+        ? membersSnapshot.docs[0].data().email 
+        : null;
+    }
+    
+    console.log(`  👤 Owner ID: ${ownerId || 'Not found'}`);
     console.log(`  📧 Owner email: ${ownerEmail || 'Not found'}`);
+    console.log(`  🏢 Org name: ${orgName}`);
     
     // Get all projects
     const projectsSnapshot = await db
@@ -132,6 +155,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log(`  👥 Total accounts: ${totalAccounts}`);
     
+    // Get previous completed session to calculate deltas
+    console.log(`  🔍 Looking for previous refresh session...`);
+    const previousSessionsSnapshot = await db
+      .collection('organizations')
+      .doc(orgId)
+      .collection('refreshSessions')
+      .where('status', '==', 'completed')
+      .orderBy('completedAt', 'desc')
+      .limit(1)
+      .get();
+    
+    let previousSession: any = null;
+    let previousRefreshTimestamp: any = null;
+    
+    if (!previousSessionsSnapshot.empty) {
+      previousSession = previousSessionsSnapshot.docs[0].data();
+      previousRefreshTimestamp = previousSession.completedAt || previousSession.startedAt;
+      const timeSinceLastRefresh = previousRefreshTimestamp 
+        ? Math.round((Date.now() - previousRefreshTimestamp.toMillis()) / (1000 * 60))
+        : null;
+      console.log(`  ✅ Found previous session from ${timeSinceLastRefresh} minutes ago`);
+    } else {
+      console.log(`  ℹ️  No previous completed session found (first refresh)`);
+    }
+    
     // Create refresh session for tracking progress
     const sessionRef = db
       .collection('organizations')
@@ -143,6 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       id: sessionRef.id,
       orgId,
       orgName,
+      ownerId,
       startedAt: Timestamp.now(),
       status: 'dispatching',
       totalProjects: projectsSnapshot.size,
@@ -157,7 +206,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalLinkClicks: 0,
       accountStats: {},
       ownerEmail,
-      emailSent: false
+      emailSent: false,
+      manualTrigger: manual || false,
+      // Store previous session data for delta calculations
+      previousRefreshTimestamp: previousRefreshTimestamp || null,
+      previousTotalViews: previousSession?.totalViews || 0,
+      previousTotalLikes: previousSession?.totalLikes || 0,
+      previousTotalComments: previousSession?.totalComments || 0,
+      previousTotalShares: previousSession?.totalShares || 0,
+      previousTotalLinkClicks: previousSession?.totalLinkClicks || 0
     });
     
     console.log(`  📝 Created session: ${sessionRef.id}`);

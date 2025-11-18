@@ -19,6 +19,20 @@
       ]
     },
     {
+      "collectionGroup": "refreshSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "completedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "syncQueue",
       "queryScope": "COLLECTION",
       "fields": [
