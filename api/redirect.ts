@@ -102,17 +102,25 @@ export default async function handler(
       return res.status(404).json({ error: 'Destination URL not found' });
     }
 
-    // Record ALL clicks (including bots) - no filtering
-    // Use Promise.race to timeout after 5 seconds - don't block redirect
-    Promise.race([
-      recordClickAnalytics(db, linkData, req),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Analytics timeout after 5s')), 5000)
-      )
-    ]).catch(err => {
-      console.error('❌ Analytics error:', err.message);
-      // Don't log full details to avoid verbose errors
-    });
+    // Check for WhatsApp preview bot specifically
+    const userAgent = req.headers['user-agent'] || '';
+    const isWhatsAppBot = userAgent.toLowerCase().includes('whatsapp');
+    
+    if (!isWhatsAppBot) {
+      // Record all clicks EXCEPT WhatsApp preview bots
+      // Use Promise.race to timeout after 5 seconds - don't block redirect
+      Promise.race([
+        recordClickAnalytics(db, linkData, req),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Analytics timeout after 5s')), 5000)
+        )
+      ]).catch(err => {
+        console.error('❌ Analytics error:', err.message);
+        // Don't log full details to avoid verbose errors
+      });
+    } else {
+      console.log(`🚫 WhatsApp preview detected - not recording click`);
+    }
 
     // INSTANT 302 REDIRECT - happens immediately!
     res.setHeader('Location', destinationUrl);

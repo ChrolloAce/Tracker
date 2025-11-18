@@ -1443,6 +1443,29 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [currentOrgId, currentProjectId, user]);
 
+  const dismissAccountError = useCallback(async (accountId: string, username: string) => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    try {
+      console.log(`🗑️ Dismissing error for account: @${username}`);
+      
+      // Clear error status without retrying
+      const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', accountId);
+      await updateDoc(accountRef, {
+        syncStatus: 'idle',
+        hasError: false,
+        lastSyncError: null,
+        syncRetryCount: 0
+      });
+      
+      console.log(`✅ Error dismissed for @${username}`);
+      
+    } catch (error) {
+      console.error('Failed to dismiss error:', error);
+      alert('Failed to dismiss error. Please try again.');
+    }
+  }, [currentOrgId, currentProjectId]);
+
   const confirmDeleteAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !accountToDelete) return;
     
@@ -2203,6 +2226,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                     >
                                       <RefreshCw className="w-3 h-3" />
                                       Retry
+                                    </button>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await dismissAccountError(account.id, account.username);
+                                      }}
+                                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-400 hover:text-gray-300 hover:bg-gray-500/10 rounded transition-colors"
+                                      title="Dismiss error"
+                                    >
+                                      <X className="w-3 h-3" />
+                                      Dismiss
                                     </button>
                                   </div>
                                 )}
