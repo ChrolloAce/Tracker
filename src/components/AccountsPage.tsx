@@ -1143,7 +1143,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           break;
         }
         case 'dateAdded':
-          comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
+          comparison = (a.createdAt?.toDate().getTime() || 0) - (b.createdAt?.toDate().getTime() || 0);
+          break;
+        case 'lastRefreshed':
+          comparison = (a.lastRefreshed?.toDate().getTime() || 0) - (b.lastRefreshed?.toDate().getTime() || 0);
           break;
       }
       
@@ -1767,6 +1770,38 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       sortable={false}
                     />
                     <ColumnHeader
+                      label="Date Added"
+                      tooltip="The date and time when this account was first added to your tracking list."
+                      sortable
+                      sortKey="dateAdded"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'dateAdded') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('dateAdded');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    />
+                    <ColumnHeader
+                      label="Last Refreshed"
+                      tooltip="The date and time when data for this account was last updated from the platform."
+                      sortable
+                      sortKey="lastRefreshed"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'lastRefreshed') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('lastRefreshed');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    />
+                    <ColumnHeader
                       label="Followers"
                       tooltip="Total number of followers this account currently has on the platform. This metric helps gauge account reach and audience size."
                       sortable
@@ -2029,6 +2064,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               {/* Type Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         <div className="w-20 h-6 bg-white/10 rounded-full animate-pulse"></div>
+                      </td>
+                              {/* Date Added Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse"></div>
+                      </td>
+                              {/* Last Refreshed Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse"></div>
                       </td>
                               {/* Followers Column */}
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -2316,6 +2359,38 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                   </div>
                                 )}
                           </FloatingTooltip>
+                        </td>
+
+                        {/* Date Added Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.createdAt ? (
+                            <span className="text-xs">
+                              {new Date(account.createdAt.toDate()).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
+                          )}
+                        </td>
+
+                        {/* Last Refreshed Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.lastRefreshed ? (
+                            <span className="text-xs">
+                              {new Date(account.lastRefreshed.toDate()).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500 dark:text-gray-600">Never</span>
+                          )}
                         </td>
 
                         {/* Followers Column */}
