@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Role } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
@@ -26,6 +26,50 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
   const [role, setRole] = useState<Role>(defaultRole);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAtLimit, setIsAtLimit] = useState(false);
+  const [limitInfo, setLimitInfo] = useState<{ current: number; limit: number; active: number; pending: number } | null>(null);
+  const [checkingLimit, setCheckingLimit] = useState(true);
+
+  // Check team seat limit when modal opens
+  useEffect(() => {
+    const checkLimit = async () => {
+      if (!currentOrgId || !user) return;
+
+      try {
+        setCheckingLimit(true);
+        
+        const limits = await UsageTrackingService.getLimits(currentOrgId);
+        
+        // Count active members + pending invitations in real-time
+        const membersRef = collection(db, 'organizations', currentOrgId, 'members');
+        const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
+        
+        const [activeMembersSnap, pendingInvitesSnap] = await Promise.all([
+          getDocs(query(membersRef, where('status', '==', 'active'))),
+          getDocs(query(invitationsRef, where('status', '==', 'pending')))
+        ]);
+        
+        const currentSeatsUsed = activeMembersSnap.size + pendingInvitesSnap.size;
+        const seatLimit = limits.teamSeats;
+        
+        setLimitInfo({
+          current: currentSeatsUsed,
+          limit: seatLimit,
+          active: activeMembersSnap.size,
+          pending: pendingInvitesSnap.size
+        });
+        
+        // Check if at limit (-1 means unlimited)
+        setIsAtLimit(seatLimit !== -1 && currentSeatsUsed >= seatLimit);
+      } catch (error) {
+        console.error('Failed to check team limit:', error);
+      } finally {
+        setCheckingLimit(false);
+      }
+    };
+
+    checkLimit();
+  }, [currentOrgId, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,22 +155,38 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
 
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Error Message */}
-          {error && (
+          {/* Team Limit Warning */}
+          {!checkingLimit && isAtLimit && limitInfo && (
             <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
               <div className="flex items-start gap-3 mb-3">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">
+                    Team Member Limit Reached
+                  </div>
+                  <div className="text-xs text-red-600/80 dark:text-red-400/80">
+                    You're using {limitInfo.current}/{limitInfo.limit} seats 
+                    ({limitInfo.active} active {limitInfo.active === 1 ? 'member' : 'members'} + {limitInfo.pending} pending {limitInfo.pending === 1 ? 'invitation' : 'invitations'})
+                  </div>
+                </div>
+              </div>
+              <a
+                href="/settings?tab=billing"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-white text-black hover:bg-gray-100 dark:hover:bg-gray-100 text-sm font-semibold rounded-lg transition-all"
+              >
+                <Crown className="w-4 h-4" />
+                Upgrade Plan
+              </a>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
               </div>
-              {error.includes('team member limit') && (
-                <a
-                  href="/settings?tab=billing"
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-white text-black hover:bg-gray-100 dark:hover:bg-gray-100 text-sm font-semibold rounded-lg transition-all"
-                >
-                  <Crown className="w-4 h-4" />
-                  Upgrade Plan
-                </a>
-              )}
             </div>
           )}
 
@@ -186,10 +246,14 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading || !email}
-              className="flex-1 px-4 py-3 bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || !email || isAtLimit || checkingLimit}
+              className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
+                isAtLimit 
+                  ? 'bg-red-500 dark:bg-red-500 text-white opacity-75 cursor-not-allowed' 
+                  : 'bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black disabled:opacity-50'
+              }`}
             >
-              {loading ? 'Sending...' : 'Send Invitation'}
+              {checkingLimit ? 'Checking...' : loading ? 'Sending...' : isAtLimit ? 'Limit Reached' : 'Send Invitation'}
             </button>
           </div>
         </form>
