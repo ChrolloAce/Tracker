@@ -4,6 +4,8 @@ import { Role } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
 import OrganizationService from '../services/OrganizationService';
 import UsageTrackingService from '../services/UsageTrackingService';
+import { db } from '../services/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { X, Mail, UserPlus, AlertCircle, Crown } from 'lucide-react';
 
 interface InviteTeamMemberModalProps {
@@ -39,16 +41,25 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         throw new Error('Please enter a valid email address');
       }
 
-      // ✅ CHECK TEAM SEAT LIMITS BEFORE INVITING
-      const canInvite = await UsageTrackingService.canPerformAction(
-        currentOrgId,
-        'team',
-        user.uid
-      );
-
-      if (!canInvite.allowed) {
+      // ✅ CHECK TEAM SEAT LIMITS BEFORE INVITING (real-time count)
+      const limits = await UsageTrackingService.getLimits(currentOrgId);
+      
+      // Count active members + pending invitations in real-time
+      const membersRef = collection(db, 'organizations', currentOrgId, 'members');
+      const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
+      
+      const [activeMembersSnap, pendingInvitesSnap] = await Promise.all([
+        getDocs(query(membersRef, where('status', '==', 'active'))),
+        getDocs(query(invitationsRef, where('status', '==', 'pending')))
+      ]);
+      
+      const currentSeatsUsed = activeMembersSnap.size + pendingInvitesSnap.size;
+      const seatLimit = limits.teamSeats;
+      
+      // -1 means unlimited
+      if (seatLimit !== -1 && currentSeatsUsed >= seatLimit) {
         throw new Error(
-          `You've reached your team member limit (${canInvite.limit} seats). Upgrade your plan to invite more members.`
+          `You've reached your team member limit (${seatLimit} seats). You currently have ${activeMembersSnap.size} active members and ${pendingInvitesSnap.size} pending invitations. Upgrade your plan to invite more members.`
         );
       }
 

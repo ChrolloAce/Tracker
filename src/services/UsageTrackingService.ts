@@ -178,10 +178,17 @@ class UsageTrackingService {
       totalLinks += r.links;
     });
     
-    // Count team members
+    // Count team members (active members + pending invitations)
     const membersRef = collection(db, 'organizations', orgId, 'members');
     const membersQuery = query(membersRef, where('status', '==', 'active'));
     const membersSnapshot = await getDocs(membersQuery);
+    
+    // Also count pending invitations
+    const invitationsRef = collection(db, 'organizations', orgId, 'teamInvitations');
+    const invitationsQuery = query(invitationsRef, where('status', '==', 'pending'));
+    const invitationsSnapshot = await getDocs(invitationsQuery);
+    
+    const totalTeamSeats = membersSnapshot.size + invitationsSnapshot.size;
     
     // Update cache
     const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
@@ -189,7 +196,7 @@ class UsageTrackingService {
       trackedAccounts: totalAccounts,
       trackedVideos: totalVideos,
       trackedLinks: totalLinks,
-      teamMembers: membersSnapshot.size,
+      teamMembers: totalTeamSeats,
       manualVideos: 0,
       manualCreators: 0,
       mcpCallsThisMonth: 0,
