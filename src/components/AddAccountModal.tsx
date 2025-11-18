@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { X, ChevronDown, LinkIcon, RefreshCw, AlertCircle, Trash2, Plus, Minus, Crown } from 'lucide-react';
+import { X, ChevronDown, LinkIcon, RefreshCw, AlertCircle, Trash2, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
@@ -342,23 +342,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 )}
               </div>
               
-              {/* Video count selector - Hybrid dropdown + stepper */}
+              {/* Video count selector - Input field + dropdown */}
               <div className="flex items-center gap-1.5">
-                {/* Minus button */}
-                <button
-                  type="button"
-                  onClick={() => {
+                {/* Number input field */}
+                <input
+                  type="number"
+                  min="1"
+                  max="5000"
+                  value={input.videoCount}
+                  onChange={(e) => {
                     const newInputs = [...accountInputs];
-                    newInputs[index].videoCount = Math.max(1, newInputs[index].videoCount - 1);
+                    const value = parseInt(e.target.value) || 1;
+                    newInputs[index].videoCount = Math.max(1, Math.min(5000, value));
                     setAccountInputs(newInputs);
                   }}
-                  className="p-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
-                  aria-label="Decrease video count"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
+                  className="w-20 px-3 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium text-center focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-gray-600"
+                  placeholder="10"
+                />
 
-                {/* Dropdown */}
+                {/* Preset dropdown */}
                 <div className="relative">
                   <select
                     value={input.videoCount}
@@ -367,7 +369,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                       newInputs[index].videoCount = Number(e.target.value);
                       setAccountInputs(newInputs);
                     }}
-                    className="appearance-none pl-3 pr-8 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap min-w-[100px]"
+                    className="appearance-none pl-3 pr-8 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
                   >
                     <option value={10}>10 videos</option>
                     <option value={25}>25 videos</option>
@@ -380,20 +382,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   </select>
                   <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                 </div>
-
-                {/* Plus button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newInputs = [...accountInputs];
-                    newInputs[index].videoCount = Math.min(5000, newInputs[index].videoCount + 1);
-                    setAccountInputs(newInputs);
-                  }}
-                  className="p-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
-                  aria-label="Increase video count"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
               </div>
 
               {/* Delete button for additional inputs */}
