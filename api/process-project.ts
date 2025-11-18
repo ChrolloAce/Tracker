@@ -172,18 +172,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`      📋 [${index + 1}/${accountsToRefresh.length}] @${accountData.username} (${accountData.platform}) - Last: ${lastRefreshedStr}`);
     });
     
-    // Queue all accounts as jobs in Firestore
+    // Queue all accounts as jobs in Firestore with deduplication
     // This ensures jobs are persisted and won't be lost if Vercel times out
     console.log(`      📝 Queueing ${accountsToRefresh.length} accounts as jobs in Firestore...`);
     
+    // STEP 1: Check for existing jobs to prevent duplicates
+    console.log(`      🔍 Checking for existing pending/running jobs...`);
+    const existingJobsSnapshot = await db
+      .collection('syncQueue')
+      .where('status', 'in', ['pending', 'running'])
+      .where('type', '==', 'account_sync')
+      .where('isSpiderwebPhase', '==', false) // Only check initial jobs, not spiderweb phases
+      .get();
+    
+    const existingJobsByAccount = new Map<string, string>();
+    existingJobsSnapshot.docs.forEach(doc => {
+      const job = doc.data();
+      const key = `${job.orgId}_${job.projectId}_${job.accountId}`;
+      existingJobsByAccount.set(key, doc.id);
+    });
+    
+    console.log(`      📊 Found ${existingJobsByAccount.size} existing jobs for accounts in this project`);
+    
     let batch = db.batch();
     let queuedCount = 0;
+    let skippedCount = 0;
     let batchCount = 0;
     const jobIds: string[] = [];
     
     for (let i = 0; i < accountsToRefresh.length; i++) {
       const accountDoc = accountsToRefresh[i];
       const accountData = accountDoc.data();
+      const accountKey = `${orgId}_${projectId}_${accountDoc.id}`;
+      
+      // Check if job already exists
+      if (existingJobsByAccount.has(accountKey)) {
+        const existingJobId = existingJobsByAccount.get(accountKey);
+        console.log(`         ⏭️  [${i + 1}/${accountsToRefresh.length}] Skipped @${accountData.username} (already queued: ${existingJobId})`);
+        skippedCount++;
+        jobIds.push(existingJobId!); // Add existing job ID to track
+        continue;
+      }
       
       // Create job document in syncQueue collection
       const jobRef = db.collection('syncQueue').doc(); // Auto-generate ID
@@ -222,12 +251,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Commit batch every 500 operations (Firestore limit)
       if (batchCount >= 500) {
-        await batch.commit();
-        console.log(`         ✅ Committed ${queuedCount} jobs to queue (batch complete)`);
+        try {
+          await batch.commit();
+          console.log(`         ✅ Committed ${queuedCount} jobs to queue (batch complete)`);
+        } catch (commitError: any) {
+          console.error(`         ❌ Failed to commit batch:`, commitError.message);
+          throw commitError;
+        }
         batch = db.batch(); // Create new batch
         batchCount = 0; // Reset batch counter
       }
     }
+    
+    console.log(`      📊 Deduplication results: ${queuedCount} new jobs, ${skippedCount} skipped (already queued)`);
     
     // Commit remaining jobs
     if (batchCount > 0) {
@@ -240,8 +276,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    console.log(`\n      ✅ All ${queuedCount} accounts queued in Firestore`);
-    console.log(`      📊 Total jobs created: ${jobIds.length}`);
+    console.log(`\n      ✅ Job queueing complete`);
+    console.log(`      📊 New jobs created: ${queuedCount}`);
+    console.log(`      ⏭️  Skipped (already queued): ${skippedCount}`);
+    console.log(`      📋 Total jobs tracked: ${jobIds.length}`);
     
     // Conditional dispatch based on manual vs scheduled refresh
     const APIFY_CONCURRENCY_LIMIT = 6;
@@ -346,7 +384,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      ✅ Project "${projectName}" Complete`);
     console.log(`      ========================================`);
     console.log(`      ⏱️  Duration: ${duration}s`);
-    console.log(`      📊 Accounts queued: ${queuedCount}`);
+    console.log(`      📊 New jobs created: ${queuedCount}`);
+    console.log(`      ⏭️  Skipped (duplicates): ${skippedCount}`);
     console.log(`      🚀 Immediate dispatches: ${immediatelyDispatched}`);
     console.log(`      ⏳ Pending in queue: ${queuedCount - immediatelyDispatched}`);
     console.log(`      ${isManualRefresh ? '⚡ Manual refresh - immediate feedback enabled' : '📅 Scheduled refresh - queue worker handles all dispatching'}`);
@@ -360,7 +399,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stats: {
         duration: parseFloat(duration),
         accountsChecked: accountsSnapshot.size,
-        accountsQueued: queuedCount,
+        newJobsQueued: queuedCount,
+        skippedDuplicates: skippedCount,
         immediateDispatches: immediatelyDispatched,
         pendingInQueue: queuedCount - immediatelyDispatched,
         refreshType: isManualRefresh ? 'manual' : 'scheduled'
