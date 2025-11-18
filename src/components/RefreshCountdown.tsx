@@ -106,17 +106,6 @@ const RefreshCountdown: React.FC = () => {
     return Math.min(progress, 100);
   };
 
-  if (accountCount === 0) {
-    return (
-      <div className="px-4 py-3 border-t border-white/5">
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>No tracked accounts</span>
-        </div>
-      </div>
-    );
-  }
-
   const progress = getProgressPercent();
   const isRunning = progress >= 100;
 
@@ -126,17 +115,24 @@ const RefreshCountdown: React.FC = () => {
       <div className="px-4 py-3">
         {/* Timing Info */}
         <div className="text-[11px] text-white/60 mb-3 text-center">
-          Data will refresh in {formatTimeUntil()}
-      </div>
+          {accountCount === 0 ? (
+            <span className="flex items-center justify-center gap-1.5 text-white/40">
+              <RefreshCw className="w-3.5 h-3.5" />
+              No tracked accounts
+            </span>
+          ) : (
+            <>Data will refresh in {formatTimeUntil()}</>
+          )}
+        </div>
 
-      {/* Progress Bar */}
+        {/* Progress Bar - ALWAYS SHOW */}
         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-        <div 
+          <div 
             className={`h-full transition-all duration-1000 ease-linear ${
               isRunning ? 'bg-emerald-400' : 'bg-white/40'
             }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
-        />
+          />
         </div>
       </div>
     </div>
