@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, ChevronDown } from 'lucide-react';
+import { Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, ChevronDown, Calendar } from 'lucide-react';
 import '../styles/no-select.css';
+
+type TimeFrame = '7d' | '30d' | '90d' | 'all';
 
 interface ChartDataPoint {
   date: string;
@@ -82,18 +84,102 @@ const metrics: MetricConfig[] = [
   },
 ];
 
+const timeFrameOptions: { value: TimeFrame; label: string; days: number | null }[] = [
+  { value: '7d', label: 'Last 7 Days', days: 7 },
+  { value: '30d', label: 'Last 30 Days', days: 30 },
+  { value: '90d', label: 'Last 90 Days', days: 90 },
+  { value: 'all', label: 'All Time', days: null },
+];
+
 export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartProps> = ({ data, cumulativeTotals }) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('views');
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isTimeFrameDropdownOpen, setIsTimeFrameDropdownOpen] = useState(false);
 
   const currentMetric = metrics.find(m => m.key === selectedMetric) || metrics[0];
+  const currentTimeFrame = timeFrameOptions.find(t => t.value === timeFrame) || timeFrameOptions[3];
+
+  // Filter data based on time frame
+  const filteredData = useMemo(() => {
+    if (!currentTimeFrame.days || data.length === 0) return data;
+
+    const cutoffDate = Date.now() - (currentTimeFrame.days * 24 * 60 * 60 * 1000);
+    return data.filter(d => d.timestamp >= cutoffDate);
+  }, [data, currentTimeFrame.days]);
+
+  // Auto-transform data based on time frame (Daily, Weekly, or Monthly)
+  const transformedData = useMemo(() => {
+    if (filteredData.length === 0) return filteredData;
+
+    // Determine transformation based on time frame
+    let transformer: 'daily' | 'weekly' | 'monthly' = 'daily';
+    if (timeFrame === '90d' || timeFrame === 'all') {
+      transformer = 'monthly';
+    } else if (timeFrame === '30d' && filteredData.length > 20) {
+      transformer = 'weekly';
+    }
+
+    // If daily or not enough data points, return as-is
+    if (transformer === 'daily' || filteredData.length <= 3) {
+      return filteredData;
+    }
+
+    // Group data by week or month
+    const grouped: Map<string, ChartDataPoint[]> = new Map();
+    
+    filteredData.forEach(point => {
+      const date = new Date(point.timestamp);
+      let key: string;
+      
+      if (transformer === 'weekly') {
+        // Group by week (start of week)
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - date.getDay()); // Sunday
+        startOfWeek.setHours(0, 0, 0, 0);
+        key = startOfWeek.toISOString().split('T')[0];
+      } else {
+        // Group by month
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(point);
+    });
+
+    // Aggregate grouped data (sum for totals, average for rates)
+    const aggregated: ChartDataPoint[] = Array.from(grouped.entries()).map(([key, points]) => {
+      const lastPoint = points[points.length - 1];
+      const isRate = selectedMetric === 'engagementRate';
+      
+      return {
+        ...lastPoint,
+        date: transformer === 'weekly' 
+          ? `Week of ${key}`
+          : new Date(key + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        views: isRate ? lastPoint.views : points.reduce((sum, p) => sum + p.views, 0),
+        likes: isRate ? lastPoint.likes : points.reduce((sum, p) => sum + p.likes, 0),
+        comments: isRate ? lastPoint.comments : points.reduce((sum, p) => sum + p.comments, 0),
+        shares: isRate ? lastPoint.shares : points.reduce((sum, p) => sum + p.shares, 0),
+        saves: isRate ? lastPoint.saves : points.reduce((sum, p) => sum + p.saves, 0),
+        engagementRate: points.reduce((sum, p) => sum + p.engagementRate, 0) / points.length,
+        timestamp: lastPoint.timestamp,
+        snapshotIndex: points[0].snapshotIndex
+      };
+    });
+
+    // Sort by timestamp
+    return aggregated.sort((a, b) => a.timestamp - b.timestamp);
+  }, [filteredData, timeFrame, selectedMetric]);
 
   // Calculate max value for Y-axis
   const maxValue = useMemo(() => {
-    if (data.length === 0) return 100;
-    const values = data.map(d => d[selectedMetric]);
+    if (transformedData.length === 0) return 100;
+    const values = transformedData.map(d => d[selectedMetric]);
     return Math.max(...values, 10);
-  }, [data, selectedMetric]);
+  }, [transformedData, selectedMetric]);
 
   // Get cumulative total for selected metric
   const totalValue = useMemo(() => {
@@ -119,19 +205,9 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     if (!active || !payload || !payload.length) return null;
 
     const dataPoint = payload[0].payload;
-    const dataIndex = typeof dataPoint.snapshotIndex === 'number'
-      ? dataPoint.snapshotIndex
-      : data.findIndex(d => d.timestamp === dataPoint.timestamp);
+    const dataIndex = transformedData.findIndex(d => d.timestamp === dataPoint.timestamp);
     const isBaseline = dataIndex === 0;
     const value = dataPoint[selectedMetric];
-    
-    console.log('🎯 Tooltip Data:', {
-      dataIndex,
-      isBaseline,
-      selectedMetric,
-      rawValue: value,
-      dataPoint: { date: dataPoint.date, views: dataPoint.views, likes: dataPoint.likes }
-    });
     
     // Format EXACTLY like MiniTrendChart: use toLocaleString() with + prefix for growth
     let displayValue: string;
@@ -196,7 +272,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         }}
       />
 
-      {/* Header with Title and Metric Selector */}
+      {/* Header with Title and Selectors */}
       <div className="relative px-6 pt-5 pb-3 flex items-center justify-between border-b border-white/5" style={{ zIndex: 100 }}>
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-white/5 border border-white/5">
@@ -207,8 +283,85 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           </h3>
         </div>
 
-        {/* Metric Selector Dropdown */}
-        <div className="relative z-30">
+        {/* Selectors: Time Frame + Metric */}
+        <div className="flex items-center gap-2.5">
+          {/* Time Frame Selector */}
+          <div className="relative z-30">
+            <button
+              onClick={() => setIsTimeFrameDropdownOpen(!isTimeFrameDropdownOpen)}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none"
+              style={{
+                backgroundColor: isTimeFrameDropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
+                borderColor: isTimeFrameDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+              }}
+            >
+              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-sm font-semibold text-white">{currentTimeFrame.label}</span>
+              <ChevronDown 
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isTimeFrameDropdownOpen ? 'rotate-180' : ''}`} 
+              />
+            </button>
+
+            {/* Time Frame Dropdown Menu */}
+            {isTimeFrameDropdownOpen && (
+              <>
+                {/* Backdrop */}
+                <div 
+                  className="fixed inset-0"
+                  style={{ zIndex: 9999 }}
+                  onClick={() => setIsTimeFrameDropdownOpen(false)}
+                />
+                
+                {/* Menu */}
+                <div 
+                  className="absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl overflow-hidden"
+                  style={{ 
+                    backgroundColor: '#0a0a0b',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    zIndex: 10000,
+                  }}
+                >
+                  {timeFrameOptions.map((option) => {
+                    const isSelected = timeFrame === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTimeFrame(option.value);
+                          setIsTimeFrameDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 transition-all outline-none focus:outline-none"
+                        style={{
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        <span className="text-sm font-medium text-white flex-1 text-left">
+                          {option.label}
+                        </span>
+                        {isSelected && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Metric Selector Dropdown */}
+          <div className="relative z-30">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none"
@@ -279,6 +432,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
 
@@ -296,7 +450,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
 
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart 
-            data={data}
+            data={transformedData}
             margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
           >
             <defs>
@@ -344,9 +498,16 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             
             <Tooltip 
               content={<CustomTooltip />} 
-              cursor={{ stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '5 5' }}
-              animationDuration={200}
-              isAnimationActive={true}
+              cursor={{ 
+                stroke: '#3b82f6', 
+                strokeWidth: 2, 
+                strokeDasharray: '5 5',
+                strokeOpacity: 0.8
+              }}
+              animationDuration={0}
+              isAnimationActive={false}
+              allowEscapeViewBox={{ x: false, y: true }}
+              wrapperStyle={{ outline: 'none', pointerEvents: 'none' }}
             />
             
             <Area 
