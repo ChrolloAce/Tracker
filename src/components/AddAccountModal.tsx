@@ -265,17 +265,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
         {/* Video Limit Warning Banner */}
         {!checkingLimits && videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-          const totalVideosRequested = accountInputs.reduce((sum, input) => {
-            if (input.url.trim() && input.platform) {
+          // Calculate total videos from ALL inputs (including first one using newAccountUrl)
+          const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
+            const url = (index === 0 ? newAccountUrl : input.url).trim();
+            const platform = index === 0 ? detectedPlatform : input.platform;
+            
+            if (url && platform) {
+              console.log(`[Video Limit Check] Input ${index}: ${url} → ${input.videoCount} videos`);
               return sum + input.videoCount;
             }
             return sum;
           }, 0);
           
+          console.log(`[Video Limit Check] Total requested: ${totalVideosRequested}, Available: ${videoLimitInfo.available}, Limit: ${videoLimitInfo.limit}`);
+          
           const wouldExceedLimit = totalVideosRequested > videoLimitInfo.available;
           const videosOver = totalVideosRequested - videoLimitInfo.available;
           
           if (wouldExceedLimit) {
+            console.log(`⚠️ [Video Limit Check] EXCEEDS LIMIT by ${videosOver} videos!`);
             return (
               <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
                 <div className="flex items-start gap-3 mb-3">
@@ -359,12 +367,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   className="w-20 px-3 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium text-center focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-gray-600"
                   placeholder="10"
                 />
-                
-                {/* "videos" label */}
-                <span className="text-sm text-gray-400">videos</span>
 
-                {/* Preset dropdown - arrow only */}
-                <div className="relative">
+                {/* Preset dropdown - just arrow button */}
+                <div className="relative w-9 h-9">
                   <select
                     value={input.videoCount}
                     onChange={(e) => {
@@ -372,19 +377,19 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                       newInputs[index].videoCount = Number(e.target.value);
                       setAccountInputs(newInputs);
                     }}
-                    className="appearance-none w-9 h-9 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 opacity-0"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
                   >
-                    <option value={10}>10 videos</option>
-                    <option value={25}>25 videos</option>
-                    <option value={50}>50 videos</option>
-                    <option value={100}>100 videos</option>
-                    <option value={250}>250 videos</option>
-                    <option value={500}>500 videos</option>
-                    <option value={1000}>1000 videos</option>
-                    <option value={2000}>2000 videos</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={250}>250</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                    <option value={2000}>2000</option>
                   </select>
-                  {/* Visible arrow button */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* Visible arrow button with background */}
+                  <div className="absolute inset-0 bg-[#1E1E20] border border-gray-700/50 rounded-lg flex items-center justify-center pointer-events-none">
                     <ChevronDown className="w-4 h-4 text-gray-400" />
                   </div>
                 </div>
@@ -521,10 +526,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 if (usageLimits.isAtAccountLimit) return true;
                 if (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform)) return true;
                 
-                // Check video limit
+                // Check video limit (same logic as warning banner)
                 if (videoLimitInfo && videoLimitInfo.limit !== -1) {
-                  const totalVideosRequested = accountInputs.reduce((sum, input) => {
-                    if (input.url.trim() && input.platform) {
+                  const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
+                    const url = (index === 0 ? newAccountUrl : input.url).trim();
+                    const platform = index === 0 ? detectedPlatform : input.platform;
+                    if (url && platform) {
                       return sum + input.videoCount;
                     }
                     return sum;
@@ -536,8 +543,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               })()}
               className={`px-4 py-2 text-sm font-bold rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-                  const totalVideosRequested = accountInputs.reduce((sum, input) => {
-                    if (input.url.trim() && input.platform) {
+                  const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
+                    const url = (index === 0 ? newAccountUrl : input.url).trim();
+                    const platform = index === 0 ? detectedPlatform : input.platform;
+                    if (url && platform) {
                       return sum + input.videoCount;
                     }
                     return sum;
@@ -551,8 +560,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               {isSubmitting ? 'Processing...' : 
                usageLimits.isAtAccountLimit ? 'Limit Reached' : 
                videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-                 const totalVideosRequested = accountInputs.reduce((sum, input) => {
-                   if (input.url.trim() && input.platform) {
+                 const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
+                   const url = (index === 0 ? newAccountUrl : input.url).trim();
+                   const platform = index === 0 ? detectedPlatform : input.platform;
+                   if (url && platform) {
                      return sum + input.videoCount;
                    }
                    return sum;
