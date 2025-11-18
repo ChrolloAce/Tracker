@@ -123,80 +123,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`   📊 Queue capacity: ${runningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
     
-    if (availableSlots > 0) {
-      // Capacity available - dispatch immediately
-      console.log(`   🚀 Capacity available - dispatching immediately`);
-      
-      // Update job status to running
-      await jobRef.update({
-        status: 'running',
-        startedAt: Timestamp.now()
-      });
-      
-      // Dispatch to sync-single-account immediately
-      fetch(`${baseUrl}/api/sync-single-account`, {
-        method: 'POST',
-        headers: {
-          'Authorization': cronSecret,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          orgId,
-          projectId,
-          accountId,
-          sessionId: sessionId || null,
-          jobId: jobRef.id
-        })
-      }).catch(err => {
-        console.error(`   ❌ Failed to dispatch job:`, err.message);
-      });
-      
-      // IMPORTANT: Also trigger queue-worker to process any other pending jobs
-      // (e.g., if user added multiple accounts at once)
-      console.log(`   🔔 Triggering queue-worker to check for additional pending jobs...`);
-      fetch(`${baseUrl}/api/queue-worker`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${cronSecret}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ trigger: 'manual_account_added' })
-      }).catch(err => {
-        console.warn(`   ⚠️  Queue worker trigger failed (non-critical):`, err.message);
-      });
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Account dispatched for immediate scraping',
-        jobId: jobRef.id,
-        priority: JOB_PRIORITIES.USER_INITIATED,
-        status: 'processing',
-        estimatedWaitTime: 'Processing now'
-      });
-    } else {
-      // No capacity - trigger queue worker to pick it up
-      console.log(`   ⏸️  No capacity available - queue worker will process when slots open`);
-      
-      fetch(`${baseUrl}/api/queue-worker`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${cronSecret}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ trigger: 'manual_account_added' })
-      }).catch(err => {
-        console.warn(`   ⚠️  Failed to trigger queue worker (non-critical):`, err.message);
-      });
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Account queued for high-priority scraping',
-        jobId: jobRef.id,
-        priority: JOB_PRIORITIES.USER_INITIATED,
-        status: 'queued',
-        estimatedWaitTime: 'Will process when capacity available (typically within 1 minute)'
-      });
-    }
+    // DON'T mark as running here - let the queue-worker or the actual processor mark it
+    // This prevents jobs from getting stuck in "running" if the fire-and-forget dispatch fails
+    
+    // Always trigger queue-worker to pick up the job(s)
+    // The queue-worker will check capacity and dispatch appropriately
+    console.log(`   🔔 Triggering queue-worker to process account job(s)...`);
+    
+    // Add small delay to ensure job is committed to Firestore
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    fetch(`${baseUrl}/api/queue-worker`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ trigger: 'manual_account_added' })
+    }).catch(err => {
+      console.warn(`   ⚠️  Queue worker trigger failed (non-critical):`, err.message);
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Account queued for high-priority scraping',
+      jobId: jobRef.id,
+      priority: JOB_PRIORITIES.USER_INITIATED,
+      status: 'queued',
+      estimatedWaitTime: availableSlots > 0 
+        ? 'Processing within seconds' 
+        : 'Will process when capacity available (typically within 1 minute)'
+    });
     
   } catch (error: any) {
     console.error('❌ [MANUAL-ACCOUNT] Error:', error);
