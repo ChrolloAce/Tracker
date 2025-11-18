@@ -116,9 +116,18 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           UsageTrackingService.getLimits(orgId)
         ]);
 
+        console.log('🔍 [VIDEO LIMIT DEBUG] Raw usage:', usage);
+        console.log('🔍 [VIDEO LIMIT DEBUG] Raw limits:', limits);
+
         const currentVideos = usage.trackedVideos;
         const videoLimit = limits.maxVideos;
         const available = videoLimit === -1 ? Infinity : Math.max(0, videoLimit - currentVideos);
+
+        console.log('🔍 [VIDEO LIMIT DEBUG] Parsed values:', {
+          currentVideos,
+          videoLimit,
+          available
+        });
 
         setVideoLimitInfo({
           current: currentVideos,
@@ -128,7 +137,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
         console.log(`📹 Video limits: ${currentVideos}/${videoLimit} (${available === Infinity ? '∞' : available} available)`);
       } catch (error) {
-        console.error('Failed to check video limits:', error);
+        console.error('❌ Failed to check video limits:', error);
       } finally {
         setCheckingLimits(false);
       }
