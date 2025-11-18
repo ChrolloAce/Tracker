@@ -999,31 +999,53 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
             {/* LEFT SIDE - Video Tables (Compact) */}
             <div className="flex-1 space-y-2 min-w-0 order-2 lg:order-1">
-              {/* New Videos Table - Compact */}
               {(() => {
                 const videosToShow = showPreviousPeriod ? ppNewUploads : newUploads;
-                return (
-                  <div className="overflow-x-auto -mx-3 sm:mx-0">
-                    <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
-                      <VideoSubmissionsTable
-                        submissions={videosToShow}
-                        onVideoClick={onVideoClick}
-                        onDelete={onDelete}
-                        headerTitle={`New Videos (${videosToShow.length})`}
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Refreshed Videos Table - Compact */}
-              {(() => {
                 const gainersToShow = showPreviousPeriod ? ppFilteredTopGainers : filteredTopGainers;
+                const hasNewVideos = videosToShow.length > 0;
+                const hasRefreshedVideos = gainersToShow.length > 0;
+
+                // If no data at all, show empty state
+                if (!hasNewVideos && !hasRefreshedVideos) {
+                  return (
+                    <div className="flex items-center justify-center py-16 px-4">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                          <TrendingUp className="w-8 h-8 text-gray-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-2">
+                          No Data Available
+                        </h3>
+                        <p className="text-sm text-gray-400">
+                          No videos found for this period
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div className="overflow-x-auto -mx-3 sm:mx-0">
-                    <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
-                      <VideoSubmissionsTable
-                        submissions={gainersToShow.map((item: any) => {
+                  <>
+                    {/* New Videos Table - Compact - Only show if has videos */}
+                    {hasNewVideos && (
+                      <div className="overflow-x-auto -mx-3 sm:mx-0">
+                        <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
+                          <VideoSubmissionsTable
+                            submissions={videosToShow}
+                            onVideoClick={onVideoClick}
+                            onDelete={onDelete}
+                            headerTitle={`New Videos (${videosToShow.length})`}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Refreshed Videos Table - Compact - Only show if has gainers */}
+                    {hasRefreshedVideos && (
+                      <div className="overflow-x-auto -mx-3 sm:mx-0">
+                        <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
+                          <VideoSubmissionsTable
+                            submissions={gainersToShow.map((item: any) => {
                           // Calculate growth for all metrics from snapshots
                           const video = item.video;
                           const snapshots = video.snapshots || [];
@@ -1054,12 +1076,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                             saves: bookmarksGained
                           };
                         })}
-                        onVideoClick={onVideoClick}
-                        onDelete={onDelete}
-                        headerTitle={`Refreshed Videos (${gainersToShow.length})`}
-                      />
-                    </div>
-                  </div>
+                            onVideoClick={onVideoClick}
+                            onDelete={onDelete}
+                            headerTitle={`Refreshed Videos (${gainersToShow.length})`}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 );
               })()}
             </div>

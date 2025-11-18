@@ -119,6 +119,31 @@ const getVideoTableHeader = (dateFilter: DateFilterType): string => {
   }
 };
 
+const getTrendPeriodDays = (dateFilter: DateFilterType): number => {
+  switch (dateFilter) {
+    case 'today':
+    case 'yesterday':
+      return 1;
+    case 'last7days':
+      return 7;
+    case 'last14days':
+      return 14;
+    case 'last30days':
+    case 'mtd':
+      return 30;
+    case 'last90days':
+      return 90;
+    case 'ytd':
+      return 365;
+    case 'all':
+      return 365; // Default to 1 year for all-time
+    case 'custom':
+      return 30; // Default to 30 days for custom range
+    default:
+      return 7;
+  }
+};
+
 function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string; initialSettingsTab?: string } = {}) {
   // Get authentication state, current organization, and current project
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, isAdmin } = useAuth();
@@ -3087,6 +3112,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onDelete={handleDelete}
                             onVideoClick={handleVideoClick}
                             headerTitle={getVideoTableHeader(dateFilter)}
+                            trendPeriodDays={getTrendPeriodDays(dateFilter)}
                           />
                         );
                       default:
@@ -3198,6 +3224,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   submissions={filteredSubmissions}
                   onVideoClick={handleVideoClick}
                   headerTitle="All Videos"
+                  trendPeriodDays={getTrendPeriodDays(dateFilter)}
                 />
                   </div>
                 </>
@@ -3294,6 +3321,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 onDelete={handleDelete}
                 onVideoClick={handleVideoClick}
                 headerTitle={getVideoTableHeader(dateFilter)}
+                trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
             )
           )}
@@ -3626,6 +3654,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onDelete={() => {}}
                   onVideoClick={handleVideoClick}
                   headerTitle={getVideoTableHeader(dateFilter)}
+                  trendPeriodDays={getTrendPeriodDays(dateFilter)}
                 />
               );
             

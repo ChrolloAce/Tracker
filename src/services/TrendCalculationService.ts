@@ -2,20 +2,22 @@ import { VideoSubmission } from '../types';
 
 export class TrendCalculationService {
   /**
-   * Calculate 7-day trend data for a video's views (showing daily growth, not cumulative)
+   * Calculate trend data for a video's views (showing daily growth, not cumulative)
+   * @param video - The video submission to analyze
+   * @param days - Number of days to look back (default: 7)
    */
-  static getViewsTrend(video: VideoSubmission): number[] {
+  static getViewsTrend(video: VideoSubmission, days: number = 7): number[] {
     if (!video.snapshots || video.snapshots.length === 0) {
       // If no historical data, return single point (flat line)
       return [video.views];
     }
 
     const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const lookbackDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
 
-    // Filter snapshots from the last 7 days and sort by date
+    // Filter snapshots from the specified period and sort by date
     const recentSnapshots = video.snapshots
-      .filter(snapshot => new Date(snapshot.capturedAt) >= sevenDaysAgo)
+      .filter(snapshot => new Date(snapshot.capturedAt) >= lookbackDate)
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
 
     if (recentSnapshots.length === 0) {
@@ -58,18 +60,20 @@ export class TrendCalculationService {
   }
 
   /**
-   * Calculate 7-day trend data for a video's likes (showing daily growth, not cumulative)
+   * Calculate trend data for a video's likes (showing daily growth, not cumulative)
+   * @param video - The video submission to analyze
+   * @param days - Number of days to look back (default: 7)
    */
-  static getLikesTrend(video: VideoSubmission): number[] {
+  static getLikesTrend(video: VideoSubmission, days: number = 7): number[] {
     if (!video.snapshots || video.snapshots.length === 0) {
       return [video.likes];
     }
 
     const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const lookbackDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
 
     const recentSnapshots = video.snapshots
-      .filter(snapshot => new Date(snapshot.capturedAt) >= sevenDaysAgo)
+      .filter(snapshot => new Date(snapshot.capturedAt) >= lookbackDate)
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
 
     if (recentSnapshots.length === 0) {

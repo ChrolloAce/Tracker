@@ -21,6 +21,7 @@ interface VideoSubmissionsTableProps {
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
+  trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
 }
 
 // Dropdown menu component for video actions
@@ -151,7 +152,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   submissions, 
   onDelete,
   onVideoClick,
-  headerTitle
+  headerTitle,
+  trendPeriodDays = 7
 }) => {
   
   // Pagination state
@@ -833,7 +835,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.trend && (
                     <td className="px-6 py-5">
                       <MiniTrendChart 
-                        data={TrendCalculationService.getViewsTrend(submission)}
+                        data={TrendCalculationService.getViewsTrend(submission, trendPeriodDays)}
                         className="flex items-center justify-center"
                       />
                     </td>
