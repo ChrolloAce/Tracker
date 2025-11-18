@@ -123,15 +123,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`   📊 Queue capacity: ${runningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
     
-    // DON'T mark as running here - let the queue-worker or the actual processor mark it
-    // This prevents jobs from getting stuck in "running" if the fire-and-forget dispatch fails
+    if (availableSlots > 0) {
+      // TRY immediate dispatch for instant feedback
+      console.log(`   ⚡ Attempting immediate dispatch...`);
+      
+      try {
+        // Dispatch with timeout (500ms) - if it fails, queue-worker will retry
+        const dispatchPromise = fetch(`${baseUrl}/api/sync-single-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': cronSecret,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            orgId,
+            projectId,
+            accountId,
+            sessionId: sessionId || null,
+            jobId: jobRef.id
+          })
+        });
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Dispatch timeout')), 500)
+        );
+        
+        // Race between dispatch and timeout
+        const response = await Promise.race([dispatchPromise, timeoutPromise]) as Response;
+        
+        if (response.ok) {
+          // SUCCESS - Mark as running since dispatch succeeded
+          await jobRef.update({
+            status: 'running',
+            startedAt: Timestamp.now()
+          });
+          
+          console.log(`   ✅ Immediate dispatch successful - processing now`);
+          
+          return res.status(200).json({
+            success: true,
+            message: 'Account dispatched for immediate scraping',
+            jobId: jobRef.id,
+            priority: JOB_PRIORITIES.USER_INITIATED,
+            status: 'processing',
+            estimatedWaitTime: 'Processing now'
+          });
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (dispatchError: any) {
+        // FAILED - Leave as pending, trigger queue-worker for retry
+        console.warn(`   ⚠️  Immediate dispatch failed: ${dispatchError.message}`);
+        console.log(`   🔄 Left as pending - queue-worker will retry`);
+      }
+    }
     
-    // Always trigger queue-worker to pick up the job(s)
-    // The queue-worker will check capacity and dispatch appropriately
-    console.log(`   🔔 Triggering queue-worker to process account job(s)...`);
-    
-    // Add small delay to ensure job is committed to Firestore
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Fallback: No capacity OR immediate dispatch failed
+    // Trigger queue-worker to handle it
+    console.log(`   🔔 Triggering queue-worker to process job...`);
     
     fetch(`${baseUrl}/api/queue-worker`, {
       method: 'POST',
@@ -151,7 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       priority: JOB_PRIORITIES.USER_INITIATED,
       status: 'queued',
       estimatedWaitTime: availableSlots > 0 
-        ? 'Processing within seconds' 
+        ? 'Will process within seconds (dispatch pending)' 
         : 'Will process when capacity available (typically within 1 minute)'
     });
     
