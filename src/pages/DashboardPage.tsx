@@ -3070,6 +3070,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           <PostingActivityHeatmap 
                             submissions={filteredSubmissions}
                             onVideoClick={handleVideoClick}
+                            dateFilter={dateFilter}
+                            customDateRange={customDateRange}
                           />
                         );
                       case 'tracked-accounts':
@@ -3591,6 +3593,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 <PostingActivityHeatmap 
                   submissions={filteredSubmissions}
                   onVideoClick={handleVideoClick}
+                  dateFilter={dateFilter}
+                  customDateRange={customDateRange}
                 />
               );
             case 'tracked-accounts':

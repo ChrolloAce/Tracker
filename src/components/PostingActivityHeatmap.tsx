@@ -1,15 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
-import { format, eachDayOfInterval, startOfDay, subYears } from 'date-fns';
+import { format, eachDayOfInterval, startOfDay, subYears, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { Play } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DayVideosModal from './DayVideosModal';
+import { DateFilterType } from './DateRangeFilter';
 
 interface PostingActivityHeatmapProps {
   submissions: VideoSubmission[];
   onVideoClick?: (video: VideoSubmission) => void;
   onDateClick?: (date: Date, videos: VideoSubmission[]) => void;
+  dateFilter?: DateFilterType;
+  customDateRange?: { startDate: Date; endDate: Date };
 }
 
 interface DayData {
@@ -21,19 +24,66 @@ interface DayData {
 const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({ 
   submissions, 
   onVideoClick,
-  onDateClick 
+  onDateClick,
+  dateFilter = 'all',
+  customDateRange
 }) => {
   const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
 
-  // Calculate heatmap data for the last year (ending TODAY)
+  // Calculate date range based on filter
+  const dateRange = useMemo(() => {
+    const today = startOfDay(new Date());
+    let startDate: Date;
+
+    if (dateFilter === 'custom' && customDateRange) {
+      return {
+        start: startOfDay(customDateRange.startDate),
+        end: startOfDay(customDateRange.endDate)
+      };
+    }
+
+    switch (dateFilter) {
+      case 'today':
+        startDate = today;
+        break;
+      case 'yesterday':
+        startDate = subDays(today, 1);
+        break;
+      case 'last7days':
+        startDate = subDays(today, 7);
+        break;
+      case 'last14days':
+        startDate = subDays(today, 14);
+        break;
+      case 'last30days':
+        startDate = subDays(today, 30);
+        break;
+      case 'last90days':
+        startDate = subDays(today, 90);
+        break;
+      case 'mtd':
+        startDate = startOfMonth(today);
+        break;
+      case 'ytd':
+        startDate = startOfYear(today);
+        break;
+      case 'all':
+      default:
+        startDate = subYears(today, 1); // Default to 1 year for 'all'
+        break;
+    }
+
+    return { start: startDate, end: today };
+  }, [dateFilter, customDateRange]);
+
+  // Calculate heatmap data based on date range
   const heatmapData = useMemo(() => {
-    const today = startOfDay(new Date()); // End at today
-    const yearAgo = startOfDay(subYears(today, 1)); // Start 1 year ago
+    const { start, end } = dateRange;
     
-    // Get all days from 1 year ago to today (no future dates)
-    const allDays = eachDayOfInterval({ start: yearAgo, end: today });
+    // Get all days in the range
+    const allDays = eachDayOfInterval({ start, end });
     
     // Group submissions by day - deduplicate videos first
     const uniqueVideos = new Map<string, VideoSubmission>();
@@ -94,7 +144,8 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       videosWithUploadDate,
       videosWithoutUploadDate,
       daysWithPosts: dayMap.size,
-      dateRange: `${format(yearAgo, 'MMM d, yyyy')} - ${format(today, 'MMM d, yyyy')}`,
+      dateRange: `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`,
+      dateFilter,
       firstDatesWithPosts: datesWithPosts.slice(0, 10),
       lastDatesWithPosts: datesWithPosts.slice(-10),
       postsPerDay: Array.from(dayMap.entries()).sort((a, b) => b[1].length - a[1].length).slice(0, 5).map(([date, videos]) => ({ date, count: videos.length }))
@@ -112,7 +163,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     });
     
     return dayData;
-  }, [submissions]);
+  }, [submissions, dateRange]);
 
   // Organize data into weeks
   const weeks = useMemo(() => {
