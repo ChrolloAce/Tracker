@@ -102,25 +102,17 @@ export default async function handler(
       return res.status(404).json({ error: 'Destination URL not found' });
     }
 
-    // Check if request is from a bot/preview service (don't count these as clicks)
-    const userAgent = req.headers['user-agent'] || '';
-    const isBot = isPreviewBot(userAgent);
-
-    if (!isBot) {
-      // Only record analytics for real human clicks
-      // Use Promise.race to timeout after 5 seconds - don't block redirect
-      Promise.race([
-        recordClickAnalytics(db, linkData, req),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Analytics timeout after 5s')), 5000)
-        )
-      ]).catch(err => {
-        console.error('❌ Analytics error:', err.message);
-        // Don't log full details to avoid verbose errors
-      });
-    } else {
-      console.log(`🤖 Bot/preview detected, not recording click: ${userAgent.substring(0, 50)}...`);
-    }
+    // Record ALL clicks (including bots) - no filtering
+    // Use Promise.race to timeout after 5 seconds - don't block redirect
+    Promise.race([
+      recordClickAnalytics(db, linkData, req),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Analytics timeout after 5s')), 5000)
+      )
+    ]).catch(err => {
+      console.error('❌ Analytics error:', err.message);
+      // Don't log full details to avoid verbose errors
+    });
 
     // INSTANT 302 REDIRECT - happens immediately!
     res.setHeader('Location', destinationUrl);
@@ -356,6 +348,9 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const userAgentLower = userAgent.toLowerCase();
 
+    // Detect if bot (still track for analytics, but mark accordingly)
+    const isBot = isPreviewBot(userAgent);
+
     // Device detection
     let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
     if (/mobile|android|iphone/.test(userAgentLower)) {
@@ -427,7 +422,7 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       browser: browserInfo.browser,
       referrer,
       ipHash,
-      isBot: false,
+      isBot, // Now properly detected - still tracked but marked for analytics
     };
 
     // Add optional fields only if they have values
