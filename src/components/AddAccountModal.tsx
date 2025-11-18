@@ -265,16 +265,11 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
         {/* Video Limit Warning Banner */}
         {!checkingLimits && videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-          // Calculate total videos from ALL inputs (including first one using newAccountUrl)
-          const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
-            const url = (index === 0 ? newAccountUrl : input.url).trim();
-            const platform = index === 0 ? detectedPlatform : input.platform;
-            
-            if (url && platform) {
-              console.log(`[Video Limit Check] Input ${index}: ${url} → ${input.videoCount} videos`);
-              return sum + input.videoCount;
-            }
-            return sum;
+          // Calculate total videos from ALL inputs (COUNT EVERYTHING, even without URL)
+          const totalVideosRequested = accountInputs.reduce((sum, input) => {
+            // Count ALL video counts, regardless of URL/platform
+            // User wants instant feedback when they type a number
+            return sum + input.videoCount;
           }, 0);
           
           console.log(`[Video Limit Check] Total requested: ${totalVideosRequested}, Available: ${videoLimitInfo.available}, Limit: ${videoLimitInfo.limit}`);
@@ -526,16 +521,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 if (usageLimits.isAtAccountLimit) return true;
                 if (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform)) return true;
                 
-                // Check video limit (same logic as warning banner)
+                // Check video limit (count ALL videos, even without URL)
                 if (videoLimitInfo && videoLimitInfo.limit !== -1) {
-                  const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
-                    const url = (index === 0 ? newAccountUrl : input.url).trim();
-                    const platform = index === 0 ? detectedPlatform : input.platform;
-                    if (url && platform) {
-                      return sum + input.videoCount;
-                    }
-                    return sum;
-                  }, 0);
+                  const totalVideosRequested = accountInputs.reduce((sum, input) => sum + input.videoCount, 0);
                   if (totalVideosRequested > videoLimitInfo.available) return true;
                 }
                 
@@ -543,14 +531,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               })()}
               className={`px-4 py-2 text-sm font-bold rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-                  const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
-                    const url = (index === 0 ? newAccountUrl : input.url).trim();
-                    const platform = index === 0 ? detectedPlatform : input.platform;
-                    if (url && platform) {
-                      return sum + input.videoCount;
-                    }
-                    return sum;
-                  }, 0);
+                  const totalVideosRequested = accountInputs.reduce((sum, input) => sum + input.videoCount, 0);
                   return totalVideosRequested > videoLimitInfo.available;
                 })()
                   ? 'bg-red-500 text-white hover:bg-red-600'
@@ -560,14 +541,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               {isSubmitting ? 'Processing...' : 
                usageLimits.isAtAccountLimit ? 'Limit Reached' : 
                videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-                 const totalVideosRequested = accountInputs.reduce((sum, input, index) => {
-                   const url = (index === 0 ? newAccountUrl : input.url).trim();
-                   const platform = index === 0 ? detectedPlatform : input.platform;
-                   if (url && platform) {
-                     return sum + input.videoCount;
-                   }
-                   return sum;
-                 }, 0);
+                 const totalVideosRequested = accountInputs.reduce((sum, input) => sum + input.videoCount, 0);
                  return totalVideosRequested > videoLimitInfo.available ? 'Not Enough Space' : 'Track Accounts';
                })() || 'Track Accounts'}
             </button>
