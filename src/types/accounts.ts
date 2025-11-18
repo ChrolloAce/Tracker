@@ -11,7 +11,9 @@ export interface TrackedAccount {
   bio?: string;
   isVerified?: boolean;
   dateAdded: Date;
+  createdAt?: any; // Firestore Timestamp for when account was added
   lastSynced?: Date;
+  lastRefreshed?: any; // Firestore Timestamp for last refresh
   isActive: boolean;
   isRead?: boolean; // New field for unread notification
   totalVideos: number;
