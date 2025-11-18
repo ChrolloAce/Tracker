@@ -43,12 +43,17 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   // Check team seat limit when modal opens
   useEffect(() => {
     const checkLimit = async () => {
-      if (!currentOrgId || !user || !isOpen) return;
+      if (!currentOrgId || !user || !isOpen) {
+        console.log('❌ [Creator Modal] Missing orgId, user, or modal closed');
+        return;
+      }
 
       try {
         setCheckingLimit(true);
+        console.log('🔍 [Creator Modal] Checking team seat limit for org:', currentOrgId);
         
         const limits = await UsageTrackingService.getLimits(currentOrgId);
+        console.log('📊 [Creator Modal] Plan limits:', limits);
         
         // Count active members + pending invitations in real-time
         const membersRef = collection(db, 'organizations', currentOrgId, 'members');
@@ -62,6 +67,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         const currentSeatsUsed = activeMembersSnap.size + pendingInvitesSnap.size;
         const seatLimit = limits.teamSeats;
         
+        console.log(`👥 [Creator Modal] Team seats: ${currentSeatsUsed}/${seatLimit} (${activeMembersSnap.size} active + ${pendingInvitesSnap.size} pending)`);
+        
         setLimitInfo({
           current: currentSeatsUsed,
           limit: seatLimit,
@@ -70,11 +77,14 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         });
         
         // Check if at limit (-1 means unlimited)
-        setIsAtLimit(seatLimit !== -1 && currentSeatsUsed >= seatLimit);
+        const atLimit = seatLimit !== -1 && currentSeatsUsed >= seatLimit;
+        console.log(`🚦 [Creator Modal] At limit? ${atLimit} (limit: ${seatLimit}, used: ${currentSeatsUsed})`);
+        setIsAtLimit(atLimit);
       } catch (error) {
-        console.error('Failed to check team limit:', error);
+        console.error('❌ [Creator Modal] Failed to check team limit:', error);
       } finally {
         setCheckingLimit(false);
+        console.log('✅ [Creator Modal] Limit check complete');
       }
     };
 

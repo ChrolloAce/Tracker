@@ -33,12 +33,17 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
   // Check team seat limit when modal opens
   useEffect(() => {
     const checkLimit = async () => {
-      if (!currentOrgId || !user) return;
+      if (!currentOrgId || !user) {
+        console.log('❌ Missing orgId or user, skipping limit check');
+        return;
+      }
 
       try {
         setCheckingLimit(true);
+        console.log('🔍 Checking team seat limit for org:', currentOrgId);
         
         const limits = await UsageTrackingService.getLimits(currentOrgId);
+        console.log('📊 Plan limits:', limits);
         
         // Count active members + pending invitations in real-time
         const membersRef = collection(db, 'organizations', currentOrgId, 'members');
@@ -52,6 +57,8 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         const currentSeatsUsed = activeMembersSnap.size + pendingInvitesSnap.size;
         const seatLimit = limits.teamSeats;
         
+        console.log(`👥 Team seats: ${currentSeatsUsed}/${seatLimit} (${activeMembersSnap.size} active + ${pendingInvitesSnap.size} pending)`);
+        
         setLimitInfo({
           current: currentSeatsUsed,
           limit: seatLimit,
@@ -60,11 +67,14 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         });
         
         // Check if at limit (-1 means unlimited)
-        setIsAtLimit(seatLimit !== -1 && currentSeatsUsed >= seatLimit);
+        const atLimit = seatLimit !== -1 && currentSeatsUsed >= seatLimit;
+        console.log(`🚦 At limit? ${atLimit} (limit: ${seatLimit}, used: ${currentSeatsUsed})`);
+        setIsAtLimit(atLimit);
       } catch (error) {
-        console.error('Failed to check team limit:', error);
+        console.error('❌ Failed to check team limit:', error);
       } finally {
         setCheckingLimit(false);
+        console.log('✅ Limit check complete');
       }
     };
 
