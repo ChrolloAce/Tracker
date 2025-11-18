@@ -260,7 +260,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
-  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'highestViewed' | 'lastRefresh' | 'postingStreak' | 'postingFrequency' | 'dateAdded'>('dateAdded');
+  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'highestViewed' | 'lastRefresh' | 'postingStreak' | 'postingFrequency' | 'dateAdded' | 'lastRefreshed'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
@@ -1143,7 +1143,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           break;
         }
         case 'dateAdded':
-          comparison = (a.createdAt?.toDate().getTime() || 0) - (b.createdAt?.toDate().getTime() || 0);
+          comparison = ((a.createdAt || a.dateAdded)?.toDate().getTime() || 0) - ((b.createdAt || b.dateAdded)?.toDate().getTime() || 0);
           break;
         case 'lastRefreshed':
           comparison = (a.lastRefreshed?.toDate().getTime() || 0) - (b.lastRefreshed?.toDate().getTime() || 0);
@@ -2363,9 +2363,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Date Added Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.createdAt ? (
+                          {(account.createdAt || account.dateAdded) ? (
                             <span className="text-xs">
-                              {new Date(account.createdAt.toDate()).toLocaleDateString('en-US', {
+                              {new Date((account.createdAt || account.dateAdded).toDate()).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric'

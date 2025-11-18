@@ -173,6 +173,7 @@ export interface TrackedAccount {
   
   // Metadata
   dateAdded: Timestamp;
+  createdAt?: Timestamp; // Alias for dateAdded (for consistency with UI)
   addedBy: string; // userId
   lastSynced?: Timestamp;
   isActive: boolean;

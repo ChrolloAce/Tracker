@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, TrendingUp } from 'lucide-react';
 import { VideoSubmission, VideoSnapshot } from '../types';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
