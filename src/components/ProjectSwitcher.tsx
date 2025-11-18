@@ -128,7 +128,17 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
         className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Folder className="w-4 h-4 text-white/60 flex-shrink-0" />
+          {currentProject.imageUrl ? (
+            <img 
+              src={currentProject.imageUrl} 
+              alt={currentProject.name}
+              className="w-4 h-4 rounded object-cover flex-shrink-0"
+            />
+          ) : currentProject.icon ? (
+            <span className="text-sm flex-shrink-0">{currentProject.icon}</span>
+          ) : (
+            <Folder className="w-4 h-4 text-white/60 flex-shrink-0" />
+          )}
           <span className="text-sm font-medium text-white truncate">
             {currentProject.name}
           </span>
@@ -158,7 +168,17 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                   onClick={() => handleProjectSelect(project.id)}
                   className="flex-1 flex items-center gap-2 px-3 py-2.5 text-sm text-left min-w-0"
                 >
-                  <Folder className="w-4 h-4 flex-shrink-0 text-white/60" />
+                  {project.imageUrl ? (
+                    <img 
+                      src={project.imageUrl} 
+                      alt={project.name}
+                      className="w-4 h-4 rounded object-cover flex-shrink-0"
+                    />
+                  ) : project.icon ? (
+                    <span className="text-sm flex-shrink-0">{project.icon}</span>
+                  ) : (
+                    <Folder className="w-4 h-4 flex-shrink-0 text-white/60" />
+                  )}
                   <span className={clsx(
                     "truncate",
                     {
