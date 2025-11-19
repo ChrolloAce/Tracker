@@ -532,6 +532,26 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     })(),
     // Engagement Rate card with sparkline
     (() => {
+      // If no submissions, return empty sparkline (no fake data points)
+      if (submissions.length === 0) {
+        return {
+          id: 'engagement-rate',
+          label: 'Engagement Rate',
+          value: `${engagementRate.toFixed(1)}%`,
+          icon: Activity,
+          accent: 'teal' as const,
+          delta: {
+            value: Math.abs(engagementRateGrowthAbsolute),
+            isPositive: engagementRateGrowthAbsolute >= 0,
+            absoluteValue: engagementRateGrowthAbsolute,
+            isPercentage: true
+          },
+          sparklineData: [], // Empty sparkline when no videos
+          intervalType: granularity,
+          isIncreasing: engagementRateGrowthAbsolute >= 0
+        };
+      }
+      
       // Generate engagement rate sparkline data (per-interval, not cumulative)
       let actualStartDate: Date;
       let actualEndDate: Date = new Date();
