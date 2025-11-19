@@ -568,7 +568,8 @@ async function refreshAccountVideos(
 
   // STEP 1: Handle new video fetching based on creatorType
   if (creatorType === 'static') {
-    console.log(`    🔒 [${platform.toUpperCase()}] Static mode - skipping new video fetch`);
+    console.log(`    🔒 [${platform.toUpperCase()}] Static mode - skipping new video discovery, will only refresh existing videos`);
+    // Skip new video discovery entirely for static accounts
   } else if (creatorType === 'automatic') {
     // Check if account has any videos in DB
     const existingCount = await getAccountVideoCount(orgId, projectId, accountId);
@@ -947,7 +948,7 @@ async function refreshExistingVideos(
 ): Promise<number> {
   const platformLower = platform.toLowerCase().trim();
   
-  // Get all existing videos for this account
+  // Get ALL existing videos for this account (NO LIMIT - refresh everything)
   const videosRef = db
     .collection('organizations')
     .doc(orgId)
@@ -955,7 +956,7 @@ async function refreshExistingVideos(
     .doc(projectId)
     .collection('videos');
     
-  const query = videosRef.where('trackedAccountId', '==', accountId).limit(100);
+  const query = videosRef.where('trackedAccountId', '==', accountId); // ✅ NO LIMIT - refresh ALL videos
   const snapshot = await query.get();
   
   if (snapshot.empty) {
@@ -963,7 +964,7 @@ async function refreshExistingVideos(
     return 0;
   }
 
-  console.log(`    📊 [${platformLower.toUpperCase()}] Refreshing ${snapshot.size} existing videos...`);
+  console.log(`    📊 [${platformLower.toUpperCase()}] Refreshing ALL ${snapshot.size} existing videos (no limit)...`);
 
   if (platformLower === 'tiktok') {
     // TikTok: Bulk refresh using unique videos API
