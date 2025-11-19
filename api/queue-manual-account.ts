@@ -91,8 +91,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'pending',
       syncStrategy: 'direct', // Direct fetch - no spiderweb for manual additions
       maxVideos: accountData?.maxVideos || 10, // Exact number user specified
-      isSpiderwebPhase: false,
-      spiderwebPhase: null,
       orgId,
       projectId,
       accountId,

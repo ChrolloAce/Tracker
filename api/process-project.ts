@@ -182,7 +182,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .collection('syncQueue')
       .where('status', 'in', ['pending', 'running'])
       .where('type', '==', 'account_sync')
-      .where('isSpiderwebPhase', '==', false) // Only check initial jobs, not spiderweb phases
       .get();
     
     const existingJobsByAccount = new Map<string, string>();
@@ -228,8 +227,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         type: 'account_sync',
         status: 'pending',
         syncStrategy: syncStrategy,
-        isSpiderwebPhase: false, // Initial job - spiderweb phases will be spawned
-        spiderwebPhase: syncStrategy === 'progressive' ? 1 : null, // Start at phase 1 (fetch 5)
         orgId,
         projectId,
         accountId: accountDoc.id,

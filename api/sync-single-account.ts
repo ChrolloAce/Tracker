@@ -251,9 +251,6 @@ export default async function handler(
     // Read job metadata to determine sync strategy
     let syncStrategy = 'progressive'; // default for backwards compatibility
     let maxVideosOverride: number | null = null;
-    let isSpiderwebPhase = false;
-    let spiderwebPhase: number | null = null;
-    let existingVideoIdsFromJob: string[] = [];
     
     if (jobId) {
       try {
@@ -262,13 +259,9 @@ export default async function handler(
           const jobData = jobDoc.data();
           syncStrategy = jobData?.syncStrategy || 'progressive';
           maxVideosOverride = jobData?.maxVideos || null;
-          isSpiderwebPhase = jobData?.isSpiderwebPhase || false;
-          spiderwebPhase = jobData?.spiderwebPhase || null;
-          existingVideoIdsFromJob = jobData?.existingVideoIds || [];
           
           console.log(`   📋 Job strategy: ${syncStrategy}`);
           if (maxVideosOverride) console.log(`   📊 Max videos: ${maxVideosOverride}`);
-          if (isSpiderwebPhase) console.log(`   🕸️  Spiderweb phase: ${spiderwebPhase}`);
         }
         
         // Update job status to running
@@ -408,17 +401,12 @@ export default async function handler(
           const useProgressiveFetch = syncStrategy === 'progressive';
           const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
           
-          // If this is a spiderweb phase job, only fetch for this specific phase
+          // Determine batch sizes for fetching
           let batchSizes: number[];
-          if (isSpiderwebPhase && spiderwebPhase) {
-            // Single phase: fetch only the amount for this phase
-            const phaseSizes = [5, 10, 15, 20];
-            batchSizes = [phaseSizes[spiderwebPhase - 1]];
-            console.log(`🎯 [TIKTOK] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} videos`);
-          } else if (useProgressiveFetch) {
-            // Initial progressive job: start with phase 1 (5 videos)
-            batchSizes = [5]; // Only fetch 5, then queue next phase if needed
-            console.log(`🎯 [TIKTOK] Progressive strategy: Starting phase 1 (fetch 5)`);
+          if (useProgressiveFetch) {
+            // Progressive (spiderweb): run all phases internally [5, 10, 15, 20]
+            batchSizes = [5, 10, 15, 20];
+            console.log(`🕸️  [TIKTOK] Progressive spiderweb strategy: Will run phases ${batchSizes.join(' → ')} internally`);
           } else {
             // Direct fetch: get exact amount specified
             batchSizes = [maxVideosToFetch];
@@ -474,8 +462,9 @@ export default async function handler(
                 }
                 
                 // Check if this video exists in database
+                console.log(`   🔍 [TIKTOK] Checking video ${videoId} against ${existingVideoIds.size} existing videos`);
                 if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [TIKTOK] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  console.log(`   ✅ [TIKTOK] DUPLICATE FOUND! Video ${videoId} already exists. Stopping spiderweb search.`);
                   foundDuplicate = true;
                   break; // Stop immediately - don't process this or any more videos
                 }
@@ -508,52 +497,11 @@ export default async function handler(
           
           console.log(`✅ [TIKTOK] Progressive fetch complete: ${newTikTokVideos.length} new videos found`);
           
-          // If progressive strategy and no duplicate found, queue next spiderweb phase
-          if (useProgressiveFetch && !foundDuplicate) {
-            const currentPhase = isSpiderwebPhase ? (spiderwebPhase || 1) : 1;
-            if (currentPhase < 4) { // Max 4 phases (5, 10, 15, 20)
-              try {
-                const nextPhase = currentPhase + 1;
-                const nextJobRef = db.collection('syncQueue').doc();
-                
-                // Merge existing video IDs with newly seen ones for next phase
-                const allKnownVideoIds = Array.from(new Set([
-                  ...existingVideoIdsFromJob,
-                  ...Array.from(existingVideoIds),
-                  ...Array.from(seenVideoIds)
-                ]));
-                
-                await nextJobRef.set({
-                  type: 'account_sync',
-                  status: 'pending',
-                  syncStrategy: 'progressive',
-                  isSpiderwebPhase: true,
-                  spiderwebPhase: nextPhase,
-                  priority: 10, // Low priority for spiderweb searches
-                  orgId,
-                  projectId,
-                  accountId,
-                  sessionId: sessionId || null,
-                  accountUsername: account.username,
-                  accountPlatform: 'tiktok',
-                  existingVideoIds: allKnownVideoIds, // Pass known IDs to avoid re-fetching
-                  createdAt: Timestamp.now(),
-                  startedAt: null,
-                  completedAt: null,
-                  attempts: 0,
-                  maxAttempts: 3,
-                  error: null
-                });
-                
-                console.log(`🕸️  [TIKTOK] Queued spiderweb phase ${nextPhase} job: ${nextJobRef.id}`);
-              } catch (queueError: any) {
-                console.error(`❌ [TIKTOK] Failed to queue next spiderweb phase:`, queueError.message);
-              }
-            } else {
-              console.log(`✅ [TIKTOK] Spiderweb search complete (reached max phase 4)`);
-            }
-          } else if (foundDuplicate) {
-            console.log(`✅ [TIKTOK] Spiderweb search complete (found existing video, no more phases needed)`);
+          // All phases run internally now - no more queue spawning
+          if (foundDuplicate) {
+            console.log(`✅ [TIKTOK] Spiderweb search stopped early (found existing video at phase ${batchSizes.indexOf(batchSize) + 1})`);
+          } else {
+            console.log(`✅ [TIKTOK] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
           }
           
           // SECOND API CALL: Refresh metrics for RECENT existing TikTok videos
@@ -753,16 +701,14 @@ export default async function handler(
           const useProgressiveFetch = syncStrategy === 'progressive';
           const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
           
-          // If this is a spiderweb phase job, only fetch for this specific phase
+          // Determine batch sizes for fetching
           let batchSizes: number[];
-          if (isSpiderwebPhase && spiderwebPhase) {
-            const phaseSizes = [5, 10, 15, 20];
-            batchSizes = [phaseSizes[spiderwebPhase - 1]];
-            console.log(`🎯 [YOUTUBE] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} videos`);
-          } else if (useProgressiveFetch) {
-            batchSizes = [5]; // Start with phase 1
-            console.log(`🎯 [YOUTUBE] Progressive strategy: Starting phase 1 (fetch 5)`);
+          if (useProgressiveFetch) {
+            // Progressive (spiderweb): run all phases internally [5, 10, 15, 20]
+            batchSizes = [5, 10, 15, 20];
+            console.log(`🕸️  [YOUTUBE] Progressive spiderweb strategy: Will run phases ${batchSizes.join(' → ')} internally`);
           } else {
+            // Direct fetch: get exact amount specified
             batchSizes = [maxVideosToFetch];
             console.log(`🎯 [YOUTUBE] Direct fetch: ${maxVideosToFetch} videos`);
           }
@@ -811,8 +757,9 @@ export default async function handler(
                 }
                 
                 // Check if this video exists in database
+                console.log(`   🔍 [YOUTUBE] Checking video ${videoId} against ${existingVideoIds.size} existing videos`);
                 if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [YOUTUBE] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  console.log(`   ✅ [YOUTUBE] DUPLICATE FOUND! Video ${videoId} already exists. Stopping spiderweb search.`);
                   foundDuplicate = true;
                   break; // Stop immediately - don't process this or any more videos
                 }
@@ -845,51 +792,11 @@ export default async function handler(
           
           console.log(`✅ [YOUTUBE] Progressive fetch complete: ${newYouTubeVideos.length} new Shorts found`);
           
-          // If progressive strategy and no duplicate found, queue next spiderweb phase
-          if (useProgressiveFetch && !foundDuplicate) {
-            const currentPhase = isSpiderwebPhase ? (spiderwebPhase || 1) : 1;
-            if (currentPhase < 4) {
-              try {
-                const nextPhase = currentPhase + 1;
-                const nextJobRef = db.collection('syncQueue').doc();
-                
-                const allKnownVideoIds = Array.from(new Set([
-                  ...existingVideoIdsFromJob,
-                  ...Array.from(existingVideoIds),
-                  ...Array.from(seenVideoIds)
-                ]));
-                
-                await nextJobRef.set({
-                  type: 'account_sync',
-                  status: 'pending',
-                  syncStrategy: 'progressive',
-                  isSpiderwebPhase: true,
-                  spiderwebPhase: nextPhase,
-                  priority: 10,
-                  orgId,
-                  projectId,
-                  accountId,
-                  sessionId: sessionId || null,
-                  accountUsername: account.username,
-                  accountPlatform: 'youtube',
-                  existingVideoIds: allKnownVideoIds,
-                  createdAt: Timestamp.now(),
-                  startedAt: null,
-                  completedAt: null,
-                  attempts: 0,
-                  maxAttempts: 3,
-                  error: null
-                });
-                
-                console.log(`🕸️  [YOUTUBE] Queued spiderweb phase ${nextPhase} job: ${nextJobRef.id}`);
-              } catch (queueError: any) {
-                console.error(`❌ [YOUTUBE] Failed to queue next spiderweb phase:`, queueError.message);
-              }
-            } else {
-              console.log(`✅ [YOUTUBE] Spiderweb search complete (reached max phase 4)`);
-            }
-          } else if (foundDuplicate) {
-            console.log(`✅ [YOUTUBE] Spiderweb search complete (found existing video, no more phases needed)`);
+          // All phases run internally now - no more queue spawning
+          if (foundDuplicate) {
+            console.log(`✅ [YOUTUBE] Spiderweb search stopped early (found existing video at phase ${batchSizes.indexOf(batchSize) + 1})`);
+          } else {
+            console.log(`✅ [YOUTUBE] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
           }
         } else {
           console.log(`🔒 [YOUTUBE] Static account - skipping new video fetch`);
@@ -1080,15 +987,14 @@ export default async function handler(
         const useProgressiveFetch = syncStrategy === 'progressive';
         const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
         
+        // Determine batch sizes for fetching
         let batchSizes: number[];
-        if (isSpiderwebPhase && spiderwebPhase) {
-          const phaseSizes = [5, 10, 15, 20];
-          batchSizes = [phaseSizes[spiderwebPhase - 1]];
-          console.log(`🎯 [TWITTER] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} tweets`);
-        } else if (useProgressiveFetch) {
-          batchSizes = [5];
-          console.log(`🎯 [TWITTER] Progressive strategy: Starting phase 1 (fetch 5)`);
+        if (useProgressiveFetch) {
+          // Progressive (spiderweb): run all phases internally [5, 10, 15, 20]
+          batchSizes = [5, 10, 15, 20];
+          console.log(`🕸️  [TWITTER] Progressive spiderweb strategy: Will run phases ${batchSizes.join(' → ')} internally`);
         } else {
+          // Direct fetch: get exact amount specified
           batchSizes = [maxVideosToFetch];
           console.log(`🎯 [TWITTER] Direct fetch: ${maxVideosToFetch} tweets`);
         }
@@ -1139,8 +1045,9 @@ export default async function handler(
               }
               
               // Check if this tweet exists in database
+              console.log(`   🔍 [TWITTER] Checking tweet ${tweetId} against ${existingTweetIds.size} existing tweets`);
               if (existingTweetIds.has(tweetId)) {
-                console.log(`✓ [TWITTER] Found existing tweet: ${tweetId} - STOPPING ALL FETCHING`);
+                console.log(`   ✅ [TWITTER] DUPLICATE FOUND! Tweet ${tweetId} already exists. Stopping spiderweb search.`);
                 foundDuplicate = true;
                 break; // Stop immediately - don't process this or any more tweets
               }
@@ -1164,51 +1071,11 @@ export default async function handler(
         
         console.log(`✅ [TWITTER] Progressive fetch complete: ${allTweets.length} new tweets found`);
         
-        // If progressive strategy and no duplicate found, queue next spiderweb phase
-        if (useProgressiveFetch && !foundDuplicate) {
-          const currentPhase = isSpiderwebPhase ? (spiderwebPhase || 1) : 1;
-          if (currentPhase < 4) {
-            try {
-              const nextPhase = currentPhase + 1;
-              const nextJobRef = db.collection('syncQueue').doc();
-              
-              const allKnownTweetIds = Array.from(new Set([
-                ...existingVideoIdsFromJob,
-                ...Array.from(existingTweetIds),
-                ...Array.from(seenTweetIds)
-              ]));
-              
-              await nextJobRef.set({
-                type: 'account_sync',
-                status: 'pending',
-                syncStrategy: 'progressive',
-                isSpiderwebPhase: true,
-                spiderwebPhase: nextPhase,
-                priority: 10,
-                orgId,
-                projectId,
-                accountId,
-                sessionId: sessionId || null,
-                accountUsername: account.username,
-                accountPlatform: 'twitter',
-                existingVideoIds: allKnownTweetIds,
-                createdAt: Timestamp.now(),
-                startedAt: null,
-                completedAt: null,
-                attempts: 0,
-                maxAttempts: 3,
-                error: null
-              });
-              
-              console.log(`🕸️  [TWITTER] Queued spiderweb phase ${nextPhase} job: ${nextJobRef.id}`);
-            } catch (queueError: any) {
-              console.error(`❌ [TWITTER] Failed to queue next spiderweb phase:`, queueError.message);
-            }
-          } else {
-            console.log(`✅ [TWITTER] Spiderweb search complete (reached max phase 4)`);
-          }
-        } else if (foundDuplicate) {
-          console.log(`✅ [TWITTER] Spiderweb search complete (found existing tweet, no more phases needed)`);
+        // All phases run internally now - no more queue spawning
+        if (foundDuplicate) {
+          console.log(`✅ [TWITTER] Spiderweb search stopped early (found existing tweet at phase ${batchSizes.indexOf(batchSize) + 1})`);
+        } else {
+          console.log(`✅ [TWITTER] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
         }
       } else {
         console.log(`🔒 [TWITTER] Static account - skipping new tweet fetch`);
@@ -1299,15 +1166,14 @@ export default async function handler(
           const useProgressiveFetch = syncStrategy === 'progressive';
           const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
           
+          // Determine batch sizes for fetching
           let batchSizes: number[];
-          if (isSpiderwebPhase && spiderwebPhase) {
-            const phaseSizes = [5, 10, 15, 20];
-            batchSizes = [phaseSizes[spiderwebPhase - 1]];
-            console.log(`🎯 [INSTAGRAM] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} reels`);
-          } else if (useProgressiveFetch) {
-            batchSizes = [5];
-            console.log(`🎯 [INSTAGRAM] Progressive strategy: Starting phase 1 (fetch 5)`);
+          if (useProgressiveFetch) {
+            // Progressive (spiderweb): run all phases internally [5, 10, 15, 20]
+            batchSizes = [5, 10, 15, 20];
+            console.log(`🕸️  [INSTAGRAM] Progressive spiderweb strategy: Will run phases ${batchSizes.join(' → ')} internally`);
           } else {
+            // Direct fetch: get exact amount specified
             batchSizes = [maxVideosToFetch];
             console.log(`🎯 [INSTAGRAM] Direct fetch: ${maxVideosToFetch} reels`);
           }
@@ -1366,8 +1232,9 @@ export default async function handler(
                 }
                 
                 // Check if this video exists in database
+                console.log(`   🔍 [INSTAGRAM] Checking video ${videoId} against ${existingVideoIds.size} existing videos`);
                 if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [INSTAGRAM] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  console.log(`   ✅ [INSTAGRAM] DUPLICATE FOUND! Video ${videoId} already exists. Stopping spiderweb search.`);
                   foundDuplicate = true;
                   break; // Stop immediately - don't process this or any more videos
                 }
@@ -1400,51 +1267,11 @@ export default async function handler(
           
           console.log(`✅ [INSTAGRAM] Progressive fetch complete: ${newInstagramReels.length} new reels found`);
           
-          // If progressive strategy and no duplicate found, queue next spiderweb phase
-          if (useProgressiveFetch && !foundDuplicate) {
-            const currentPhase = isSpiderwebPhase ? (spiderwebPhase || 1) : 1;
-            if (currentPhase < 4) {
-              try {
-                const nextPhase = currentPhase + 1;
-                const nextJobRef = db.collection('syncQueue').doc();
-                
-                const allKnownVideoIds = Array.from(new Set([
-                  ...existingVideoIdsFromJob,
-                  ...Array.from(existingVideoIds),
-                  ...Array.from(seenVideoIds)
-                ]));
-                
-                await nextJobRef.set({
-                  type: 'account_sync',
-                  status: 'pending',
-                  syncStrategy: 'progressive',
-                  isSpiderwebPhase: true,
-                  spiderwebPhase: nextPhase,
-                  priority: 10,
-                  orgId,
-                  projectId,
-                  accountId,
-                  sessionId: sessionId || null,
-                  accountUsername: account.username,
-                  accountPlatform: 'instagram',
-                  existingVideoIds: allKnownVideoIds,
-                  createdAt: Timestamp.now(),
-                  startedAt: null,
-                  completedAt: null,
-                  attempts: 0,
-                  maxAttempts: 3,
-                  error: null
-                });
-                
-                console.log(`🕸️  [INSTAGRAM] Queued spiderweb phase ${nextPhase} job: ${nextJobRef.id}`);
-              } catch (queueError: any) {
-                console.error(`❌ [INSTAGRAM] Failed to queue next spiderweb phase:`, queueError.message);
-              }
-            } else {
-              console.log(`✅ [INSTAGRAM] Spiderweb search complete (reached max phase 4)`);
-            }
-          } else if (foundDuplicate) {
-            console.log(`✅ [INSTAGRAM] Spiderweb search complete (found existing reel, no more phases needed)`);
+          // All phases run internally now - no more queue spawning
+          if (foundDuplicate) {
+            console.log(`✅ [INSTAGRAM] Spiderweb search stopped early (found existing reel at phase ${batchSizes.indexOf(batchSize) + 1})`);
+          } else {
+            console.log(`✅ [INSTAGRAM] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
           }
         } else {
           console.log(`🔒 [INSTAGRAM] Static account - skipping new video fetch`);
@@ -1953,6 +1780,21 @@ export default async function handler(
       } catch (jobError: any) {
         console.warn(`   ⚠️  Failed to delete job (non-critical):`, jobError.message);
       }
+    }
+    
+    // Update account with lastRefreshed timestamp and clear error status
+    try {
+      console.log(`   🔄 [LAST-REFRESHED] Updating account lastRefreshed timestamp for @${account.username}...`);
+      await accountRef.update({
+        lastRefreshed: Timestamp.now(),
+        syncStatus: 'success',
+        lastSyncError: null,
+        lastSyncAt: Timestamp.now()
+      });
+      console.log(`   ✅ [LAST-REFRESHED] Account @${account.username} lastRefreshed updated successfully`);
+    } catch (updateError: any) {
+      console.error(`   ❌ [LAST-REFRESHED] Failed to update lastRefreshed for @${account.username}:`, updateError.message);
+      // Don't fail the entire sync if this update fails
     }
     
     console.log(`\n✅ [SYNC-ACCOUNT] Successfully completed sync for @${account.username}`);
