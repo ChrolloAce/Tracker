@@ -221,9 +221,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       jobIds.push(jobId);
       
       // Determine sync strategy based on account type
-      // automatic accounts: progressive spiderweb search (5→10→15→20)
+      // TODO: SPIDERWEB DISABLED - Use refresh_only for all scheduled refreshes
+      // When spiderweb is re-enabled, automatic accounts can use 'progressive' again
+      // automatic accounts: progressive spiderweb search (5→10→15→20) - DISABLED
       // static accounts: refresh_only (no new video discovery)
-      const syncStrategy = accountData.creatorType === 'automatic' ? 'progressive' : 'refresh_only';
+      const syncStrategy = 'refresh_only'; // Force refresh_only since spiderweb is disabled
       
       batch.set(jobRef, {
         type: 'account_sync',
