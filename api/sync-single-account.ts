@@ -739,27 +739,27 @@ export default async function handler(
         let newYouTubeVideos: any[] = [];
         const channelHandle = account.username.startsWith('@') ? account.username : `@${account.username}`;
         
-        // Only fetch NEW videos for automatic accounts
-        if (creatorType === 'automatic') {
-          // Get existing video IDs to check for duplicates
-          const existingVideosSnapshot = await db
-            .collection('organizations')
-            .doc(orgId)
-            .collection('projects')
-            .doc(projectId)
-            .collection('videos')
-            .where('trackedAccountId', '==', accountId)
-            .where('platform', '==', 'youtube')
-            .select('videoId')
-            .get();
-          
-          const existingVideoIds = new Set(
-            existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-          );
-          
-          console.log(`📊 Found ${existingVideoIds.size} existing YouTube Shorts in database`);
-          
-          // 🔧 SYNC STRATEGY (from job metadata):
+        // Get existing video IDs for ALL accounts (needed for refresh and duplicate checking)
+        const existingVideosSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .where('trackedAccountId', '==', accountId)
+          .where('platform', '==', 'youtube')
+          .select('videoId')
+          .get();
+        
+        const existingVideoIds = new Set(
+          existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+        );
+        
+        console.log(`📊 Found ${existingVideoIds.size} existing YouTube Shorts in database`);
+        
+        // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
+        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+          console.log(`🔍 [YOUTUBE] Discovering new videos for automatic account...`);
           const useProgressiveFetch = syncStrategy === 'progressive';
           const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
           
@@ -902,12 +902,53 @@ export default async function handler(
           // } else if (foundDuplicate) {
           //   console.log(`✅ [YOUTUBE] Spiderweb search complete (found existing video, no more phases needed)`);
           // }
+        } else if (syncStrategy === 'refresh_only') {
+          console.log(`🔄 [YOUTUBE] Refresh-only mode - skipping new video discovery`);
         } else {
-          console.log(`🔒 [YOUTUBE] Static account - skipping new video fetch`);
+          console.log(`🔒 [YOUTUBE] Static account - skipping new video discovery`);
+        }
+        
+        // ===== REFRESH EXISTING VIDEOS (runs for ALL accounts with existing videos) =====
+        if (existingVideoIds.size > 0) {
+          const MAX_VIDEOS_TO_REFRESH = 20;
+          const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
+          
+          console.log(`🔄 [YOUTUBE] Refreshing ${videosToRefresh} most recent Shorts (out of ${existingVideoIds.size} total)...`);
+          
+          try {
+            // Build video URLs for RECENT existing videos only
+            const videoIds = Array.from(existingVideoIds).slice(0, MAX_VIDEOS_TO_REFRESH);
+            
+            console.log(`📊 [YOUTUBE] Fetching updated metrics for ${videoIds.length} existing Shorts...`);
+            
+            const refreshData = await runApifyActor({
+              actorId: 'grow_media/youtube-shorts-scraper',
+              input: {
+                videoIds: videoIds,
+                maxResults: videoIds.length,
+                sortBy: 'latest',
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL']
+                }
+              }
+            });
+            
+            const refreshedVideos = refreshData.items || [];
+            console.log(`✅ [YOUTUBE] Refreshed ${refreshedVideos.length} existing Shorts`);
+            
+            // Add refreshed videos to processing
+            newYouTubeVideos.push(...refreshedVideos);
+          } catch (refreshError) {
+            console.error('⚠️ [YOUTUBE] Failed to refresh existing videos (non-fatal):', refreshError);
+            // Don't fail the whole sync if refresh fails
+          }
+        } else {
+          console.log(`⚠️ [YOUTUBE] No existing videos found - nothing to refresh`);
         }
         
         const youtubeVideos = newYouTubeVideos;
-        console.log(`📊 [YOUTUBE] Processing ${youtubeVideos.length} new Shorts`);
+        console.log(`📊 [YOUTUBE] Processing ${youtubeVideos.length} Shorts`);
         
         // Extract profile/channel data from first video
         if (youtubeVideos.length > 0 && youtubeVideos[0]) {
@@ -1067,27 +1108,27 @@ export default async function handler(
       
       let allTweets: any[] = [];
       
-      // Only fetch NEW tweets for automatic accounts
-      if (creatorType === 'automatic') {
-        // Get existing tweet IDs to check for duplicates
-        const existingTweetsSnapshot = await db
-          .collection('organizations')
-          .doc(orgId)
-          .collection('projects')
-          .doc(projectId)
-          .collection('videos')
-          .where('trackedAccountId', '==', accountId)
-          .where('platform', '==', 'twitter')
-          .select('videoId')
-          .get();
-        
-        const existingTweetIds = new Set(
-          existingTweetsSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-        );
-        
-        console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
-        
-        // 🔧 SYNC STRATEGY (from job metadata):
+      // Get existing tweet IDs for ALL accounts (needed for refresh and duplicate checking)
+      const existingTweetsSnapshot = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .where('trackedAccountId', '==', accountId)
+        .where('platform', '==', 'twitter')
+        .select('videoId')
+        .get();
+      
+      const existingTweetIds = new Set(
+        existingTweetsSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+      );
+      
+      console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
+      
+      // ===== NEW TWEET DISCOVERY (only if NOT refresh_only) =====
+      if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+        console.log(`🔍 [TWITTER] Discovering new tweets for automatic account...`);
         const useProgressiveFetch = syncStrategy === 'progressive';
         const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
         
@@ -1222,8 +1263,47 @@ export default async function handler(
         // } else if (foundDuplicate) {
         //   console.log(`✅ [TWITTER] Spiderweb search complete (found existing tweet, no more phases needed)`);
         // }
+      } else if (syncStrategy === 'refresh_only') {
+        console.log(`🔄 [TWITTER] Refresh-only mode - skipping new tweet discovery`);
       } else {
-        console.log(`🔒 [TWITTER] Static account - skipping new tweet fetch`);
+        console.log(`🔒 [TWITTER] Static account - skipping new tweet discovery`);
+      }
+      
+      // ===== REFRESH EXISTING TWEETS (runs for ALL accounts with existing tweets) =====
+      if (existingTweetIds.size > 0) {
+        const MAX_TWEETS_TO_REFRESH = 20;
+        const tweetsToRefresh = Math.min(existingTweetIds.size, MAX_TWEETS_TO_REFRESH);
+        
+        console.log(`🔄 [TWITTER] Refreshing ${tweetsToRefresh} most recent tweets (out of ${existingTweetIds.size} total)...`);
+        
+        try {
+          // Fetch tweets to refresh
+          const refreshData = await runApifyActor({
+            actorId: 'apidojo/tweet-scraper',
+            input: {
+              twitterHandles: [account.username],
+              maxItems: MAX_TWEETS_TO_REFRESH,
+              sort: 'Latest',
+              onlyImage: false,
+              onlyVideo: false,
+              onlyQuote: false,
+              onlyVerifiedUsers: false,
+              onlyTwitterBlue: false,
+              includeSearchTerms: false,
+            }
+          });
+          
+          const refreshedTweets = refreshData.items || [];
+          console.log(`✅ [TWITTER] Refreshed ${refreshedTweets.length} existing tweets`);
+          
+          // Add refreshed tweets to processing
+          allTweets.push(...refreshedTweets);
+        } catch (refreshError) {
+          console.error('⚠️ [TWITTER] Failed to refresh existing tweets (non-fatal):', refreshError);
+          // Don't fail the whole sync if refresh fails
+        }
+      } else {
+        console.log(`⚠️ [TWITTER] No existing tweets found - nothing to refresh`);
       }
       
       console.log(`📊 Total items to process: ${allTweets.length}`);
@@ -1304,8 +1384,9 @@ export default async function handler(
         
         console.log(`📊 Found ${existingVideoIds.size} existing Instagram reels in database`);
         
-        // Only fetch NEW videos for automatic accounts
-        if (creatorType === 'automatic') {
+        // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
+        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+          console.log(`🔍 [INSTAGRAM] Discovering new videos for automatic account...`);
           
           // 🔧 SYNC STRATEGY (from job metadata):
           const useProgressiveFetch = syncStrategy === 'progressive';
@@ -1459,17 +1540,17 @@ export default async function handler(
           // } else if (foundDuplicate) {
           //   console.log(`✅ [INSTAGRAM] Spiderweb search complete (found existing reel, no more phases needed)`);
           // }
+        } else if (syncStrategy === 'refresh_only') {
+          console.log(`🔄 [INSTAGRAM] Refresh-only mode - skipping new video discovery`);
         } else {
-          console.log(`🔒 [INSTAGRAM] Static account - skipping new video fetch`);
+          console.log(`🔒 [INSTAGRAM] Static account - skipping new video discovery`);
         }
         
         const instagramItems = newInstagramReels;
         console.log(`📊 [INSTAGRAM] Processing ${instagramItems.length} new reels`);
         
-        // SECOND API CALL: Refresh metrics for ALL existing reels
-        // Only do this if we have existing videos
-        const hasExistingVideos = creatorType === 'automatic' ? existingVideoIds.size > 0 : true;
-        if (hasExistingVideos) {
+        // ===== REFRESH EXISTING REELS (runs for ALL accounts with existing videos) =====
+        if (existingVideoIds.size > 0) {
           console.log(`🔄 Fetching updated metrics for existing reels...`);
           
           try {
