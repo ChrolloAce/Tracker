@@ -251,9 +251,9 @@ export default async function handler(
     // Read job metadata to determine sync strategy
     let syncStrategy = 'progressive'; // default for backwards compatibility
     let maxVideosOverride: number | null = null;
-    // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
-    // let isSpiderwebPhase = false;
-    // let spiderwebPhase: number | null = null;
+    // TODO: SPIDERWEB - Variables kept for backwards compatibility, but phase spawning is disabled
+    let isSpiderwebPhase = false; // Keep variable but don't use for spawning
+    let spiderwebPhase: number | null = null; // Keep variable but don't use for spawning
     let existingVideoIdsFromJob: string[] = [];
     
     if (jobId) {
@@ -263,15 +263,15 @@ export default async function handler(
           const jobData = jobDoc.data();
           syncStrategy = jobData?.syncStrategy || 'progressive';
           maxVideosOverride = jobData?.maxVideos || null;
-          // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
-          // isSpiderwebPhase = jobData?.isSpiderwebPhase || false;
-          // spiderwebPhase = jobData?.spiderwebPhase || null;
+          // TODO: SPIDERWEB - Read but don't use for spawning new phases
+          isSpiderwebPhase = jobData?.isSpiderwebPhase || false;
+          spiderwebPhase = jobData?.spiderwebPhase || null;
           existingVideoIdsFromJob = jobData?.existingVideoIds || [];
           
           console.log(`   📋 Job strategy: ${syncStrategy}`);
           if (maxVideosOverride) console.log(`   📊 Max videos: ${maxVideosOverride}`);
-          // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
-          // if (isSpiderwebPhase) console.log(`   🕸️  Spiderweb phase: ${spiderwebPhase}`);
+          // Log spiderweb info if present (legacy jobs may have it)
+          if (isSpiderwebPhase) console.log(`   🕸️  Spiderweb phase detected: ${spiderwebPhase} (phase spawning disabled)`);
         }
         
         // Update job status to running
