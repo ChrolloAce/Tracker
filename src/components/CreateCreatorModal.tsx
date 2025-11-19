@@ -4,9 +4,6 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import UsageTrackingService from '../services/UsageTrackingService';
-import { db } from '../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { X, Check, Mail, User as UserIcon, Link as LinkIcon, Search, UserPlus, AlertCircle, Crown } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import clsx from 'clsx';
@@ -52,34 +49,27 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         setCheckingLimit(true);
         console.log('🔍 [Creator Modal] Checking team seat limit for org:', currentOrgId);
         
-        const limits = await UsageTrackingService.getLimits(currentOrgId);
-        console.log('📊 [Creator Modal] Plan limits:', limits);
+        // Call server-side API to check limit (avoids Firestore permission errors)
+        const response = await fetch(`/api/check-team-limit?orgId=${currentOrgId}`);
         
-        // Count active members + pending invitations in real-time
-        const membersRef = collection(db, 'organizations', currentOrgId, 'members');
-        const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
+        if (!response.ok) {
+          throw new Error('Failed to check team limit');
+        }
         
-        const [activeMembersSnap, pendingInvitesSnap] = await Promise.all([
-          getDocs(query(membersRef, where('status', '==', 'active'))),
-          getDocs(query(invitationsRef, where('status', '==', 'pending')))
-        ]);
-        
-        const currentSeatsUsed = activeMembersSnap.size + pendingInvitesSnap.size;
-        const seatLimit = limits.teamSeats;
-        
-        console.log(`👥 [Creator Modal] Team seats: ${currentSeatsUsed}/${seatLimit} (${activeMembersSnap.size} active + ${pendingInvitesSnap.size} pending)`);
+        const data = await response.json();
+        console.log('📊 [Creator Modal] Team limit data:', data);
         
         setLimitInfo({
-          current: currentSeatsUsed,
-          limit: seatLimit,
-          active: activeMembersSnap.size,
-          pending: pendingInvitesSnap.size
+          current: data.current,
+          limit: data.limit,
+          active: data.active,
+          pending: data.pending
         });
         
-        // Check if at limit (-1 means unlimited)
-        const atLimit = seatLimit !== -1 && currentSeatsUsed >= seatLimit;
-        console.log(`🚦 [Creator Modal] At limit? ${atLimit} (limit: ${seatLimit}, used: ${currentSeatsUsed})`);
-        setIsAtLimit(atLimit);
+        console.log(`👥 [Creator Modal] Team seats: ${data.current}/${data.limit} (${data.active} active + ${data.pending} pending)`);
+        console.log(`🚦 [Creator Modal] At limit? ${data.isAtLimit}`);
+        
+        setIsAtLimit(data.isAtLimit);
       } catch (error) {
         console.error('❌ [Creator Modal] Failed to check team limit:', error);
       } finally {
@@ -136,25 +126,10 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         throw new Error('Please enter a valid email address');
       }
 
-      // ✅ CHECK TEAM SEAT LIMITS BEFORE INVITING (real-time count)
-      const limits = await UsageTrackingService.getLimits(currentOrgId);
-      
-      // Count active members + pending invitations in real-time
-      const membersRef = collection(db, 'organizations', currentOrgId, 'members');
-      const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
-      
-      const [activeMembersSnap, pendingInvitesSnap] = await Promise.all([
-        getDocs(query(membersRef, where('status', '==', 'active'))),
-        getDocs(query(invitationsRef, where('status', '==', 'pending')))
-      ]);
-      
-      const currentSeatsUsed = activeMembersSnap.size + pendingInvitesSnap.size;
-      const seatLimit = limits.teamSeats;
-      
-      // -1 means unlimited
-      if (seatLimit !== -1 && currentSeatsUsed >= seatLimit) {
+      // Check if at limit (should be disabled, but as a fallback)
+      if (isAtLimit && limitInfo) {
         throw new Error(
-          `You've reached your team member limit (${seatLimit} seats). You currently have ${activeMembersSnap.size} active members and ${pendingInvitesSnap.size} pending invitations. Upgrade your plan to invite more creators.`
+          `You've reached your team member limit (${limitInfo.limit} seats). You currently have ${limitInfo.active} active members and ${limitInfo.pending} pending invitations. Upgrade your plan to invite more creators.`
         );
       }
 
