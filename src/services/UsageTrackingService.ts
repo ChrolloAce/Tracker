@@ -144,6 +144,16 @@ class UsageTrackingService {
   }
   
   /**
+   * Force an immediate usage cache update (blocking)
+   * Use this when you need accurate, real-time counts
+   */
+  static async forceUpdateCache(orgId: string): Promise<void> {
+    console.log('🔄 Force updating usage cache...');
+    await this.updateUsageCache(orgId);
+    console.log('✅ Cache update complete');
+  }
+
+  /**
    * Update usage cache in background (non-blocking)
    */
   private static async updateUsageCache(orgId: string): Promise<void> {
