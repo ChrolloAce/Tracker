@@ -33,6 +33,24 @@
       ]
     },
     {
+      "collectionGroup": "refreshSessions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "completedAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "syncQueue",
       "queryScope": "COLLECTION",
       "fields": [
