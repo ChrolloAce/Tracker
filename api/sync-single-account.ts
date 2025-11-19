@@ -604,7 +604,6 @@ export default async function handler(
               console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
               // Don't fail the whole sync if refresh fails
             }
-          }
         } else {
           console.log(`⚠️ [TIKTOK] No existing videos found - nothing to refresh`);
         }
