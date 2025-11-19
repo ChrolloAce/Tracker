@@ -569,24 +569,20 @@ export default async function handler(
         
         // ===== REFRESH EXISTING VIDEOS (runs for ALL accounts with existing videos) =====
         if (existingVideoIds.size > 0) {
-            const MAX_VIDEOS_TO_REFRESH = 20;
-            const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
+          console.log(`🔄 [TIKTOK] Refreshing ALL ${existingVideoIds.size} existing videos...`);
+          
+          try {
+            // Build video URLs for ALL existing videos
+            const videoUrls = Array.from(existingVideoIds)
+              .map(id => `https://www.tiktok.com/@${username}/video/${id}`);
             
-            console.log(`🔄 [TIKTOK] Refreshing ${videosToRefresh} most recent videos (out of ${existingVideoIds.size} total)...`);
-            
-            try {
-              // Build video URLs for RECENT existing videos only
-              const videoUrls = Array.from(existingVideoIds)
-                .slice(0, MAX_VIDEOS_TO_REFRESH) // Only take first 20
-                .map(id => `https://www.tiktok.com/@${username}/video/${id}`);
+            console.log(`📊 [TIKTOK] Fetching updated metrics for ${videoUrls.length} existing videos...`);
               
-              console.log(`📊 [TIKTOK] Fetching updated metrics for ${videoUrls.length} existing videos...`);
-              
-              const refreshData = await runApifyActor({
-                actorId: 'apidojo/tiktok-scraper',
-                input: {
-                  startUrls: videoUrls,
-                  maxItems: videoUrls.length, // Now capped at 20
+            const refreshData = await runApifyActor({
+              actorId: 'apidojo/tiktok-scraper',
+              input: {
+                startUrls: videoUrls,
+                maxItems: videoUrls.length, // ALL videos
                   sortType: 'RELEVANCE',
                   dateRange: 'DEFAULT',
                   location: 'US',
@@ -910,14 +906,11 @@ export default async function handler(
         
         // ===== REFRESH EXISTING VIDEOS (runs for ALL accounts with existing videos) =====
         if (existingVideoIds.size > 0) {
-          const MAX_VIDEOS_TO_REFRESH = 20;
-          const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
-          
-          console.log(`🔄 [YOUTUBE] Refreshing ${videosToRefresh} most recent Shorts (out of ${existingVideoIds.size} total)...`);
+          console.log(`🔄 [YOUTUBE] Refreshing ALL ${existingVideoIds.size} existing Shorts...`);
           
           try {
-            // Build video URLs for RECENT existing videos only
-            const videoIds = Array.from(existingVideoIds).slice(0, MAX_VIDEOS_TO_REFRESH);
+            // Build video IDs for ALL existing videos
+            const videoIds = Array.from(existingVideoIds);
             
             console.log(`📊 [YOUTUBE] Fetching updated metrics for ${videoIds.length} existing Shorts...`);
             
@@ -1271,18 +1264,15 @@ export default async function handler(
       
       // ===== REFRESH EXISTING TWEETS (runs for ALL accounts with existing tweets) =====
       if (existingTweetIds.size > 0) {
-        const MAX_TWEETS_TO_REFRESH = 20;
-        const tweetsToRefresh = Math.min(existingTweetIds.size, MAX_TWEETS_TO_REFRESH);
-        
-        console.log(`🔄 [TWITTER] Refreshing ${tweetsToRefresh} most recent tweets (out of ${existingTweetIds.size} total)...`);
+        console.log(`🔄 [TWITTER] Refreshing ALL ${existingTweetIds.size} existing tweets...`);
         
         try {
-          // Fetch tweets to refresh
+          // Fetch ALL tweets to refresh
           const refreshData = await runApifyActor({
             actorId: 'apidojo/tweet-scraper',
             input: {
               twitterHandles: [account.username],
-              maxItems: MAX_TWEETS_TO_REFRESH,
+              maxItems: existingTweetIds.size, // ALL tweets
               sort: 'Latest',
               onlyImage: false,
               onlyVideo: false,
