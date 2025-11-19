@@ -383,31 +383,34 @@ export default async function handler(
         console.log(`🔧 Account type: ${creatorType}`);
         
         let newTikTokVideos: any[] = [];
+        const username = account.username.replace('@', '');
         
-        // Only fetch NEW videos for automatic accounts
-        if (creatorType === 'automatic') {
-          // Get existing video IDs to check for duplicates
-          const existingVideosSnapshot = await db
-            .collection('organizations')
-            .doc(orgId)
-            .collection('projects')
-            .doc(projectId)
-            .collection('videos')
-            .where('trackedAccountId', '==', accountId)
-            .where('platform', '==', 'tiktok')
-            .select('videoId')
-            .get();
-          
-          const existingVideoIds = new Set(
-            existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-          );
-          
-          console.log(`📊 Found ${existingVideoIds.size} existing TikTok videos in database`);
-          
-          // 🔧 SYNC STRATEGY (from job metadata):
-          // - direct: Fetch exact amount user specified (for manual additions)
-          // - progressive: Use spiderweb search phases (5→10→15→20) for scheduled refreshes
-          // - refresh_only: Only refresh existing videos, no new video discovery
+        // Get existing video IDs for ALL accounts (needed for refresh and duplicate checking)
+        const existingVideosSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .where('trackedAccountId', '==', accountId)
+          .where('platform', '==', 'tiktok')
+          .select('videoId')
+          .get();
+        
+        const existingVideoIds = new Set(
+          existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+        );
+        
+        console.log(`📊 Found ${existingVideoIds.size} existing TikTok videos in database`);
+        
+        // 🔧 SYNC STRATEGY (from job metadata):
+        // - direct: Fetch exact amount user specified (for manual additions)
+        // - progressive: Use spiderweb search phases (5→10→15→20) for scheduled refreshes
+        // - refresh_only: Only refresh existing videos, no new video discovery
+        
+        // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
+        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+          console.log(`🔍 [TIKTOK] Discovering new videos for automatic account...`);
           const useProgressiveFetch = syncStrategy === 'progressive';
           const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
           
@@ -430,7 +433,6 @@ export default async function handler(
           
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
-        const username = account.username.replace('@', '');
           
           for (const batchSize of batchSizes) {
             if (foundDuplicate) break;
@@ -559,10 +561,14 @@ export default async function handler(
           // } else if (foundDuplicate) {
           //   console.log(`✅ [TIKTOK] Spiderweb search complete (found existing video, no more phases needed)`);
           // }
-          
-          // SECOND API CALL: Refresh metrics for RECENT existing TikTok videos
-          // Only refresh the most recent 20 videos (older videos rarely change)
-          if (existingVideoIds.size > 0) {
+        } else if (syncStrategy === 'refresh_only') {
+          console.log(`🔄 [TIKTOK] Refresh-only mode - skipping new video discovery`);
+        } else {
+          console.log(`🔒 [TIKTOK] Static account - skipping new video discovery`);
+        }
+        
+        // ===== REFRESH EXISTING VIDEOS (runs for ALL accounts with existing videos) =====
+        if (existingVideoIds.size > 0) {
             const MAX_VIDEOS_TO_REFRESH = 20;
             const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
             
@@ -604,7 +610,7 @@ export default async function handler(
             }
           }
         } else {
-          console.log(`🔒 [TIKTOK] Static account - skipping new video fetch`);
+          console.log(`⚠️ [TIKTOK] No existing videos found - nothing to refresh`);
         }
         
         const tiktokVideos = newTikTokVideos;
