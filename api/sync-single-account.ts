@@ -1655,6 +1655,14 @@ export default async function handler(
         
         // Transform Instagram data to video format
         for (const item of instagramItems) {
+          // 🔍 Check if this is an error response from Apify
+          if (item.error) {
+            console.warn(`⚠️ [INSTAGRAM] Skipping video due to error: ${item.error}`);
+            console.warn(`   Input URL: ${item.input}`);
+            console.warn(`   This video may be private, restricted, or deleted`);
+            continue;
+          }
+          
           // 🔍 DEBUG: Log item structure to see what fields we have
           console.log(`🔍 [INSTAGRAM] Item keys:`, Object.keys(item).join(', '));
           console.log(`🔍 [INSTAGRAM] Checking for video code: code=${item.code}, id=${item.id}, shortcode=${item.shortcode}, pk=${item.pk}`);
