@@ -1263,22 +1263,15 @@ export default async function handler(
       
       // ===== REFRESH EXISTING TWEETS (runs for ALL accounts with existing tweets) =====
       if (existingTweetIds.size > 0) {
-        console.log(`🔄 [TWITTER] Refreshing ALL ${existingTweetIds.size} existing tweets...`);
+        console.log(`🔄 [TWITTER] Refreshing ALL ${existingTweetIds.size} existing tweets using specific tweet IDs...`);
         
         try {
-          // Fetch ALL tweets to refresh
+          // ✅ Use SPECIFIC tweet IDs, not account handle!
           const refreshData = await runApifyActor({
             actorId: 'apidojo/tweet-scraper',
             input: {
-              twitterHandles: [account.username],
-              maxItems: existingTweetIds.size, // ALL tweets
-              sort: 'Latest',
-              onlyImage: false,
-              onlyVideo: true, // ✅ ONLY fetch video tweets
-              onlyQuote: false,
-              onlyVerifiedUsers: false,
-              onlyTwitterBlue: false,
-              includeSearchTerms: false,
+              tweetIds: Array.from(existingTweetIds), // ✅ Specific tweet IDs
+              sort: 'Latest'
             }
           });
           
