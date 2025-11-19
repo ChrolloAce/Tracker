@@ -212,23 +212,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 creatorType
               );
 
+              // Always update lastSynced for all accounts (even if 0 videos updated)
+              // This ensures we track that the refresh attempt was made
+              const updateData: any = {
+                lastSynced: new Date()
+              };
+              
+              // Add verified status if available
+              if (result.verified !== undefined) {
+                updateData.isVerified = result.verified;
+              }
+              if (result.blueVerified !== undefined) {
+                updateData.isBlueVerified = result.blueVerified;
+              }
+              
+              await accountDoc.ref.update(updateData);
+              
               if (result.fetched > 0 || result.updated > 0) {
                 console.log(`    ✅ @${username} [${creatorType.toUpperCase()}]: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
-
-                // Update account lastSynced timestamp and verified status
-                const updateData: any = {
-                  lastSynced: new Date()
-                };
-                
-                // Add verified status if available
-                if (result.verified !== undefined) {
-                  updateData.isVerified = result.verified;
-                }
-                if (result.blueVerified !== undefined) {
-                  updateData.isBlueVerified = result.blueVerified;
-                }
-                
-                await accountDoc.ref.update(updateData);
                 
                 // Track stats
                 const orgStats = processedOrgs.get(orgId);
@@ -240,7 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 
                 return { success: true, username, updated: result.updated, added: result.added };
               } else {
-                console.log(`    ⚠️ No videos returned from API for @${username}`);
+                console.warn(`    ⚠️ @${username} [${creatorType.toUpperCase()}]: No videos updated (fetched=${result.fetched}, updated=${result.updated}) - possible API issue or no videos to refresh`);
                 return { success: true, username, updated: 0, added: 0 };
               }
 
