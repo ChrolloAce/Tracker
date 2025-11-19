@@ -731,7 +731,7 @@ async function fetchVideosFromPlatform(
       maxItems: maxVideos,
       sort: 'Latest',
       onlyImage: false,
-      onlyVideo: false,
+      onlyVideo: true, // ✅ ONLY fetch video tweets
       onlyQuote: false,
       onlyVerifiedUsers: false,
       onlyTwitterBlue: false,

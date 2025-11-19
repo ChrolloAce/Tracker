@@ -35,7 +35,7 @@ export default async function handler(
       maxItems: 5, // Just fetch 5 for testing
       sort: 'Latest',
       onlyImage: false,
-      onlyVideo: false,
+      onlyVideo: true, // ✅ ONLY fetch video tweets for testing
       onlyQuote: false,
       onlyVerifiedUsers: false,
       onlyTwitterBlue: false,

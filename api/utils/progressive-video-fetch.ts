@@ -238,7 +238,8 @@ async function fetchTwitterBatch(username: string, maxItems: number): Promise<an
     const input = {
       maxItems: maxItems,
       twitterHandles: [username],
-      onlyVideos: true
+      onlyVideo: true, // ✅ Correct field name: onlyVideo (not onlyVideos)
+      sort: 'Latest'
     };
     
     const response = await runApifyActor({ actorId: 'apidojo~tweet-scraper', input });

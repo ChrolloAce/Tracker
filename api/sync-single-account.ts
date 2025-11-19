@@ -1153,7 +1153,7 @@ export default async function handler(
                 maxItems: batchSize,
           sort: 'Latest',
           onlyImage: false,
-          onlyVideo: false,
+          onlyVideo: true, // ✅ ONLY fetch video tweets
           onlyQuote: false,
           onlyVerifiedUsers: false,
           onlyTwitterBlue: false,
@@ -1274,7 +1274,7 @@ export default async function handler(
               maxItems: existingTweetIds.size, // ALL tweets
               sort: 'Latest',
               onlyImage: false,
-              onlyVideo: false,
+              onlyVideo: true, // ✅ ONLY fetch video tweets
               onlyQuote: false,
               onlyVerifiedUsers: false,
               onlyTwitterBlue: false,
