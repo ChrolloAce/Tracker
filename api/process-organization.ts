@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orgDoc = await db.collection('organizations').doc(orgId).get();
     const orgData = orgDoc.data();
     const orgName = orgData?.name || 'Your Organization';
-    const ownerId = orgData?.ownerId;
+    const ownerId = orgData?.ownerId || null; // Use null instead of undefined for Firestore
     
     // Get owner email for later email sending
     // CRITICAL: Must be scoped to THIS organization only
