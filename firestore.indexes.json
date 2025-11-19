@@ -73,7 +73,7 @@
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
-          "fieldPath": "lastUpdatedAt",
+          "fieldPath": "lastRefreshed",
           "order": "DESCENDING"
         },
         {

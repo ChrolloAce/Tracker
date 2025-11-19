@@ -992,11 +992,28 @@ async function refreshTikTokVideosBulk(
   videoDocs: any[]
 ): Promise<number> {
   // TikTok has a unique videos API that accepts multiple video URLs
-  const videoUrls = videoDocs.map(doc => doc.data().url || doc.data().videoUrl).filter(Boolean);
+  const validVideos = videoDocs.filter(doc => {
+    const data = doc.data();
+    return data.url || data.videoUrl;
+  });
   
-  if (videoUrls.length === 0) return 0;
+  const videoUrls = validVideos.map(doc => doc.data().url || doc.data().videoUrl);
+  
+  const missingUrlCount = videoDocs.length - validVideos.length;
+  if (missingUrlCount > 0) {
+    console.warn(`    ⚠️ [TIKTOK] ${missingUrlCount} videos missing URL field - skipping`);
+    const missingVideos = videoDocs.filter(doc => !doc.data().url && !doc.data().videoUrl);
+    missingVideos.forEach(doc => {
+      console.warn(`      - Video ${doc.id}: videoId=${doc.data().videoId}, no URL`);
+    });
+  }
+  
+  if (videoUrls.length === 0) {
+    console.error(`    ❌ [TIKTOK] No valid video URLs found in ${videoDocs.length} videos`);
+    return 0;
+  }
 
-  console.log(`    🔄 [TIKTOK] Bulk refreshing ${videoUrls.length} videos...`);
+  console.log(`    🔄 [TIKTOK] Bulk refreshing ${videoUrls.length} videos (${missingUrlCount} skipped)...`);
   
   try {
     const result = await runApifyActor({
@@ -1019,13 +1036,16 @@ async function refreshTikTokVideosBulk(
     const refreshedVideos = result.items || [];
     let updatedCount = 0;
 
-    console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${videoDocs.length} DB videos...`);
+    console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${validVideos.length} DB videos...`);
 
     // Update each video with fresh metrics (apidojo/tiktok-scraper format)
+    const unmatchedVideos: string[] = [];
+    const matchedVideoIds = new Set<string>();
+    
     for (const video of refreshedVideos) {
       const videoId = extractVideoId(video, 'tiktok');
       if (!videoId) {
-        console.log(`    ⚠️ [TIKTOK] Could not extract videoId from:`, {
+        console.warn(`    ⚠️ [TIKTOK] Could not extract videoId from:`, {
           id: video.id,
           post_id: video.post_id,
           tiktok_url: video.tiktok_url?.substring(0, 50)
@@ -1033,12 +1053,14 @@ async function refreshTikTokVideosBulk(
         continue;
       }
 
-      const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
+      const videoDoc = validVideos.find(doc => doc.data().videoId === videoId);
       if (!videoDoc) {
-        console.log(`    ⚠️ [TIKTOK] No DB match for videoId: ${videoId} (checking against ${videoDocs.length} docs)`);
+        console.warn(`    ⚠️ [TIKTOK] No DB match for videoId: ${videoId}`);
+        unmatchedVideos.push(videoId);
         continue;
       }
 
+      matchedVideoIds.add(videoId);
       console.log(`    ✓ [TIKTOK] Matched videoId ${videoId}, updating metrics...`);
 
       const now = Timestamp.now();
@@ -1073,10 +1095,35 @@ async function refreshTikTokVideosBulk(
       updatedCount++;
     }
 
-    console.log(`    ✅ [TIKTOK] Bulk refresh complete: ${updatedCount} videos updated`);
+    // Report detailed results
+    const notRefreshedCount = validVideos.length - updatedCount;
+    const successRate = validVideos.length > 0 ? Math.round((updatedCount / validVideos.length) * 100) : 0;
+    
+    console.log(`    ✅ [TIKTOK] Bulk refresh complete: ${updatedCount}/${validVideos.length} videos updated (${successRate}% success)`);
+    
+    if (unmatchedVideos.length > 0) {
+      console.warn(`    ⚠️ [TIKTOK] ${unmatchedVideos.length} videos returned by API but not matched to DB`);
+    }
+    
+    if (notRefreshedCount > 0) {
+      console.warn(`    ⚠️ [TIKTOK] ${notRefreshedCount} videos not refreshed - possible API issues or missing data`);
+      // Log which videos weren't refreshed
+      const notRefreshed = validVideos.filter(doc => !matchedVideoIds.has(doc.data().videoId));
+      notRefreshed.slice(0, 5).forEach(doc => {
+        console.warn(`      - VideoId: ${doc.data().videoId}, URL: ${doc.data().url || doc.data().videoUrl}`);
+      });
+      if (notRefreshed.length > 5) {
+        console.warn(`      ... and ${notRefreshed.length - 5} more`);
+      }
+    }
+    
     return updatedCount;
-  } catch (error) {
-    console.error(`    ❌ [TIKTOK] Bulk refresh failed:`, error);
+  } catch (error: any) {
+    console.error(`    ❌ [TIKTOK] Bulk refresh failed:`, error.message || error);
+    console.error(`    ❌ [TIKTOK] Error details:`, {
+      error: error.message,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
     return 0;
   }
 }
@@ -1094,6 +1141,7 @@ async function refreshInstagramVideosSequential(
   // Collect all post URLs
   const postUrls: string[] = [];
   const videoDocMap = new Map<string, any>(); // Map videoId -> videoDoc
+  let skippedCount = 0;
 
   for (const videoDoc of videoDocs) {
     const videoData = videoDoc.data();
@@ -1101,7 +1149,8 @@ async function refreshInstagramVideosSequential(
     const videoId = videoData.videoId;
   
     if (!videoUrl || !videoId) {
-      console.log(`    ⚠️ [INSTAGRAM] Skipping video - missing URL or ID`);
+      console.warn(`    ⚠️ [INSTAGRAM] Video ${videoDoc.id} missing URL or videoId - skipping`);
+      skippedCount++;
       continue;
     }
 
@@ -1109,12 +1158,16 @@ async function refreshInstagramVideosSequential(
     videoDocMap.set(videoId, videoDoc);
   }
   
+  if (skippedCount > 0) {
+    console.warn(`    ⚠️ [INSTAGRAM] Skipped ${skippedCount} videos with missing data`);
+  }
+  
   if (postUrls.length === 0) {
-    console.log(`    ℹ️ [INSTAGRAM] No valid videos to refresh`);
+    console.error(`    ❌ [INSTAGRAM] No valid videos to refresh out of ${videoDocs.length} videos`);
     return 0;
       }
 
-  console.log(`    📦 [INSTAGRAM] Fetching metrics for ${postUrls.length} videos in single batch...`);
+  console.log(`    📦 [INSTAGRAM] Fetching metrics for ${postUrls.length} videos (${skippedCount} skipped)...`);
 
   try {
     // Make ONE API call with ALL post URLs
@@ -1145,19 +1198,25 @@ async function refreshInstagramVideosSequential(
     let failedCount = 0;
     
     // Match API results to DB videos and update
+    const unmatchedVideos: string[] = [];
+    const matchedVideoIds = new Set<string>();
+    
     for (const video of refreshedVideos) {
       const videoCode = video.code || video.id;
       if (!videoCode) {
-        console.log(`    ⚠️ [INSTAGRAM] Skipping video - no code/id in API response`);
+        console.warn(`    ⚠️ [INSTAGRAM] Skipping video - no code/id in API response`);
         continue;
       }
       
       const videoDoc = videoDocMap.get(videoCode);
       if (!videoDoc) {
-        console.log(`    ⚠️ [INSTAGRAM] No DB match for video: ${videoCode}`);
+        console.warn(`    ⚠️ [INSTAGRAM] No DB match for video: ${videoCode}`);
+        unmatchedVideos.push(videoCode);
         failedCount++;
         continue;
       }
+      
+      matchedVideoIds.add(videoCode);
       
       const now = Timestamp.now();
       const metrics = {
@@ -1192,14 +1251,35 @@ async function refreshInstagramVideosSequential(
       console.log(`    ✓ [INSTAGRAM] Updated ${videoCode}: ${metrics.views} views`);
     }
     
+    // Report detailed results
     failedCount = videoDocMap.size - updatedCount;
     const successRate = videoDocMap.size > 0 ? Math.round((updatedCount / videoDocMap.size) * 100) : 0;
-    console.log(`    ✅ [INSTAGRAM] Batch complete: ${updatedCount} updated, ${failedCount} not found (${successRate}% success rate)`);
+    console.log(`    ✅ [INSTAGRAM] Batch complete: ${updatedCount}/${videoDocMap.size} updated (${successRate}% success)`);
+    
+    if (unmatchedVideos.length > 0) {
+      console.warn(`    ⚠️ [INSTAGRAM] ${unmatchedVideos.length} videos returned by API but not matched to DB`);
+    }
+    
+    if (failedCount > 0) {
+      console.warn(`    ⚠️ [INSTAGRAM] ${failedCount} videos not refreshed - possible API issues or missing data`);
+      // Log which videos weren't refreshed
+      const notRefreshed = Array.from(videoDocMap.values()).filter(doc => !matchedVideoIds.has(doc.data().videoId));
+      notRefreshed.slice(0, 5).forEach(doc => {
+        console.warn(`      - VideoId: ${doc.data().videoId}, URL: ${doc.data().url || doc.data().videoUrl}`);
+      });
+      if (notRefreshed.length > 5) {
+        console.warn(`      ... and ${notRefreshed.length - 5} more`);
+      }
+    }
     
     return updatedCount;
     } catch (error: any) {
       const errorMsg = error.message || String(error);
-    console.error(`    ❌ [INSTAGRAM] Batch refresh failed: ${errorMsg.substring(0, 150)}`);
+    console.error(`    ❌ [INSTAGRAM] Batch refresh failed: ${errorMsg}`);
+    console.error(`    ❌ [INSTAGRAM] Error details:`, {
+      error: error.message,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
     return 0;
   }
 }
@@ -1213,11 +1293,20 @@ async function refreshTwitterVideosBatch(
   videoDocs: any[]
 ): Promise<number> {
   // Twitter API can handle multiple tweet IDs at once
-  const tweetIds = videoDocs.map(doc => doc.data().videoId).filter(Boolean);
+  const validVideos = videoDocs.filter(doc => doc.data().videoId);
+  const tweetIds = validVideos.map(doc => doc.data().videoId);
   
-  if (tweetIds.length === 0) return 0;
+  const missingIdCount = videoDocs.length - validVideos.length;
+  if (missingIdCount > 0) {
+    console.warn(`    ⚠️ [TWITTER] ${missingIdCount} videos missing videoId - skipping`);
+  }
+  
+  if (tweetIds.length === 0) {
+    console.error(`    ❌ [TWITTER] No valid tweet IDs found in ${videoDocs.length} videos`);
+    return 0;
+  }
 
-  console.log(`    🔄 [TWITTER] Batch refreshing ${tweetIds.length} tweets...`);
+  console.log(`    🔄 [TWITTER] Batch refreshing ${tweetIds.length} tweets (${missingIdCount} skipped)...`);
   
   try {
     const result = await runApifyActor({
@@ -1230,14 +1319,24 @@ async function refreshTwitterVideosBatch(
 
     const refreshedTweets = result.items || [];
     let updatedCount = 0;
+    const matchedVideoIds = new Set<string>();
+    const unmatchedVideos: string[] = [];
+
+    console.log(`    📊 [TWITTER] API returned ${refreshedTweets.length} tweets, matching to ${validVideos.length} DB videos...`);
 
     // Update each tweet with fresh metrics
     for (const tweet of refreshedTweets) {
       const tweetId = tweet.id;
       if (!tweetId) continue;
 
-      const videoDoc = videoDocs.find(doc => doc.data().videoId === tweetId);
-      if (!videoDoc) continue;
+      const videoDoc = validVideos.find(doc => doc.data().videoId === tweetId);
+      if (!videoDoc) {
+        console.warn(`    ⚠️ [TWITTER] No DB match for tweetId: ${tweetId}`);
+        unmatchedVideos.push(tweetId);
+        continue;
+      }
+      
+      matchedVideoIds.add(tweetId);
 
       const now = Timestamp.now();
       const metrics = {
@@ -1271,10 +1370,35 @@ async function refreshTwitterVideosBatch(
       updatedCount++;
     }
 
-    console.log(`    ✅ [TWITTER] Batch refresh complete: ${updatedCount} tweets updated`);
+    // Report detailed results
+    const notRefreshedCount = validVideos.length - updatedCount;
+    const successRate = validVideos.length > 0 ? Math.round((updatedCount / validVideos.length) * 100) : 0;
+    
+    console.log(`    ✅ [TWITTER] Batch refresh complete: ${updatedCount}/${validVideos.length} tweets updated (${successRate}% success)`);
+    
+    if (unmatchedVideos.length > 0) {
+      console.warn(`    ⚠️ [TWITTER] ${unmatchedVideos.length} tweets returned by API but not matched to DB`);
+    }
+    
+    if (notRefreshedCount > 0) {
+      console.warn(`    ⚠️ [TWITTER] ${notRefreshedCount} tweets not refreshed - possible API issues or deleted tweets`);
+      // Log which videos weren't refreshed
+      const notRefreshed = validVideos.filter(doc => !matchedVideoIds.has(doc.data().videoId));
+      notRefreshed.slice(0, 5).forEach(doc => {
+        console.warn(`      - TweetId: ${doc.data().videoId}`);
+      });
+      if (notRefreshed.length > 5) {
+        console.warn(`      ... and ${notRefreshed.length - 5} more`);
+      }
+    }
+    
     return updatedCount;
-  } catch (error) {
-    console.error(`    ❌ [TWITTER] Batch refresh failed:`, error);
+  } catch (error: any) {
+    console.error(`    ❌ [TWITTER] Batch refresh failed:`, error.message || error);
+    console.error(`    ❌ [TWITTER] Error details:`, {
+      error: error.message,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
     return 0;
   }
 }
@@ -1296,18 +1420,24 @@ async function refreshYouTubeVideosBulk(
   }
 
   // YouTube Data API v3 supports up to 50 video IDs per request
-  const videoIds = videoDocs
-    .map(doc => doc.data().videoId)
-    .filter(Boolean);
+  const validVideos = videoDocs.filter(doc => doc.data().videoId);
+  const videoIds = validVideos.map(doc => doc.data().videoId);
+  
+  const missingIdCount = videoDocs.length - validVideos.length;
+  if (missingIdCount > 0) {
+    console.warn(`    ⚠️ [YOUTUBE] ${missingIdCount} videos missing videoId - skipping`);
+  }
   
   if (videoIds.length === 0) {
-    console.log(`    ℹ️ [YOUTUBE] No valid video IDs to refresh`);
+    console.error(`    ❌ [YOUTUBE] No valid video IDs to refresh out of ${videoDocs.length} videos`);
     return 0;
   }
 
-  console.log(`    📊 [YOUTUBE] Fetching metrics for ${videoIds.length} videos...`);
+  console.log(`    📊 [YOUTUBE] Fetching metrics for ${videoIds.length} videos (${missingIdCount} skipped)...`);
   
   let updatedCount = 0;
+  const matchedVideoIds = new Set<string>();
+  const unmatchedVideos: string[] = [];
 
   try {
     // Process in batches of 50 (YouTube API limit)
@@ -1331,18 +1461,21 @@ async function refreshYouTubeVideosBulk(
       const ytData = await ytResponse.json();
       const refreshedVideos = ytData.items || [];
       
-      console.log(`    📊 [YOUTUBE] API returned ${refreshedVideos.length} videos for this batch`);
+      console.log(`    📊 [YOUTUBE] API returned ${refreshedVideos.length}/${batchIds.length} videos for this batch`);
       
       // Update each video with fresh metrics
       for (const video of refreshedVideos) {
         const videoId = video.id;
         if (!videoId) continue;
 
-        const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
+        const videoDoc = validVideos.find(doc => doc.data().videoId === videoId);
         if (!videoDoc) {
-          console.log(`    ⚠️ [YOUTUBE] No DB match for videoId: ${videoId}`);
+          console.warn(`    ⚠️ [YOUTUBE] No DB match for videoId: ${videoId}`);
+          unmatchedVideos.push(videoId);
           continue;
         }
+        
+        matchedVideoIds.add(videoId);
 
         const now = Timestamp.now();
         const metrics = {
@@ -1378,10 +1511,36 @@ async function refreshYouTubeVideosBulk(
       }
     }
 
-    console.log(`    ✅ [YOUTUBE] Bulk refresh complete: ${updatedCount}/${videoIds.length} videos updated`);
+    // Report detailed results
+    const notRefreshedCount = validVideos.length - updatedCount;
+    const successRate = validVideos.length > 0 ? Math.round((updatedCount / validVideos.length) * 100) : 0;
+    
+    console.log(`    ✅ [YOUTUBE] Bulk refresh complete: ${updatedCount}/${validVideos.length} videos updated (${successRate}% success)`);
+    
+    if (unmatchedVideos.length > 0) {
+      console.warn(`    ⚠️ [YOUTUBE] ${unmatchedVideos.length} videos returned by API but not matched to DB`);
+    }
+    
+    if (notRefreshedCount > 0) {
+      console.warn(`    ⚠️ [YOUTUBE] ${notRefreshedCount} videos not refreshed - possible API issues or deleted videos`);
+      // Log which videos weren't refreshed
+      const notRefreshed = validVideos.filter(doc => !matchedVideoIds.has(doc.data().videoId));
+      notRefreshed.slice(0, 5).forEach(doc => {
+        console.warn(`      - VideoId: ${doc.data().videoId}`);
+      });
+      if (notRefreshed.length > 5) {
+        console.warn(`      ... and ${notRefreshed.length - 5} more`);
+      }
+    }
+    
     return updatedCount;
   } catch (error: any) {
     console.error(`    ❌ [YOUTUBE] Bulk refresh failed:`, error.message);
+    console.error(`    ❌ [YOUTUBE] Error details:`, {
+      error: error.message,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+      updatedSoFar: updatedCount
+    });
     return updatedCount; // Return partial success
   }
 }

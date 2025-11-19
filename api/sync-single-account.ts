@@ -2201,8 +2201,8 @@ async function sendRefreshSummaryEmail(session: any, db: any) {
   console.log(`🔍 Fetching top videos from this refresh...`);
   const videosSnapshot = await db
     .collectionGroup('videos')
-    .where('lastUpdatedAt', '>=', session.startedAt)
-    .orderBy('lastUpdatedAt', 'desc')
+    .where('lastRefreshed', '>=', session.startedAt)
+    .orderBy('lastRefreshed', 'desc')
     .orderBy('viewCount', 'desc')
     .limit(50) // Get more to filter to org
     .get();
