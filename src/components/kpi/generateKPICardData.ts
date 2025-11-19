@@ -532,9 +532,12 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     })(),
     // Engagement Rate card with sparkline
     (() => {
-      // If no submissions, return empty sparkline (no fake data points)
-      if (submissions.length === 0) {
-        console.log('🔍 [ENGAGEMENT FIX] No submissions - returning empty sparkline');
+      // If no submissions OR no activity in the period, return empty sparkline (consistent with other cards)
+      // Check total views/engagement from filtered submissions to match Views/Likes/Comments behavior
+      const totalPeriodEngagement = totalLikes + totalComments + totalShares;
+      
+      if (submissions.length === 0 || (totalViews === 0 && totalPeriodEngagement === 0)) {
+        console.log(`🔍 [ENGAGEMENT FIX] No activity in period (${submissions.length} videos, ${totalViews} views, ${totalPeriodEngagement} engagement) - returning empty sparkline`);
         return {
           id: 'engagement-rate',
           label: 'Engagement Rate',
@@ -547,12 +550,12 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
             absoluteValue: engagementRateGrowthAbsolute,
             isPercentage: true
           },
-          sparklineData: [], // Empty sparkline when no videos
+          sparklineData: [], // Empty sparkline when no activity (consistent with other KPI cards)
           intervalType: granularity,
           isIncreasing: engagementRateGrowthAbsolute >= 0
         };
       }
-      console.log(`🔍 [ENGAGEMENT FIX] Has ${submissions.length} submissions - generating sparkline`);
+      console.log(`🔍 [ENGAGEMENT FIX] Has activity: ${submissions.length} submissions, ${totalViews} views, ${totalPeriodEngagement} engagement - generating sparkline`);
       
       // Generate engagement rate sparkline data (per-interval, not cumulative)
       let actualStartDate: Date;
