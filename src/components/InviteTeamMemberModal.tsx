@@ -44,7 +44,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         
         // Get organization's plan limits
         const limits = await UsageTrackingService.getLimits(currentOrgId);
-        const seatLimit = limits.maxTeamMembers;
+        const seatLimit = limits.teamSeats;
         
         // Count active members
         const membersRef = collection(db, 'organizations', currentOrgId, 'members');
