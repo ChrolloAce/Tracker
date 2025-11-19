@@ -1655,9 +1655,14 @@ export default async function handler(
         
         // Transform Instagram data to video format
         for (const item of instagramItems) {
-          const videoCode = item.code || item.id;
+          // 🔍 DEBUG: Log item structure to see what fields we have
+          console.log(`🔍 [INSTAGRAM] Item keys:`, Object.keys(item).join(', '));
+          console.log(`🔍 [INSTAGRAM] Checking for video code: code=${item.code}, id=${item.id}, shortcode=${item.shortcode}, pk=${item.pk}`);
+          
+          const videoCode = item.code || item.id || item.shortcode || item.pk;
           if (!videoCode) {
-            console.warn('⚠️ Skipping item - no video code found');
+            console.warn(`⚠️ Skipping item - no video code found. Available keys: ${Object.keys(item).join(', ')}`);
+            console.warn(`⚠️ Item structure:`, JSON.stringify(item, null, 2).substring(0, 500));
             continue;
           }
           
