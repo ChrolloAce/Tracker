@@ -3,6 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Role } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
 import OrganizationService from '../services/OrganizationService';
+import UsageTrackingService from '../services/UsageTrackingService';
+import { db } from '../services/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { X, Mail, UserPlus, AlertCircle, Crown } from 'lucide-react';
 
 interface InviteTeamMemberModalProps {
@@ -27,7 +30,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
   const [limitInfo, setLimitInfo] = useState<{ current: number; limit: number; active: number; pending: number } | null>(null);
   const [checkingLimit, setCheckingLimit] = useState(true);
 
-  // Check team seat limit when modal opens
+  // Check team seat limit when modal opens (client-side with Firestore)
   useEffect(() => {
     const checkLimit = async () => {
       if (!currentOrgId || !user) {
@@ -37,34 +40,43 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
 
       try {
         setCheckingLimit(true);
-        console.log('🔍 Checking team seat limit for org:', currentOrgId);
+        console.log('🔍 [CLIENT] Checking team seat limit for org:', currentOrgId);
         
-        // Call server-side API to check limit (avoids Firestore permission errors)
-        const response = await fetch(`/api/check-team-limit?orgId=${currentOrgId}`);
+        // Get organization's plan limits
+        const limits = await UsageTrackingService.getLimits(currentOrgId);
+        const seatLimit = limits.maxTeamMembers;
         
-        if (!response.ok) {
-          throw new Error('Failed to check team limit');
-        }
+        // Count active members
+        const membersRef = collection(db, 'organizations', currentOrgId, 'members');
+        const activeMembersQuery = query(membersRef, where('status', '==', 'active'));
+        const activeMembersSnap = await getDocs(activeMembersQuery);
+        const activeMembersCount = activeMembersSnap.size;
         
-        const data = await response.json();
-        console.log('📊 Team limit data:', data);
+        // Count pending invitations
+        const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
+        const pendingInvitesQuery = query(invitationsRef, where('status', '==', 'pending'));
+        const pendingInvitesSnap = await getDocs(pendingInvitesQuery);
+        const pendingInvitesCount = pendingInvitesSnap.size;
+        
+        const currentSeatsUsed = activeMembersCount + pendingInvitesCount;
+        const isAtLimitValue = seatLimit !== -1 && currentSeatsUsed >= seatLimit;
         
         setLimitInfo({
-          current: data.current,
-          limit: data.limit,
-          active: data.active,
-          pending: data.pending
+          current: currentSeatsUsed,
+          limit: seatLimit,
+          active: activeMembersCount,
+          pending: pendingInvitesCount
         });
         
-        console.log(`👥 Team seats: ${data.current}/${data.limit} (${data.active} active + ${data.pending} pending)`);
-        console.log(`🚦 At limit? ${data.isAtLimit}`);
+        console.log(`👥 [CLIENT] Team seats: ${currentSeatsUsed}/${seatLimit} (${activeMembersCount} active + ${pendingInvitesCount} pending)`);
+        console.log(`🚦 [CLIENT] At limit? ${isAtLimitValue}`);
         
-        setIsAtLimit(data.isAtLimit);
+        setIsAtLimit(isAtLimitValue);
       } catch (error) {
-        console.error('❌ Failed to check team limit:', error);
+        console.error('❌ [CLIENT] Failed to check team limit:', error);
       } finally {
         setCheckingLimit(false);
-        console.log('✅ Limit check complete');
+        console.log('✅ [CLIENT] Limit check complete');
       }
     };
 

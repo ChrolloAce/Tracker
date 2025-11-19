@@ -1477,11 +1477,33 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return filtered;
   }, [submissionsWithoutDateFilter, dateFilter, customDateRange, userRole]);
 
+  // Strict filter for "New Videos" table - only videos UPLOADED in the period (not just refreshed)
+  const strictFilteredSubmissions = useMemo(() => {
+    if (userRole === 'creator' || userRole === '') {
+      return [];
+    }
+    
+    console.log('📅 [STRICT] Applying STRICT upload date filter for "New Videos" table...');
+    
+    // Use strictMode: TRUE to only include videos uploaded in period
+    let strictFiltered = DateFilterService.filterVideosByDateRange(
+      submissionsWithoutDateFilter, 
+      dateFilter, 
+      customDateRange,
+      true // strictMode: true = ONLY videos uploaded in period
+    );
+    
+    console.log('✅ [STRICT] After strict filter:', strictFiltered.length, 'videos actually uploaded in this period');
+    
+    return strictFiltered;
+  }, [submissionsWithoutDateFilter, dateFilter, customDateRange, userRole]);
+
   // Combine real submissions with pending videos for immediate UI feedback
+  // For "New Videos" table: use STRICT filter (only videos uploaded in period, not just refreshed)
   const combinedSubmissions = useMemo(() => {
-    const combined = [...pendingVideos, ...filteredSubmissions];
+    const combined = [...pendingVideos, ...strictFilteredSubmissions];
     return combined;
-  }, [pendingVideos, filteredSubmissions]);
+  }, [pendingVideos, strictFilteredSubmissions]);
 
   // Filter link clicks to only include clicks from existing links (exclude deleted links)
   const filteredLinkClicks = useMemo(() => {

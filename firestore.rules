@@ -172,6 +172,29 @@ service cloud.firestore {
           || (isSignedIn() && request.auth.token.email == resource.data.email);
       }
       
+      // Alternative path for team invitations (same rules as above)
+      match /teamInvitations/{invitationId} {
+        // Members can read invitations (to see pending invites)
+        // Invited users can read their own invitations by email
+        allow read: if canReadOrg(orgId) 
+          || (isSignedIn() && request.auth.token.email == resource.data.email);
+        
+        // Only admins can create invitations
+        allow create: if canManageOrg(orgId) 
+          && request.resource.data.orgId == orgId
+          && request.resource.data.invitedBy == request.auth.uid;
+        
+        // Admins can update/cancel invitations
+        // Invited users can update to accept/decline their own invitation
+        allow update: if canManageOrg(orgId)
+          || (isSignedIn() && request.auth.token.email == resource.data.email && resource.data.status == 'pending');
+        
+        // Admins can delete invitations
+        // Invited users can delete their own invitation after accepting (for cleanup)
+        allow delete: if canManageOrg(orgId)
+          || (isSignedIn() && request.auth.token.email == resource.data.email);
+      }
+      
       // ==================== ORG SETTINGS ====================
       
       match /settings/{document=**} {
