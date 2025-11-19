@@ -323,6 +323,24 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         <div className="space-y-3 mb-6 max-h-[400px] overflow-y-auto">
           {accountInputs.map((input, index) => (
             <div key={input.id} className="flex gap-2 items-start">
+              {/* Delete button - always shown, disabled for first row */}
+              <button
+                onClick={() => {
+                  if (index > 0) {
+                    setAccountInputs(prev => prev.filter(i => i.id !== input.id));
+                  }
+                }}
+                disabled={index === 0}
+                className={`p-2.5 rounded-lg transition-colors ${
+                  index === 0
+                    ? 'text-gray-700 cursor-not-allowed opacity-40'
+                    : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
+                }`}
+                title={index === 0 ? 'Cannot delete the first account' : 'Delete account'}
+              >
+                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -401,22 +419,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              {/* Delete button for additional inputs */}
-              {index > 0 && (
-                <button
-                  onClick={() => {
-                    setAccountInputs(prev => prev.filter(i => i.id !== input.id));
-                  }}
-                  className="p-2.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-              )}
-              {/* Spacer for first input when alone */}
-              {index === 0 && accountInputs.length === 1 && (
-                <div className="w-10" /> 
-              )}
             </div>
           ))}
 
