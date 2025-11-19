@@ -111,7 +111,7 @@ function extractUsernameFromUrl(url: string, platform: string): string | null {
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
-  platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter';
+  platformFilter: ('instagram' | 'tiktok' | 'youtube' | 'twitter')[];
   searchQuery?: string;
   onViewModeChange: (mode: 'table' | 'details') => void;
   pendingAccounts?: TrackedAccount[];
@@ -1061,9 +1061,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       result = result.filter(account => creatorLinkedAccountIds.includes(account.id));
     }
     
-    // Apply platform filter
-    if (platformFilter !== 'all') {
-      result = result.filter(account => account.platform === platformFilter);
+    // Apply platform filter (multi-select)
+    if (platformFilter.length > 0) {
+      result = result.filter(account => platformFilter.includes(account.platform as any));
     }
     
     // Apply search filter

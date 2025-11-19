@@ -2416,7 +2416,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     title="Filters"
                   >
                     <Filter className="w-4 h-4" />
-                    {(selectedAccountIds.length > 0 || dashboardPlatformFilter !== 'all' || activeRulesCount > 0) && (
+                    {(selectedAccountIds.length > 0 || dashboardPlatformFilter.length > 0 || activeRulesCount > 0) && (
                       <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
                     )}
                   </button>
@@ -2607,7 +2607,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 title="Filters"
               >
                 <Filter className="w-4 h-4" />
-                {(dashboardPlatformFilter !== 'all' || activeRulesCount > 0) && (
+                {(dashboardPlatformFilter.length > 0 || activeRulesCount > 0) && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
                 )}
               </button>
@@ -2733,7 +2733,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 title="Filters"
               >
                 <Filter className="w-4 h-4" />
-                {(selectedAccountIds.length > 0 || dashboardPlatformFilter !== 'all' || activeRulesCount > 0) && (
+                {(selectedAccountIds.length > 0 || dashboardPlatformFilter.length > 0 || activeRulesCount > 0) && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
                 )}
               </button>
@@ -4158,79 +4158,55 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 </div>
               )}
 
-              {/* Platform Filter */}
+              {/* Platform Filter - Multi-select */}
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-2">Platform</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  {/* Clear All Button */}
                   <button
-                    onClick={() => {
-                      setDashboardPlatformFilter('all');
-                      localStorage.setItem('dashboardPlatformFilter', 'all');
-                    }}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      dashboardPlatformFilter === 'all' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
+                    onClick={() => setDashboardPlatformFilter([])}
+                    className="w-full px-4 py-2 rounded-lg text-xs text-white/60 hover:text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
                   >
-                    All Platforms
+                    Clear All
                   </button>
-                  <button
-                    onClick={() => {
-                      setDashboardPlatformFilter('instagram');
-                      localStorage.setItem('dashboardPlatformFilter', 'instagram');
-                    }}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      dashboardPlatformFilter === 'instagram' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <PlatformIcon platform="instagram" size="sm" />
-                    Instagram
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDashboardPlatformFilter('tiktok');
-                      localStorage.setItem('dashboardPlatformFilter', 'tiktok');
-                    }}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      dashboardPlatformFilter === 'tiktok' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <PlatformIcon platform="tiktok" size="sm" />
-                    TikTok
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDashboardPlatformFilter('youtube');
-                      localStorage.setItem('dashboardPlatformFilter', 'youtube');
-                    }}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      dashboardPlatformFilter === 'youtube' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <PlatformIcon platform="youtube" size="sm" />
-                    YouTube
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDashboardPlatformFilter('twitter');
-                      localStorage.setItem('dashboardPlatformFilter', 'twitter');
-                    }}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      dashboardPlatformFilter === 'twitter' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <PlatformIcon platform="twitter" size="sm" />
-                    X (Twitter)
-                  </button>
+                  
+                  {/* Platform Options with Checkboxes */}
+                  {[
+                    { value: 'instagram' as const, label: 'Instagram', icon: 'instagram' as const },
+                    { value: 'tiktok' as const, label: 'TikTok', icon: 'tiktok' as const },
+                    { value: 'youtube' as const, label: 'YouTube', icon: 'youtube' as const },
+                    { value: 'twitter' as const, label: 'X', icon: 'twitter' as const }
+                  ].map((platform) => {
+                    const isSelected = dashboardPlatformFilter.includes(platform.value);
+                    return (
+                      <button
+                        key={platform.value}
+                        onClick={() => {
+                          setDashboardPlatformFilter(prev => 
+                            isSelected 
+                              ? prev.filter(p => p !== platform.value)
+                              : [...prev, platform.value]
+                          );
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all"
+                      >
+                        {/* Checkbox */}
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
+                          isSelected 
+                            ? 'bg-white border-white' 
+                            : 'border-white/30'
+                        }`}>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
+                        </div>
+                        
+                        {/* Platform Icon */}
+                        <PlatformIcon platform={platform.icon} size="sm" />
+                        
+                        {/* Platform Label */}
+                        <span className="text-white/90">{platform.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -4321,8 +4297,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     setSelectedAccountIds([]);
                     setManualGranularity('day');
                   }
-                  setDashboardPlatformFilter('all');
-                  localStorage.setItem('dashboardPlatformFilter', 'all');
+                  setDashboardPlatformFilter([]);
                   setDateFilter('last7days');
                   setSelectedRuleIds([]);
                   localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify([]));
