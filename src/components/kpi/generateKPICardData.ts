@@ -534,6 +534,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     (() => {
       // If no submissions, return empty sparkline (no fake data points)
       if (submissions.length === 0) {
+        console.log('🔍 [ENGAGEMENT FIX] No submissions - returning empty sparkline');
         return {
           id: 'engagement-rate',
           label: 'Engagement Rate',
@@ -551,6 +552,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
           isIncreasing: engagementRateGrowthAbsolute >= 0
         };
       }
+      console.log(`🔍 [ENGAGEMENT FIX] Has ${submissions.length} submissions - generating sparkline`);
       
       // Generate engagement rate sparkline data (per-interval, not cumulative)
       let actualStartDate: Date;
