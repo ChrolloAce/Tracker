@@ -241,7 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .doc('usage');
 
       const usageDoc = await usageRef.get();
-      if (usageDoc.exists()) {
+      if (usageDoc.exists) {
         const usage = usageDoc.data();
         const currentAccounts = usage?.trackedAccounts || 0;
         const currentVideos = usage?.trackedVideos || 0;

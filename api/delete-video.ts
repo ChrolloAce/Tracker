@@ -184,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .doc(trackedAccountId);
       
       const accountSnap = await accountRef.get();
-      if (accountSnap.exists()) {
+      if (accountSnap.exists) {
         const currentVideos = accountSnap.data()?.videos || 0;
         await accountRef.update({
           videos: Math.max(0, currentVideos - 1)

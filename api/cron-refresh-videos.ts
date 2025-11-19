@@ -1459,7 +1459,7 @@ async function saveVideosToFirestore(
       
       const deletedVideoSnap = await deletedVideoRef.get();
       
-      if (deletedVideoSnap.exists()) {
+      if (deletedVideoSnap.exists) {
         console.log(`    🚫 Skipping blacklisted video ${platformVideoId} (user deleted it)`);
         skippedCount++;
         continue;

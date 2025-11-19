@@ -109,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Verify project exists
     const projectDoc = await projectRef.get();
-    if (!projectDoc.exists()) {
+    if (!projectDoc.exists) {
       return res.status(404).json({ 
         success: false, 
         message: 'Project not found' 
