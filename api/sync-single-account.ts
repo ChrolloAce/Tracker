@@ -415,10 +415,13 @@ export default async function handler(
           
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
+          let currentPhaseIndex = 0; // Track which phase we're on
         const username = account.username.replace('@', '');
           
-          for (const batchSize of batchSizes) {
+          for (let i = 0; i < batchSizes.length; i++) {
             if (foundDuplicate) break;
+            const batchSize = batchSizes[i];
+            currentPhaseIndex = i;
             
             console.log(`📥 [TIKTOK] Fetching ${batchSize} videos...`);
             
@@ -499,56 +502,57 @@ export default async function handler(
           
           // All phases run internally now - no more queue spawning
           if (foundDuplicate) {
-            console.log(`✅ [TIKTOK] Spiderweb search stopped early (found existing video at phase ${batchSizes.indexOf(batchSize) + 1})`);
+            console.log(`✅ [TIKTOK] Spiderweb search stopped early (found existing video at phase ${currentPhaseIndex + 1}/${batchSizes.length})`);
           } else {
             console.log(`✅ [TIKTOK] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
           }
-          
-          // SECOND API CALL: Refresh metrics for RECENT existing TikTok videos
-          // Only refresh the most recent 20 videos (older videos rarely change)
-          if (existingVideoIds.size > 0) {
-            const MAX_VIDEOS_TO_REFRESH = 20;
-            const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
-            
-            console.log(`🔄 [TIKTOK] Refreshing ${videosToRefresh} most recent videos (out of ${existingVideoIds.size} total)...`);
-            
-            try {
-              // Build video URLs for RECENT existing videos only
-              const videoUrls = Array.from(existingVideoIds)
-                .slice(0, MAX_VIDEOS_TO_REFRESH) // Only take first 20
-                .map(id => `https://www.tiktok.com/@${username}/video/${id}`);
-              
-              console.log(`📊 [TIKTOK] Fetching updated metrics for ${videoUrls.length} existing videos...`);
-              
-              const refreshData = await runApifyActor({
-                actorId: 'apidojo/tiktok-scraper',
-                input: {
-                  startUrls: videoUrls,
-                  maxItems: videoUrls.length, // Now capped at 20
-                  sortType: 'RELEVANCE',
-                  dateRange: 'DEFAULT',
-                  location: 'US',
-                  includeSearchKeywords: false,
-                  customMapFunction: '(object) => { return {...object} }',
-                  proxy: {
-                    useApifyProxy: true,
-                    apifyProxyGroups: ['RESIDENTIAL']
-                  }
-                }
-              });
-              
-              const refreshedVideos = refreshData.items || [];
-              console.log(`✅ [TIKTOK] Refreshed ${refreshedVideos.length} existing videos`);
-              
-              // Add refreshed videos to processing
-              newTikTokVideos.push(...refreshedVideos);
-            } catch (refreshError) {
-              console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
-              // Don't fail the whole sync if refresh fails
-            }
-          }
         } else {
           console.log(`🔒 [TIKTOK] Static account - skipping new video fetch`);
+        }
+        
+        // SECOND API CALL: Refresh metrics for RECENT existing TikTok videos
+        // This runs for BOTH automatic and static accounts
+        // Only refresh the most recent 20 videos (older videos rarely change)
+        if (existingVideoIds.size > 0) {
+          const MAX_VIDEOS_TO_REFRESH = 20;
+          const videosToRefresh = Math.min(existingVideoIds.size, MAX_VIDEOS_TO_REFRESH);
+          
+          console.log(`🔄 [TIKTOK] Refreshing ${videosToRefresh} most recent videos (out of ${existingVideoIds.size} total)...`);
+          
+          try {
+            // Build video URLs for RECENT existing videos only
+            const videoUrls = Array.from(existingVideoIds)
+              .slice(0, MAX_VIDEOS_TO_REFRESH) // Only take first 20
+              .map(id => `https://www.tiktok.com/@${username}/video/${id}`);
+            
+            console.log(`📊 [TIKTOK] Fetching updated metrics for ${videoUrls.length} existing videos...`);
+            
+            const refreshData = await runApifyActor({
+              actorId: 'apidojo/tiktok-scraper',
+              input: {
+                startUrls: videoUrls,
+                maxItems: videoUrls.length, // Now capped at 20
+                sortType: 'RELEVANCE',
+                dateRange: 'DEFAULT',
+                location: 'US',
+                includeSearchKeywords: false,
+                customMapFunction: '(object) => { return {...object} }',
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL']
+                }
+              }
+            });
+            
+            const refreshedVideos = refreshData.items || [];
+            console.log(`✅ [TIKTOK] Refreshed ${refreshedVideos.length} existing videos`);
+            
+            // Add refreshed videos to processing
+            newTikTokVideos.push(...refreshedVideos);
+          } catch (refreshError) {
+            console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
+            // Don't fail the whole sync if refresh fails
+          }
         }
         
         const tiktokVideos = newTikTokVideos;
@@ -715,9 +719,12 @@ export default async function handler(
           
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
+          let currentPhaseIndex = 0; // Track which phase we're on
           
-          for (const batchSize of batchSizes) {
+          for (let i = 0; i < batchSizes.length; i++) {
             if (foundDuplicate) break;
+            const batchSize = batchSizes[i];
+            currentPhaseIndex = i;
             
             console.log(`📥 [YOUTUBE] Fetching ${batchSize} Shorts...`);
             
@@ -794,7 +801,7 @@ export default async function handler(
           
           // All phases run internally now - no more queue spawning
           if (foundDuplicate) {
-            console.log(`✅ [YOUTUBE] Spiderweb search stopped early (found existing video at phase ${batchSizes.indexOf(batchSize) + 1})`);
+            console.log(`✅ [YOUTUBE] Spiderweb search stopped early (found existing video at phase ${currentPhaseIndex + 1}/${batchSizes.length})`);
           } else {
             console.log(`✅ [YOUTUBE] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
           }
@@ -1001,9 +1008,12 @@ export default async function handler(
         
         let foundDuplicate = false;
         const seenTweetIds = new Set<string>(); // Track tweets we've already processed
+        let currentPhaseIndex = 0; // Track which phase we're on
         
-        for (const batchSize of batchSizes) {
+        for (let i = 0; i < batchSizes.length; i++) {
           if (foundDuplicate) break;
+          const batchSize = batchSizes[i];
+          currentPhaseIndex = i;
           
           console.log(`📥 [TWITTER] Fetching ${batchSize} tweets...`);
           
@@ -1073,7 +1083,7 @@ export default async function handler(
         
         // All phases run internally now - no more queue spawning
         if (foundDuplicate) {
-          console.log(`✅ [TWITTER] Spiderweb search stopped early (found existing tweet at phase ${batchSizes.indexOf(batchSize) + 1})`);
+          console.log(`✅ [TWITTER] Spiderweb search stopped early (found existing tweet at phase ${currentPhaseIndex + 1}/${batchSizes.length})`);
         } else {
           console.log(`✅ [TWITTER] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
         }
@@ -1180,9 +1190,12 @@ export default async function handler(
           
           let foundDuplicate = false;
           const seenVideoIds = new Set<string>(); // Track videos we've already processed
+          let currentPhaseIndex = 0; // Track which phase we're on
           
-          for (const batchSize of batchSizes) {
+          for (let i = 0; i < batchSizes.length; i++) {
             if (foundDuplicate) break;
+            const batchSize = batchSizes[i];
+            currentPhaseIndex = i;
             
             console.log(`📥 [INSTAGRAM] Fetching ${batchSize} reels...`);
             
@@ -1269,7 +1282,7 @@ export default async function handler(
           
           // All phases run internally now - no more queue spawning
           if (foundDuplicate) {
-            console.log(`✅ [INSTAGRAM] Spiderweb search stopped early (found existing reel at phase ${batchSizes.indexOf(batchSize) + 1})`);
+            console.log(`✅ [INSTAGRAM] Spiderweb search stopped early (found existing reel at phase ${currentPhaseIndex + 1}/${batchSizes.length})`);
           } else {
             console.log(`✅ [INSTAGRAM] Spiderweb search complete (processed all ${batchSizes.length} phases)`);
           }
