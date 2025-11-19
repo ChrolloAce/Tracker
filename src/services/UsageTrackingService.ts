@@ -144,13 +144,27 @@ class UsageTrackingService {
   }
   
   /**
-   * Force an immediate usage cache update (blocking)
-   * Use this when you need accurate, real-time counts
+   * Get real-time video count (read-only, no cache write)
+   * Use for critical limit checks that need 100% accuracy
    */
-  static async forceUpdateCache(orgId: string): Promise<void> {
-    console.log('🔄 Force updating usage cache...');
-    await this.updateUsageCache(orgId);
-    console.log('✅ Cache update complete');
+  static async getRealTimeVideoCount(orgId: string): Promise<number> {
+    const projectsRef = collection(db, 'organizations', orgId, 'projects');
+    const projectsSnapshot = await getDocs(projectsRef);
+    
+    let totalVideos = 0;
+    
+    // Count videos across all projects in parallel
+    const countPromises = projectsSnapshot.docs.map(async (projectDoc) => {
+      const projectId = projectDoc.id;
+      const videosSnap = await getDocs(collection(db, 'organizations', orgId, 'projects', projectId, 'videos'));
+      return videosSnap.size;
+    });
+    
+    const results = await Promise.all(countPromises);
+    totalVideos = results.reduce((sum, count) => sum + count, 0);
+    
+    console.log(`🎬 Real-time video count: ${totalVideos} videos across ${projectsSnapshot.size} projects`);
+    return totalVideos;
   }
 
   /**

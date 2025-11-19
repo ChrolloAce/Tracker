@@ -112,23 +112,21 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       try {
         setCheckingLimits(true);
         
-        // Force cache update to ensure accurate counts (critical for limit checks)
-        console.log('🔄 Forcing usage cache update for accurate limit check...');
-        await UsageTrackingService.forceUpdateCache(orgId);
-        
-        const [usage, limits] = await Promise.all([
-          UsageTrackingService.getUsage(orgId),
+        // Get real-time counts directly (bypass cache for critical limit checks)
+        console.log('🔄 Counting videos in real-time for accurate limit check...');
+        const [realTimeCount, limits] = await Promise.all([
+          UsageTrackingService.getRealTimeVideoCount(orgId),
           UsageTrackingService.getLimits(orgId)
         ]);
 
-        console.log('🔍 [VIDEO LIMIT DEBUG] Raw usage (after cache update):', usage);
-        console.log('🔍 [VIDEO LIMIT DEBUG] Raw limits:', limits);
+        console.log('🔍 [VIDEO LIMIT DEBUG] Real-time video count:', realTimeCount);
+        console.log('🔍 [VIDEO LIMIT DEBUG] Plan limits:', limits);
 
-        const currentVideos = usage.trackedVideos;
+        const currentVideos = realTimeCount;
         const videoLimit = limits.maxVideos;
         const available = videoLimit === -1 ? Infinity : Math.max(0, videoLimit - currentVideos);
 
-        console.log('🔍 [VIDEO LIMIT DEBUG] Parsed values:', {
+        console.log('🔍 [VIDEO LIMIT DEBUG] Calculated:', {
           currentVideos,
           videoLimit,
           available
