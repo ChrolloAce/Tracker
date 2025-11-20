@@ -595,58 +595,44 @@ async function refreshAccountVideos(
   }
 
     } else {
-      // EXISTING ACCOUNT: Progressive fetch 5, 10, 15, 20... until duplicate
-      console.log(`    🔄 [${platform.toUpperCase()}] Existing account - progressive fetch`);
-      const batchSizes = [5, 10, 15, 20];
-      let foundDuplicate = false;
+      // EXISTING ACCOUNT: Fetch 20 most recent videos for forward discovery
+      console.log(`    🔄 [${platform.toUpperCase()}] Forward discovery - fetching 20 most recent videos`);
       
-      for (const size of batchSizes) {
-        console.log(`    📥 [${platform.toUpperCase()}] Fetching ${size} videos...`);
+      try {
+        const batch = await fetchVideosFromPlatform(platform, username, 20);
         
-        try {
-          const batch = await fetchVideosFromPlatform(platform, username, size);
-      
-          if (!batch || batch.length === 0) {
-            console.log(`    ⚠️ [${platform.toUpperCase()}] No videos returned`);
-            break;
-          }
-          
-          // Extract verified status from first batch
-          if (newVideos.length === 0 && batch.length > 0) {
+        if (!batch || batch.length === 0) {
+          console.log(`    ⚠️ [${platform.toUpperCase()}] No videos returned`);
+        } else {
+          // Extract verified status from first video
+          if (batch.length > 0) {
             isVerified = extractVerifiedStatus(batch[0], platform);
             isBlueVerified = extractBlueVerifiedStatus(batch[0], platform);
-  }
-
-          // Check each video in batch
+          }
+          
+          // Process videos newest-first, stop at first duplicate
+          let foundDuplicate = false;
           for (const video of batch) {
-    const videoId = extractVideoId(video, platform);
-    if (!videoId) continue;
-
-    const exists = await videoExistsInDatabase(orgId, projectId, videoId);
-    
-    if (exists) {
-              console.log(`    ✓ [${platform.toUpperCase()}] Found duplicate: ${videoId} - stopping fetch`);
+            const videoId = extractVideoId(video, platform);
+            if (!videoId) continue;
+            
+            const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+            
+            if (exists) {
+              console.log(`    ✓ [${platform.toUpperCase()}] Found duplicate: ${videoId} - stopping discovery`);
               foundDuplicate = true;
-      break;
-    } else {
-      newVideos.push(video);
-    }
-  }
-
-          if (foundDuplicate) break;
-    
-          // Stop if we got fewer videos than requested (reached end of account's content)
-          if (batch.length < size) {
-            console.log(`    ⏹️ [${platform.toUpperCase()}] Got ${batch.length} < ${size} (end of content)`);
-        break;
+              break;
+            } else {
+              newVideos.push(video);
+            }
+          }
+          
+          console.log(`    📊 [${platform.toUpperCase()}] Discovered ${newVideos.length} new videos${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
+        }
+      } catch (fetchError: any) {
+        console.error(`    ❌ [${platform.toUpperCase()}] Discovery failed:`, fetchError.message);
+        return { fetched: 0, updated: 0, added: 0, skipped: 0 };
       }
-        } catch (fetchError: any) {
-          console.error(`    ❌ [${platform.toUpperCase()}] Fetch failed at size ${size}:`, fetchError.message);
-          break; // Stop trying to fetch more
-    }
-  }
-
-  console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
     }
 
     // STEP 2: Save new videos
