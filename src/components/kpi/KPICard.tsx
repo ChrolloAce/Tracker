@@ -345,7 +345,6 @@ const KPICard: React.FC<{
           className="relative w-full overflow-hidden z-10"
           style={{ 
             height: '40%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
           }}

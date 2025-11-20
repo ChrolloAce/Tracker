@@ -32,7 +32,7 @@ function initializeFirebase() {
 }
 
 /**
- * Queue Worker - Processes jobs in batches of 6 (max Apify concurrency)
+ * Queue Worker - Processes jobs in batches of 10 (max Apify concurrency)
  * 
  * Runs every 1 minute via Vercel cron
  * 
@@ -40,7 +40,7 @@ function initializeFirebase() {
  * 1. Find all pending/running jobs
  * 2. If no jobs exist, delete completed jobs and stop
  * 3. Count currently running jobs
- * 4. Dispatch new jobs to fill available slots (max 6 concurrent)
+ * 4. Dispatch new jobs to fill available slots (max 10 concurrent)
  * 5. Validate running jobs against account sync status
  * 6. Mark stale jobs as failed and retry
  */
@@ -182,7 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedFailedCount} failed`);
     
     // Calculate available slots for new jobs
-    const APIFY_CONCURRENCY_LIMIT = 6;
+    const APIFY_CONCURRENCY_LIMIT = 10;
     const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount;
     const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
     

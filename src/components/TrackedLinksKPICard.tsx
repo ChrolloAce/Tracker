@@ -78,7 +78,8 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   const strokeColor = isIncreasing ? '#22c55e' : '#ef4444';
 
   const handleCardClick = () => {
-    if (!onClick) return;
+    // Don't trigger click actions when in edit mode (dragging)
+    if (isEditMode || !onClick) return;
     
     if (tooltipData) {
       // If hovering over a specific point, open modal for that day
@@ -256,7 +257,6 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
           className="relative w-full overflow-hidden z-10"
           style={{ 
             height: '40%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
           }}
