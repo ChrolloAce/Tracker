@@ -423,19 +423,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     setSelectedVideos(new Set()); // Clear selection after export
   };
 
-  // Close actions menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-        setShowActionsMenu(false);
-      }
-    };
-
-    if (showActionsMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showActionsMenu]);
+  // Backdrop handles outside clicks now, so this is removed to prevent conflicts
 
   // Reset to page 1 when submissions change
   useEffect(() => {

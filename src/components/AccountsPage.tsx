@@ -1443,19 +1443,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setSelectedAccounts(new Set());
   }, [processedAccounts, selectedAccounts]);
 
-  // Close actions menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-        setShowActionsMenu(false);
-      }
-    };
-
-    if (showActionsMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showActionsMenu]);
+  // Backdrop handles outside clicks now, so this is removed to prevent conflicts
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
