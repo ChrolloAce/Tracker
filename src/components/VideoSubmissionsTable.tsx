@@ -341,9 +341,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   const handleBulkDelete = () => {
+    alert('🔴 DELETE BUTTON CLICKED! Check console for details.');
     console.log('🗑️ [BULK DELETE] Button clicked');
     console.log('  onDelete exists:', !!onDelete);
     console.log('  Selected videos count:', selectedVideos.size);
+    console.log('  Filtered videos count:', filteredAndSortedSubmissions.length);
     
     if (!onDelete) {
       console.error('❌ onDelete function not provided');
@@ -709,10 +711,15 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     {onDelete && (
                       <button
                         onClick={(e) => {
+                          console.log('🔴 BUTTON CLICK EVENT FIRED');
                           e.stopPropagation();
+                          e.preventDefault();
                           handleBulkDelete();
                         }}
+                        onMouseDown={() => console.log('🔴 MOUSE DOWN on delete button')}
+                        onMouseUp={() => console.log('🔴 MOUSE UP on delete button')}
                         className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                        type="button"
                       >
                         <Trash2 className="w-4 h-4" />
                         <span>Delete Selected</span>

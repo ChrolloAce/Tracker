@@ -1321,10 +1321,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   }, [processedAccounts, selectedAccounts]);
 
   const handleBulkDeleteAccounts = useCallback(async () => {
+    alert('🔴 DELETE ACCOUNTS BUTTON CLICKED! Check console for details.');
     console.log('🗑️ [BULK DELETE ACCOUNTS] Button clicked');
     console.log('  Current Org ID:', currentOrgId);
     console.log('  Current Project ID:', currentProjectId);
     console.log('  Selected accounts count:', selectedAccounts.size);
+    console.log('  Processed accounts count:', processedAccounts.length);
     
     if (!currentOrgId || !currentProjectId) {
       console.error('❌ Missing org or project ID');
@@ -1998,10 +2000,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           </button>
                           <button
                             onClick={(e) => {
+                              console.log('🔴 ACCOUNTS DELETE BUTTON CLICK EVENT FIRED');
                               e.stopPropagation();
+                              e.preventDefault();
                               handleBulkDeleteAccounts();
                             }}
+                            onMouseDown={() => console.log('🔴 MOUSE DOWN on delete accounts button')}
+                            onMouseUp={() => console.log('🔴 MOUSE UP on delete accounts button')}
                             className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                            type="button"
                           >
                             <Trash2 className="w-4 h-4" />
                             <span>Delete Selected</span>
