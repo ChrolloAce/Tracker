@@ -70,10 +70,44 @@ class DateFilterService {
       }
         
       case 'ytd': // Year to Date
-        return {
-          startDate: new Date(now.getFullYear(), 0, 1),
-          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
-        };
+        {
+          const ytdStart = new Date(now.getFullYear(), 0, 1);
+          ytdStart.setHours(0, 0, 0, 0);
+          const ytdEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
+          
+          // If we have submissions, check if any videos exist before YTD start
+          // If not, use earliest video date as start to avoid empty chart
+          if (submissions && submissions.length > 0) {
+            const dates = submissions
+              .map(v => {
+                const uploadDate = v.uploadDate || v.dateSubmitted || v.timestamp;
+                return uploadDate ? new Date(uploadDate).getTime() : null;
+              })
+              .filter((d): d is number => d !== null);
+            
+            if (dates.length > 0) {
+              const earliestTime = Math.min(...dates);
+              const earliestDate = new Date(earliestTime);
+              earliestDate.setHours(0, 0, 0, 0);
+              
+              // If earliest video is after YTD start, use earliest video date
+              // This prevents showing empty months at the beginning of the year
+              const actualStart = earliestDate > ytdStart ? earliestDate : ytdStart;
+              
+              console.log(`📊 [YTD] Date range from ${actualStart.toLocaleDateString()} to ${ytdEnd.toLocaleDateString()}`);
+              
+              return {
+                startDate: actualStart,
+                endDate: ytdEnd
+              };
+            }
+          }
+          
+          return {
+            startDate: ytdStart,
+            endDate: ytdEnd
+          };
+        }
         
       case 'custom':
         if (customRange) {
@@ -94,24 +128,40 @@ class DateFilterService {
       default:
         // For 'all' time: find the earliest video upload date
         if (submissions && submissions.length > 0) {
-          const dates = submissions.map(v => {
-            const uploadDate = v.uploadDate || v.dateSubmitted || v.timestamp;
-            return new Date(uploadDate).getTime();
-          });
-          const earliestTime = Math.min(...dates);
-          const startDate = new Date(earliestTime);
-          startDate.setHours(0, 0, 0, 0);
-          const endDate = new Date();
-          endDate.setHours(23, 59, 59, 999);
-          return {
-            startDate,
-            endDate
-          };
+          const dates = submissions
+            .map(v => {
+              const uploadDate = v.uploadDate || v.dateSubmitted || v.timestamp;
+              return uploadDate ? new Date(uploadDate).getTime() : null;
+            })
+            .filter((d): d is number => d !== null);
+          
+          if (dates.length > 0) {
+            const earliestTime = Math.min(...dates);
+            const startDate = new Date(earliestTime);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date();
+            endDate.setHours(23, 59, 59, 999);
+            
+            console.log(`📊 [ALL TIME] Date range from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()} based on ${submissions.length} videos`);
+            
+            return {
+              startDate,
+              endDate
+            };
+          }
         }
-        // Fallback if no submissions provided
+        // Fallback if no submissions provided - use last year as a reasonable default
+        const fallbackEnd = new Date();
+        fallbackEnd.setHours(23, 59, 59, 999);
+        const fallbackStart = new Date(fallbackEnd);
+        fallbackStart.setFullYear(fallbackEnd.getFullYear() - 1);
+        fallbackStart.setHours(0, 0, 0, 0);
+        
+        console.warn(`⚠️ [ALL TIME] No submissions provided, using fallback: ${fallbackStart.toLocaleDateString()} to ${fallbackEnd.toLocaleDateString()}`);
+        
         return {
-          startDate: new Date(2020, 0, 1), // Far past date
-          endDate: new Date(2030, 11, 31)  // Far future date
+          startDate: fallbackStart,
+          endDate: fallbackEnd
         };
     }
   }

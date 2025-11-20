@@ -113,6 +113,8 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       endDate = new Date(Math.max(...dates));
     }
     
+    console.log(`📊 [ComparisonGraph] Generating chart for ${submissions.length} videos from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()} with ${granularity} granularity`);
+    
     // Use granularity as interval type
     const intervalType = granularity as IntervalType;
     
@@ -121,6 +123,8 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       { startDate, endDate },
       intervalType
     );
+    
+    console.log(`📊 [ComparisonGraph] Generated ${intervals.length} intervals`);
     
     // Aggregate data for each interval
     const data = intervals.map(interval => {
@@ -149,6 +153,23 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       };
     });
     
+    // For large date ranges (like "all time" or "ytd"), trim leading and trailing empty intervals
+    // but keep empty intervals in between to show gaps in data
+    if (data.length > 12) { // Only trim if we have more than 12 intervals (e.g., 12+ months)
+      // Find first non-zero interval
+      let firstDataIndex = data.findIndex(d => d.metric1 > 0 || d.metric2 > 0);
+      // Find last non-zero interval
+      let lastDataIndex = data.length - 1 - [...data].reverse().findIndex(d => d.metric1 > 0 || d.metric2 > 0);
+      
+      if (firstDataIndex !== -1 && lastDataIndex !== -1) {
+        // Trim leading and trailing empty intervals
+        const trimmedData = data.slice(firstDataIndex, lastDataIndex + 1);
+        console.log(`📊 [ComparisonGraph] Trimmed ${data.length - trimmedData.length} empty intervals (${firstDataIndex} leading, ${data.length - lastDataIndex - 1} trailing)`);
+        return trimmedData;
+      }
+    }
+    
+    console.log(`📊 [ComparisonGraph] Returning ${data.length} data points`);
     return data;
   }, [submissions, metric1, metric2, granularity, dateRange]);
 
