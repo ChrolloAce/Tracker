@@ -683,16 +683,21 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       top: `${actionsMenuRef.current.getBoundingClientRect().bottom + 8}px`,
                       left: `${actionsMenuRef.current.getBoundingClientRect().right - 192}px`
                     }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <button
-                      onClick={handleCopyLinks}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyLinks();
+                      }}
                       className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
                     >
                       <LinkIcon className="w-4 h-4" />
                       <span>Copy Links</span>
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setShowExportModal(true);
                         setShowActionsMenu(false);
                       }}
@@ -703,7 +708,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     </button>
                     {onDelete && (
                       <button
-                        onClick={handleBulkDelete}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleBulkDelete();
+                        }}
                         className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
                       >
                         <Trash2 className="w-4 h-4" />
