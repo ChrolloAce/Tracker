@@ -45,9 +45,9 @@ export const KPICardEditorSidebar: React.FC<KPICardEditorSidebarProps> = ({
   renderSectionPreview,
   kpiPreviewData = {}
 }) => {
-  // Collapsible section state
+  // Collapsible section state - all collapsed by default
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['kpi', 'sections', 'top-performers'])
+    new Set()
   );
 
   const toggleSection = (sectionId: string) => {
@@ -311,16 +311,10 @@ export const KPICardEditorSidebar: React.FC<KPICardEditorSidebarProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between flex-shrink-0">
+        <div className="px-6 py-4 border-t border-white/10 flex items-center justify-center flex-shrink-0">
           <div className="text-xs text-white/40">
-            Changes saved automatically
+            ✓ Changes saved automatically
           </div>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Done
-          </button>
         </div>
       </div>
 
