@@ -23,6 +23,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
   onDelete?: (id: string) => void;
+  onBulkDelete?: (ids: string[]) => Promise<void>;
   onVideoClick?: (video: VideoSubmission) => void;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
   trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
@@ -155,6 +156,7 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
 export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({ 
   submissions, 
   onDelete,
+  onBulkDelete,
   onVideoClick,
   headerTitle,
   trendPeriodDays = 7
@@ -352,13 +354,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const handleBulkDelete = () => {
     console.log('🔴🔴🔴 [BULK DELETE] Button clicked!');
     console.log('  onDelete exists:', !!onDelete);
+    console.log('  onBulkDelete exists:', !!onBulkDelete);
     console.log('  Selected videos count:', selectedVideos.size);
     console.log('  Filtered videos count:', filteredAndSortedSubmissions.length);
     console.log('  Current showDeleteConfirm:', showDeleteConfirm);
     console.log('  Current showActionsMenu:', showActionsMenu);
     
-    if (!onDelete) {
-      console.error('❌ onDelete function not provided');
+    if (!onDelete && !onBulkDelete) {
+      console.error('❌ No delete function provided');
       setShowToast({ message: 'Delete function not available. Please refresh the page.', type: 'error' });
       return;
     }
@@ -392,9 +395,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     }, 10);
   };
 
-  const confirmBulkDelete = () => {
+  const confirmBulkDelete = async () => {
     const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
-    const count = selectedSubmissions.length;
+    const videoIds = selectedSubmissions.map(v => v.id);
+    const count = videoIds.length;
     
     console.log(`🗑️ [BULK DELETE] Starting deletion of ${count} videos`);
     
@@ -402,18 +406,28 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     setShowDeleteConfirm(false);
     setSelectedVideos(new Set());
     
-    // Delete each video
-    selectedSubmissions.forEach((video, index) => {
-      console.log(`  Deleting ${index + 1}/${count}: ${video.title || video.caption}`);
-      try {
-        onDelete!(video.id);
-      } catch (error) {
-        console.error(`  ❌ Failed to delete video ${video.id}:`, error);
-      }
-    });
+    // Show loading toast
+    setShowToast({ message: `Deleting ${count} video${count !== 1 ? 's' : ''}...`, type: 'info' });
     
-    setShowToast({ message: `Deleting ${count} video${count !== 1 ? 's' : ''}...`, type: 'success' });
-    console.log(`✅ [BULK DELETE] Initiated deletion of ${count} videos`);
+    try {
+      if (onBulkDelete) {
+        // Use the bulk delete handler if provided
+        await onBulkDelete(videoIds);
+        console.log(`✅ [BULK DELETE] Successfully deleted ${count} videos`);
+        setShowToast({ message: `Successfully deleted ${count} video${count !== 1 ? 's' : ''}`, type: 'success' });
+      } else if (onDelete) {
+        // Fallback: Use single delete handler for each video
+        console.log('⚠️ [BULK DELETE] No bulk delete handler provided, using single delete for each video');
+        for (let i = 0; i < videoIds.length; i++) {
+          console.log(`  Deleting ${i + 1}/${count}: ${selectedSubmissions[i].title || selectedSubmissions[i].caption}`);
+          onDelete(videoIds[i]);
+        }
+        setShowToast({ message: `Deleted ${count} video${count !== 1 ? 's' : ''}`, type: 'success' });
+      }
+    } catch (error) {
+      console.error('❌ [BULK DELETE] Failed:', error);
+      setShowToast({ message: `Failed to delete videos. Please try again.`, type: 'error' });
+    }
   };
 
   const handleExport = (filename: string) => {

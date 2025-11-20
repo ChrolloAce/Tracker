@@ -1800,6 +1800,38 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [user, currentOrgId, currentProjectId, videoToDelete]);
 
+  const handleBulkDelete = useCallback(async (videoIds: string[]) => {
+    if (!user || !currentOrgId || !currentProjectId) return;
+    
+    const count = videoIds.length;
+    console.log(`🗑️ [BULK DELETE] Starting deletion of ${count} videos`);
+    
+    // Delete all videos in parallel
+    const deletePromises = videoIds.map(async (videoId) => {
+      try {
+        await FirestoreDataService.deleteVideo(currentOrgId, currentProjectId, videoId);
+        console.log(`✅ Deleted video: ${videoId}`);
+      } catch (error) {
+        console.error(`❌ Failed to delete video ${videoId}:`, error);
+        throw error; // Re-throw to handle in the bulk operation
+      }
+    });
+    
+    try {
+      await Promise.all(deletePromises);
+      
+      // Update state to remove all deleted videos
+      setSubmissions(prev => prev.filter(submission => !videoIds.includes(submission.id)));
+      
+      console.log(`✅ [BULK DELETE] Successfully deleted ${count} videos`);
+    } catch (error) {
+      console.error('❌ [BULK DELETE] Some videos failed to delete:', error);
+      // Still update state to remove successfully deleted videos
+      setSubmissions(prev => prev.filter(submission => !videoIds.includes(submission.id)));
+      throw error; // Re-throw to show error to user
+    }
+  }, [user, currentOrgId, currentProjectId]);
+
   const handleTikTokVideosFound = useCallback((videos: InstagramVideoData[]) => {
     
     const newSubmissions: VideoSubmission[] = videos.map((video, index) => ({
@@ -3104,6 +3136,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           <VideoSubmissionsTable
                             submissions={combinedSubmissions}
                             onDelete={handleDelete}
+                            onBulkDelete={handleBulkDelete}
                             onVideoClick={handleVideoClick}
                             headerTitle={getVideoTableHeader(dateFilter)}
                             trendPeriodDays={getTrendPeriodDays(dateFilter)}
@@ -3216,6 +3249,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
                 <VideoSubmissionsTable 
                   submissions={filteredSubmissions}
+                  onBulkDelete={handleBulkDelete}
                   onVideoClick={handleVideoClick}
                   headerTitle="All Videos"
                   trendPeriodDays={getTrendPeriodDays(dateFilter)}
@@ -3313,6 +3347,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               <VideoSubmissionsTable
                 submissions={combinedSubmissions}
                 onDelete={handleDelete}
+                onBulkDelete={handleBulkDelete}
                 onVideoClick={handleVideoClick}
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
@@ -3648,6 +3683,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 <VideoSubmissionsTable
                   submissions={combinedSubmissions.slice(0, 5)}
                   onDelete={() => {}}
+                  onBulkDelete={async () => {}}
                   onVideoClick={handleVideoClick}
                   headerTitle={getVideoTableHeader(dateFilter)}
                   trendPeriodDays={getTrendPeriodDays(dateFilter)}
