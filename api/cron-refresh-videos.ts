@@ -1219,21 +1219,33 @@ async function refreshInstagramVideosSequential(
       // Update video metrics
       await videoDoc.ref.update(metrics);
 
-      // Create refresh snapshot
-      const snapshotRef = videoDoc.ref.collection('snapshots').doc();
-      await snapshotRef.set({
-        id: snapshotRef.id,
-        videoId: videoCode,
-        views: metrics.views,
-        likes: metrics.likes,
-        comments: metrics.comments,
-        shares: metrics.shares,
-        saves: metrics.saves,
-        capturedAt: now,
-        timestamp: now,
-        capturedBy: 'scheduled_refresh',
-        isInitialSnapshot: false
-      });
+      // Check if a snapshot was created recently (within last 5 minutes) to prevent duplicates
+      const fiveMinutesAgo = Timestamp.fromMillis(now.toMillis() - (5 * 60 * 1000));
+      const recentSnapshotsQuery = await videoDoc.ref.collection('snapshots')
+        .where('capturedAt', '>=', fiveMinutesAgo)
+        .where('capturedBy', '==', 'scheduled_refresh')
+        .limit(1)
+        .get();
+      
+      if (!recentSnapshotsQuery.empty) {
+        console.log(`    ⏭️ [INSTAGRAM] Skipping snapshot for ${videoCode} - recent snapshot exists`);
+      } else {
+        // Create refresh snapshot
+        const snapshotRef = videoDoc.ref.collection('snapshots').doc();
+        await snapshotRef.set({
+          id: snapshotRef.id,
+          videoId: videoCode,
+          views: metrics.views,
+          likes: metrics.likes,
+          comments: metrics.comments,
+          shares: metrics.shares,
+          saves: metrics.saves,
+          capturedAt: now,
+          timestamp: now,
+          capturedBy: 'scheduled_refresh',
+          isInitialSnapshot: false
+        });
+      }
 
       updatedCount++;
       console.log(`    ✓ [INSTAGRAM] Updated ${videoCode}: ${metrics.views} views`);

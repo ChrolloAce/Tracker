@@ -1179,20 +1179,36 @@ export class AccountTrackingServiceFirebase {
       // Get channel ID - use stored ID to avoid wrong channel lookups!
       let channelId = account.youtubeChannelId;
       if (!channelId) {
-        console.log(`⚠️ No stored channel ID, fetching from YouTube API...`);
+        console.log(`⚠️ No stored channel ID, fetching from YouTube API for: ${account.username}`);
         const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
         if (!profile.channelId) {
           throw new Error('Could not resolve YouTube channel ID');
         }
+        
+        // CRITICAL: Verify the fetched channel matches the expected username
+        // YouTube search is fuzzy, so "LiamOttley" might incorrectly match "Kurzgesagt"!
+        const normalizedUsername = account.username.toLowerCase().replace('@', '');
+        const normalizedChannelName = profile.displayName.toLowerCase().replace('@', '');
+        
+        // Check if the username appears in the channel name or vice versa
+        const isMatch = normalizedChannelName.includes(normalizedUsername) || 
+                       normalizedUsername.includes(normalizedChannelName.split(' ')[0]) ||
+                       normalizedUsername.split(/[_\-]/)[0].includes(normalizedChannelName.split(' ')[0]);
+        
+        if (!isMatch) {
+          console.warn(`⚠️ WARNING: Fetched channel "${profile.displayName}" doesn't match username "${account.username}"`);
+          console.warn(`⚠️ Possible fuzzy search mismatch - using channel ID but please verify manually!`);
+        }
+        
         channelId = profile.channelId;
         
         // Save it for future syncs
         await FirestoreDataService.updateTrackedAccount(orgId, projectId, account.id, {
           youtubeChannelId: channelId
         });
-        console.log(`✅ Saved YouTube channel ID: ${channelId}`);
+        console.log(`✅ Saved YouTube channel ID: ${channelId} for @${account.username}`);
       } else {
-        console.log(`✅ Using stored YouTube channel ID: ${channelId}`);
+        console.log(`✅ Using stored YouTube channel ID: ${channelId} for @${account.username}`);
       }
 
       // CALL 1: Batch refresh existing videos (if any)
