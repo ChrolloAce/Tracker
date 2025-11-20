@@ -1327,7 +1327,27 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     const count = selected.length;
     const totalVideos = selected.reduce((sum, acc) => sum + (acc.totalVideos || 0), 0);
     
-    if (window.confirm(`Are you sure you want to delete ${count} account${count !== 1 ? 's' : ''} and all their ${totalVideos} videos? This action cannot be undone.`)) {
+    // Single confirmation popup with details
+    const confirmed = window.confirm(
+      `⚠️ DELETE ${count} ACCOUNT${count !== 1 ? 'S' : ''}?\n\n` +
+      `This will permanently delete:\n` +
+      `• ${count} account${count !== 1 ? 's' : ''}\n` +
+      `• ${totalVideos} video${totalVideos !== 1 ? 's' : ''}\n` +
+      `• All associated snapshots and data\n\n` +
+      `This action CANNOT be undone!\n\n` +
+      `Type 'DELETE' in the next prompt to confirm.`
+    );
+    
+    if (!confirmed) return;
+    
+    // Second confirmation - require typing DELETE
+    const confirmText = prompt('Type DELETE to confirm:');
+    if (confirmText !== 'DELETE') {
+      alert('Deletion cancelled - confirmation text did not match.');
+      return;
+    }
+    
+    {
       const selectedIds = new Set(selected.map(a => a.id));
       
       console.log(`🗑️ [BULK DELETE] Starting deletion for ${count} accounts`);

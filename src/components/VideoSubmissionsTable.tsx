@@ -346,11 +346,38 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
     const count = selectedSubmissions.length;
     
-    if (window.confirm(`Are you sure you want to delete ${count} video${count !== 1 ? 's' : ''}? This action cannot be undone.`)) {
-      selectedSubmissions.forEach(video => onDelete(video.id));
-      setSelectedVideos(new Set());
-      setShowActionsMenu(false);
+    // Single confirmation popup
+    const confirmed = window.confirm(
+      `⚠️ DELETE ${count} VIDEO${count !== 1 ? 'S' : ''}?\n\n` +
+      `This will permanently delete:\n` +
+      `• ${count} video${count !== 1 ? 's' : ''}\n` +
+      `• All associated snapshots and data\n\n` +
+      `This action CANNOT be undone!\n\n` +
+      `Type 'DELETE' in the next prompt to confirm.`
+    );
+    
+    if (!confirmed) return;
+    
+    // Second confirmation - require typing DELETE
+    const confirmText = prompt('Type DELETE to confirm:');
+    if (confirmText !== 'DELETE') {
+      alert('Deletion cancelled - confirmation text did not match.');
+      return;
     }
+    
+    console.log(`🗑️ [BULK DELETE] Starting deletion of ${count} videos`);
+    
+    // Close the actions menu and clear selection immediately
+    setShowActionsMenu(false);
+    setSelectedVideos(new Set());
+    
+    // Delete each video
+    selectedSubmissions.forEach((video, index) => {
+      console.log(`  Deleting ${index + 1}/${count}: ${video.title || video.caption}`);
+      onDelete(video.id);
+    });
+    
+    console.log(`✅ [BULK DELETE] Initiated deletion of ${count} videos`);
   };
 
   const handleExport = (filename: string) => {
