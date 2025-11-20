@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3, Download } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3, Download, Link as LinkIcon } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -173,6 +173,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -204,25 +206,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   useEffect(() => {
     localStorage.setItem('videoSubmissions_itemsPerPage', String(itemsPerPage));
   }, [itemsPerPage]);
-
-  // Selection handlers
-  const handleSelectAll = () => {
-    if (selectedVideos.size === paginatedSubmissions.length) {
-      setSelectedVideos(new Set());
-    } else {
-      setSelectedVideos(new Set(paginatedSubmissions.map(v => v.id)));
-    }
-  };
-
-  const handleSelectVideo = (videoId: string) => {
-    const newSelected = new Set(selectedVideos);
-    if (newSelected.has(videoId)) {
-      newSelected.delete(videoId);
-    } else {
-      newSelected.add(videoId);
-    }
-    setSelectedVideos(newSelected);
-  };
 
   // Calculate outlier statistics per account
   const accountStats = useMemo(() => {
@@ -328,13 +311,68 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const endIndex = startIndex + itemsPerPage;
   const paginatedSubmissions = filteredAndSortedSubmissions.slice(startIndex, endIndex);
 
-  // Export handler (defined after filteredAndSortedSubmissions)
+  // Selection and action handlers (defined after filteredAndSortedSubmissions)
+  const handleSelectAll = () => {
+    // Select ALL videos in filtered list, not just current page
+    if (selectedVideos.size === filteredAndSortedSubmissions.length) {
+      setSelectedVideos(new Set());
+    } else {
+      setSelectedVideos(new Set(filteredAndSortedSubmissions.map((v: VideoSubmission) => v.id)));
+    }
+  };
+
+  const handleSelectVideo = (videoId: string) => {
+    const newSelected = new Set(selectedVideos);
+    if (newSelected.has(videoId)) {
+      newSelected.delete(videoId);
+    } else {
+      newSelected.add(videoId);
+    }
+    setSelectedVideos(newSelected);
+  };
+
+  const handleCopyLinks = () => {
+    const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+    const links = selectedSubmissions.map(v => v.url).join('\n');
+    navigator.clipboard.writeText(links);
+    setShowActionsMenu(false);
+    // Show a toast or notification (optional)
+    console.log(`✅ Copied ${selectedSubmissions.length} video links to clipboard`);
+  };
+
+  const handleBulkDelete = () => {
+    if (!onDelete) return;
+    
+    const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+    const count = selectedSubmissions.length;
+    
+    if (window.confirm(`Are you sure you want to delete ${count} video${count !== 1 ? 's' : ''}? This action cannot be undone.`)) {
+      selectedSubmissions.forEach(video => onDelete(video.id));
+      setSelectedVideos(new Set());
+      setShowActionsMenu(false);
+    }
+  };
+
   const handleExport = (filename: string) => {
     const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
     exportVideosToCSV(selectedSubmissions, filename);
     setShowExportModal(false);
     setSelectedVideos(new Set()); // Clear selection after export
   };
+
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    };
+
+    if (showActionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showActionsMenu]);
 
   // Reset to page 1 when submissions change
   useEffect(() => {
@@ -552,22 +590,57 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{headerTitle || 'Recent Activity'}</h2>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-            {/* Download Button */}
-            <button
-              onClick={() => setShowExportModal(true)}
-              disabled={selectedVideos.size === 0}
-              className={clsx(
-                "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
-                selectedVideos.size > 0
-                  ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
-                  : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
+            {/* Actions Dropdown */}
+            <div className="relative" ref={actionsMenuRef}>
+              <button
+                onClick={() => setShowActionsMenu(!showActionsMenu)}
+                disabled={selectedVideos.size === 0}
+                className={clsx(
+                  "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
+                  selectedVideos.size > 0
+                    ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
+                    : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
+                )}
+              >
+                <MoreVertical className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {selectedVideos.size > 0 ? `Actions (${selectedVideos.size})` : 'Actions'}
+                </span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+
+              {/* Actions Dropdown Menu */}
+              {showActionsMenu && selectedVideos.size > 0 && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-50 overflow-hidden">
+                  <button
+                    onClick={handleCopyLinks}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                    <span>Copy Links</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExportModal(true);
+                      setShowActionsMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export to CSV</span>
+                  </button>
+                  {onDelete && (
+                    <button
+                      onClick={handleBulkDelete}
+                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete Selected</span>
+                    </button>
+                  )}
+                </div>
               )}
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {selectedVideos.size > 0 ? `Export (${selectedVideos.size})` : 'Export'}
-              </span>
-            </button>
+            </div>
 
             {/* Column Visibility Toggle */}
             <div className="relative">
@@ -633,12 +706,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             <tr className="border-b border-white/5">
               {/* Select All Checkbox */}
               <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-[#121214]">
-                <input
-                  type="checkbox"
-                  checked={paginatedSubmissions.length > 0 && selectedVideos.size === paginatedSubmissions.length}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20"
-                />
+                <div className="flex items-center justify-center" title={`Select all ${filteredAndSortedSubmissions.length} videos`}>
+                  <input
+                    type="checkbox"
+                    checked={filteredAndSortedSubmissions.length > 0 && selectedVideos.size === filteredAndSortedSubmissions.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 cursor-pointer"
+                  />
+                </div>
               </th>
               {visibleColumns.video && (
                 <ColumnHeader 
