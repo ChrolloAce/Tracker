@@ -1187,8 +1187,7 @@ export class AccountTrackingServiceFirebase {
         channelId = profile.channelId;
         
         // Save it for future syncs
-        const db = getFirestore();
-        await db.collection(`organizations/${orgId}/projects/${projectId}/trackedAccounts`).doc(account.id).update({
+        await FirestoreDataService.updateTrackedAccount(orgId, projectId, account.id, {
           youtubeChannelId: channelId
         });
         console.log(`✅ Saved YouTube channel ID: ${channelId}`);
