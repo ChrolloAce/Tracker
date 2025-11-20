@@ -614,9 +614,8 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * NEW: Incremental Instagram sync - Fetches videos and separates new vs existing
-   * Uses batches of 2 videos, stops when it hits a known video
-   * For new accounts (no existing videos), fetches larger batches to get initial history
+   * NEW: Incremental Instagram sync - Simplified single-fetch approach (like TikTok)
+   * Fetches a fixed number of videos based on whether it's a new account or incremental
    * Returns BOTH new videos (to add) AND updated videos (to refresh metrics)
    */
   private static async syncInstagramVideosIncremental(
@@ -626,177 +625,137 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
-    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} sync for @${account.username}...`);
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} Instagram sync for @${account.username}...`);
     
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
-    // For new accounts, fetch more videos per batch to get their full history faster
-    const BATCH_SIZE = isNewAccount ? 20 : 2;
-    let currentBatch = 0;
-    let consecutiveExistingVideos = 0;
-    // For new accounts, allow more batches to get full history (up to 100 videos)
-    const MAX_BATCHES = isNewAccount ? 5 : 25; // New: 5 * 20 = 100 videos, Incremental: 25 * 2 = 50 videos
-    const STOP_AFTER_EXISTING = 3; // Stop after hitting 3 existing videos in a row (means we got all new ones)
     
-    while (consecutiveExistingVideos < STOP_AFTER_EXISTING && currentBatch < MAX_BATCHES) {
-      currentBatch++;
-      const maxReels = BATCH_SIZE * currentBatch;
-      
-      console.log(`📦 Batch ${currentBatch}: Fetching up to ${maxReels} videos...`);
-      
-      try {
-        // Fetch videos from platform
-        const proxyUrl = `${window.location.origin}/api/apify-proxy`;
-        const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
-        
-        const response = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            actorId: 'scraper-engine~instagram-reels-scraper',
-            input: {
-              urls: [`https://www.instagram.com/${account.username}/`],
-              sortOrder: "newest",
-              maxComments: 10,
-              maxReels: maxReels, // Incrementally increase
-              ...(sessionId && {
-                sessionCookie: sessionId,
-                additionalCookies: [{
-                  name: 'sessionid',
-                  value: sessionId,
-                  domain: '.instagram.com'
-                }]
-              }),
-              proxyConfiguration: {
-                useApifyProxy: true,
-                apifyProxyGroups: ['RESIDENTIAL'],
-                apifyProxyCountry: 'US'
-              },
-              maxRequestRetries: 5,
-              requestHandlerTimeoutSecs: 300,
-              maxConcurrency: 1
-            },
-            action: 'run'
+    // Fetch Instagram videos (up to 30 for new accounts, 10 for incremental) - similar to TikTok
+    const maxReels = isNewAccount ? 30 : 10;
+    
+    console.log(`🔄 Fetching up to ${maxReels} Instagram videos for @${account.username}...`);
+    
+    const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+    const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
+    
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        actorId: 'scraper-engine~instagram-reels-scraper',
+        input: {
+          urls: [`https://www.instagram.com/${account.username}/`],
+          sortOrder: "newest",
+          maxComments: 10,
+          maxReels: maxReels,
+          ...(sessionId && {
+            sessionCookie: sessionId,
+            additionalCookies: [{
+              name: 'sessionid',
+              value: sessionId,
+              domain: '.instagram.com'
+            }]
           }),
-        });
+          proxyConfiguration: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL'],
+            apifyProxyCountry: 'US'
+          },
+          maxRequestRetries: 5,
+          requestHandlerTimeoutSecs: 300,
+          maxConcurrency: 1
+        },
+        action: 'run'
+      }),
+    });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
 
-        const result = await response.json();
-        const items = result.items || [];
-        
-        console.log(`📊 Batch ${currentBatch} returned ${items.length} items`);
-        
-        if (items.length === 0) {
-          console.log(`✅ No more videos available, stopping`);
-          break;
+    const result = await response.json();
+    
+    if (!result.items || !Array.isArray(result.items)) {
+      return { newVideos: [], updatedVideos: [] };
+    }
+
+    console.log(`📦 Instagram API returned ${result.items.length} items`);
+    
+    // Process videos in order (newest first)
+    for (const item of result.items) {
+      const media = item.reel_data?.media || item.media || item;
+      const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
+      
+      if (!isVideo) continue;
+      
+      const videoCode = media.code || media.shortCode || media.id;
+      if (!videoCode) continue;
+      
+      // CHECK: Is this a NEW video or an EXISTING one?
+      const isExisting = existingVideoIds.has(videoCode);
+      
+      // Extract thumbnail URL from media
+      const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
+                           media.display_uri || 
+                           media.displayUrl || '';
+      
+      // ONLY upload thumbnail to Firebase Storage for NEW videos
+      let uploadedThumbnail = thumbnailUrl;
+      if (!isExisting && thumbnailUrl) {
+        try {
+          console.log(`📸 Uploading thumbnail to Firebase Storage for NEW video: ${videoCode}`);
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            thumbnailUrl,
+            `ig_${videoCode}`,
+            'thumbnail'
+          );
+        } catch (error) {
+          console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}, using CDN URL`);
+          uploadedThumbnail = thumbnailUrl;
         }
-        
-        // Process videos in this batch
-        for (const item of items) {
-          const media = item.reel_data?.media || item.media || item;
-          const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
-          
-          if (!isVideo) continue;
-          
-          const videoCode = media.code || media.shortCode || media.id;
-          if (!videoCode) continue;
-          
-          // CHECK: Is this a NEW video or an EXISTING one?
-          const isExistingVideo = existingVideoIds.has(videoCode);
-          
-          // Extract thumbnail URL from media
-          const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
-                               media.display_uri || 
-                               media.displayUrl || '';
-          
-          // ONLY upload thumbnail to Firebase Storage for NEW videos
-          // For existing videos, we keep their existing thumbnail
-          let uploadedThumbnail = thumbnailUrl;
-          if (!isExistingVideo && thumbnailUrl) {
-            try {
-              console.log(`📸 Uploading thumbnail to Firebase Storage for NEW video: ${videoCode}`);
-              uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-                orgId,
-                thumbnailUrl,
-                `ig_${videoCode}`,
-                'thumbnail'
-              );
-            } catch (error) {
-              console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}, using CDN URL`);
-              uploadedThumbnail = thumbnailUrl;
-            }
-          } else if (isExistingVideo) {
-            console.log(`✅ Keeping existing thumbnail for video: ${videoCode}`);
-            // For existing videos, we don't include thumbnail in the update
-            // (it will be preserved from the existing document)
-            uploadedThumbnail = ''; // Don't overwrite existing thumbnail
-          }
-          
-          const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
-          const uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
-          const views = media.play_count || media.ig_play_count || 0;
-          const likes = media.like_count || 0;
-          const comments = media.comment_count || 0;
-          const duration = media.video_duration || 0;
-          
-          const videoData: AccountVideo = {
-            id: `${account.id}_${videoCode}`,
-            accountId: account.id,
-            videoId: videoCode,
-            url: `https://www.instagram.com/reel/${videoCode}/`,
-            thumbnail: uploadedThumbnail,
-            caption: caption,
-            uploadDate: uploadDate,
-            views: views,
-            likes: likes,
-            comments: comments,
-            shares: 0,
-            duration: duration,
-            isSponsored: false,
-            hashtags: [],
-            mentions: []
-          };
-          
-          if (isExistingVideo) {
-            // EXISTING VIDEO - Add to update list with fresh metrics
-            updatedVideos.push(videoData);
-            consecutiveExistingVideos++;
-            console.log(`🔄 Existing video: ${videoCode} (will update metrics, ${consecutiveExistingVideos} consecutive)`);
-            
-            // If we hit too many existing videos in a row, we've found all new ones
-            if (consecutiveExistingVideos >= STOP_AFTER_EXISTING) {
-              console.log(`✅ Hit ${STOP_AFTER_EXISTING} existing videos in a row - all new videos found`);
-              break;
-            }
-          } else {
-            // NEW VIDEO - Add to new list
-            newVideos.push(videoData);
-            consecutiveExistingVideos = 0; // Reset counter
-            console.log(`➕ NEW video found: ${videoCode} (${newVideos.length} total new)`);
-          }
-        }
-        
-        // If we got fewer items than maxReels, we've reached the end
-        if (items.length < maxReels) {
-          console.log(`✅ Reached end of account videos (got ${items.length} < ${maxReels})`);
-          break;
-        }
-        
-        // If we hit our stopping condition, break
-        if (consecutiveExistingVideos >= STOP_AFTER_EXISTING) {
-          break;
-        }
-        
-      } catch (error) {
-        console.error(`❌ Error in batch ${currentBatch}:`, error);
-        break;
+      } else if (isExisting) {
+        console.log(`✅ Keeping existing thumbnail for video: ${videoCode}`);
+        uploadedThumbnail = ''; // Don't overwrite existing thumbnail
+      }
+      
+      const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
+      const uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
+      const views = media.play_count || media.ig_play_count || 0;
+      const likes = media.like_count || 0;
+      const comments = media.comment_count || 0;
+      const duration = media.video_duration || 0;
+      
+      const videoData: AccountVideo = {
+        id: `${account.id}_${videoCode}`,
+        accountId: account.id,
+        videoId: videoCode,
+        url: `https://www.instagram.com/reel/${videoCode}/`,
+        thumbnail: uploadedThumbnail,
+        caption: caption,
+        uploadDate: uploadDate,
+        views: views,
+        likes: likes,
+        comments: comments,
+        shares: 0,
+        duration: duration,
+        isSponsored: false,
+        hashtags: [],
+        mentions: [],
+        platform: 'instagram'
+      };
+      
+      // Separate into new vs existing
+      if (isExisting) {
+        console.log(`   ♻️  Video ${videoCode} already exists - updating metrics`);
+        updatedVideos.push(videoData);
+      } else {
+        console.log(`   ✨ Video ${videoCode} is NEW - will be added`);
+        newVideos.push(videoData);
       }
     }
     
-    console.log(`🎉 Incremental sync finished: ${newVideos.length} new videos, ${updatedVideos.length} updated videos, ${currentBatch} batches`);
+    console.log(`📊 Instagram sync complete: ${newVideos.length} new videos, ${updatedVideos.length} updated videos`);
     return { newVideos, updatedVideos };
   }
 
