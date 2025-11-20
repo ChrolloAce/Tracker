@@ -163,6 +163,7 @@ export interface TrackedAccount {
   displayName?: string;
   profilePicture?: string;
   accountType: AccountType; // 'my' | 'competitor'
+  youtubeChannelId?: string; // Store YouTube channel ID to avoid wrong channel lookups
   
   // Stats
   followerCount?: number;

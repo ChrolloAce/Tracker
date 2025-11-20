@@ -142,6 +142,12 @@ export class AccountTrackingServiceFirebase {
         accountData.profilePicture = profileData.profilePicture;
       }
       
+      // Add YouTube channel ID if available (CRITICAL for avoiding wrong channel lookups)
+      if (platform === 'youtube' && 'channelId' in profileData && profileData.channelId) {
+        accountData.youtubeChannelId = profileData.channelId;
+        console.log(`✅ Storing YouTube channel ID: ${profileData.channelId}`);
+      }
+      
       const accountId = await FirestoreDataService.addTrackedAccount(orgId, projectId, userId, accountData);
 
       console.log(`✅ Added ${accountType} account @${username}`);
@@ -1170,10 +1176,24 @@ export class AccountTrackingServiceFirebase {
       const newVideos: AccountVideo[] = [];
       const updatedVideos: AccountVideo[] = [];
 
-      // Get channel ID
-      const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
-      if (!profile.channelId) {
-        throw new Error('Could not resolve YouTube channel ID');
+      // Get channel ID - use stored ID to avoid wrong channel lookups!
+      let channelId = account.youtubeChannelId;
+      if (!channelId) {
+        console.log(`⚠️ No stored channel ID, fetching from YouTube API...`);
+        const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
+        if (!profile.channelId) {
+          throw new Error('Could not resolve YouTube channel ID');
+        }
+        channelId = profile.channelId;
+        
+        // Save it for future syncs
+        const db = getFirestore();
+        await db.collection(`organizations/${orgId}/projects/${projectId}/trackedAccounts`).doc(account.id).update({
+          youtubeChannelId: channelId
+        });
+        console.log(`✅ Saved YouTube channel ID: ${channelId}`);
+      } else {
+        console.log(`✅ Using stored YouTube channel ID: ${channelId}`);
       }
 
       // CALL 1: Batch refresh existing videos (if any)
@@ -1186,7 +1206,7 @@ export class AccountTrackingServiceFirebase {
 
       // CALL 2: Discover new videos only
       console.log(`🔍 [CALL 2] Discovering new YouTube Shorts (max 10)...`);
-      const discovered = await this.discoverNewYouTubeVideos(orgId, profile.channelId, account, existingVideoIds);
+      const discovered = await this.discoverNewYouTubeVideos(orgId, channelId, account, existingVideoIds);
       newVideos.push(...discovered);
       console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
 
@@ -1273,19 +1293,22 @@ export class AccountTrackingServiceFirebase {
     const isNewAccount = existingVideoIds.size === 0;
     const maxResults = isNewAccount ? 50 : 10;
 
-    // Fetch latest Shorts from channel
-    const shorts = await YoutubeAccountService.syncChannelShorts(channelId, account.displayName || account.username);
+    // Fetch ONLY the number we need (not 50 then slice!)
+    console.log(`🔍 Fetching latest ${maxResults} YouTube Shorts for channel: ${channelId}`);
+    const shorts = await YoutubeAccountService.syncChannelShorts(channelId, account.displayName || account.username, maxResults);
     
     const newVideos: AccountVideo[] = [];
+    let foundDuplicate = false;
 
-    // Process - ONLY add NEW ones, skip existing
-    for (const short of shorts.slice(0, maxResults)) {
+    // Process - ONLY add NEW ones, stop at first duplicate (like TikTok/Instagram)
+    for (const short of shorts) {
       const videoId = short.videoId || '';
       
-      // SKIP if already exists
+      // SKIP if already exists and STOP discovery
       if (existingVideoIds.has(videoId)) {
-        console.log(`   ⏭️  Skipping existing video: ${videoId}`);
-        continue;
+        console.log(`   ✓ Found existing video: ${videoId} - stopping discovery`);
+        foundDuplicate = true;
+        break;
       }
 
       // This is a NEW video
@@ -1313,6 +1336,7 @@ export class AccountTrackingServiceFirebase {
       console.log(`   ✨ NEW video: ${videoId}`);
     }
 
+    console.log(`📊 Discovery complete: ${newVideos.length} new videos${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
     return newVideos;
   }
 

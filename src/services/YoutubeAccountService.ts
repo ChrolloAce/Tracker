@@ -115,9 +115,9 @@ class YoutubeAccountService {
   /**
    * Sync Shorts videos for a YouTube channel
    */
-  async syncChannelShorts(channelId: string, _channelTitle: string): Promise<AccountVideo[]> {
+  async syncChannelShorts(channelId: string, _channelTitle: string, maxResults: number = 20): Promise<AccountVideo[]> {
     try {
-      console.log(`🔄 Fetching YouTube Shorts for channel: ${channelId}`);
+      console.log(`🔄 Fetching YouTube Shorts for channel: ${channelId} (max: ${maxResults})`);
 
       const res = await fetch(this.endpoint, {
         method: 'POST',
@@ -125,7 +125,7 @@ class YoutubeAccountService {
         body: JSON.stringify({
           action: 'getShorts',
           channelId,
-          maxResults: 50,
+          maxResults: maxResults,
         }),
       });
 

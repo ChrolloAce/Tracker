@@ -5,6 +5,7 @@ export interface TrackedAccount {
   accountType: 'my' | 'competitor'; // New field
   displayName?: string;
   profilePicture?: string;
+  youtubeChannelId?: string; // Store YouTube channel ID to avoid wrong channel lookups
   followerCount?: number;
   followingCount?: number;
   postCount?: number;
