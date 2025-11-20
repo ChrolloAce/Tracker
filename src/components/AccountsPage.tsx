@@ -1321,11 +1321,35 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   }, [processedAccounts, selectedAccounts]);
 
   const handleBulkDeleteAccounts = useCallback(async () => {
-    if (!currentOrgId || !currentProjectId) return;
+    console.log('🗑️ [BULK DELETE ACCOUNTS] Button clicked');
+    console.log('  Current Org ID:', currentOrgId);
+    console.log('  Current Project ID:', currentProjectId);
+    console.log('  Selected accounts count:', selectedAccounts.size);
+    
+    if (!currentOrgId || !currentProjectId) {
+      console.error('❌ Missing org or project ID');
+      alert('Organization or Project not loaded. Please refresh the page.');
+      return;
+    }
+    
+    if (selectedAccounts.size === 0) {
+      console.warn('⚠️ No accounts selected');
+      alert('Please select accounts to delete first.');
+      return;
+    }
     
     const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
     const count = selected.length;
     const totalVideos = selected.reduce((sum, acc) => sum + (acc.totalVideos || 0), 0);
+    
+    console.log('  Accounts to delete:', count);
+    console.log('  Total videos to delete:', totalVideos);
+    
+    if (count === 0) {
+      console.error('❌ No matching accounts found');
+      alert('No accounts found to delete. Please try again.');
+      return;
+    }
     
     // Single confirmation popup with details
     const confirmed = window.confirm(
@@ -1338,17 +1362,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       `Type 'DELETE' in the next prompt to confirm.`
     );
     
-    if (!confirmed) return;
+    if (!confirmed) {
+      console.log('  User cancelled at first confirmation');
+      return;
+    }
     
     // Second confirmation - require typing DELETE
     const confirmText = prompt('Type DELETE to confirm:');
     if (confirmText !== 'DELETE') {
+      console.log('  User cancelled - wrong confirmation text:', confirmText);
       alert('Deletion cancelled - confirmation text did not match.');
       return;
     }
     
-    {
-      const selectedIds = new Set(selected.map(a => a.id));
+    const selectedIds = new Set(selected.map(a => a.id));
       
       console.log(`🗑️ [BULK DELETE] Starting deletion for ${count} accounts`);
       
@@ -1399,7 +1426,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       })();
       
       console.log(`✅ [BULK DELETE] Deletion initiated, UI updated instantly`);
-    }
   }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId, selectedAccount, navigate]);
 
   const handleExportAccounts = useCallback((filename: string) => {

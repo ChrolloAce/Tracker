@@ -341,10 +341,32 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   const handleBulkDelete = () => {
-    if (!onDelete) return;
+    console.log('🗑️ [BULK DELETE] Button clicked');
+    console.log('  onDelete exists:', !!onDelete);
+    console.log('  Selected videos count:', selectedVideos.size);
+    
+    if (!onDelete) {
+      console.error('❌ onDelete function not provided');
+      alert('Delete function not available. Please refresh the page.');
+      return;
+    }
+    
+    if (selectedVideos.size === 0) {
+      console.warn('⚠️ No videos selected');
+      alert('Please select videos to delete first.');
+      return;
+    }
     
     const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
     const count = selectedSubmissions.length;
+    
+    console.log('  Videos to delete:', count);
+    
+    if (count === 0) {
+      console.error('❌ No matching videos found');
+      alert('No videos found to delete. Please try again.');
+      return;
+    }
     
     // Single confirmation popup
     const confirmed = window.confirm(
@@ -356,11 +378,15 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       `Type 'DELETE' in the next prompt to confirm.`
     );
     
-    if (!confirmed) return;
+    if (!confirmed) {
+      console.log('  User cancelled at first confirmation');
+      return;
+    }
     
     // Second confirmation - require typing DELETE
     const confirmText = prompt('Type DELETE to confirm:');
     if (confirmText !== 'DELETE') {
+      console.log('  User cancelled - wrong confirmation text:', confirmText);
       alert('Deletion cancelled - confirmation text did not match.');
       return;
     }
@@ -374,7 +400,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     // Delete each video
     selectedSubmissions.forEach((video, index) => {
       console.log(`  Deleting ${index + 1}/${count}: ${video.title || video.caption}`);
-      onDelete(video.id);
+      try {
+        onDelete(video.id);
+      } catch (error) {
+        console.error(`  ❌ Failed to delete video ${video.id}:`, error);
+      }
     });
     
     console.log(`✅ [BULK DELETE] Initiated deletion of ${count} videos`);
