@@ -831,9 +831,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   useEffect(() => {
     const calculateFilteredStats = async () => {
       if (!currentOrgId || !currentProjectId || accounts.length === 0 || viewMode !== 'table') {
+        console.log('⏭️ Skipping calculateFilteredStats:', {
+          hasOrg: !!currentOrgId,
+          hasProject: !!currentProjectId,
+          accountsLength: accounts.length,
+          viewMode
+        });
         return;
       }
 
+      console.log('📊 Calculating filtered stats for', accounts.length, 'accounts');
+      
       // IMMEDIATELY show table with basic stats (no delay!)
       const accountsWithBasicStats: AccountWithFilteredStats[] = accounts.map(account => ({
         ...account,
@@ -1049,29 +1057,48 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
   // Apply platform filtering and sorting
   const processedAccounts = useMemo(() => {
+    console.log('🔧 Processing accounts:', {
+      totalAccounts: accounts.length,
+      filteredAccountsLength: filteredAccounts.length,
+      accountFilterId,
+      creatorFilterId,
+      platformFilterLength: platformFilter.length,
+      searchQuery
+    });
+    
     let result = filteredAccounts.length > 0 ? filteredAccounts : accounts;
+    console.log('🔧 Starting with result length:', result.length);
     
     // Apply account filter (filter by specific account ID)
     if (accountFilterId) {
+      const before = result.length;
       result = result.filter(account => account.id === accountFilterId);
+      console.log(`🔧 Account filter (${accountFilterId}): ${before} → ${result.length}`, 
+        result[0] ? { username: result[0].username, creatorType: result[0].creatorType } : 'NO MATCH');
     }
     
     // Apply creator filter (filter by creator's linked accounts)
     if (creatorFilterId && creatorLinkedAccountIds.length > 0) {
+      const before = result.length;
       result = result.filter(account => creatorLinkedAccountIds.includes(account.id));
+      console.log(`🔧 Creator filter (${creatorFilterId}): ${before} → ${result.length}`);
     }
     
     // Apply platform filter (multi-select)
     if (platformFilter.length > 0) {
+      const before = result.length;
       result = result.filter(account => platformFilter.includes(account.platform as any));
+      console.log(`🔧 Platform filter: ${before} → ${result.length}`);
     }
     
     // Apply search filter
     if (searchQuery) {
+      const before = result.length;
       result = result.filter(account => 
         account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
+      console.log(`🔧 Search filter: ${before} → ${result.length}`);
     }
     
     // Apply sorting
@@ -1201,17 +1228,44 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
   // Auto-open account details when filtered to a single account
   useEffect(() => {
+    console.log('🔍 Auto-open check:', {
+      accountFilterId,
+      creatorFilterId,
+      processedAccountsLength: processedAccounts.length,
+      accountsLength: accounts.length,
+      selectedAccountId: selectedAccount?.id,
+      firstProcessedAccount: processedAccounts[0] ? {
+        id: processedAccounts[0].id,
+        username: processedAccounts[0].username,
+        creatorType: processedAccounts[0].creatorType
+      } : null
+    });
+    
     // Only auto-open if we have an account filter and exactly one account
     if ((accountFilterId || creatorFilterId) && processedAccounts.length === 1) {
       const account = processedAccounts[0];
       // Only open if not already selected
       if (selectedAccount?.id !== account.id) {
-        console.log('🎯 Auto-opening account details for filtered account:', account.username);
+        console.log('🎯 Auto-opening account details for filtered account:', {
+          username: account.username,
+          id: account.id,
+          creatorType: account.creatorType,
+          totalVideos: account.totalVideos
+        });
         setSelectedAccount(account);
         setViewMode('details');
         // Load videos for this account
         loadAccountVideos(account.id);
+      } else {
+        console.log('⏭️ Account already selected, skipping auto-open');
       }
+    } else if (accountFilterId || creatorFilterId) {
+      console.warn('⚠️ Filter active but condition not met:', {
+        filterActive: !!(accountFilterId || creatorFilterId),
+        processedAccountsLength: processedAccounts.length,
+        reason: processedAccounts.length === 0 ? 'No processed accounts found' : 
+                processedAccounts.length > 1 ? 'Multiple accounts found (expected 1)' : 'Unknown'
+      });
     }
   }, [accountFilterId, creatorFilterId, processedAccounts, selectedAccount, loadAccountVideos]);
 
