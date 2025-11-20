@@ -54,6 +54,8 @@ import { FloatingTooltip } from './ui/FloatingTooltip';
 import { UrlParserService } from '../services/UrlParserService';
 import { ExportVideosModal } from './ExportVideosModal';
 import { exportAccountsToCSV } from '../utils/accountCsvExport';
+import { Toast } from './ui/Toast';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
@@ -308,6 +310,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
   // Pagination state for videos (details view)
   const [currentPage, setCurrentPage] = useState(1);
@@ -1317,11 +1321,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }).join('\n');
     navigator.clipboard.writeText(links);
     setShowActionsMenu(false);
+    setShowToast({ message: `Copied ${selected.length} account link${selected.length !== 1 ? 's' : ''} to clipboard`, type: 'success' });
     console.log(`✅ Copied ${selected.length} account links to clipboard`);
   }, [processedAccounts, selectedAccounts]);
 
   const handleBulkDeleteAccounts = useCallback(async () => {
-    alert('🔴 DELETE ACCOUNTS BUTTON CLICKED! Check console for details.');
     console.log('🗑️ [BULK DELETE ACCOUNTS] Button clicked');
     console.log('  Current Org ID:', currentOrgId);
     console.log('  Current Project ID:', currentProjectId);
@@ -1330,13 +1334,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     
     if (!currentOrgId || !currentProjectId) {
       console.error('❌ Missing org or project ID');
-      alert('Organization or Project not loaded. Please refresh the page.');
+      setShowToast({ message: 'Organization or Project not loaded. Please refresh the page.', type: 'error' });
       return;
     }
     
     if (selectedAccounts.size === 0) {
       console.warn('⚠️ No accounts selected');
-      alert('Please select accounts to delete first.');
+      setShowToast({ message: 'Please select accounts to delete first.', type: 'info' });
       return;
     }
     
@@ -1349,34 +1353,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     
     if (count === 0) {
       console.error('❌ No matching accounts found');
-      alert('No accounts found to delete. Please try again.');
+      setShowToast({ message: 'No accounts found to delete. Please try again.', type: 'error' });
       return;
     }
     
-    // Single confirmation popup with details
-    const confirmed = window.confirm(
-      `⚠️ DELETE ${count} ACCOUNT${count !== 1 ? 'S' : ''}?\n\n` +
-      `This will permanently delete:\n` +
-      `• ${count} account${count !== 1 ? 's' : ''}\n` +
-      `• ${totalVideos} video${totalVideos !== 1 ? 's' : ''}\n` +
-      `• All associated snapshots and data\n\n` +
-      `This action CANNOT be undone!\n\n` +
-      `Type 'DELETE' in the next prompt to confirm.`
-    );
-    
-    if (!confirmed) {
-      console.log('  User cancelled at first confirmation');
-      return;
-    }
-    
-    // Second confirmation - require typing DELETE
-    const confirmText = prompt('Type DELETE to confirm:');
-    if (confirmText !== 'DELETE') {
-      console.log('  User cancelled - wrong confirmation text:', confirmText);
-      alert('Deletion cancelled - confirmation text did not match.');
-      return;
-    }
-    
+    // Show custom confirmation dialog
+    setShowActionsMenu(false);
+    setShowDeleteConfirm(true);
+  }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId]);
+
+  const confirmBulkDeleteAccounts = useCallback(async () => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    const count = selected.length;
     const selectedIds = new Set(selected.map(a => a.id));
       
       console.log(`🗑️ [BULK DELETE] Starting deletion for ${count} accounts`);
@@ -1407,8 +1395,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           await Promise.all(
             selected.map(account =>
               AccountTrackingServiceFirebase.removeAccount(
-                currentOrgId,
-                currentProjectId,
+                currentOrgId!,
+                currentProjectId!,
                 account.id,
                 account.username,
                 account.platform
@@ -1422,13 +1410,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           console.log(`✅ [BACKGROUND] ${count} accounts fully deleted from database`);
         } catch (error) {
           console.error('❌ [BACKGROUND] Failed to complete bulk deletion:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          alert(`Accounts were removed from view but background cleanup encountered an error:\n${errorMessage}\n\nCheck console for details.`);
         }
       })();
       
       console.log(`✅ [BULK DELETE] Deletion initiated, UI updated instantly`);
+      setShowToast({ message: `Deleting ${count} account${count !== 1 ? 's' : ''}...`, type: 'success' });
   }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId, selectedAccount, navigate]);
+
+  const deleteTotalVideosCount = useMemo(() => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    return selected.reduce((sum, acc) => sum + (acc.totalVideos || 0), 0);
+  }, [processedAccounts, selectedAccounts]);
 
   const handleExportAccounts = useCallback((filename: string) => {
     const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
@@ -4230,6 +4222,29 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         onExport={handleExportAccounts}
         selectedCount={selectedAccounts.size}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Accounts"
+        message={`⚠️ You are about to delete ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}\n\nThis will permanently delete:\n• ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}\n• ${deleteTotalVideosCount} video${deleteTotalVideosCount !== 1 ? 's' : ''}\n• All associated snapshots and data\n\nThis action CANNOT be undone!`}
+        confirmText="Delete Accounts"
+        cancelText="Cancel"
+        requireTyping={true}
+        typingConfirmation="DELETE"
+        onConfirm={confirmBulkDeleteAccounts}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isDanger={true}
+      />
+
+      {/* Toast Notification */}
+      {showToast && (
+        <Toast
+          message={showToast.message}
+          type={showToast.type}
+          onClose={() => setShowToast(null)}
+        />
+      )}
     </div>
   );
 });

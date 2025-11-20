@@ -17,6 +17,8 @@ import { HeicImage } from './HeicImage';
 import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 import { ExportVideosModal } from './ExportVideosModal';
 import { exportVideosToCSV } from '../utils/csvExport';
+import { Toast } from './ui/Toast';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -175,6 +177,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [showExportModal, setShowExportModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -336,12 +340,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     const links = selectedSubmissions.map(v => v.url).join('\n');
     navigator.clipboard.writeText(links);
     setShowActionsMenu(false);
-    // Show a toast or notification (optional)
+    setShowToast({ message: `Copied ${selectedSubmissions.length} video link${selectedSubmissions.length !== 1 ? 's' : ''} to clipboard`, type: 'success' });
     console.log(`✅ Copied ${selectedSubmissions.length} video links to clipboard`);
   };
 
   const handleBulkDelete = () => {
-    alert('🔴 DELETE BUTTON CLICKED! Check console for details.');
     console.log('🗑️ [BULK DELETE] Button clicked');
     console.log('  onDelete exists:', !!onDelete);
     console.log('  Selected videos count:', selectedVideos.size);
@@ -349,13 +352,13 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     
     if (!onDelete) {
       console.error('❌ onDelete function not provided');
-      alert('Delete function not available. Please refresh the page.');
+      setShowToast({ message: 'Delete function not available. Please refresh the page.', type: 'error' });
       return;
     }
     
     if (selectedVideos.size === 0) {
       console.warn('⚠️ No videos selected');
-      alert('Please select videos to delete first.');
+      setShowToast({ message: 'Please select videos to delete first.', type: 'info' });
       return;
     }
     
@@ -366,49 +369,36 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     
     if (count === 0) {
       console.error('❌ No matching videos found');
-      alert('No videos found to delete. Please try again.');
+      setShowToast({ message: 'No videos found to delete. Please try again.', type: 'error' });
       return;
     }
     
-    // Single confirmation popup
-    const confirmed = window.confirm(
-      `⚠️ DELETE ${count} VIDEO${count !== 1 ? 'S' : ''}?\n\n` +
-      `This will permanently delete:\n` +
-      `• ${count} video${count !== 1 ? 's' : ''}\n` +
-      `• All associated snapshots and data\n\n` +
-      `This action CANNOT be undone!\n\n` +
-      `Type 'DELETE' in the next prompt to confirm.`
-    );
-    
-    if (!confirmed) {
-      console.log('  User cancelled at first confirmation');
-      return;
-    }
-    
-    // Second confirmation - require typing DELETE
-    const confirmText = prompt('Type DELETE to confirm:');
-    if (confirmText !== 'DELETE') {
-      console.log('  User cancelled - wrong confirmation text:', confirmText);
-      alert('Deletion cancelled - confirmation text did not match.');
-      return;
-    }
+    // Show custom confirmation dialog
+    setShowActionsMenu(false);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+    const count = selectedSubmissions.length;
     
     console.log(`🗑️ [BULK DELETE] Starting deletion of ${count} videos`);
     
-    // Close the actions menu and clear selection immediately
-    setShowActionsMenu(false);
+    // Close dialog and clear selection
+    setShowDeleteConfirm(false);
     setSelectedVideos(new Set());
     
     // Delete each video
     selectedSubmissions.forEach((video, index) => {
       console.log(`  Deleting ${index + 1}/${count}: ${video.title || video.caption}`);
       try {
-        onDelete(video.id);
+        onDelete!(video.id);
       } catch (error) {
         console.error(`  ❌ Failed to delete video ${video.id}:`, error);
       }
     });
     
+    setShowToast({ message: `Deleting ${count} video${count !== 1 ? 's' : ''}...`, type: 'success' });
     console.log(`✅ [BULK DELETE] Initiated deletion of ${count} videos`);
   };
 
@@ -1340,6 +1330,29 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         onExport={handleExport}
         selectedCount={selectedVideos.size}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Videos"
+        message={`⚠️ You are about to delete ${selectedVideos.size} video${selectedVideos.size !== 1 ? 's' : ''}\n\nThis will permanently delete:\n• ${selectedVideos.size} video${selectedVideos.size !== 1 ? 's' : ''}\n• All associated snapshots and data\n\nThis action CANNOT be undone!`}
+        confirmText="Delete Videos"
+        cancelText="Cancel"
+        requireTyping={true}
+        typingConfirmation="DELETE"
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isDanger={true}
+      />
+
+      {/* Toast Notification */}
+      {showToast && (
+        <Toast
+          message={showToast.message}
+          type={showToast.type}
+          onClose={() => setShowToast(null)}
+        />
+      )}
     </div>
   );
 };
