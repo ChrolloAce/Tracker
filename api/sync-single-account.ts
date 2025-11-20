@@ -410,61 +410,34 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [TIKTOK] Discovering new videos for automatic account...`);
-          const useProgressiveFetch = syncStrategy === 'progressive';
-          const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
+          console.log(`🔍 [TIKTOK] Forward discovery - fetching 20 most recent videos...`);
           
-          // If this is a spiderweb phase job, only fetch for this specific phase
-          let batchSizes: number[];
-          if (isSpiderwebPhase && spiderwebPhase) {
-            // Single phase: fetch only the amount for this phase
-            const phaseSizes = [5, 10, 15, 20];
-            batchSizes = [phaseSizes[spiderwebPhase - 1]];
-            console.log(`🎯 [TIKTOK] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} videos`);
-          } else if (useProgressiveFetch) {
-            // Initial progressive job: start with phase 1 (5 videos)
-            batchSizes = [5]; // Only fetch 5, then queue next phase if needed
-            console.log(`🎯 [TIKTOK] Progressive strategy: Starting phase 1 (fetch 5)`);
-          } else {
-            // Direct fetch: get exact amount specified
-            batchSizes = [maxVideosToFetch];
-            console.log(`🎯 [TIKTOK] Direct fetch: ${maxVideosToFetch} videos`);
-          }
-          
-          let foundDuplicate = false;
-          const seenVideoIds = new Set<string>(); // Track videos we've already processed
-          
-          for (const batchSize of batchSizes) {
-            if (foundDuplicate) break;
-            
-            console.log(`📥 [TIKTOK] Fetching ${batchSize} videos...`);
-            
-            try {
-        const data = await runApifyActor({
-          actorId: 'apidojo/tiktok-scraper',
-          input: {
-            startUrls: [`https://www.tiktok.com/@${username}`],
-                  maxItems: batchSize,
-            sortType: 'RELEVANCE',
-            dateRange: 'DEFAULT',
-            location: 'US',
-            includeSearchKeywords: false,
-            customMapFunction: '(object) => { return {...object} }',
-            proxy: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL']
-            }
-          }
-        });
-
-              const batch = data.items || [];
-              
-              if (batch.length === 0) {
-                console.log(`⚠️ [TIKTOK] No videos returned`);
-                break;
+          try {
+            const data = await runApifyActor({
+              actorId: 'apidojo/tiktok-scraper',
+              input: {
+                startUrls: [`https://www.tiktok.com/@${username}`],
+                maxItems: 20,
+                sortType: 'RELEVANCE',
+                dateRange: 'DEFAULT',
+                location: 'US',
+                includeSearchKeywords: false,
+                customMapFunction: '(object) => { return {...object} }',
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL']
+                }
               }
+            });
+
+            const batch = data.items || [];
+            
+            if (batch.length === 0) {
+              console.log(`⚠️ [TIKTOK] No videos returned`);
+            } else {
+              // Process videos newest-first, stop at first duplicate
+              let foundDuplicate = false;
               
-              // Check each video for duplicates
               for (const video of batch) {
                 const videoId = video.id || video.post_id || video.video_id;
                 
@@ -473,45 +446,30 @@ export default async function handler(
                   continue;
                 }
                 
-                // Skip if we already saw this video in a previous batch
-                if (seenVideoIds.has(videoId)) {
-                  continue; // Skip duplicate from overlapping batch
-                }
-                
                 // Check if this video exists in database
                 if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [TIKTOK] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  console.log(`✓ [TIKTOK] Found duplicate: ${videoId} - stopping discovery`);
                   foundDuplicate = true;
-                  break; // Stop immediately - don't process this or any more videos
+                  break;
                 }
                 
                 // This is a new video - add it
-                seenVideoIds.add(videoId);
                 newTikTokVideos.push(video);
               }
               
-              // Stop if we got fewer videos than requested (end of content)
-              if (batch.length < batchSize) {
-                console.log(`⏹️ [TIKTOK] Got ${batch.length} < ${batchSize} (end of account's content)`);
-                break;
-              }
-              
-            } catch (fetchError: any) {
-              console.error(`❌ [TIKTOK] Fetch failed at batch size ${batchSize}:`, fetchError.message);
-              
-              // Check if it's a memory limit error (402) - throw to trigger retry
-              if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
-                  fetchError.message?.includes('402') ||
-                  fetchError.statusCode === 402) {
-                console.error(`💾 Apify memory limit exceeded - will retry later`);
-                throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
-              }
-              
-              break;
+              console.log(`📊 [TIKTOK] Discovered ${newTikTokVideos.length} new videos${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
+            }
+          } catch (fetchError: any) {
+            console.error(`❌ [TIKTOK] Discovery failed:`, fetchError.message);
+            
+            // Check if it's a memory limit error (402) - throw to trigger retry
+            if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
+                fetchError.message?.includes('402') ||
+                fetchError.statusCode === 402) {
+              console.error(`💾 Apify memory limit exceeded - will retry later`);
+              throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
             }
           }
-          
-          console.log(`✅ [TIKTOK] Progressive fetch complete: ${newTikTokVideos.length} new videos found`);
           
           // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
           // If progressive strategy and no duplicate found, queue next spiderweb phase
@@ -754,54 +712,30 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [YOUTUBE] Discovering new videos for automatic account...`);
-          const useProgressiveFetch = syncStrategy === 'progressive';
-          const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
+          console.log(`🔍 [YOUTUBE] Forward discovery - fetching 20 most recent Shorts...`);
           
-          // If this is a spiderweb phase job, only fetch for this specific phase
-          let batchSizes: number[];
-          if (isSpiderwebPhase && spiderwebPhase) {
-            const phaseSizes = [5, 10, 15, 20];
-            batchSizes = [phaseSizes[spiderwebPhase - 1]];
-            console.log(`🎯 [YOUTUBE] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} videos`);
-          } else if (useProgressiveFetch) {
-            batchSizes = [5]; // Start with phase 1
-            console.log(`🎯 [YOUTUBE] Progressive strategy: Starting phase 1 (fetch 5)`);
-          } else {
-            batchSizes = [maxVideosToFetch];
-            console.log(`🎯 [YOUTUBE] Direct fetch: ${maxVideosToFetch} videos`);
-          }
-          
-          let foundDuplicate = false;
-          const seenVideoIds = new Set<string>(); // Track videos we've already processed
-          
-          for (const batchSize of batchSizes) {
-            if (foundDuplicate) break;
-            
-            console.log(`📥 [YOUTUBE] Fetching ${batchSize} Shorts...`);
-            
-            try {
-        const data = await runApifyActor({
-          actorId: 'grow_media/youtube-shorts-scraper',
-          input: {
-            channels: [channelHandle],
-                  maxResults: batchSize,
-            sortBy: 'latest',
-            proxy: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL']
-            }
-          }
-        });
-
-              const batch = data.items || [];
-              
-              if (batch.length === 0) {
-                console.log(`⚠️ [YOUTUBE] No Shorts returned`);
-                break;
+          try {
+            const data = await runApifyActor({
+              actorId: 'grow_media/youtube-shorts-scraper',
+              input: {
+                channels: [channelHandle],
+                maxResults: 20,
+                sortBy: 'latest',
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL']
+                }
               }
+            });
+
+            const batch = data.items || [];
+            
+            if (batch.length === 0) {
+              console.log(`⚠️ [YOUTUBE] No Shorts returned`);
+            } else {
+              // Process videos newest-first, stop at first duplicate
+              let foundDuplicate = false;
               
-              // Check each video for duplicates
               for (const video of batch) {
                 const videoId = video.id;
                 
@@ -810,45 +744,30 @@ export default async function handler(
                   continue;
                 }
                 
-                // Skip if we already saw this video in a previous batch
-                if (seenVideoIds.has(videoId)) {
-                  continue; // Skip duplicate from overlapping batch
-                }
-                
                 // Check if this video exists in database
                 if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [YOUTUBE] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  console.log(`✓ [YOUTUBE] Found duplicate: ${videoId} - stopping discovery`);
                   foundDuplicate = true;
-                  break; // Stop immediately - don't process this or any more videos
+                  break;
                 }
                 
                 // This is a new video - add it
-                seenVideoIds.add(videoId);
                 newYouTubeVideos.push(video);
               }
               
-              // Stop if we got fewer videos than requested (end of content)
-              if (batch.length < batchSize) {
-                console.log(`⏹️ [YOUTUBE] Got ${batch.length} < ${batchSize} (end of channel's content)`);
-                break;
-              }
-              
-            } catch (fetchError: any) {
-              console.error(`❌ [YOUTUBE] Fetch failed at batch size ${batchSize}:`, fetchError.message);
-              
-              // Check if it's a memory limit error (402) - throw to trigger retry
-              if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
-                  fetchError.message?.includes('402') ||
-                  fetchError.statusCode === 402) {
-                console.error(`💾 Apify memory limit exceeded - will retry later`);
-                throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
-              }
-              
-              break;
+              console.log(`📊 [YOUTUBE] Discovered ${newYouTubeVideos.length} new Shorts${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
+            }
+          } catch (fetchError: any) {
+            console.error(`❌ [YOUTUBE] Discovery failed:`, fetchError.message);
+            
+            // Check if it's a memory limit error (402) - throw to trigger retry
+            if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
+                fetchError.message?.includes('402') ||
+                fetchError.statusCode === 402) {
+              console.error(`💾 Apify memory limit exceeded - will retry later`);
+              throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
             }
           }
-          
-          console.log(`✅ [YOUTUBE] Progressive fetch complete: ${newYouTubeVideos.length} new Shorts found`);
           
           // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
           // If progressive strategy and no duplicate found, queue next spiderweb phase
@@ -1120,55 +1039,32 @@ export default async function handler(
       
       // ===== NEW TWEET DISCOVERY (only if NOT refresh_only) =====
       if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-        console.log(`🔍 [TWITTER] Discovering new tweets for automatic account...`);
-        const useProgressiveFetch = syncStrategy === 'progressive';
-        const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
+        console.log(`🔍 [TWITTER] Forward discovery - fetching 20 most recent video tweets...`);
         
-        let batchSizes: number[];
-        if (isSpiderwebPhase && spiderwebPhase) {
-          const phaseSizes = [5, 10, 15, 20];
-          batchSizes = [phaseSizes[spiderwebPhase - 1]];
-          console.log(`🎯 [TWITTER] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} tweets`);
-        } else if (useProgressiveFetch) {
-          batchSizes = [5];
-          console.log(`🎯 [TWITTER] Progressive strategy: Starting phase 1 (fetch 5)`);
-        } else {
-          batchSizes = [maxVideosToFetch];
-          console.log(`🎯 [TWITTER] Direct fetch: ${maxVideosToFetch} tweets`);
-        }
-        
-        let foundDuplicate = false;
-        const seenTweetIds = new Set<string>(); // Track tweets we've already processed
-        
-        for (const batchSize of batchSizes) {
-          if (foundDuplicate) break;
-          
-          console.log(`📥 [TWITTER] Fetching ${batchSize} tweets...`);
-          
-          try {
-      const tweetsData = await runApifyActor({
-        actorId: 'apidojo/tweet-scraper',
-        input: {
-          twitterHandles: [account.username],
-                maxItems: batchSize,
-          sort: 'Latest',
-          onlyImage: false,
-          onlyVideo: true, // ✅ ONLY fetch video tweets
-          onlyQuote: false,
-          onlyVerifiedUsers: false,
-          onlyTwitterBlue: false,
-          includeSearchTerms: false,
-        }
-      });
-
-            const batch = tweetsData.items || [];
-            
-            if (batch.length === 0) {
-              console.log(`⚠️ [TWITTER] No tweets returned`);
-              break;
+        try {
+          const tweetsData = await runApifyActor({
+            actorId: 'apidojo/tweet-scraper',
+            input: {
+              twitterHandles: [account.username],
+              maxItems: 20,
+              sort: 'Latest',
+              onlyImage: false,
+              onlyVideo: true, // ✅ ONLY fetch video tweets
+              onlyQuote: false,
+              onlyVerifiedUsers: false,
+              onlyTwitterBlue: false,
+              includeSearchTerms: false,
             }
+          });
+
+          const batch = tweetsData.items || [];
+          
+          if (batch.length === 0) {
+            console.log(`⚠️ [TWITTER] No tweets returned`);
+          } else {
+            // Process tweets newest-first, stop at first duplicate
+            let foundDuplicate = false;
             
-            // Check each tweet for duplicates
             for (const tweet of batch) {
               const tweetId = tweet.id;
               
@@ -1177,36 +1073,22 @@ export default async function handler(
                 continue;
               }
               
-              // Skip if we already saw this tweet in a previous batch
-              if (seenTweetIds.has(tweetId)) {
-                continue; // Skip duplicate from overlapping batch
-              }
-              
               // Check if this tweet exists in database
               if (existingTweetIds.has(tweetId)) {
-                console.log(`✓ [TWITTER] Found existing tweet: ${tweetId} - STOPPING ALL FETCHING`);
+                console.log(`✓ [TWITTER] Found duplicate: ${tweetId} - stopping discovery`);
                 foundDuplicate = true;
-                break; // Stop immediately - don't process this or any more tweets
+                break;
               }
               
               // This is a new tweet - add it
-              seenTweetIds.add(tweetId);
               allTweets.push(tweet);
             }
             
-            // Stop if we got fewer tweets than requested (end of content)
-            if (batch.length < batchSize) {
-              console.log(`⏹️ [TWITTER] Got ${batch.length} < ${batchSize} (end of account's content)`);
-              break;
-            }
-            
-          } catch (fetchError: any) {
-            console.error(`❌ [TWITTER] Fetch failed at batch size ${batchSize}:`, fetchError.message);
-            break;
+            console.log(`📊 [TWITTER] Discovered ${allTweets.length} new tweets${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
           }
+        } catch (fetchError: any) {
+          console.error(`❌ [TWITTER] Discovery failed:`, fetchError.message);
         }
-        
-        console.log(`✅ [TWITTER] Progressive fetch complete: ${allTweets.length} new tweets found`);
         
         // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
         // If progressive strategy and no duplicate found, queue next spiderweb phase
@@ -1368,65 +1250,40 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [INSTAGRAM] Discovering new videos for automatic account...`);
+          console.log(`🔍 [INSTAGRAM] Forward discovery - fetching 20 most recent reels...`);
           
-          // 🔧 SYNC STRATEGY (from job metadata):
-          const useProgressiveFetch = syncStrategy === 'progressive';
-          const maxVideosToFetch = maxVideosOverride || account.maxVideos || 10;
-          
-          let batchSizes: number[];
-          if (isSpiderwebPhase && spiderwebPhase) {
-            const phaseSizes = [5, 10, 15, 20];
-            batchSizes = [phaseSizes[spiderwebPhase - 1]];
-            console.log(`🎯 [INSTAGRAM] Spiderweb phase ${spiderwebPhase}: Fetch ${batchSizes[0]} reels`);
-          } else if (useProgressiveFetch) {
-            batchSizes = [5];
-            console.log(`🎯 [INSTAGRAM] Progressive strategy: Starting phase 1 (fetch 5)`);
-          } else {
-            batchSizes = [maxVideosToFetch];
-            console.log(`🎯 [INSTAGRAM] Direct fetch: ${maxVideosToFetch} reels`);
-          }
-          
-          let foundDuplicate = false;
-          const seenVideoIds = new Set<string>(); // Track videos we've already processed
-          
-          for (const batchSize of batchSizes) {
-            if (foundDuplicate) break;
+          try {
+            const scraperInput: any = {
+              tags: [`https://www.instagram.com/${account.username}/reels/`],
+              target: 'reels_only',
+              reels_count: 20,
+              include_raw_data: true,
+              // NO beginDate/endDate - date filtering doesn't work reliably
+              custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+              proxy: {
+                useApifyProxy: true,
+                apifyProxyGroups: ['RESIDENTIAL'],
+                apifyProxyCountry: 'US'
+              },
+              maxConcurrency: 1,
+              maxRequestRetries: 3,
+              handlePageTimeoutSecs: 120,
+              debugLog: false
+            };
             
-            console.log(`📥 [INSTAGRAM] Fetching ${batchSize} reels...`);
-            
-            try {
-        const scraperInput: any = {
-          tags: [`https://www.instagram.com/${account.username}/reels/`],
-          target: 'reels_only',
-                reels_count: batchSize,
-          include_raw_data: true,
-                // NO beginDate/endDate - date filtering doesn't work reliably
-          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL'],
-            apifyProxyCountry: 'US'
-          },
-          maxConcurrency: 1,
-          maxRequestRetries: 3,
-          handlePageTimeoutSecs: 120,
-          debugLog: false
-        };
-        
-        const data = await runApifyActor({
-          actorId: 'hpix~ig-reels-scraper',
-          input: scraperInput
-        });
+            const data = await runApifyActor({
+              actorId: 'hpix~ig-reels-scraper',
+              input: scraperInput
+            });
 
-              const batch = data.items || [];
+            const batch = data.items || [];
+            
+            if (batch.length === 0) {
+              console.log(`⚠️ [INSTAGRAM] No reels returned`);
+            } else {
+              // Process reels newest-first, stop at first duplicate
+              let foundDuplicate = false;
               
-              if (batch.length === 0) {
-                console.log(`⚠️ [INSTAGRAM] No reels returned`);
-                break;
-              }
-              
-              // Check each video for duplicates
               for (const reel of batch) {
                 const videoId = reel.video_id || reel.shortcode || reel.id;
                 
@@ -1435,45 +1292,30 @@ export default async function handler(
                   continue;
                 }
                 
-                // Skip if we already saw this video in a previous batch
-                if (seenVideoIds.has(videoId)) {
-                  continue; // Skip duplicate from overlapping batch
-                }
-                
                 // Check if this video exists in database
                 if (existingVideoIds.has(videoId)) {
-                  console.log(`✓ [INSTAGRAM] Found existing video: ${videoId} - STOPPING ALL FETCHING`);
+                  console.log(`✓ [INSTAGRAM] Found duplicate: ${videoId} - stopping discovery`);
                   foundDuplicate = true;
-                  break; // Stop immediately - don't process this or any more videos
+                  break;
                 }
                 
                 // This is a new video - add it
-                seenVideoIds.add(videoId);
                 newInstagramReels.push(reel);
               }
               
-              // Stop if we got fewer videos than requested (end of content)
-              if (batch.length < batchSize) {
-                console.log(`⏹️ [INSTAGRAM] Got ${batch.length} < ${batchSize} (end of account's content)`);
-                break;
-              }
-              
-            } catch (fetchError: any) {
-              console.error(`❌ [INSTAGRAM] Fetch failed at batch size ${batchSize}:`, fetchError.message);
-              
-              // Check if it's a memory limit error (402) - throw to trigger retry
-              if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
-                  fetchError.message?.includes('402') ||
-                  fetchError.statusCode === 402) {
-                console.error(`💾 Apify memory limit exceeded - will retry later`);
-                throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
-              }
-              
-              break;
+              console.log(`📊 [INSTAGRAM] Discovered ${newInstagramReels.length} new reels${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
+            }
+          } catch (fetchError: any) {
+            console.error(`❌ [INSTAGRAM] Discovery failed:`, fetchError.message);
+            
+            // Check if it's a memory limit error (402) - throw to trigger retry
+            if (fetchError.message?.includes('actor-memory-limit-exceeded') || 
+                fetchError.message?.includes('402') ||
+                fetchError.statusCode === 402) {
+              console.error(`💾 Apify memory limit exceeded - will retry later`);
+              throw new Error(`Apify capacity exceeded - will retry: ${fetchError.message}`);
             }
           }
-          
-          console.log(`✅ [INSTAGRAM] Progressive fetch complete: ${newInstagramReels.length} new reels found`);
           
           // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
           // If progressive strategy and no duplicate found, queue next spiderweb phase
