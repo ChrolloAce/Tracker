@@ -1,4 +1,4 @@
-import { TrackedAccount } from '../types';
+import { TrackedAccount } from '../types/firestore';
 
 /**
  * Export accounts to CSV file
