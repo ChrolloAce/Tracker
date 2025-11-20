@@ -1,4 +1,29 @@
 import { TrackedAccount } from '../types/firestore';
+import { Timestamp } from 'firebase/firestore';
+
+/**
+ * Convert Firestore Timestamp to Date string
+ */
+function timestampToDateString(timestamp: Timestamp | Date | undefined): string {
+  if (!timestamp) return '';
+  
+  // If it's already a Date
+  if (timestamp instanceof Date) {
+    return timestamp.toLocaleString();
+  }
+  
+  // If it's a Firestore Timestamp, convert to Date
+  if (typeof timestamp === 'object' && 'toDate' in timestamp) {
+    return timestamp.toDate().toLocaleString();
+  }
+  
+  // Fallback: try to parse as Date
+  try {
+    return new Date(timestamp as any).toLocaleString();
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Export accounts to CSV file
@@ -20,9 +45,7 @@ export function exportAccountsToCSV(accounts: TrackedAccount[], filename: string
     'Total Likes',
     'Total Comments',
     'Total Shares',
-    'Total Bookmarks',
     'Engagement Rate (%)',
-    'Highest Viewed Video',
     'Average Views per Video',
     'Date Added',
     'Last Refreshed',
@@ -37,8 +60,8 @@ export function exportAccountsToCSV(accounts: TrackedAccount[], filename: string
     const engagementRate = totalViews > 0 ? ((totalEngagements / totalViews) * 100).toFixed(2) : '0';
     const avgViews = account.totalVideos && account.totalVideos > 0 ? Math.round(totalViews / account.totalVideos) : 0;
     
-    const dateAdded = account.dateAdded ? new Date(account.dateAdded).toLocaleString() : '';
-    const lastRefreshed = account.lastSynced ? new Date(account.lastSynced).toLocaleString() : '';
+    const dateAdded = timestampToDateString(account.dateAdded);
+    const lastRefreshed = timestampToDateString(account.lastSynced);
     
     // Construct profile URL based on platform
     let profileUrl = '';
@@ -69,9 +92,7 @@ export function exportAccountsToCSV(accounts: TrackedAccount[], filename: string
       account.totalLikes || 0,
       account.totalComments || 0,
       account.totalShares || 0,
-      account.totalBookmarks || 0,
       engagementRate,
-      account.highestViewedVideo || 0,
       avgViews,
       dateAdded,
       lastRefreshed,
