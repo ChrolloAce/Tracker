@@ -262,7 +262,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
   };
 
   return (
-    <div>
+    <div className="min-h-[400px]">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold text-white">Top Platforms</h2>

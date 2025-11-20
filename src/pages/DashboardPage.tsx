@@ -15,7 +15,7 @@ import { AddAccountModal } from '../components/AddAccountModal';
 import { AddTypeSelector } from '../components/AddTypeSelector';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
-import { KPICardEditor } from '../components/KPICardEditor';
+import { KPICardEditorSidebar } from '../components/KPICardEditorSidebar';
 import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
@@ -3551,8 +3551,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         document.body
       )}
 
-      {/* KPI Card Editor Modal */}
-      <KPICardEditor
+      {/* KPI Card Editor Sidebar */}
+      <KPICardEditorSidebar
         isOpen={isCardEditorOpen}
         onClose={() => setIsCardEditorOpen(false)}
         cardOptions={kpiCardOptions}
