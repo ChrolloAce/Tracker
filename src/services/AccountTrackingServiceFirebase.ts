@@ -543,7 +543,7 @@ export class AccountTrackingServiceFirebase {
         syncResult = await this.syncTikTokVideosIncremental(orgId, projectId, account, existingVideoIds, oldestVideoDate);
       } else if (account.platform === 'twitter') {
         // Twitter with incremental sync
-        syncResult = await this.syncTwitterTweetsIncremental(orgId, projectId, account, existingVideoIds);
+        syncResult = await this.syncTwitterTweetsIncremental(orgId, projectId, account, existingVideoIds, oldestVideoDate);
       } else if (account.platform === 'youtube') {
         // YouTube with incremental sync
         syncResult = await this.syncYoutubeShortsIncremental(orgId, projectId, account, existingVideoIds, oldestVideoDate);
@@ -1343,11 +1343,17 @@ export class AccountTrackingServiceFirebase {
     const maxResults = isNewAccount ? 50 : 10;
 
     // Fetch ONLY the number we need (not 50 then slice!)
-    console.log(`🔍 Fetching latest ${maxResults} YouTube Shorts for channel: ${channelId}`);
+    console.log(`🔍 [YouTube Discovery] Fetching latest ${maxResults} YouTube Shorts for channel: ${channelId}`);
     const shorts = await YoutubeAccountService.syncChannelShorts(channelId, account.displayName || account.username, maxResults);
+    
+    console.log(`📦 [YouTube Discovery] YouTube API returned ${shorts.length} Shorts (requested ${maxResults})`);
+    if (shorts.length < maxResults) {
+      console.warn(`⚠️ [YouTube Discovery] Expected ${maxResults} Shorts but only got ${shorts.length} - channel may have fewer videos`);
+    }
     
     const newVideos: AccountVideo[] = [];
     let foundDuplicate = false;
+    let skippedOld = 0;
 
     // Process - ONLY add NEW ones, stop at first duplicate (like TikTok/Instagram)
     for (const short of shorts) {
@@ -1365,6 +1371,7 @@ export class AccountTrackingServiceFirebase {
         const videoUploadDate = new Date(short.uploadDate);
         if (videoUploadDate < oldestVideoDate) {
           console.log(`   ⏭️  Skipping old video: ${videoId} (${videoUploadDate.toLocaleDateString()} < ${oldestVideoDate.toLocaleDateString()})`);
+          skippedOld++;
           continue;
         }
       }
@@ -1394,7 +1401,7 @@ export class AccountTrackingServiceFirebase {
       console.log(`   ✨ NEW video: ${videoId}`);
     }
 
-    console.log(`📊 Discovery complete: ${newVideos.length} new videos${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
+    console.log(`📊 [YouTube Discovery] Complete: ${newVideos.length} new videos${foundDuplicate ? ' (stopped at duplicate)' : ''}${skippedOld > 0 ? ` (skipped ${skippedOld} old)` : ''}`);
     return newVideos;
   }
 
@@ -1411,7 +1418,8 @@ export class AccountTrackingServiceFirebase {
     orgId: string,
     _projectId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
     console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} Twitter sync for @${account.username}...`);
@@ -1420,8 +1428,8 @@ export class AccountTrackingServiceFirebase {
       const newVideos: AccountVideo[] = [];
       const updatedVideos: AccountVideo[] = [];
       
-      // Fetch tweets (up to 20 for new accounts, 10 for incremental)
-      const maxTweets = isNewAccount ? 20 : 10;
+      // Fetch tweets (up to 30 for new accounts, 10 for incremental - consistent with other platforms)
+      const maxTweets = isNewAccount ? 30 : 10;
       
       const tweets = await TwitterApiService.fetchTweets(account.username, maxTweets);
       console.log(`📦 Twitter API returned ${tweets.length} tweets`);
@@ -1435,6 +1443,15 @@ export class AccountTrackingServiceFirebase {
       for (const tweet of tweets) {
         const videoId = tweet.videoId || '';
         const isExisting = existingVideoIds.has(videoId);
+        
+        // SKIP if older than our oldest video (don't backfill old content)
+        if (!isExisting && oldestVideoDate && tweet.uploadDate) {
+          const tweetDate = new Date(tweet.uploadDate);
+          if (tweetDate < oldestVideoDate) {
+            console.log(`   ⏭️  Skipping old tweet: ${videoId} (${tweetDate.toLocaleDateString()} < ${oldestVideoDate.toLocaleDateString()})`);
+            continue;
+          }
+        }
         
         let uploadedThumbnail = tweet.thumbnail || '';
         
