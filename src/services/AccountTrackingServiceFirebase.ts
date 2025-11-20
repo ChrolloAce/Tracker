@@ -621,8 +621,8 @@ export class AccountTrackingServiceFirebase {
 
   /**
    * TWO-CALL ARCHITECTURE: Instagram sync with separate refresh and discovery
-   * CALL 1: Batch refresh all existing videos
-   * CALL 2: Discover new videos only
+   * CALL 1: Discover new videos FIRST (prevents double snapshots)
+   * CALL 2: Batch refresh existing videos only
    */
   private static async syncInstagramVideosIncremental(
     orgId: string,
@@ -636,26 +636,26 @@ export class AccountTrackingServiceFirebase {
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
 
-    // CALL 1: Batch refresh existing videos (if any)
-    if (!isNewAccount && existingVideoIds.size > 0) {
-      console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing videos...`);
-      const refreshed = await this.batchRefreshInstagramVideos(orgId, projectId, account);
-      updatedVideos.push(...refreshed);
-      console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
-    }
-
-    // CALL 2: Discover new videos only
-    console.log(`🔍 [CALL 2] Discovering new videos (max 10)...`);
+    // CALL 1: Discover new videos FIRST (stops at first duplicate)
+    console.log(`🔍 [CALL 1] Discovering new videos (max 10)...`);
     const discovered = await this.discoverNewInstagramVideos(orgId, account, existingVideoIds);
     newVideos.push(...discovered);
-    console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
+    console.log(`✅ [CALL 1] Found ${discovered.length} new videos`);
+
+    // CALL 2: Batch refresh existing videos (only videos that existed BEFORE this sync)
+    if (!isNewAccount && existingVideoIds.size > 0) {
+      console.log(`🔄 [CALL 2] Batch refreshing ${existingVideoIds.size} existing videos...`);
+      const refreshed = await this.batchRefreshInstagramVideos(orgId, projectId, account);
+      updatedVideos.push(...refreshed);
+      console.log(`✅ [CALL 2] Refreshed ${refreshed.length} existing videos`);
+    }
 
     console.log(`📊 Instagram sync complete: ${newVideos.length} new, ${updatedVideos.length} refreshed`);
     return { newVideos, updatedVideos };
   }
 
   /**
-   * CALL 1: Batch refresh existing Instagram videos using post_urls
+   * CALL 2: Batch refresh existing Instagram videos using post_urls
    */
   private static async batchRefreshInstagramVideos(
     orgId: string,
@@ -751,7 +751,7 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 2: Discover new Instagram videos only (ignore existing)
+   * CALL 1: Discover new Instagram videos only (ignore existing)
    */
   private static async discoverNewInstagramVideos(
     orgId: string,
@@ -940,8 +940,8 @@ export class AccountTrackingServiceFirebase {
 
   /**
    * TWO-CALL ARCHITECTURE: TikTok sync with separate refresh and discovery
-   * CALL 1: Batch refresh all existing videos
-   * CALL 2: Discover new videos only
+   * CALL 1: Discover new videos FIRST (prevents double snapshots)
+   * CALL 2: Batch refresh existing videos only
    */
   private static async syncTikTokVideosIncremental(
     orgId: string,
@@ -955,26 +955,26 @@ export class AccountTrackingServiceFirebase {
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
 
-    // CALL 1: Batch refresh existing videos (if any)
-    if (!isNewAccount && existingVideoIds.size > 0) {
-      console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing TikTok videos...`);
-      const refreshed = await this.batchRefreshTikTokVideos(orgId, projectId, account);
-      updatedVideos.push(...refreshed);
-      console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
-    }
-
-    // CALL 2: Discover new videos only
-    console.log(`🔍 [CALL 2] Discovering new TikTok videos (max 10)...`);
+    // CALL 1: Discover new videos FIRST (stops at first duplicate)
+    console.log(`🔍 [CALL 1] Discovering new TikTok videos (max 10)...`);
     const discovered = await this.discoverNewTikTokVideos(orgId, account, existingVideoIds);
     newVideos.push(...discovered);
-    console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
+    console.log(`✅ [CALL 1] Found ${discovered.length} new videos`);
+
+    // CALL 2: Batch refresh existing videos (only videos that existed BEFORE this sync)
+    if (!isNewAccount && existingVideoIds.size > 0) {
+      console.log(`🔄 [CALL 2] Batch refreshing ${existingVideoIds.size} existing TikTok videos...`);
+      const refreshed = await this.batchRefreshTikTokVideos(orgId, projectId, account);
+      updatedVideos.push(...refreshed);
+      console.log(`✅ [CALL 2] Refreshed ${refreshed.length} existing videos`);
+    }
 
     console.log(`📊 TikTok sync complete: ${newVideos.length} new, ${updatedVideos.length} refreshed`);
     return { newVideos, updatedVideos };
   }
 
   /**
-   * CALL 1: Batch refresh existing TikTok videos using postURLs
+   * CALL 2: Batch refresh existing TikTok videos using postURLs
    */
   private static async batchRefreshTikTokVideos(
     orgId: string,
@@ -1054,7 +1054,7 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 2: Discover new TikTok videos only (ignore existing)
+   * CALL 1: Discover new TikTok videos only (ignore existing)
    */
   private static async discoverNewTikTokVideos(
     orgId: string,
@@ -1160,8 +1160,8 @@ export class AccountTrackingServiceFirebase {
 
   /**
    * TWO-CALL ARCHITECTURE: YouTube sync with separate refresh and discovery
-   * CALL 1: Batch refresh existing videos using YouTube Data API
-   * CALL 2: Discover new videos only
+   * CALL 1: Discover new videos FIRST (prevents double snapshots)
+   * CALL 2: Batch refresh existing videos only
    */
   private static async syncYoutubeShortsIncremental(
     orgId: string,
@@ -1211,19 +1211,19 @@ export class AccountTrackingServiceFirebase {
         console.log(`✅ Using stored YouTube channel ID: ${channelId} for @${account.username}`);
       }
 
-      // CALL 1: Batch refresh existing videos (if any)
-      if (!isNewAccount && existingVideoIds.size > 0) {
-        console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing YouTube videos...`);
-        const refreshed = await this.batchRefreshYouTubeVideos(orgId, projectId, account);
-        updatedVideos.push(...refreshed);
-        console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
-      }
-
-      // CALL 2: Discover new videos only
-      console.log(`🔍 [CALL 2] Discovering new YouTube Shorts (max 10)...`);
+      // CALL 1: Discover new videos FIRST (stops at first duplicate)
+      console.log(`🔍 [CALL 1] Discovering new YouTube Shorts (max 10)...`);
       const discovered = await this.discoverNewYouTubeVideos(orgId, channelId, account, existingVideoIds);
       newVideos.push(...discovered);
-      console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
+      console.log(`✅ [CALL 1] Found ${discovered.length} new videos`);
+
+      // CALL 2: Batch refresh existing videos (only videos that existed BEFORE this sync)
+      if (!isNewAccount && existingVideoIds.size > 0) {
+        console.log(`🔄 [CALL 2] Batch refreshing ${existingVideoIds.size} existing YouTube videos...`);
+        const refreshed = await this.batchRefreshYouTubeVideos(orgId, projectId, account);
+        updatedVideos.push(...refreshed);
+        console.log(`✅ [CALL 2] Refreshed ${refreshed.length} existing videos`);
+      }
 
       console.log(`📊 YouTube sync complete: ${newVideos.length} new, ${updatedVideos.length} refreshed`);
       return { newVideos, updatedVideos };
@@ -1234,7 +1234,7 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 1: Batch refresh existing YouTube videos using YouTube Data API
+   * CALL 2: Batch refresh existing YouTube videos using YouTube Data API
    */
   private static async batchRefreshYouTubeVideos(
     orgId: string,
@@ -1297,7 +1297,7 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 2: Discover new YouTube Shorts only (ignore existing)
+   * CALL 1: Discover new YouTube Shorts only (ignore existing)
    */
   private static async discoverNewYouTubeVideos(
     orgId: string,
