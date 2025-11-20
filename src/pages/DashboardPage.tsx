@@ -1011,7 +1011,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           orderBy('dateAdded', 'desc')
         )),
         
-        // 2. Videos (with blacklist filtering - returns VideoDoc[] directly)
+        // 2. Videos
         FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 }),
         
         // 3. Rules
@@ -1226,7 +1226,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // If syncing count decreased (someone finished), reload videos
       if (previousSyncingCount > 0 && currentSyncingCount < previousSyncingCount) {
         
-        // Reload videos (with blacklist filtering)
+        // Reload videos
         try {
           const videoDocs = await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 });
           

@@ -133,31 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`ℹ️ Thumbnail cleanup handled (may not exist in Storage)`);
     }
 
-    // Step 3: Add to deletedVideos blacklist
-    try {
-      if (platformVideoId && platform) {
-        const deletedVideoRef = db
-          .collection('organizations')
-          .doc(orgId)
-          .collection('projects')
-          .doc(projectId)
-          .collection('deletedVideos')
-          .doc(platformVideoId);
-        
-        await deletedVideoRef.set({
-          videoId: platformVideoId,
-          platform: platform,
-          deletedAt: Timestamp.now(),
-          deletedBy: 'user',
-          trackedAccountId: trackedAccountId || null
-        });
-        console.log(`✅ Added to blacklist: ${platformVideoId}`);
-      }
-    } catch (error) {
-      console.error(`⚠️ Failed to add to blacklist (non-critical):`, error);
-    }
-
-    // Step 4: Delete the video document
+    // Step 3: Delete the video document
     try {
       const videoRef = db
         .collection('organizations')
@@ -173,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error(`⚠️ Failed to delete video document:`, error);
     }
 
-    // Step 5: Update usage counter (decrement)
+    // Step 4: Update usage counter (decrement)
     try {
       const accountRef = db
         .collection('organizations')
