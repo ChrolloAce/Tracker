@@ -224,13 +224,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     setSelectedVideos(newSelected);
   };
 
-  const handleExport = (filename: string) => {
-    const selectedSubmissions = sortedSubmissions.filter(v => selectedVideos.has(v.id));
-    exportVideosToCSV(selectedSubmissions, filename);
-    setShowExportModal(false);
-    setSelectedVideos(new Set()); // Clear selection after export
-  };
-
   // Calculate outlier statistics per account
   const accountStats = useMemo(() => {
     const stats = new Map<string, { median: number; std: number; count: number }>();
@@ -334,6 +327,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedSubmissions = filteredAndSortedSubmissions.slice(startIndex, endIndex);
+
+  // Export handler (defined after filteredAndSortedSubmissions)
+  const handleExport = (filename: string) => {
+    const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+    exportVideosToCSV(selectedSubmissions, filename);
+    setShowExportModal(false);
+    setSelectedVideos(new Set()); // Clear selection after export
+  };
 
   // Reset to page 1 when submissions change
   useEffect(() => {
