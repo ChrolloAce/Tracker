@@ -1320,16 +1320,67 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     console.log(`✅ Copied ${selected.length} account links to clipboard`);
   }, [processedAccounts, selectedAccounts]);
 
-  const handleBulkDeleteAccounts = useCallback(() => {
+  const handleBulkDeleteAccounts = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId) return;
+    
     const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
     const count = selected.length;
+    const totalVideos = selected.reduce((sum, acc) => sum + (acc.totalVideos || 0), 0);
     
-    if (window.confirm(`Are you sure you want to delete ${count} account${count !== 1 ? 's' : ''} and all their videos? This action cannot be undone.`)) {
-      selected.forEach(account => handleDeleteAccount(account));
-      setSelectedAccounts(new Set());
+    if (window.confirm(`Are you sure you want to delete ${count} account${count !== 1 ? 's' : ''} and all their ${totalVideos} videos? This action cannot be undone.`)) {
+      const selectedIds = new Set(selected.map(a => a.id));
+      
+      console.log(`🗑️ [BULK DELETE] Starting deletion for ${count} accounts`);
+      
+      // ✅ STEP 1: IMMEDIATELY remove from UI (optimistic update)
       setShowActionsMenu(false);
+      setSelectedAccounts(new Set());
+      
+      // Remove from accounts list immediately
+      setAccounts(prev => prev.filter(a => !selectedIds.has(a.id)));
+      setFilteredAccounts(prev => prev.filter(a => !selectedIds.has(a.id)));
+      
+      // Clear selected account if it was one of the deleted ones
+      if (selectedAccount && selectedIds.has(selectedAccount.id)) {
+        navigate('/accounts');
+        setAccountVideos([]);
+        setAccountVideosSnapshots(new Map());
+      }
+      
+      console.log(`✅ [BULK DELETE] Accounts removed from UI instantly`);
+      
+      // ✅ STEP 2: Process deletions in background (don't await)
+      (async () => {
+        try {
+          console.log(`🔄 [BACKGROUND] Processing ${count} account deletions...`);
+          
+          // Delete accounts in parallel
+          await Promise.all(
+            selected.map(account =>
+              AccountTrackingServiceFirebase.removeAccount(
+                currentOrgId,
+                currentProjectId,
+                account.id,
+                account.username,
+                account.platform
+              ).catch(error => {
+                console.error(`❌ Failed to delete @${account.username}:`, error);
+                return null; // Continue with other deletions
+              })
+            )
+          );
+          
+          console.log(`✅ [BACKGROUND] ${count} accounts fully deleted from database`);
+        } catch (error) {
+          console.error('❌ [BACKGROUND] Failed to complete bulk deletion:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Accounts were removed from view but background cleanup encountered an error:\n${errorMessage}\n\nCheck console for details.`);
+        }
+      })();
+      
+      console.log(`✅ [BULK DELETE] Deletion initiated, UI updated instantly`);
     }
-  }, [processedAccounts, selectedAccounts]);
+  }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId, selectedAccount, navigate]);
 
   const handleExportAccounts = useCallback((filename: string) => {
     const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
