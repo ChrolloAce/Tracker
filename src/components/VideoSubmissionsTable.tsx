@@ -179,6 +179,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Debug: Watch showDeleteConfirm state changes
+  useEffect(() => {
+    console.log('🟡 [VideoTable] showDeleteConfirm state changed to:', showDeleteConfirm);
+  }, [showDeleteConfirm]);
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -345,10 +350,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   const handleBulkDelete = () => {
-    console.log('🗑️ [BULK DELETE] Button clicked');
+    console.log('🔴🔴🔴 [BULK DELETE] Button clicked!');
     console.log('  onDelete exists:', !!onDelete);
     console.log('  Selected videos count:', selectedVideos.size);
     console.log('  Filtered videos count:', filteredAndSortedSubmissions.length);
+    console.log('  Current showDeleteConfirm:', showDeleteConfirm);
+    console.log('  Current showActionsMenu:', showActionsMenu);
     
     if (!onDelete) {
       console.error('❌ onDelete function not provided');
@@ -373,9 +380,16 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       return;
     }
     
-    // Show custom confirmation dialog
+    // Close menu first, then show dialog after a tiny delay
+    console.log('🔴 Setting showActionsMenu to FALSE');
     setShowActionsMenu(false);
-    setShowDeleteConfirm(true);
+    
+    // Delay opening the dialog to ensure menu is fully closed
+    console.log('🔴 Setting timeout to show delete confirm');
+    setTimeout(() => {
+      console.log('🔴 Opening delete confirmation dialog NOW');
+      setShowDeleteConfirm(true);
+    }, 10);
   };
 
   const confirmBulkDelete = () => {
@@ -1341,7 +1355,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         requireTyping={true}
         typingConfirmation="DELETE"
         onConfirm={confirmBulkDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
+        onCancel={() => {
+          console.log('🔴 Cancel clicked - closing dialog');
+          setShowDeleteConfirm(false);
+        }}
         isDanger={true}
       />
 

@@ -10,6 +10,8 @@ export interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duration = 3000, onClose }) => {
+  console.log('🟠 [Toast] Rendering toast:', message, 'type:', type);
+  
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(onClose, duration);

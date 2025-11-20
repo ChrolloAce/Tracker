@@ -312,6 +312,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Debug: Watch showDeleteConfirm state changes
+  useEffect(() => {
+    console.log('🟡 [AccountsPage] showDeleteConfirm state changed to:', showDeleteConfirm);
+  }, [showDeleteConfirm]);
   
   // Pagination state for videos (details view)
   const [currentPage, setCurrentPage] = useState(1);
@@ -1326,11 +1331,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   }, [processedAccounts, selectedAccounts]);
 
   const handleBulkDeleteAccounts = useCallback(async () => {
-    console.log('🗑️ [BULK DELETE ACCOUNTS] Button clicked');
+    console.log('🔴🔴🔴 [BULK DELETE ACCOUNTS] Button clicked!');
     console.log('  Current Org ID:', currentOrgId);
     console.log('  Current Project ID:', currentProjectId);
     console.log('  Selected accounts count:', selectedAccounts.size);
     console.log('  Processed accounts count:', processedAccounts.length);
+    console.log('  Current showDeleteConfirm:', showDeleteConfirm);
+    console.log('  Current showActionsMenu:', showActionsMenu);
     
     if (!currentOrgId || !currentProjectId) {
       console.error('❌ Missing org or project ID');
@@ -1357,10 +1364,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       return;
     }
     
-    // Show custom confirmation dialog
+    // Close menu first, then show dialog after a tiny delay
+    console.log('🔴 Setting showActionsMenu to FALSE');
     setShowActionsMenu(false);
-    setShowDeleteConfirm(true);
-  }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId]);
+    
+    // Delay opening the dialog to ensure menu is fully closed
+    console.log('🔴 Setting timeout to show delete confirm');
+    setTimeout(() => {
+      console.log('🔴 Opening delete confirmation dialog NOW');
+      setShowDeleteConfirm(true);
+    }, 10);
+  }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId, showDeleteConfirm, showActionsMenu]);
 
   const confirmBulkDeleteAccounts = useCallback(async () => {
     const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
@@ -4233,7 +4247,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         requireTyping={true}
         typingConfirmation="DELETE"
         onConfirm={confirmBulkDeleteAccounts}
-        onCancel={() => setShowDeleteConfirm(false)}
+        onCancel={() => {
+          console.log('🔴 Cancel clicked - closing dialog');
+          setShowDeleteConfirm(false);
+        }}
         isDanger={true}
       />
 

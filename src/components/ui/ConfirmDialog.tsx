@@ -29,7 +29,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState('');
 
-  if (!isOpen) return null;
+  console.log('🟢🟢🟢 [ConfirmDialog] Render called, isOpen:', isOpen);
+  console.log('  Title:', title);
+  console.log('  Message:', message);
+
+  if (!isOpen) {
+    console.log('  ❌ NOT OPEN - returning null');
+    return null;
+  }
+
+  console.log('  ✅ OPEN - rendering dialog!');
 
   const handleConfirm = () => {
     if (requireTyping && inputValue !== typingConfirmation) {
