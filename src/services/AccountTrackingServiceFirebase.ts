@@ -633,7 +633,7 @@ export class AccountTrackingServiceFirebase {
     // CALL 1: Batch refresh existing videos (if any)
     if (!isNewAccount && existingVideoIds.size > 0) {
       console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing videos...`);
-      const refreshed = await this.batchRefreshInstagramVideos(orgId, projectId, account, existingVideoIds);
+      const refreshed = await this.batchRefreshInstagramVideos(orgId, projectId, account);
       updatedVideos.push(...refreshed);
       console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
     }
@@ -654,8 +654,7 @@ export class AccountTrackingServiceFirebase {
   private static async batchRefreshInstagramVideos(
     orgId: string,
     projectId: string,
-    account: TrackedAccount,
-    existingVideoIds: Set<string>
+    account: TrackedAccount
   ): Promise<AccountVideo[]> {
     const existingVideos = await this.getAccountVideos(orgId, projectId, account.id);
     if (existingVideos.length === 0) return [];
