@@ -424,10 +424,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         }
         setShowToast({ message: `Deleted ${count} video${count !== 1 ? 's' : ''}`, type: 'success' });
       }
-    } catch (error) {
+      } catch (error) {
       console.error('❌ [BULK DELETE] Failed:', error);
       setShowToast({ message: `Failed to delete videos. Please try again.`, type: 'error' });
-    }
+      }
   };
 
   const handleExport = (filename: string) => {

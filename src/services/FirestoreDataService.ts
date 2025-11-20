@@ -316,24 +316,24 @@ class FirestoreDataService {
     }
   ): Promise<VideoDoc[]> {
     try {
-      let q = query(
+    let q = query(
+      collection(db, 'organizations', orgId, 'projects', projectId, 'videos'),
+      orderBy('lastRefreshed', 'desc'),
+      limit(filters?.limitCount || 100)
+    );
+    
+    if (filters?.trackedAccountId) {
+      q = query(
         collection(db, 'organizations', orgId, 'projects', projectId, 'videos'),
-        orderBy('lastRefreshed', 'desc'),
-        limit(filters?.limitCount || 100)
+        where('trackedAccountId', '==', filters.trackedAccountId),
+        orderBy('uploadDate', 'desc'),
+        limit(filters?.limitCount || 1000)
       );
-      
-      if (filters?.trackedAccountId) {
-        q = query(
-          collection(db, 'organizations', orgId, 'projects', projectId, 'videos'),
-          where('trackedAccountId', '==', filters.trackedAccountId),
-          orderBy('uploadDate', 'desc'),
-          limit(filters?.limitCount || 1000)
-        );
-      }
-      
+    }
+    
       const snapshot = await getDocs(q);
       const videos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoDoc));
-      
+    
       return videos;
     } catch (error) {
       console.error('❌ Failed to fetch videos:', error);

@@ -614,26 +614,149 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * NEW: Incremental Instagram sync - Simplified single-fetch approach (like TikTok)
-   * Fetches a fixed number of videos based on whether it's a new account or incremental
-   * Returns BOTH new videos (to add) AND updated videos (to refresh metrics)
+   * TWO-CALL ARCHITECTURE: Instagram sync with separate refresh and discovery
+   * CALL 1: Batch refresh all existing videos
+   * CALL 2: Discover new videos only
    */
   private static async syncInstagramVideosIncremental(
     orgId: string,
-    _projectId: string,
+    projectId: string,
     account: TrackedAccount,
     existingVideoIds: Set<string>
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
-    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} Instagram sync for @${account.username}...`);
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'TWO-CALL'} Instagram sync for @${account.username}...`);
     
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
-    
-    // Fetch Instagram videos (up to 30 for new accounts, 10 for incremental) - similar to TikTok
+
+    // CALL 1: Batch refresh existing videos (if any)
+    if (!isNewAccount && existingVideoIds.size > 0) {
+      console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing videos...`);
+      const refreshed = await this.batchRefreshInstagramVideos(orgId, projectId, account, existingVideoIds);
+      updatedVideos.push(...refreshed);
+      console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
+    }
+
+    // CALL 2: Discover new videos only
+    console.log(`🔍 [CALL 2] Discovering new videos (max 10)...`);
+    const discovered = await this.discoverNewInstagramVideos(orgId, account, existingVideoIds);
+    newVideos.push(...discovered);
+    console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
+
+    console.log(`📊 Instagram sync complete: ${newVideos.length} new, ${updatedVideos.length} refreshed`);
+    return { newVideos, updatedVideos };
+  }
+
+  /**
+   * CALL 1: Batch refresh existing Instagram videos using post_urls
+   */
+  private static async batchRefreshInstagramVideos(
+    orgId: string,
+    projectId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<AccountVideo[]> {
+    const existingVideos = await this.getAccountVideos(orgId, projectId, account.id);
+    if (existingVideos.length === 0) return [];
+
+    // Build array of post URLs for batch refresh
+    const postUrls = existingVideos
+      .map(v => `https://www.instagram.com/p/${v.videoId}/`)
+      .filter(url => url);
+
+    if (postUrls.length === 0) return [];
+
+    console.log(`📦 Refreshing ${postUrls.length} existing videos in ONE API call...`);
+
+    const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+    const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
+
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        actorId: 'scraper-engine~instagram-reels-scraper',
+        input: {
+          post_urls: postUrls,
+          target: 'reels_only',
+          reels_count: postUrls.length,
+          include_raw_data: true,
+          ...(sessionId && {
+            sessionCookie: sessionId,
+            additionalCookies: [{
+              name: 'sessionid',
+              value: sessionId,
+              domain: '.instagram.com'
+            }]
+          }),
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL'],
+            apifyProxyCountry: 'US'
+          },
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120
+        },
+        action: 'run'
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Batch refresh failed: ${response.status}`);
+      return [];
+    }
+
+    const result = await response.json();
+    if (!result.items || !Array.isArray(result.items)) return [];
+
+    console.log(`📦 Batch refresh returned ${result.items.length} videos`);
+
+    // Process refreshed videos
+    const refreshed: AccountVideo[] = [];
+    for (const item of result.items) {
+      const media = item.reel_data?.media || item.media || item;
+      const videoCode = media.code || media.shortCode || media.id;
+      if (!videoCode) continue;
+
+      const videoData: AccountVideo = {
+        id: `${account.id}_${videoCode}`,
+        accountId: account.id,
+        videoId: videoCode,
+        url: `https://www.instagram.com/reel/${videoCode}/`,
+        thumbnail: '', // Keep existing thumbnail
+        caption: media.caption?.text || '',
+        uploadDate: media.taken_at ? new Date(media.taken_at * 1000) : new Date(),
+        views: media.play_count || media.ig_play_count || 0,
+        likes: media.like_count || 0,
+        comments: media.comment_count || 0,
+        shares: 0,
+        duration: media.video_duration || 0,
+        isSponsored: false,
+        hashtags: [],
+        mentions: [],
+        platform: 'instagram'
+      };
+
+      refreshed.push(videoData);
+    }
+
+    return refreshed;
+  }
+
+  /**
+   * CALL 2: Discover new Instagram videos only (ignore existing)
+   */
+  private static async discoverNewInstagramVideos(
+    orgId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<AccountVideo[]> {
+    const isNewAccount = existingVideoIds.size === 0;
     const maxReels = isNewAccount ? 30 : 10;
     
-    console.log(`🔄 Fetching up to ${maxReels} Instagram videos for @${account.username}...`);
+    console.log(`🔍 Fetching up to ${maxReels} latest videos for discovery...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
     const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
@@ -670,18 +793,18 @@ export class AccountTrackingServiceFirebase {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      console.warn(`⚠️ Discovery failed: ${response.status}`);
+      return [];
     }
 
     const result = await response.json();
+    if (!result.items || !Array.isArray(result.items)) return [];
     
-    if (!result.items || !Array.isArray(result.items)) {
-      return { newVideos: [], updatedVideos: [] };
-    }
-
-    console.log(`📦 Instagram API returned ${result.items.length} items`);
+    console.log(`📦 Discovery returned ${result.items.length} items`);
     
-    // Process videos in order (newest first)
+    const newVideos: AccountVideo[] = [];
+    
+    // Process videos - ONLY add NEW ones, skip existing completely
     for (const item of result.items) {
       const media = item.reel_data?.media || item.media || item;
       const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
@@ -691,19 +814,21 @@ export class AccountTrackingServiceFirebase {
       const videoCode = media.code || media.shortCode || media.id;
       if (!videoCode) continue;
       
-      // CHECK: Is this a NEW video or an EXISTING one?
-      const isExisting = existingVideoIds.has(videoCode);
+      // SKIP if already exists
+      if (existingVideoIds.has(videoCode)) {
+        console.log(`   ⏭️  Skipping existing video: ${videoCode}`);
+        continue;
+      }
       
-      // Extract thumbnail URL from media
+      // This is a NEW video - process it
       const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
                            media.display_uri || 
                            media.displayUrl || '';
       
-      // ONLY upload thumbnail to Firebase Storage for NEW videos
       let uploadedThumbnail = thumbnailUrl;
-      if (!isExisting && thumbnailUrl) {
+      if (thumbnailUrl) {
         try {
-          console.log(`📸 Uploading thumbnail to Firebase Storage for NEW video: ${videoCode}`);
+          console.log(`📸 Uploading thumbnail for NEW video: ${videoCode}`);
           uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
             orgId,
             thumbnailUrl,
@@ -711,20 +836,9 @@ export class AccountTrackingServiceFirebase {
             'thumbnail'
           );
         } catch (error) {
-          console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}, using CDN URL`);
-          uploadedThumbnail = thumbnailUrl;
+          console.warn(`⚠️ Failed to upload thumbnail, using CDN URL`);
         }
-      } else if (isExisting) {
-        console.log(`✅ Keeping existing thumbnail for video: ${videoCode}`);
-        uploadedThumbnail = ''; // Don't overwrite existing thumbnail
       }
-      
-      const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
-      const uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
-      const views = media.play_count || media.ig_play_count || 0;
-      const likes = media.like_count || 0;
-      const comments = media.comment_count || 0;
-      const duration = media.video_duration || 0;
       
       const videoData: AccountVideo = {
         id: `${account.id}_${videoCode}`,
@@ -732,31 +846,24 @@ export class AccountTrackingServiceFirebase {
         videoId: videoCode,
         url: `https://www.instagram.com/reel/${videoCode}/`,
         thumbnail: uploadedThumbnail,
-        caption: caption,
-        uploadDate: uploadDate,
-        views: views,
-        likes: likes,
-        comments: comments,
+        caption: media.caption?.text || '',
+        uploadDate: media.taken_at ? new Date(media.taken_at * 1000) : new Date(),
+        views: media.play_count || media.ig_play_count || 0,
+        likes: media.like_count || 0,
+        comments: media.comment_count || 0,
         shares: 0,
-        duration: duration,
+        duration: media.video_duration || 0,
         isSponsored: false,
         hashtags: [],
         mentions: [],
         platform: 'instagram'
       };
       
-      // Separate into new vs existing
-      if (isExisting) {
-        console.log(`   ♻️  Video ${videoCode} already exists - updating metrics`);
-        updatedVideos.push(videoData);
-      } else {
-        console.log(`   ✨ Video ${videoCode} is NEW - will be added`);
-        newVideos.push(videoData);
-      }
+      newVideos.push(videoData);
+      console.log(`   ✨ NEW video: ${videoCode}`);
     }
     
-    console.log(`📊 Instagram sync complete: ${newVideos.length} new videos, ${updatedVideos.length} updated videos`);
-    return { newVideos, updatedVideos };
+    return newVideos;
   }
 
   /**
@@ -827,39 +934,69 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * Sync TikTok videos
-   */
-  /**
-   * INCREMENTAL TikTok sync - Fetches videos and separates new vs existing
-   * Only fetches up to 30 videos (sorted by newest) and stops when hitting existing videos
+   * TWO-CALL ARCHITECTURE: TikTok sync with separate refresh and discovery
+   * CALL 1: Batch refresh all existing videos
+   * CALL 2: Discover new videos only
    */
   private static async syncTikTokVideosIncremental(
     orgId: string,
-    _projectId: string,
+    projectId: string,
     account: TrackedAccount,
     existingVideoIds: Set<string>
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
-    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} TikTok sync for @${account.username}...`);
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'TWO-CALL'} TikTok sync for @${account.username}...`);
     
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
-    
-    // Fetch TikTok videos (up to 30 for new accounts, 10 for incremental)
-    const maxVideos = isNewAccount ? 30 : 10;
-    
-    console.log(`🔄 Fetching up to ${maxVideos} TikTok videos for @${account.username}...`);
-    
+
+    // CALL 1: Batch refresh existing videos (if any)
+    if (!isNewAccount && existingVideoIds.size > 0) {
+      console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing TikTok videos...`);
+      const refreshed = await this.batchRefreshTikTokVideos(orgId, projectId, account);
+      updatedVideos.push(...refreshed);
+      console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
+    }
+
+    // CALL 2: Discover new videos only
+    console.log(`🔍 [CALL 2] Discovering new TikTok videos (max 10)...`);
+    const discovered = await this.discoverNewTikTokVideos(orgId, account, existingVideoIds);
+    newVideos.push(...discovered);
+    console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
+
+    console.log(`📊 TikTok sync complete: ${newVideos.length} new, ${updatedVideos.length} refreshed`);
+    return { newVideos, updatedVideos };
+  }
+
+  /**
+   * CALL 1: Batch refresh existing TikTok videos using postURLs
+   */
+  private static async batchRefreshTikTokVideos(
+    orgId: string,
+    projectId: string,
+    account: TrackedAccount
+  ): Promise<AccountVideo[]> {
+    const existingVideos = await this.getAccountVideos(orgId, projectId, account.id);
+    if (existingVideos.length === 0) return [];
+
+    // Build array of post URLs for batch refresh
+    const postURLs = existingVideos
+      .map(v => v.url)
+      .filter(url => url);
+
+    if (postURLs.length === 0) return [];
+
+    console.log(`📦 Refreshing ${postURLs.length} existing TikTok videos in ONE API call...`);
+
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
-    
+
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         actorId: 'clockworks~tiktok-scraper',
         input: {
-          profiles: [account.username],
-          resultsPerPage: maxVideos, // Limit to avoid fetching all 100 videos
+          postURLs: postURLs,
           shouldDownloadCovers: false,
           shouldDownloadVideos: false,
           shouldDownloadSubtitles: false
@@ -869,65 +1006,29 @@ export class AccountTrackingServiceFirebase {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      console.warn(`⚠️ TikTok batch refresh failed: ${response.status}`);
+      return [];
     }
 
     const result = await response.json();
+    if (!result.items || !Array.isArray(result.items)) return [];
 
-    if (!result.items || !Array.isArray(result.items)) {
-      return { newVideos: [], updatedVideos: [] };
-    }
+    console.log(`📦 Batch refresh returned ${result.items.length} videos`);
 
-    console.log(`📦 TikTok API returned ${result.items.length} videos`);
-
-    // Process videos in order (newest first)
+    // Process refreshed videos
+    const refreshed: AccountVideo[] = [];
     for (const item of result.items) {
       if (!item.webVideoUrl && !item.id) continue;
 
       const videoId = item.id || item.videoId || '';
-      const isExisting = existingVideoIds.has(videoId);
-
-      // Try multiple possible thumbnail field names for TikTok
-      const thumbnailUrl = item['videoMeta.coverUrl'] || 
-                          item.videoMeta?.coverUrl || 
-                          item.covers?.default || 
-                          item.coverUrl || 
-                          item.thumbnail || 
-                          item.cover || 
-                          '';
-      
-      // ONLY upload thumbnail to Firebase Storage for NEW videos
-      let uploadedThumbnail = thumbnailUrl;
-      if (!isExisting && thumbnailUrl) {
-        console.log(`🖼️ TikTok thumbnail URL found for NEW video ${videoId}: ${thumbnailUrl.substring(0, 80)}...`);
-        try {
-          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-            orgId,
-            thumbnailUrl,
-            `tt_${videoId}_thumb`,
-            'thumbnail'
-          );
-          console.log(`✅ TikTok thumbnail uploaded to Firebase Storage`);
-        } catch (error) {
-          console.warn(`⚠️ Failed to upload TikTok thumbnail for ${videoId}, using original URL:`, error);
-          uploadedThumbnail = thumbnailUrl;
-        }
-      } else if (isExisting) {
-        console.log(`✅ Keeping existing thumbnail for TikTok video: ${videoId}`);
-        uploadedThumbnail = ''; // Don't overwrite existing thumbnail
-      } else if (!thumbnailUrl) {
-        console.warn(`⚠️ TikTok video ${videoId} has no thumbnail URL in API response`);
-      }
-
-      const caption = item.text || item.description || '';
       
       const video: AccountVideo = {
         id: `${account.id}_${videoId}`,
         accountId: account.id,
         videoId: videoId,
         url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${videoId}`,
-        thumbnail: uploadedThumbnail,
-        caption: caption,
+        thumbnail: '', // Keep existing thumbnail
+        caption: item.text || item.description || '',
         uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
         views: item.playCount || 0,
         likes: item.diggCount || 0,
@@ -941,95 +1042,279 @@ export class AccountTrackingServiceFirebase {
         platform: 'tiktok'
       };
       
-      // Separate into new vs existing
-      if (isExisting) {
-        console.log(`   ♻️  Video ${videoId} already exists - updating metrics`);
-        updatedVideos.push(video);
-      } else {
-        console.log(`   ✨ Video ${videoId} is NEW - will be added`);
-        newVideos.push(video);
-      }
+      refreshed.push(video);
     }
 
-    console.log(`📊 TikTok sync complete: ${newVideos.length} new videos, ${updatedVideos.length} updated videos`);
-    return { newVideos, updatedVideos };
+    return refreshed;
   }
 
   /**
-   * NEW: Incremental YouTube sync - Fetches videos and separates new vs existing
-   * Returns BOTH new videos (to add) AND updated videos (to refresh metrics)
+   * CALL 2: Discover new TikTok videos only (ignore existing)
+   */
+  private static async discoverNewTikTokVideos(
+    orgId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<AccountVideo[]> {
+    const isNewAccount = existingVideoIds.size === 0;
+    const maxVideos = isNewAccount ? 30 : 10;
+    
+    console.log(`🔍 Fetching up to ${maxVideos} latest TikTok videos for discovery...`);
+    
+    const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+    
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        actorId: 'clockworks~tiktok-scraper',
+        input: {
+          profiles: [account.username],
+          resultsPerPage: maxVideos,
+          shouldDownloadCovers: false,
+          shouldDownloadVideos: false,
+          shouldDownloadSubtitles: false
+        },
+        action: 'run'
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ TikTok discovery failed: ${response.status}`);
+      return [];
+    }
+
+    const result = await response.json();
+    if (!result.items || !Array.isArray(result.items)) return [];
+
+    console.log(`📦 Discovery returned ${result.items.length} videos`);
+
+    const newVideos: AccountVideo[] = [];
+
+    // Process videos - ONLY add NEW ones, skip existing completely
+    for (const item of result.items) {
+      if (!item.webVideoUrl && !item.id) continue;
+
+      const videoId = item.id || item.videoId || '';
+      
+      // SKIP if already exists
+      if (existingVideoIds.has(videoId)) {
+        console.log(`   ⏭️  Skipping existing video: ${videoId}`);
+        continue;
+      }
+
+      // This is a NEW video - process it
+      const thumbnailUrl = item['videoMeta.coverUrl'] || 
+                          item.videoMeta?.coverUrl || 
+                          item.covers?.default || 
+                          item.coverUrl || 
+                          item.thumbnail || 
+                          item.cover || 
+                          '';
+      
+      let uploadedThumbnail = thumbnailUrl;
+      if (thumbnailUrl) {
+        try {
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            thumbnailUrl,
+            `tt_${videoId}_thumb`,
+            'thumbnail'
+          );
+        } catch (error) {
+          console.warn(`⚠️ Failed to upload thumbnail, using original URL`);
+        }
+      }
+      
+      const video: AccountVideo = {
+        id: `${account.id}_${videoId}`,
+        accountId: account.id,
+        videoId: videoId,
+        url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${videoId}`,
+        thumbnail: uploadedThumbnail,
+        caption: item.text || item.description || '',
+        uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
+        views: item.playCount || 0,
+        likes: item.diggCount || 0,
+        comments: item.commentCount || 0,
+        shares: item.shareCount || 0,
+        saves: item.collectCount || 0,
+        duration: item['videoMeta.duration'] || item.videoMeta?.duration || 0,
+        isSponsored: false,
+        hashtags: item.hashtags || [],
+        mentions: item.mentions || [],
+        platform: 'tiktok'
+      };
+      
+      newVideos.push(video);
+      console.log(`   ✨ NEW video: ${videoId}`);
+    }
+
+    return newVideos;
+  }
+
+  /**
+   * TWO-CALL ARCHITECTURE: YouTube sync with separate refresh and discovery
+   * CALL 1: Batch refresh existing videos using YouTube Data API
+   * CALL 2: Discover new videos only
    */
   private static async syncYoutubeShortsIncremental(
     orgId: string,
-    _projectId: string,
+    projectId: string,
     account: TrackedAccount,
     existingVideoIds: Set<string>
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
-    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} YouTube sync for @${account.username}...`);
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'TWO-CALL'} YouTube sync for @${account.username}...`);
     
     try {
-      // We need the channel ID to fetch Shorts
-      // Fetch profile again to get channelId if not stored
+      const newVideos: AccountVideo[] = [];
+      const updatedVideos: AccountVideo[] = [];
+
+      // Get channel ID
       const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
       if (!profile.channelId) {
         throw new Error('Could not resolve YouTube channel ID');
       }
 
-      // Fetch shorts (up to 50 videos, sorted by date)
-      const shorts = await YoutubeAccountService.syncChannelShorts(profile.channelId!, account.displayName || account.username);
-
-      const newVideos: AccountVideo[] = [];
-      const updatedVideos: AccountVideo[] = [];
-
-      // Process each video and determine if it's new or existing
-      for (const short of shorts) {
-        const isExisting = existingVideoIds.has(short.videoId || '');
-        
-        // ONLY upload thumbnail to Firebase Storage for NEW videos
-        let uploadedThumbnail = short.thumbnail;
-        if (!isExisting && short.thumbnail) {
-          try {
-            console.log(`📸 Uploading thumbnail to Firebase Storage for NEW YouTube Short: ${short.videoId}`);
-            uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-              orgId,
-              short.thumbnail,
-              `yt_${short.videoId}`,
-              'thumbnail'
-            );
-          } catch (error) {
-            console.warn(`⚠️ Failed to upload YouTube thumbnail for ${short.videoId}, using original URL:`, error);
-            uploadedThumbnail = short.thumbnail;
-          }
-        } else if (isExisting) {
-          console.log(`✅ Keeping existing thumbnail for YouTube Short: ${short.videoId}`);
-          uploadedThumbnail = ''; // Don't overwrite existing thumbnail
-        }
-
-        const processedVideo: AccountVideo = {
-          ...short,
-          id: `${account.id}_${short.videoId}`,
-          accountId: account.id,
-          thumbnail: uploadedThumbnail,
-        };
-
-        if (isExisting) {
-          // This video already exists - add to updated list for metric refresh
-          updatedVideos.push(processedVideo);
-          console.log(`♻️ Existing YouTube Short: ${short.videoId} - will refresh metrics`);
-        } else {
-          // This is a new video - add to new list
-          newVideos.push(processedVideo);
-          console.log(`➕ New YouTube Short: ${short.videoId}`);
-        }
+      // CALL 1: Batch refresh existing videos (if any)
+      if (!isNewAccount && existingVideoIds.size > 0) {
+        console.log(`🔄 [CALL 1] Batch refreshing ${existingVideoIds.size} existing YouTube videos...`);
+        const refreshed = await this.batchRefreshYouTubeVideos(orgId, projectId, account);
+        updatedVideos.push(...refreshed);
+        console.log(`✅ [CALL 1] Refreshed ${refreshed.length} existing videos`);
       }
 
-      console.log(`🎉 YouTube incremental sync finished: ${newVideos.length} new videos, ${updatedVideos.length} updated videos`);
+      // CALL 2: Discover new videos only
+      console.log(`🔍 [CALL 2] Discovering new YouTube Shorts (max 10)...`);
+      const discovered = await this.discoverNewYouTubeVideos(orgId, profile.channelId, account, existingVideoIds);
+      newVideos.push(...discovered);
+      console.log(`✅ [CALL 2] Found ${discovered.length} new videos`);
+
+      console.log(`📊 YouTube sync complete: ${newVideos.length} new, ${updatedVideos.length} refreshed`);
       return { newVideos, updatedVideos };
     } catch (error) {
       console.error('❌ Failed to sync YouTube Shorts:', error);
       throw error;
     }
+  }
+
+  /**
+   * CALL 1: Batch refresh existing YouTube videos using YouTube Data API
+   */
+  private static async batchRefreshYouTubeVideos(
+    orgId: string,
+    projectId: string,
+    account: TrackedAccount
+  ): Promise<AccountVideo[]> {
+    const existingVideos = await this.getAccountVideos(orgId, projectId, account.id);
+    if (existingVideos.length === 0) return [];
+
+    const videoIds = existingVideos.map(v => v.videoId).filter(id => id);
+    if (videoIds.length === 0) return [];
+
+    console.log(`📦 Refreshing ${videoIds.length} YouTube videos using official API...`);
+
+    // YouTube Data API supports up to 50 IDs in one call
+    const refreshed: AccountVideo[] = [];
+    
+    for (let i = 0; i < videoIds.length; i += 50) {
+      const batchIds = videoIds.slice(i, i + 50);
+      
+      try {
+        const response = await fetch(`${window.location.origin}/api/youtube-channel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batchGetVideos',
+            videoIds: batchIds
+          })
+        });
+
+        if (!response.ok) continue;
+
+        const { videos } = await response.json();
+        
+        for (const video of videos) {
+          refreshed.push({
+            id: `${account.id}_${video.id}`,
+            accountId: account.id,
+            videoId: video.id,
+            url: `https://www.youtube.com/shorts/${video.id}`,
+            thumbnail: '', // Keep existing thumbnail
+            caption: video.snippet?.title || '',
+            uploadDate: new Date(video.snippet?.publishedAt || Date.now()),
+            views: Number(video.statistics?.viewCount || 0),
+            likes: Number(video.statistics?.likeCount || 0),
+            comments: Number(video.statistics?.commentCount || 0),
+            shares: 0,
+            duration: 0,
+            isSponsored: false,
+            hashtags: [],
+            mentions: []
+          });
+        }
+      } catch (error) {
+        console.warn(`⚠️ Failed to refresh batch of YouTube videos:`, error);
+      }
+    }
+
+    return refreshed;
+  }
+
+  /**
+   * CALL 2: Discover new YouTube Shorts only (ignore existing)
+   */
+  private static async discoverNewYouTubeVideos(
+    orgId: string,
+    channelId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<AccountVideo[]> {
+    const isNewAccount = existingVideoIds.size === 0;
+    const maxResults = isNewAccount ? 50 : 10;
+
+    // Fetch latest Shorts from channel
+    const shorts = await YoutubeAccountService.syncChannelShorts(channelId, account.displayName || account.username);
+    
+    const newVideos: AccountVideo[] = [];
+
+    // Process - ONLY add NEW ones, skip existing
+    for (const short of shorts.slice(0, maxResults)) {
+      const videoId = short.videoId || '';
+      
+      // SKIP if already exists
+      if (existingVideoIds.has(videoId)) {
+        console.log(`   ⏭️  Skipping existing video: ${videoId}`);
+        continue;
+      }
+
+      // This is a NEW video
+      let uploadedThumbnail = short.thumbnail;
+      if (short.thumbnail) {
+        try {
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            short.thumbnail,
+            `yt_${videoId}`,
+            'thumbnail'
+          );
+        } catch (error) {
+          console.warn(`⚠️ Failed to upload thumbnail, using original URL`);
+        }
+      }
+
+      newVideos.push({
+        ...short,
+        id: `${account.id}_${videoId}`,
+        accountId: account.id,
+        thumbnail: uploadedThumbnail
+      });
+      
+      console.log(`   ✨ NEW video: ${videoId}`);
+    }
+
+    return newVideos;
   }
 
   // LEGACY syncYoutubeShorts removed - use syncYoutubeShortsIncremental instead
