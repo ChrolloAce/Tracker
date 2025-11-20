@@ -1655,11 +1655,49 @@ export default async function handler(
         
         // Transform Instagram data to video format
         for (const item of instagramItems) {
-          // 🔍 Check if this is an error response from Apify
+          // 🔍 Check if this is an error response from Apify (deleted/restricted/private)
           if (item.error) {
-            console.warn(`⚠️ [INSTAGRAM] Skipping video due to error: ${item.error}`);
+            console.warn(`⚠️ [INSTAGRAM] Video error: ${item.error}`);
             console.warn(`   Input URL: ${item.input}`);
-            console.warn(`   This video may be private, restricted, or deleted`);
+            
+            // Extract video code from URL to mark it in database
+            const urlMatch = item.input?.match(/\/p\/([^\/]+)/);
+            const videoCode = urlMatch ? urlMatch[1] : null;
+            
+            if (videoCode) {
+              console.log(`🔍 Marking video ${videoCode} as deleted/restricted in database...`);
+              
+              // Find the video in database and mark it with error status
+              const videoQuery = await db
+                .collection('organizations')
+                .doc(orgId)
+                .collection('projects')
+                .doc(projectId)
+                .collection('videos')
+                .where('videoId', '==', videoCode)
+                .where('platform', '==', 'instagram')
+                .limit(1)
+                .get();
+              
+              if (!videoQuery.empty) {
+                const videoRef = videoQuery.docs[0].ref;
+                await videoRef.update({
+                  status: 'error',
+                  lastRefreshError: item.error,
+                  lastRefreshed: Timestamp.now(),
+                  errorDetails: {
+                    type: item.error.includes('Restricted') ? 'restricted' : 
+                          item.error.includes('private') ? 'private' : 'deleted',
+                    message: item.error,
+                    detectedAt: Timestamp.now()
+                  }
+                });
+                console.log(`✅ Marked video ${videoCode} with error status: ${item.error}`);
+              } else {
+                console.warn(`⚠️ Could not find video ${videoCode} in database to mark as error`);
+              }
+            }
+            
             continue;
           }
           
