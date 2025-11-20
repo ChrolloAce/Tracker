@@ -454,14 +454,14 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [TIKTOK] Forward discovery - fetching 20 most recent videos...`);
+          console.log(`🔍 [TIKTOK] Forward discovery - fetching 10 most recent videos...`);
           
           try {
             const data = await runApifyActor({
               actorId: 'apidojo/tiktok-scraper',
               input: {
                 startUrls: [`https://www.tiktok.com/@${username}`],
-                maxItems: 20,
+                maxItems: 10,
                 sortType: 'RELEVANCE',
                 dateRange: 'DEFAULT',
                 location: 'US',
@@ -756,14 +756,14 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [YOUTUBE] Forward discovery - fetching 20 most recent Shorts...`);
+          console.log(`🔍 [YOUTUBE] Forward discovery - fetching 10 most recent Shorts...`);
           
           try {
             const data = await runApifyActor({
               actorId: 'grow_media/youtube-shorts-scraper',
               input: {
                 channels: [channelHandle],
-                maxResults: 20,
+                maxResults: 10,
                 sortBy: 'latest',
                 proxy: {
                   useApifyProxy: true,
@@ -1083,17 +1083,17 @@ export default async function handler(
       
       // ===== NEW TWEET DISCOVERY (only if NOT refresh_only) =====
       if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-        console.log(`🔍 [TWITTER] Forward discovery - fetching 20 most recent video tweets...`);
+        console.log(`🔍 [TWITTER] Forward discovery - fetching 10 most recent tweets (ALL types)...`);
         
         try {
           const tweetsData = await runApifyActor({
             actorId: 'apidojo/tweet-scraper',
             input: {
               twitterHandles: [account.username],
-              maxItems: 20,
+              maxItems: 10,
               sort: 'Latest',
               onlyImage: false,
-              onlyVideo: true, // ✅ ONLY fetch video tweets
+              onlyVideo: false, // ✅ Fetch ALL tweets (text, images, videos)
               onlyQuote: false,
               onlyVerifiedUsers: false,
               onlyTwitterBlue: false,
@@ -1294,13 +1294,13 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [INSTAGRAM] Forward discovery - fetching 20 most recent reels...`);
+          console.log(`🔍 [INSTAGRAM] Forward discovery - fetching 10 most recent reels...`);
           
           try {
             const scraperInput: any = {
               tags: [`https://www.instagram.com/${account.username}/reels/`],
               target: 'reels_only',
-              reels_count: 20,
+              reels_count: 10,
               include_raw_data: true,
               // NO beginDate/endDate - date filtering doesn't work reliably
               custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
