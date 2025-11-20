@@ -24,7 +24,8 @@ import {
   TrendingUp,
   Copy,
   User,
-  BarChart3
+  BarChart3,
+  Download
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo } from '../types/accounts';
@@ -51,6 +52,8 @@ import { DateFilterType } from './DateRangeFilter';
 import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 import { FloatingTooltip } from './ui/FloatingTooltip';
 import { UrlParserService } from '../services/UrlParserService';
+import { ExportVideosModal } from './ExportVideosModal';
+import { exportAccountsToCSV } from '../utils/accountCsvExport';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
@@ -301,6 +304,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   });
   const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const actionsMenuRef = useRef<HTMLButtonElement>(null);
   
   // Pagination state for videos (details view)
   const [currentPage, setCurrentPage] = useState(1);
@@ -1272,6 +1279,79 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   // NOTE: Removed duplicate useEffect - video loading is now handled by loadAccountVideos() 
   // which is called from the useEffect at line ~450 with dashboard rules properly applied
 
+  // Selection and action handlers for accounts
+  const handleSelectAllAccounts = useCallback(() => {
+    // Select ALL accounts in processed list
+    if (selectedAccounts.size === processedAccounts.length) {
+      setSelectedAccounts(new Set());
+    } else {
+      setSelectedAccounts(new Set(processedAccounts.map(a => a.id)));
+    }
+  }, [processedAccounts, selectedAccounts.size]);
+
+  const handleSelectAccount = useCallback((accountId: string) => {
+    const newSelected = new Set(selectedAccounts);
+    if (newSelected.has(accountId)) {
+      newSelected.delete(accountId);
+    } else {
+      newSelected.add(accountId);
+    }
+    setSelectedAccounts(newSelected);
+  }, [selectedAccounts]);
+
+  const handleCopyAccountLinks = useCallback(() => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    const links = selected.map(a => {
+      switch (a.platform) {
+        case 'instagram':
+          return `https://www.instagram.com/${a.username}`;
+        case 'tiktok':
+          return `https://www.tiktok.com/@${a.username}`;
+        case 'youtube':
+          return `https://www.youtube.com/@${a.username}`;
+        case 'twitter':
+          return `https://twitter.com/${a.username}`;
+        default:
+          return a.username;
+      }
+    }).join('\n');
+    navigator.clipboard.writeText(links);
+    setShowActionsMenu(false);
+    console.log(`✅ Copied ${selected.length} account links to clipboard`);
+  }, [processedAccounts, selectedAccounts]);
+
+  const handleBulkDeleteAccounts = useCallback(() => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    const count = selected.length;
+    
+    if (window.confirm(`Are you sure you want to delete ${count} account${count !== 1 ? 's' : ''} and all their videos? This action cannot be undone.`)) {
+      selected.forEach(account => handleDeleteAccount(account));
+      setSelectedAccounts(new Set());
+      setShowActionsMenu(false);
+    }
+  }, [processedAccounts, selectedAccounts]);
+
+  const handleExportAccounts = useCallback((filename: string) => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    exportAccountsToCSV(selected, filename);
+    setShowExportModal(false);
+    setSelectedAccounts(new Set());
+  }, [processedAccounts, selectedAccounts]);
+
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    };
+
+    if (showActionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showActionsMenu]);
+
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
 
@@ -1760,6 +1840,73 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   </h2>
                 </div>
                 <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                  {/* Actions Dropdown */}
+                  <div className="relative">
+                    <button
+                      ref={actionsMenuRef}
+                      onClick={() => setShowActionsMenu(!showActionsMenu)}
+                      disabled={selectedAccounts.size === 0}
+                      className={clsx(
+                        "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
+                        selectedAccounts.size > 0
+                          ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
+                          : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {selectedAccounts.size > 0 ? `Actions (${selectedAccounts.size})` : 'Actions'}
+                      </span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+
+                    {/* Actions Dropdown Menu (Portal) */}
+                    {showActionsMenu && selectedAccounts.size > 0 && actionsMenuRef.current && createPortal(
+                      <>
+                        {/* Backdrop */}
+                        <div 
+                          className="fixed inset-0 z-[9998]" 
+                          onClick={() => setShowActionsMenu(false)}
+                        />
+                        
+                        {/* Dropdown Menu */}
+                        <div 
+                          className="fixed w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-[9999] overflow-hidden"
+                          style={{
+                            top: `${actionsMenuRef.current.getBoundingClientRect().bottom + 8}px`,
+                            left: `${actionsMenuRef.current.getBoundingClientRect().right - 192}px`
+                          }}
+                        >
+                          <button
+                            onClick={handleCopyAccountLinks}
+                            className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                          >
+                            <LinkIcon className="w-4 h-4" />
+                            <span>Copy Links</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowExportModal(true);
+                              setShowActionsMenu(false);
+                            }}
+                            className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>Export to CSV</span>
+                          </button>
+                          <button
+                            onClick={handleBulkDeleteAccounts}
+                            className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete Selected</span>
+                          </button>
+                        </div>
+                      </>,
+                      document.body
+                    )}
+                  </div>
+
                   {/* Column Visibility Toggle */}
                   <div className="relative">
                     <button
@@ -1796,6 +1943,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               <table className="w-full min-w-max">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
                   <tr>
+                    {/* Select All Checkbox */}
+                    <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-gray-50 dark:bg-zinc-900/40">
+                      <div className="flex items-center justify-center" title={`Select all ${processedAccounts.length} accounts`}>
+                        <input
+                          type="checkbox"
+                          checked={processedAccounts.length > 0 && selectedAccounts.size === processedAccounts.length}
+                          onChange={handleSelectAllAccounts}
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 cursor-pointer"
+                        />
+                      </div>
+                    </th>
                     <ColumnHeader
                       label="Username"
                       tooltip="The account username along with profile picture. Platform icon shows which social media platform this account is on, and a verified badge appears if the account is verified."
@@ -2059,8 +2217,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               key={`processing-${procAccount.platform}-${procAccount.username}`}
                               className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20 transition-all duration-500"
                     >
+                      {/* Checkbox Column */}
+                      <td 
+                        className="w-10 px-2 sm:px-4 py-4 sticky left-0 z-20 bg-white/5 dark:bg-white/5 backdrop-blur"
+                      >
+                        <input
+                          type="checkbox"
+                          disabled
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 opacity-30"
+                        />
+                      </td>
                       {/* Username Column */}
-                      <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white/5 dark:bg-white/5 backdrop-blur z-20">
+                      <td className="px-6 py-4 whitespace-nowrap sticky left-10 bg-white/5 dark:bg-white/5 backdrop-blur z-10">
                         <div className="flex items-center space-x-3">
                           <div className="relative w-10 h-10">
                                     {matchingAccount?.profilePicture ? (
@@ -2209,7 +2377,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       return (
                       <tr
                         key={account.id}
-                        onClick={() => {
+                        onClick={(e) => {
+                          // Don't trigger row click if clicking on checkbox
+                          if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
                           if (!isAccountSyncing) {
                             // ✅ Navigate to dashboard with account filter query param
                             navigate(`/dashboard?accounts=${account.id}`);
@@ -2224,8 +2394,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           }
                         )}
                       >
+                        {/* Checkbox Column */}
+                        <td 
+                          className="w-10 px-2 sm:px-4 py-4 sticky left-0 z-20 bg-zinc-900/60 backdrop-blur group-hover:bg-white/5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedAccounts.has(account.id)}
+                            onChange={() => handleSelectAccount(account.id)}
+                            disabled={isAccountSyncing}
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 cursor-pointer disabled:opacity-30"
+                          />
+                        </td>
                         {/* Username Column */}
-                        <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-zinc-900/60 backdrop-blur z-20 group-hover:bg-white/5">
+                        <td className="px-6 py-4 whitespace-nowrap sticky left-10 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                           <div className="flex items-center space-x-3">
                             <div className="relative w-10 h-10">
                               {account.profilePicture && !imageErrors.has(account.id) ? (
@@ -3927,6 +4110,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           </div>
         </div>
       )}
+
+      {/* Export Accounts Modal */}
+      <ExportVideosModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExportAccounts}
+        selectedCount={selectedAccounts.size}
+      />
     </div>
   );
 });
