@@ -174,7 +174,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [showExportModal, setShowExportModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
-  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const actionsMenuRef = useRef<HTMLButtonElement>(null);
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -591,8 +591,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             {/* Actions Dropdown */}
-            <div className="relative" ref={actionsMenuRef}>
+            <div className="relative">
               <button
+                ref={actionsMenuRef}
                 onClick={() => setShowActionsMenu(!showActionsMenu)}
                 disabled={selectedVideos.size === 0}
                 className={clsx(
@@ -609,36 +610,52 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <ChevronDown className="w-3 h-3" />
               </button>
 
-              {/* Actions Dropdown Menu */}
-              {showActionsMenu && selectedVideos.size > 0 && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-50 overflow-hidden">
-                  <button
-                    onClick={handleCopyLinks}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                  >
-                    <LinkIcon className="w-4 h-4" />
-                    <span>Copy Links</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportModal(true);
-                      setShowActionsMenu(false);
+              {/* Actions Dropdown Menu (Portal) */}
+              {showActionsMenu && selectedVideos.size > 0 && actionsMenuRef.current && createPortal(
+                <>
+                  {/* Backdrop */}
+                  <div 
+                    className="fixed inset-0 z-[9998]" 
+                    onClick={() => setShowActionsMenu(false)}
+                  />
+                  
+                  {/* Dropdown Menu */}
+                  <div 
+                    className="fixed w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-[9999] overflow-hidden"
+                    style={{
+                      top: `${actionsMenuRef.current.getBoundingClientRect().bottom + 8}px`,
+                      left: `${actionsMenuRef.current.getBoundingClientRect().right - 192}px`
                     }}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
                   >
-                    <Download className="w-4 h-4" />
-                    <span>Export to CSV</span>
-                  </button>
-                  {onDelete && (
                     <button
-                      onClick={handleBulkDelete}
-                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                      onClick={handleCopyLinks}
+                      className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Delete Selected</span>
+                      <LinkIcon className="w-4 h-4" />
+                      <span>Copy Links</span>
                     </button>
-                  )}
-                </div>
+                    <button
+                      onClick={() => {
+                        setShowExportModal(true);
+                        setShowActionsMenu(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Export to CSV</span>
+                    </button>
+                    {onDelete && (
+                      <button
+                        onClick={handleBulkDelete}
+                        className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete Selected</span>
+                      </button>
+                    )}
+                  </div>
+                </>,
+                document.body
               )}
             </div>
 
