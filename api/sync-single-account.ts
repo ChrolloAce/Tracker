@@ -315,6 +315,50 @@ export default async function handler(
       });
     }
 
+    // ==================== FIX #1: JOB-LEVEL LOCKING ====================
+    // Prevent multiple simultaneous syncs for the same account
+    const accountData = accountDoc.data();
+    const lockKey = `sync_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    if (accountData?.syncLockId && accountData?.syncLockTimestamp) {
+      const lockAge = Date.now() - accountData.syncLockTimestamp.toMillis();
+      if (lockAge < 5 * 60 * 1000) { // Lock valid for 5 minutes
+        console.log(`⏭️  Account ${accountId} is locked by another job (age: ${Math.round(lockAge/1000)}s), skipping to prevent duplicates`);
+        
+        // Delete this job since account is being processed
+        if (jobId) {
+          try {
+            await db.collection('syncQueue').doc(jobId).delete();
+            console.log(`   ✅ Job ${jobId} deleted (duplicate prevented)`);
+          } catch (err: any) {
+            console.warn(`   ⚠️  Could not delete job:`, err.message);
+          }
+        }
+        
+        return res.status(200).json({ 
+          success: true,
+          skipped: true,
+          reason: 'Account locked by another sync job',
+          lockAge: Math.round(lockAge/1000)
+        });
+      } else {
+        console.log(`   🔓 Lock expired (${Math.round(lockAge/1000)}s old), proceeding`);
+      }
+    }
+    
+    // Acquire lock
+    try {
+      await accountRef.update({
+        syncLockId: lockKey,
+        syncLockTimestamp: Timestamp.now()
+      });
+      console.log(`🔒 Acquired sync lock: ${lockKey}`);
+    } catch (lockError: any) {
+      console.error(`❌ Failed to acquire lock:`, lockError.message);
+      return res.status(500).json({ error: 'Failed to acquire sync lock' });
+    }
+    // ==================== END FIX #1 ====================
+
     const account = accountDoc.data() as any;
     
     console.log(`📊 Account info: @${account.username} (${account.platform})`);
@@ -1638,26 +1682,26 @@ export default async function handler(
         console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No valid thumbnail URL for video ${video.videoId}`);
       }
 
-      // Check if video already exists
-      const existingVideoQuery = await db
+      // ==================== FIX #2 & #3: DETERMINISTIC IDs + NO DUPLICATES ====================
+      // Use deterministic doc ID: {platform}_{accountId}_{videoId}
+      // This prevents race conditions - if 2 jobs try to create same video, only one succeeds
+      const videoDocId = `${account.platform}_${accountId}_${video.videoId}`;
+      const videoRef = db
         .collection('organizations')
         .doc(orgId)
         .collection('projects')
         .doc(projectId)
         .collection('videos')
-        .where('videoId', '==', video.videoId)
-        .where('platform', '==', account.platform)
-        .limit(1)
-        .get();
+        .doc(videoDocId); // DETERMINISTIC ID
 
       const snapshotTime = Timestamp.now();
       const isManualTrigger = account.syncRequestedBy ? true : false;
 
-      if (!existingVideoQuery.empty) {
-        // VIDEO EXISTS - Update metrics and create refresh snapshot
-        const videoRef = existingVideoQuery.docs[0].ref;
-        
-        // Update video with new metrics
+      // Check if video already exists (fast doc.get instead of query)
+      const existingVideo = await videoRef.get();
+
+      if (existingVideo.exists) {
+        // VIDEO EXISTS - Update metrics only
         batch.update(videoRef, {
           views: video.views || 0,
           likes: video.likes || 0,
@@ -1665,10 +1709,56 @@ export default async function handler(
           shares: video.shares || 0,
           saves: video.saves || 0,
           lastRefreshed: snapshotTime,
-          thumbnail: firebaseThumbnailUrl || existingVideoQuery.docs[0].data().thumbnail // Update thumbnail if new one available
+          thumbnail: firebaseThumbnailUrl || existingVideo.data()?.thumbnail
         });
 
-        // Create refresh snapshot
+        // ==================== FIX #4: SNAPSHOT DEDUPLICATION ====================
+        // Check for recent snapshot to prevent duplicates
+        const fiveMinutesAgo = Timestamp.fromMillis(snapshotTime.toMillis() - (5 * 60 * 1000));
+        const recentSnapshotQuery = await videoRef.collection('snapshots')
+          .where('capturedAt', '>=', fiveMinutesAgo)
+          .limit(1)
+          .get();
+
+        if (!recentSnapshotQuery.empty) {
+          const snapshotAge = Math.round((snapshotTime.toMillis() - recentSnapshotQuery.docs[0].data().capturedAt.toMillis()) / 1000);
+          console.log(`    ⏭️  Skipping snapshot for ${video.videoId} - recent one exists (${snapshotAge}s ago)`);
+        } else {
+          // Create refresh snapshot
+          const snapshotRef = videoRef.collection('snapshots').doc();
+          batch.set(snapshotRef, {
+            id: snapshotRef.id,
+            videoId: video.videoId,
+            views: video.views || 0,
+            likes: video.likes || 0,
+            comments: video.comments || 0,
+            shares: video.shares || 0,
+            saves: video.saves || 0,
+            capturedAt: snapshotTime,
+            timestamp: snapshotTime,
+            capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
+            isInitialSnapshot: false
+          });
+          console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
+        }
+      } else {
+        // NEW VIDEO - Create with initial snapshot
+        batch.set(videoRef, {
+          ...video,
+          thumbnail: firebaseThumbnailUrl,
+          orgId: orgId,
+          projectId: projectId,
+          trackedAccountId: accountId,
+          platform: account.platform,
+          dateAdded: snapshotTime,
+          addedBy: account.syncRequestedBy || account.addedBy || 'system',
+          lastRefreshed: snapshotTime,
+          status: 'active',
+          isRead: false,
+          isSingular: false
+        });
+
+        // Create initial snapshot (no deduplication needed for new videos)
         const snapshotRef = videoRef.collection('snapshots').doc();
         batch.set(snapshotRef, {
           id: snapshotRef.id,
@@ -1680,91 +1770,15 @@ export default async function handler(
           saves: video.saves || 0,
           capturedAt: snapshotTime,
           timestamp: snapshotTime,
-          capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
-          isInitialSnapshot: false // This is a refresh snapshot, not initial
-        });
-
-        console.log(`    🔄 Updated existing video ${video.videoId} + created refresh snapshot`);
-      } else {
-        // NEW VIDEO - Create with initial snapshot
-      const videoRef = db
-        .collection('organizations')
-        .doc(orgId)
-        .collection('projects')
-        .doc(projectId)
-        .collection('videos')
-        .doc();
-
-      batch.set(videoRef, {
-        ...video,
-          thumbnail: firebaseThumbnailUrl, // Use Firebase Storage URL
-        orgId: orgId,
-        projectId: projectId,
-        trackedAccountId: accountId,
-        platform: account.platform,
-          dateAdded: snapshotTime,
-        addedBy: account.syncRequestedBy || account.addedBy || 'system',
-          lastRefreshed: snapshotTime,
-        status: 'active',
-        isRead: false,
-        isSingular: false
-      });
-
-      // Create initial snapshot for this new video
-      const snapshotRef = videoRef.collection('snapshots').doc();
-      batch.set(snapshotRef, {
-        id: snapshotRef.id,
-        videoId: video.videoId,
-        views: video.views || 0,
-        likes: video.likes || 0,
-        comments: video.comments || 0,
-        shares: video.shares || 0,
-          saves: video.saves || 0,
-        capturedAt: snapshotTime,
-        timestamp: snapshotTime,
           capturedBy: 'initial_sync',
-          isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
-      });
+          isInitialSnapshot: true
+        });
 
         console.log(`    ✅ Created new video ${video.videoId} + initial snapshot`);
       }
-
-      // ALSO save to tracked account's videos subcollection (for real-time listener)
-      const accountVideoRef = db
-        .collection('organizations')
-        .doc(orgId)
-        .collection('projects')
-        .doc(projectId)
-        .collection('trackedAccounts')
-        .doc(accountId)
-        .collection('videos')
-        .doc(video.videoId); // Use videoId as doc ID to avoid duplicates
-
-      batch.set(accountVideoRef, {
-        id: video.videoId,
-        accountId: accountId,
-        videoId: video.videoId,
-        url: video.videoUrl,
-        thumbnail: firebaseThumbnailUrl, // ✅ USE FIREBASE STORAGE URL
-        description: video.caption,
-        caption: video.caption,
-        title: video.videoTitle,
-        uploadDate: video.uploadDate,
-        views: video.views || 0,
-        viewsCount: video.views || 0,
-        likes: video.likes || 0,
-        likesCount: video.likes || 0,
-        comments: video.comments || 0,
-        commentsCount: video.comments || 0,
-        shares: video.shares || 0,
-        sharesCount: video.shares || 0,
-        saves: video.saves || 0, // ✅ ADD BOOKMARKS
-        savesCount: video.saves || 0, // ✅ ADD BOOKMARKS COUNT
-        duration: video.duration || 0,
-        isSponsored: false,
-        hashtags: [],
-        mentions: []
-      }, { merge: true }); // Use merge to avoid overwriting existing data
+      // ==================== FIX #3: REMOVED DUPLICATE SUBCOLLECTION ====================
+      // The accountVideoRef subcollection was causing duplicate entries - REMOVED!
+      // Videos are stored ONCE in /organizations/{org}/projects/{project}/videos/{deterministicId}
 
       savedCount++;
 
@@ -1928,6 +1942,17 @@ export default async function handler(
     console.log(`\n✅ [SYNC-ACCOUNT] Successfully completed sync for @${account.username}`);
     console.log(`   📊 Final stats: ${savedCount} videos, Session: ${sessionId || 'none'}, Job: ${jobId || 'none'}\n`);
     
+    // Release sync lock
+    try {
+      await accountRef.update({
+        syncLockId: null,
+        syncLockTimestamp: null
+      });
+      console.log(`🔓 Released sync lock for ${accountId}`);
+    } catch (unlockError: any) {
+      console.warn(`⚠️  Failed to release lock (non-critical):`, unlockError.message);
+    }
+    
     return res.status(200).json({
       success: true,
       message: 'Account synced successfully',
@@ -1938,6 +1963,25 @@ export default async function handler(
   } catch (error: any) {
     console.error(`❌ [SYNC-ACCOUNT] Error for account ${accountId}:`, error.message);
     console.error(`   Stack trace:`, error.stack);
+
+    // Release sync lock on error
+    try {
+      const accountRef = db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('trackedAccounts')
+        .doc(accountId);
+      
+      await accountRef.update({
+        syncLockId: null,
+        syncLockTimestamp: null
+      });
+      console.log(`🔓 Released sync lock for ${accountId} (error path)`);
+    } catch (unlockError: any) {
+      console.warn(`⚠️  Failed to release lock on error (non-critical):`, unlockError.message);
+    }
 
     // Update job status on error if jobId provided
     if (jobId) {
