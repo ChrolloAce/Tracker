@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3 } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3, Download } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -15,6 +15,8 @@ import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
 import videoMaterialAnimation from '../../public/lottie/Video Material.json';
 import { HeicImage } from './HeicImage';
 import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
+import { ExportVideosModal } from './ExportVideosModal';
+import { exportVideosToCSV } from '../utils/csvExport';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -169,6 +171,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<VideoSubmission | null>(null);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [showExportModal, setShowExportModal] = useState(false);
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -200,6 +204,32 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   useEffect(() => {
     localStorage.setItem('videoSubmissions_itemsPerPage', String(itemsPerPage));
   }, [itemsPerPage]);
+
+  // Selection handlers
+  const handleSelectAll = () => {
+    if (selectedVideos.size === paginatedSubmissions.length) {
+      setSelectedVideos(new Set());
+    } else {
+      setSelectedVideos(new Set(paginatedSubmissions.map(v => v.id)));
+    }
+  };
+
+  const handleSelectVideo = (videoId: string) => {
+    const newSelected = new Set(selectedVideos);
+    if (newSelected.has(videoId)) {
+      newSelected.delete(videoId);
+    } else {
+      newSelected.add(videoId);
+    }
+    setSelectedVideos(newSelected);
+  };
+
+  const handleExport = (filename: string) => {
+    const selectedSubmissions = sortedSubmissions.filter(v => selectedVideos.has(v.id));
+    exportVideosToCSV(selectedSubmissions, filename);
+    setShowExportModal(false);
+    setSelectedVideos(new Set()); // Clear selection after export
+  };
 
   // Calculate outlier statistics per account
   const accountStats = useMemo(() => {
@@ -521,6 +551,23 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{headerTitle || 'Recent Activity'}</h2>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+            {/* Download Button */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={selectedVideos.size === 0}
+              className={clsx(
+                "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
+                selectedVideos.size > 0
+                  ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
+                  : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
+              )}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {selectedVideos.size > 0 ? `Export (${selectedVideos.size})` : 'Export'}
+              </span>
+            </button>
+
             {/* Column Visibility Toggle */}
             <div className="relative">
               <button
@@ -583,10 +630,19 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         <table className="w-full min-w-max">
           <thead>
             <tr className="border-b border-white/5">
+              {/* Select All Checkbox */}
+              <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-[#121214]">
+                <input
+                  type="checkbox"
+                  checked={paginatedSubmissions.length > 0 && selectedVideos.size === paginatedSubmissions.length}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20"
+                />
+              </th>
               {visibleColumns.video && (
                 <ColumnHeader 
                   sticky
-                  className="min-w-[200px] sm:min-w-[280px]"
+                  className="min-w-[200px] sm:min-w-[280px] left-10"
                   tooltip="Video title, creator, and basic information. Click on a video row to see detailed analytics, engagement history, and performance trends."
                 >
                   Video
@@ -717,8 +773,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <tr 
                   key={submission.id}
                   onClick={(e) => {
-                    // Don't trigger row click if clicking on video preview link, dropdown menu, or if loading
-                    if (isLoading || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('.relative.opacity-0')) return;
+                    // Don't trigger row click if clicking on video preview link, dropdown menu, checkbox, or if loading
+                    if (isLoading || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('.relative.opacity-0') || (e.target as HTMLElement).closest('input[type="checkbox"]')) return;
                     onVideoClick?.(submission);
                   }}
                   className={clsx(
@@ -731,8 +787,22 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   style={{ backgroundColor: isLoading ? undefined : '#121214' }}
                 >
+                  {/* Checkbox Column */}
+                  <td 
+                    className="w-10 px-2 sm:px-4 py-3 sm:py-4 sticky left-0 z-20 group-hover:bg-white/5"
+                    style={{ backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 18, 20, 0.95)' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedVideos.has(submission.id)}
+                      onChange={() => handleSelectVideo(submission.id)}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20"
+                      disabled={isLoading}
+                    />
+                  </td>
                   {visibleColumns.video && (
-                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 18, 20, 0.95)' }}>
+                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-10 z-10 group-hover:bg-white/5" style={{ backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 18, 20, 0.95)' }}>
                       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                         <div className="relative flex-shrink-0">
                           {isLoading ? (
@@ -1097,6 +1167,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           platform={selectedVideoForPlayer.platform}
         />
       )}
+
+      {/* Export Videos Modal */}
+      <ExportVideosModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExport}
+        selectedCount={selectedVideos.size}
+      />
     </div>
   );
 };
