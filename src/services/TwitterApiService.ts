@@ -99,8 +99,17 @@ class TwitterApiService {
 
       console.log(`✅ Fetched ${tweets.length} tweets (retweets excluded)`);
 
+      // Filter to only tweets with media (images/videos)
+      const tweetsWithMedia = tweets.filter(tweet => {
+        const hasMedia = (tweet.media && tweet.media.length > 0) || 
+                        (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0);
+        return hasMedia;
+      });
+
+      console.log(`📹 Filtered to ${tweetsWithMedia.length} tweets with media/videos (skipped ${tweets.length - tweetsWithMedia.length} text-only tweets)`);
+
       // Transform to AccountVideo format
-      return this.transformTweetsToVideos(tweets);
+      return this.transformTweetsToVideos(tweetsWithMedia);
     } catch (error) {
       console.error('❌ Failed to fetch tweets:', error);
       throw error;

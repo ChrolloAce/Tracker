@@ -771,7 +771,7 @@ export class AccountTrackingServiceFirebase {
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
     const isNewAccount = existingVideoIds.size === 0;
-    const maxReels = isNewAccount ? 30 : 10;
+    const maxReels = 10; // Always fetch 10 for discovery
     
     console.log(`🔍 Fetching up to ${maxReels} latest videos for discovery...`);
     
@@ -1085,7 +1085,7 @@ export class AccountTrackingServiceFirebase {
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
     const isNewAccount = existingVideoIds.size === 0;
-    const maxVideos = isNewAccount ? 30 : 10;
+    const maxVideos = 10; // Always fetch 10 for discovery
     
     console.log(`🔍 Fetching up to ${maxVideos} latest TikTok videos for discovery...`);
     
@@ -1340,7 +1340,7 @@ export class AccountTrackingServiceFirebase {
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
     const isNewAccount = existingVideoIds.size === 0;
-    const maxResults = isNewAccount ? 50 : 10;
+    const maxResults = 10; // Always fetch 10 for discovery
 
     // Fetch ONLY the number we need (not 50 then slice!)
     console.log(`🔍 [YouTube Discovery] Fetching latest ${maxResults} YouTube Shorts for channel: ${channelId}`);
@@ -1428,8 +1428,8 @@ export class AccountTrackingServiceFirebase {
       const newVideos: AccountVideo[] = [];
       const updatedVideos: AccountVideo[] = [];
       
-      // Fetch tweets (up to 30 for new accounts, 10 for incremental - consistent with other platforms)
-      const maxTweets = isNewAccount ? 30 : 10;
+      // Fetch tweets (always 10 for discovery)
+      const maxTweets = 10;
       
       const tweets = await TwitterApiService.fetchTweets(account.username, maxTweets);
       console.log(`📦 Twitter API returned ${tweets.length} tweets`);
