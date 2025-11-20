@@ -523,20 +523,30 @@ export class AccountTrackingServiceFirebase {
       const existingVideoIds = new Set(existingVideos.map(v => v.videoId).filter((id): id is string => !!id));
       console.log(`📚 Found ${existingVideoIds.size} existing videos in database`);
 
+      // Calculate oldest video date - only fetch videos newer than this
+      let oldestVideoDate: Date | null = null;
+      if (existingVideos.length > 0) {
+        const videosWithDates = existingVideos.filter(v => v.uploadDate);
+        if (videosWithDates.length > 0) {
+          oldestVideoDate = new Date(Math.min(...videosWithDates.map(v => new Date(v.uploadDate!).getTime())));
+          console.log(`📅 Oldest video date: ${oldestVideoDate.toLocaleDateString()} - will only fetch newer/equal videos`);
+        }
+      }
+
       // STEP 2 & 3: Fetch videos from platform (gets FRESH metrics!)
       // This returns BOTH new videos AND updated existing videos
       let syncResult: { newVideos: AccountVideo[], updatedVideos: AccountVideo[] };
       if (account.platform === 'instagram') {
-        syncResult = await this.syncInstagramVideosIncremental(orgId, projectId, account, existingVideoIds);
+        syncResult = await this.syncInstagramVideosIncremental(orgId, projectId, account, existingVideoIds, oldestVideoDate);
       } else if (account.platform === 'tiktok') {
         // TikTok with incremental sync
-        syncResult = await this.syncTikTokVideosIncremental(orgId, projectId, account, existingVideoIds);
+        syncResult = await this.syncTikTokVideosIncremental(orgId, projectId, account, existingVideoIds, oldestVideoDate);
       } else if (account.platform === 'twitter') {
         // Twitter with incremental sync
         syncResult = await this.syncTwitterTweetsIncremental(orgId, projectId, account, existingVideoIds);
       } else if (account.platform === 'youtube') {
         // YouTube with incremental sync
-        syncResult = await this.syncYoutubeShortsIncremental(orgId, projectId, account, existingVideoIds);
+        syncResult = await this.syncYoutubeShortsIncremental(orgId, projectId, account, existingVideoIds, oldestVideoDate);
       } else {
         throw new Error(`Unsupported platform: ${account.platform}`);
       }
@@ -628,7 +638,8 @@ export class AccountTrackingServiceFirebase {
     orgId: string,
     projectId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
     console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'TWO-CALL'} Instagram sync for @${account.username}...`);
@@ -636,9 +647,9 @@ export class AccountTrackingServiceFirebase {
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
 
-    // CALL 1: Discover new videos FIRST (stops at first duplicate)
+    // CALL 1: Discover new videos FIRST (stops at first duplicate or older video)
     console.log(`🔍 [CALL 1] Discovering new videos (max 10)...`);
-    const discovered = await this.discoverNewInstagramVideos(orgId, account, existingVideoIds);
+    const discovered = await this.discoverNewInstagramVideos(orgId, account, existingVideoIds, oldestVideoDate);
     newVideos.push(...discovered);
     console.log(`✅ [CALL 1] Found ${discovered.length} new videos`);
 
@@ -751,12 +762,13 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 1: Discover new Instagram videos only (ignore existing)
+   * CALL 1: Discover new Instagram videos only (ignore existing + older than oldest)
    */
   private static async discoverNewInstagramVideos(
     orgId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
     const isNewAccount = existingVideoIds.size === 0;
     const maxReels = isNewAccount ? 30 : 10;
@@ -823,6 +835,15 @@ export class AccountTrackingServiceFirebase {
       if (existingVideoIds.has(videoCode)) {
         console.log(`   ⏭️  Skipping existing video: ${videoCode}`);
         continue;
+      }
+      
+      // SKIP if older than our oldest video (don't backfill old content)
+      if (oldestVideoDate) {
+        const videoUploadDate = media.taken_at ? new Date(media.taken_at * 1000) : null;
+        if (videoUploadDate && videoUploadDate < oldestVideoDate) {
+          console.log(`   ⏭️  Skipping old video: ${videoCode} (${videoUploadDate.toLocaleDateString()} < ${oldestVideoDate.toLocaleDateString()})`);
+          continue;
+        }
       }
       
       // This is a NEW video - process it
@@ -947,7 +968,8 @@ export class AccountTrackingServiceFirebase {
     orgId: string,
     projectId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
     console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'TWO-CALL'} TikTok sync for @${account.username}...`);
@@ -955,9 +977,9 @@ export class AccountTrackingServiceFirebase {
     const newVideos: AccountVideo[] = [];
     const updatedVideos: AccountVideo[] = [];
 
-    // CALL 1: Discover new videos FIRST (stops at first duplicate)
+    // CALL 1: Discover new videos FIRST (stops at first duplicate or older video)
     console.log(`🔍 [CALL 1] Discovering new TikTok videos (max 10)...`);
-    const discovered = await this.discoverNewTikTokVideos(orgId, account, existingVideoIds);
+    const discovered = await this.discoverNewTikTokVideos(orgId, account, existingVideoIds, oldestVideoDate);
     newVideos.push(...discovered);
     console.log(`✅ [CALL 1] Found ${discovered.length} new videos`);
 
@@ -1054,12 +1076,13 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 1: Discover new TikTok videos only (ignore existing)
+   * CALL 1: Discover new TikTok videos only (ignore existing + older than oldest)
    */
   private static async discoverNewTikTokVideos(
     orgId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
     const isNewAccount = existingVideoIds.size === 0;
     const maxVideos = isNewAccount ? 30 : 10;
@@ -1106,6 +1129,15 @@ export class AccountTrackingServiceFirebase {
       if (existingVideoIds.has(videoId)) {
         console.log(`   ⏭️  Skipping existing video: ${videoId}`);
         continue;
+      }
+
+      // SKIP if older than our oldest video (don't backfill old content)
+      if (oldestVideoDate) {
+        const videoUploadDate = new Date(item.createTimeISO || item.createTime || Date.now());
+        if (videoUploadDate < oldestVideoDate) {
+          console.log(`   ⏭️  Skipping old video: ${videoId} (${videoUploadDate.toLocaleDateString()} < ${oldestVideoDate.toLocaleDateString()})`);
+          continue;
+        }
       }
 
       // This is a NEW video - process it
@@ -1167,7 +1199,8 @@ export class AccountTrackingServiceFirebase {
     orgId: string,
     projectId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
     console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'TWO-CALL'} YouTube sync for @${account.username}...`);
@@ -1211,9 +1244,9 @@ export class AccountTrackingServiceFirebase {
         console.log(`✅ Using stored YouTube channel ID: ${channelId} for @${account.username}`);
       }
 
-      // CALL 1: Discover new videos FIRST (stops at first duplicate)
+      // CALL 1: Discover new videos FIRST (stops at first duplicate or older video)
       console.log(`🔍 [CALL 1] Discovering new YouTube Shorts (max 10)...`);
-      const discovered = await this.discoverNewYouTubeVideos(orgId, channelId, account, existingVideoIds);
+      const discovered = await this.discoverNewYouTubeVideos(orgId, channelId, account, existingVideoIds, oldestVideoDate);
       newVideos.push(...discovered);
       console.log(`✅ [CALL 1] Found ${discovered.length} new videos`);
 
@@ -1297,13 +1330,14 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * CALL 1: Discover new YouTube Shorts only (ignore existing)
+   * CALL 1: Discover new YouTube Shorts only (ignore existing + older than oldest)
    */
   private static async discoverNewYouTubeVideos(
     orgId: string,
     channelId: string,
     account: TrackedAccount,
-    existingVideoIds: Set<string>
+    existingVideoIds: Set<string>,
+    oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
     const isNewAccount = existingVideoIds.size === 0;
     const maxResults = isNewAccount ? 50 : 10;
@@ -1324,6 +1358,15 @@ export class AccountTrackingServiceFirebase {
         console.log(`   ✓ Found existing video: ${videoId} - stopping discovery`);
         foundDuplicate = true;
         break;
+      }
+
+      // SKIP if older than our oldest video (don't backfill old content)
+      if (oldestVideoDate && short.uploadDate) {
+        const videoUploadDate = new Date(short.uploadDate);
+        if (videoUploadDate < oldestVideoDate) {
+          console.log(`   ⏭️  Skipping old video: ${videoId} (${videoUploadDate.toLocaleDateString()} < ${oldestVideoDate.toLocaleDateString()})`);
+          continue;
+        }
       }
 
       // This is a NEW video
