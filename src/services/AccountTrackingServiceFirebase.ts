@@ -770,7 +770,6 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>,
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
-    const isNewAccount = existingVideoIds.size === 0;
     const maxReels = 10; // Always fetch 10 for discovery
     
     console.log(`🔍 Fetching up to ${maxReels} latest videos for discovery...`);
@@ -1084,7 +1083,6 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>,
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
-    const isNewAccount = existingVideoIds.size === 0;
     const maxVideos = 10; // Always fetch 10 for discovery
     
     console.log(`🔍 Fetching up to ${maxVideos} latest TikTok videos for discovery...`);
@@ -1339,7 +1337,6 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>,
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
-    const isNewAccount = existingVideoIds.size === 0;
     const maxResults = 10; // Always fetch 10 for discovery
 
     // Fetch ONLY the number we need (not 50 then slice!)
