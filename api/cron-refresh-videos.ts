@@ -1230,21 +1230,21 @@ async function refreshInstagramVideosSequential(
       if (!recentSnapshotsQuery.empty) {
         console.log(`    ⏭️ [INSTAGRAM] Skipping snapshot for ${videoCode} - recent snapshot exists`);
       } else {
-        // Create refresh snapshot
-        const snapshotRef = videoDoc.ref.collection('snapshots').doc();
-        await snapshotRef.set({
-          id: snapshotRef.id,
-          videoId: videoCode,
-          views: metrics.views,
-          likes: metrics.likes,
-          comments: metrics.comments,
-          shares: metrics.shares,
-          saves: metrics.saves,
-          capturedAt: now,
-          timestamp: now,
-          capturedBy: 'scheduled_refresh',
-          isInitialSnapshot: false
-        });
+      // Create refresh snapshot
+      const snapshotRef = videoDoc.ref.collection('snapshots').doc();
+      await snapshotRef.set({
+        id: snapshotRef.id,
+        videoId: videoCode,
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+        shares: metrics.shares,
+        saves: metrics.saves,
+        capturedAt: now,
+        timestamp: now,
+        capturedBy: 'scheduled_refresh',
+        isInitialSnapshot: false
+      });
       }
 
       updatedCount++;
