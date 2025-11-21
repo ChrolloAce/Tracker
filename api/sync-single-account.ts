@@ -1083,18 +1083,22 @@ export default async function handler(
       
       // ===== NEW TWEET DISCOVERY (only if NOT refresh_only) =====
       if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-        console.log(`🔍 [TWITTER] Forward discovery - fetching 10 most recent tweets (ALL types)...`);
+        console.log(`🔍 [TWITTER] Forward discovery - fetching 10 most recent tweets (excluding retweets)...`);
         
         try {
+          // Use searchTerms with -filter:nativeretweets to exclude retweets
+          // This ensures we get 10 ACTUAL posts (original tweets + quotes, no retweets)
+          const searchQuery = `from:${account.username.replace('@', '')} -filter:nativeretweets`;
+          
           const tweetsData = await runApifyActor({
             actorId: 'apidojo/tweet-scraper',
             input: {
-              twitterHandles: [account.username],
+              searchTerms: [searchQuery], // ✅ Use searchTerms to exclude retweets
               maxItems: 10,
               sort: 'Latest',
               onlyImage: false,
-              onlyVideo: false, // ✅ Fetch ALL tweets (text, images, videos)
-              onlyQuote: false,
+              onlyVideo: false, // ✅ Fetch ALL tweet types (text, images, videos)
+              onlyQuote: false, // ✅ Include quotes
               onlyVerifiedUsers: false,
               onlyTwitterBlue: false,
               includeSearchTerms: false,
