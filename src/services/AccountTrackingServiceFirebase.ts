@@ -206,7 +206,7 @@ export class AccountTrackingServiceFirebase {
     
     try {
       // Call the immediate deletion API
-      const response = await fetch('/api/delete-tracked-account', {
+      const response = await fetch('/api/delete-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
