@@ -13,7 +13,9 @@ import convert from 'heic-convert';
  * - Return public URLs
  */
 export class ImageUploadService {
-  private static storage = getStorage();
+  private static get storage() {
+    return getStorage();
+  }
   
   /**
    * Download image from URL and upload to Firebase Storage

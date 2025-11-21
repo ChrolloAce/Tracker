@@ -12,7 +12,9 @@ import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
  * - Create snapshots with deduplication
  */
 export class FirestoreService {
-  private static db = getFirestore();
+  private static get db() {
+    return getFirestore();
+  }
   
   /**
    * Get a single tracked account by ID

@@ -10,7 +10,9 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
  * - Generate deterministic video IDs
  */
 export class DeduplicationService {
-  private static db = getFirestore();
+  private static get db() {
+    return getFirestore();
+  }
   
   /**
    * Create deterministic video ID
