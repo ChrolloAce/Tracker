@@ -330,7 +330,16 @@ export class ProfileFetcher {
     orgId: string,
     username: string,
     platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
-  ) {
+  ): Promise<{
+    displayName: string;
+    profilePicture: string;
+    followerCount: number;
+    followingCount: number;
+    postCount: number;
+    bio: string;
+    isVerified: boolean;
+    channelId?: string;
+  }> {
     switch (platform) {
       case 'instagram':
         return this.fetchInstagramProfile(orgId, username);

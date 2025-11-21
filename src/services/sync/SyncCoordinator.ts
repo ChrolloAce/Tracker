@@ -5,6 +5,7 @@ import { TikTokSyncService } from './tiktok/TikTokSyncService';
 import { YoutubeSyncService } from './youtube/YoutubeSyncService';
 import { TwitterSyncService } from './twitter/TwitterSyncService';
 import { DateFilterService } from './shared/DateFilterService';
+import { Timestamp } from 'firebase/firestore';
 
 /**
  * SyncCoordinator
@@ -61,8 +62,14 @@ export class SyncCoordinator {
     };
     
     // Get existing videos
-    const existingVideos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
-    const existingVideoIds = new Set(existingVideos.map(v => v.videoId));
+    const existingVideosRaw = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
+    const existingVideoIds = new Set(existingVideosRaw.map(v => v.videoId));
+    
+    // Convert VideoDoc uploadDate (Timestamp) to Date for filtering
+    const existingVideos = existingVideosRaw.map(v => ({
+      ...v,
+      uploadDate: v.uploadDate?.toDate ? v.uploadDate.toDate() : (v.uploadDate as any)
+    }));
     
     // Calculate oldest video date for filtering
     const oldestVideoDate = DateFilterService.findOldestUploadDate(existingVideos);
@@ -94,7 +101,7 @@ export class SyncCoordinator {
     
     // Update last synced timestamp
     await FirestoreDataService.updateTrackedAccount(orgId, projectId, accountId, {
-      lastSynced: new Date()
+      lastSynced: Timestamp.now() as any
     });
     
     console.log(`✅ [SyncCoordinator] Sync complete for @${account.username}: ${totalSaved} videos processed`);
@@ -109,7 +116,7 @@ export class SyncCoordinator {
     orgId: string,
     projectId: string,
     userId: string,
-    account: TrackedAccount,
+    _account: TrackedAccount,
     result: { newVideos: AccountVideo[], updatedVideos: AccountVideo[] }
   ): Promise<number> {
     let savedCount = 0;
@@ -117,17 +124,45 @@ export class SyncCoordinator {
     // Save new videos
     for (const video of result.newVideos) {
       try {
-        await FirestoreDataService.addVideo(orgId, projectId, userId, video);
+        // Convert AccountVideo to VideoDoc format
+        const videoDoc: any = {
+          platform: video.platform,
+          videoId: video.videoId,
+          videoUrl: video.url,
+          caption: video.caption,
+          thumbnail: video.thumbnail,
+          duration: video.duration,
+          hashtags: video.hashtags || [],
+          uploadDate: Timestamp.fromDate(video.uploadDate || new Date()),
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          bookmarks: video.saves || 0,
+          trackedAccountId: video.accountId,
+          status: 'pending',
+          isSingular: false
+        };
+        
+        await FirestoreDataService.addVideo(orgId, projectId, userId, videoDoc);
         savedCount++;
       } catch (error) {
         console.error(`❌ Failed to save new video ${video.videoId}:`, error);
       }
     }
     
-    // Update existing videos
+    // Update existing videos by creating snapshots
     for (const video of result.updatedVideos) {
       try {
-        await FirestoreDataService.updateVideo(orgId, projectId, video.id, video);
+        // Create a snapshot for the updated metrics
+        await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, {
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          bookmarks: video.saves || 0,
+          capturedBy: 'sync'
+        });
         savedCount++;
       } catch (error) {
         console.error(`❌ Failed to update video ${video.videoId}:`, error);

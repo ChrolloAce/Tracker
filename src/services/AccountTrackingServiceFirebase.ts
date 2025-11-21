@@ -169,7 +169,27 @@ export class AccountTrackingServiceFirebase {
     projectId: string,
     accountId: string
   ): Promise<AccountVideo[]> {
-    return FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
+      const videos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
+    // Convert VideoDoc to AccountVideo format
+    return videos.map(v => ({
+          id: v.id,
+      accountId: v.trackedAccountId || accountId,
+      videoId: v.videoId,
+          url: v.videoUrl || v.url || '',
+          thumbnail: v.thumbnail || '',
+      caption: v.caption || '',
+      uploadDate: v.uploadDate?.toDate ? v.uploadDate.toDate() : (v.uploadDate as any),
+          views: v.views || 0,
+          likes: v.likes || 0,
+          comments: v.comments || 0,
+          shares: v.shares || 0,
+      saves: v.bookmarks || 0,
+          duration: v.duration || 0,
+          isSponsored: false,
+          hashtags: v.hashtags || [],
+      mentions: [],
+      platform: v.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter'
+    }));
   }
 
   /**
@@ -197,12 +217,12 @@ export class AccountTrackingServiceFirebase {
           accountId
         })
       });
-
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to delete account');
       }
-
+      
       console.log(`✅ Successfully deleted account ${accountId}`);
     } catch (error) {
       console.error('❌ Error deleting account:', error);
