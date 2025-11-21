@@ -183,7 +183,7 @@ export class AccountTrackingServiceFirebase {
           likes: v.likes || 0,
           comments: v.comments || 0,
           shares: v.shares || 0,
-      saves: v.bookmarks || 0,
+      saves: v.saves || 0,
           duration: v.duration || 0,
           isSponsored: false,
           hashtags: v.hashtags || [],

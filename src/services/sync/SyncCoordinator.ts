@@ -155,13 +155,11 @@ export class SyncCoordinator {
     for (const video of result.updatedVideos) {
       try {
         // Create a snapshot for the updated metrics
-        await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, {
+        await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, userId, {
           views: video.views || 0,
           likes: video.likes || 0,
           comments: video.comments || 0,
-          shares: video.shares || 0,
-          bookmarks: video.saves || 0,
-          capturedBy: 'sync'
+          shares: video.shares || 0
         });
         savedCount++;
       } catch (error) {
