@@ -219,7 +219,7 @@ export class AccountTrackingServiceFirebase {
     // Convert VideoDoc to AccountVideo format
     return videos.map(v => ({
           id: v.id,
-      accountId: v.accountId || accountId,
+      accountId: v.trackedAccountId || accountId,
       videoId: v.videoId,
           url: v.videoUrl || v.url || '',
           thumbnail: v.thumbnail || '',

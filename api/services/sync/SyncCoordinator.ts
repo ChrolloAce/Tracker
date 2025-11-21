@@ -85,7 +85,7 @@ export class SyncCoordinator {
       
       console.log(`   📱 Platform: ${platform}, Username: @${username}, Type: ${creatorType}`);
       
-      // Step 2: Acquire lock and set syncStatus
+      // Step 2: Acquire lock
       lockId = LockService.generateLockId();
       const lockResult = await LockService.acquireLock(accountRef, lockId);
       
@@ -101,12 +101,6 @@ export class SyncCoordinator {
       }
       
       console.log(`   🔒 Lock acquired: ${lockId}`);
-      
-      // Set syncStatus to 'syncing' for frontend UI
-      await FirestoreService.updateTrackedAccount(accountRef, {
-        syncStatus: 'syncing',
-        lastSyncedAt: Timestamp.now()
-      });
       
       // Step 3: Get existing videos
       const existingVideos = await FirestoreService.getExistingVideos(orgId, projectId, accountId);
@@ -127,14 +121,6 @@ export class SyncCoordinator {
         console.log(`\n🔍 [DISCOVERY PHASE] Starting...`);
         discoveredVideos = await this.runDiscovery(platform, account, orgId, existingVideos);
         console.log(`   ✅ Discovery complete: ${discoveredVideos.length} new videos`);
-        
-        // If YouTube channelId was fetched during discovery, save it to Firestore
-        if (platform === 'youtube' && account.youtubeChannelId && !accountData.youtubeChannelId) {
-          console.log(`   💾 [YOUTUBE] Saving discovered channelId: ${account.youtubeChannelId}`);
-          await FirestoreService.updateTrackedAccount(accountRef, {
-            youtubeChannelId: account.youtubeChannelId
-          });
-        }
       } else {
         console.log(`   ⏭️  Skipping discovery (${syncStrategy === 'refresh_only' ? 'refresh_only mode' : 'static account'})`);
       }
@@ -229,12 +215,9 @@ export class SyncCoordinator {
         }
       }
       
-      // Step 8: Update account lastSynced and clear syncStatus
+      // Step 8: Update account lastSynced
       await FirestoreService.updateTrackedAccount(accountRef, {
-        lastSynced: Timestamp.now(),
-        syncStatus: 'completed', // Clear syncing status for frontend UI
-        lastSyncError: null, // Clear any previous errors
-        syncRetryCount: 0 // Reset retry count
+        lastSynced: Timestamp.now()
       });
       
       // Step 9: Release lock
@@ -255,18 +238,11 @@ export class SyncCoordinator {
     } catch (error: any) {
       console.error(`❌ [SYNC-COORDINATOR] Error:`, error.message);
       
-      // Release lock and update syncStatus on error
+      // Release lock on error
       if (lockId) {
         try {
           const accountResult = await FirestoreService.getTrackedAccount(orgId, projectId, accountId);
           if (accountResult) {
-            // Update syncStatus to 'error' so UI shows error state
-            await FirestoreService.updateTrackedAccount(accountResult.ref, {
-              syncStatus: 'error',
-              lastSyncError: error.message,
-              syncRetryCount: (accountResult.data.syncRetryCount || 0) + 1
-            });
-            
             await LockService.releaseLock(accountResult.ref, lockId);
             console.log(`   🔓 Lock released on error: ${lockId}`);
           }

@@ -28,18 +28,10 @@ export class YoutubeSyncService {
   ): Promise<Array<any>> {
     console.log(`🔍 [YOUTUBE] Forward discovery - fetching 10 most recent Shorts...`);
     
-    // Get channelId - fetch it if missing
-    let channelId = account.youtubeChannelId;
+    // Get channelId (required for YouTube API)
+    const channelId = account.youtubeChannelId;
     if (!channelId) {
-      console.log(`    ⚠️ [YOUTUBE] No channelId found - fetching from username @${account.username}...`);
-      channelId = await this.fetchChannelIdFromUsername(account.username);
-      if (!channelId) {
-        throw new Error(`Unable to find YouTube channel for @${account.username}`);
-      }
-      console.log(`    ✅ [YOUTUBE] Found channelId: ${channelId}`);
-      
-      // Update in-memory for this sync (will be saved to Firestore by SyncCoordinator)
-      account.youtubeChannelId = channelId;
+      throw new Error('YouTube channel ID is required for discovery');
     }
     
     try {
@@ -255,48 +247,6 @@ export class YoutubeSyncService {
       caption: video.text || '',
       duration: durationSeconds
     };
-  }
-  
-  /**
-   * Fetch YouTube channelId from username/handle
-   * Uses YouTube Data API to get channel info
-   */
-  private static async fetchChannelIdFromUsername(username: string): Promise<string | null> {
-    try {
-      // Remove @ symbol if present
-      const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
-      
-      console.log(`    🔍 [YOUTUBE] Searching for channel: ${cleanUsername}`);
-      
-      // Try to fetch channel info by searching for videos from this user
-      // Then extract the channelId from the first video
-      const scraperInput = {
-        channelUrl: `https://www.youtube.com/@${cleanUsername}`,
-        maxResults: 1,
-        sortBy: 'latest',
-        proxy: {
-          useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL']
-        }
-      };
-      
-      const data = await runApifyActor({
-        actorId: 'grow_media/youtube-shorts-scraper',
-        input: scraperInput
-      });
-      
-      if (data.items && data.items.length > 0 && data.items[0].channelId) {
-        const channelId = data.items[0].channelId;
-        console.log(`    ✅ [YOUTUBE] Extracted channelId from video: ${channelId}`);
-        return channelId;
-      }
-      
-      console.warn(`    ⚠️ [YOUTUBE] No channelId found for @${cleanUsername}`);
-      return null;
-    } catch (error: any) {
-      console.error(`    ❌ [YOUTUBE] Failed to fetch channelId for @${username}:`, error.message);
-      return null;
-    }
   }
 }
 

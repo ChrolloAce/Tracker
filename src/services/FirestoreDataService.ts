@@ -569,7 +569,7 @@ class FirestoreDataService {
     try {
       const q = query(
         collection(db, 'organizations', orgId, 'projects', projectId, 'videos'),
-        where('accountId', '==', accountId),
+        where('trackedAccountId', '==', accountId),
         orderBy('uploadDate', 'desc'),
         limit(limitCount)
       );
