@@ -687,8 +687,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       if (!currentOrgId) return;
       
       try {
-        // Admin users have unlimited everything
-        if (isAdmin) {
+        // Admin users AND demo mode have unlimited everything
+        if (isAdmin || isDemoMode) {
+          console.log(`👑 ${isDemoMode ? '[DEMO MODE]' : '[ADMIN]'} Unlimited access granted`);
           setUsageLimits({
             accountsLeft: 999999,
             videosLeft: 999999,
@@ -718,7 +719,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     };
     
     loadUsageLimits();
-  }, [currentOrgId, pendingAccounts.length, isAdmin]); // Reload when accounts change or admin status changes
+  }, [currentOrgId, pendingAccounts.length, isAdmin, isDemoMode]); // Reload when accounts change, admin status, or demo mode changes
 
   useEffect(() => {
     // Use project-scoped key to prevent account IDs from contaminating other projects
