@@ -1448,6 +1448,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
 
+    // Get account name for better messages
+    const account = processedAccounts.find(a => a.id === accountId);
+    const accountName = account?.username || 'account';
+
     setIsSyncing(accountId);
     setSyncError(null);
     try {
@@ -1462,11 +1466,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         await loadAccountVideos(accountId);
       }
       
-      
-      // Show success message briefly
+      // Show appropriate message
       if (videoCount === 0) {
+        setShowToast({ 
+          message: `⚠️ No new videos found for @${accountName}. Account may be private or filtered by rules.`, 
+          type: 'info' 
+        });
         setSyncError('No videos found or filtered by rules. Check if rules are too restrictive, or this might be a private account.');
       } else {
+        // Show success toast
+        setShowToast({ 
+          message: `✅ Synced @${accountName} - ${videoCount} video${videoCount !== 1 ? 's' : ''} processed!`, 
+          type: 'success' 
+        });
         // Clear any previous errors on success
         setSyncError(null);
       }
@@ -1474,10 +1486,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       console.error('❌ Sync failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setSyncError(`Sync failed: ${errorMessage}`);
+      setShowToast({ 
+        message: `❌ Failed to sync @${accountName}: ${errorMessage}`, 
+        type: 'error' 
+      });
     } finally {
       setIsSyncing(null);
     }
-  }, [selectedAccount, currentOrgId, currentProjectId, user, loadAccountVideos]);
+  }, [selectedAccount, currentOrgId, currentProjectId, user, loadAccountVideos, processedAccounts]);
 
   // Handle URL input change and auto-detect platform
   const handleUrlChange = useCallback((url: string) => {
