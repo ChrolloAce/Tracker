@@ -2,6 +2,7 @@ import { TrackedAccount, AccountVideo } from '../types/accounts';
 import FirestoreDataService from './FirestoreDataService';
 import { SyncManager } from './sync/SyncManager';
 import { ProfileFetcher } from './sync/shared/ProfileFetcher';
+import { getAuth } from 'firebase/auth';
 
 /**
  * AccountTrackingServiceFirebase
@@ -205,25 +206,44 @@ export class AccountTrackingServiceFirebase {
     console.log(`🗑️ Deleting account ${accountId} (${username || 'unknown'} on ${platform || 'unknown'})...`);
     
     try {
+      // Get Firebase ID token for authentication
+      const user = getAuth().currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      const token = await user.getIdToken();
+      
       // Call the immediate deletion API
       const response = await fetch('/api/delete-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           orgId,
           projectId,
-          accountId
+          accountId,
+          username,
+          platform
         })
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to delete account');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to delete account';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
-      console.log(`✅ Successfully deleted account ${accountId}`);
+      const result = await response.json();
+      console.log(`✅ Successfully deleted account ${accountId}:`, result);
     } catch (error) {
       console.error('❌ Error deleting account:', error);
       throw error;
