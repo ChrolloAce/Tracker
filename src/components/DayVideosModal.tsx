@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, TrendingUp } from 'lucide-react';
 import { VideoSubmission, VideoSnapshot } from '../types';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
+import { useSearchParams } from 'react-router-dom';
 
 interface DayVideosModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ interface DayVideosModalProps {
   dayOfWeek?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // Optional: filter by specific day of week (0 = Sunday, 6 = Saturday)
   hourRange?: { start: number; end: number }; // Optional: filter by hour range (e.g., {start: 13, end: 14})
   selectedPeriodRange?: { startDate: Date; endDate: Date }; // CRITICAL: The overall selected date range (e.g., "Last 30 Days" boundaries)
+  // URL routing support
+  updateUrlOnOpen?: boolean; // If true, update URL when modal opens
 }
 
 const DayVideosModal: React.FC<DayVideosModalProps> = ({
@@ -42,9 +45,44 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   ppLinkClicks = [],
   dayOfWeek,
   hourRange,
-  selectedPeriodRange
+  selectedPeriodRange,
+  updateUrlOnOpen = true
 }) => {
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Update URL when modal opens (if enabled)
+  useEffect(() => {
+    if (isOpen && updateUrlOnOpen) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('modal', 'day-videos');
+      newParams.set('date', date.toISOString());
+      if (accountFilter) {
+        newParams.set('account', accountFilter);
+      }
+      if (interval) {
+        newParams.set('interval', JSON.stringify({
+          startDate: interval.startDate.toISOString(),
+          endDate: interval.endDate.toISOString(),
+          intervalType: interval.intervalType
+        }));
+      }
+      setSearchParams(newParams, { replace: false });
+    }
+  }, [isOpen, date, accountFilter, interval, updateUrlOnOpen, searchParams, setSearchParams]);
+
+  // Handle close - remove modal params from URL
+  const handleClose = () => {
+    if (updateUrlOnOpen) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('modal');
+      newParams.delete('date');
+      newParams.delete('account');
+      newParams.delete('interval');
+      setSearchParams(newParams, { replace: false });
+    }
+    onClose();
+  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
@@ -898,7 +936,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div 
         className="bg-[#0a0a0a] rounded-xl shadow-2xl w-full max-w-full sm:max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-white/[0.06]"
@@ -985,7 +1023,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1 sm:p-1.5 hover:bg-white/5 rounded-lg transition-colors"
             >
               <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
@@ -997,8 +1035,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
         <div className="p-3 sm:p-6 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(95vh - 60px)' }}>
           {/* Two-Column Layout: Left (Videos) | Right (KPIs) - Stacks vertically on mobile */}
           <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
-            {/* LEFT SIDE - Video Tables (Compact) */}
-            <div className="flex-1 space-y-2 min-w-0 order-2 lg:order-1">
+            {/* LEFT SIDE - Video Tables (Full Width, No Scaling) */}
+            <div className="flex-1 space-y-3 min-w-0 order-2 lg:order-1 overflow-x-hidden">
               {(() => {
                 const videosToShow = showPreviousPeriod ? ppNewUploads : newUploads;
                 const gainersToShow = showPreviousPeriod ? ppFilteredTopGainers : filteredTopGainers;
@@ -1026,26 +1064,23 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
                 return (
                   <>
-                    {/* New Videos Table - Compact - Only show if has videos */}
+                    {/* New Videos Table - Full Width - Only show if has videos */}
                     {hasNewVideos && (
-                      <div className="overflow-x-auto -mx-3 sm:mx-0">
-                        <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
-                          <VideoSubmissionsTable
-                            submissions={videosToShow}
-                            onVideoClick={onVideoClick}
-                            onDelete={onDelete}
-                            headerTitle={`New Videos (${videosToShow.length})`}
-                          />
-                        </div>
+                      <div className="w-full overflow-hidden">
+                        <VideoSubmissionsTable
+                          submissions={videosToShow}
+                          onVideoClick={onVideoClick}
+                          onDelete={onDelete}
+                          headerTitle={`New Videos (${videosToShow.length})`}
+                        />
                       </div>
                     )}
 
-                    {/* Refreshed Videos Table - Compact - Only show if has gainers */}
+                    {/* Refreshed Videos Table - Full Width - Only show if has gainers */}
                     {hasRefreshedVideos && (
-                      <div className="overflow-x-auto -mx-3 sm:mx-0">
-                        <div className="sm:scale-85 sm:origin-top-left sm:w-[117.65%]">
-                          <VideoSubmissionsTable
-                            submissions={gainersToShow.map((item: any) => {
+                      <div className="w-full overflow-hidden">
+                        <VideoSubmissionsTable
+                          submissions={gainersToShow.map((item: any) => {
                           // Calculate growth for all metrics from snapshots
                           const video = item.video;
                           const snapshots = video.snapshots || [];
@@ -1076,11 +1111,10 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                             saves: bookmarksGained
                           };
                         })}
-                            onVideoClick={onVideoClick}
-                            onDelete={onDelete}
-                            headerTitle={`Refreshed Videos (${gainersToShow.length})`}
-                          />
-                        </div>
+                          onVideoClick={onVideoClick}
+                          onDelete={onDelete}
+                          headerTitle={`Refreshed Videos (${gainersToShow.length})`}
+                        />
                       </div>
                     )}
                   </>

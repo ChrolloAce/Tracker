@@ -1,13 +1,36 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, MessageCircle, Mail } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 
 interface SupportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  updateUrlOnOpen?: boolean; // If true, update URL when modal opens
 }
 
-const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) => {
+const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose, updateUrlOnOpen = true }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Update URL when modal opens (if enabled)
+  useEffect(() => {
+    if (isOpen && updateUrlOnOpen) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('modal', 'support');
+      setSearchParams(newParams, { replace: false });
+    }
+  }, [isOpen, updateUrlOnOpen, searchParams, setSearchParams]);
+
+  // Handle close - remove modal params from URL
+  const handleClose = () => {
+    if (updateUrlOnOpen) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('modal');
+      setSearchParams(newParams, { replace: false });
+    }
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -20,7 +43,7 @@ const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) => {
             <p className="text-gray-400 text-sm">We're here to help. Don't hesitate to reach out to us.</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-white/5 rounded-lg transition-colors"
             aria-label="Close"
           >

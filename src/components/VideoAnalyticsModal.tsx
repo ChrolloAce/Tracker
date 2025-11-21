@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Flame, ExternalLink, ChevronLeft, ChevronRight, Trash2, Link2, Copy, Check } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -16,6 +17,7 @@ interface VideoAnalyticsModalProps {
   totalCreatorVideos?: number; // Total number of videos from this creator
   orgId?: string | null; // Organization ID for deleting tracked videos
   projectId?: string | null; // Project ID for deleting tracked videos
+  updateUrlOnOpen?: boolean; // If true, update URL when modal opens
 }
 
 interface ChartDataPoint {
@@ -30,7 +32,9 @@ interface ChartDataPoint {
   snapshotIndex: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   // Tooltip state for smooth custom tooltips
   const [tooltipData, setTooltipData] = useState<{ 
     x: number; 
@@ -48,6 +52,27 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
   const [imageError, setImageError] = useState(false);
+
+  // Update URL when modal opens (if enabled)
+  useEffect(() => {
+    if (isOpen && video && updateUrlOnOpen) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('modal', 'video-analytics');
+      newParams.set('videoId', video.id);
+      setSearchParams(newParams, { replace: false });
+    }
+  }, [isOpen, video, updateUrlOnOpen, searchParams, setSearchParams]);
+
+  // Handle close - remove modal params from URL
+  const handleClose = () => {
+    if (updateUrlOnOpen) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('modal');
+      newParams.delete('videoId');
+      setSearchParams(newParams, { replace: false });
+    }
+    onClose();
+  };
 
   // Quick actions state
   const [showCopyDropdown, setShowCopyDropdown] = useState(false);
@@ -549,7 +574,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
     // ✅ IMMEDIATELY close both modals (optimistic update)
     setShowDeleteModal(false);
-    onClose();
+    handleClose();
     console.log(`✅ [UI] Modals closed instantly`);
 
     // ✅ Process deletion in background (don't await)
@@ -707,7 +732,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
             >
               <X className="w-5 h-5" strokeWidth={1.5} />

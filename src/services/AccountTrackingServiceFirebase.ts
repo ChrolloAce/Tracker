@@ -1,6 +1,5 @@
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import FirestoreDataService from './FirestoreDataService';
-import { SyncManager } from './sync/SyncManager';
 import { ProfileFetcher } from './sync/shared/ProfileFetcher';
 import { getAuth } from 'firebase/auth';
 
@@ -11,12 +10,12 @@ import { getAuth } from 'firebase/auth';
  * Responsibilities:
  * - Get and list tracked accounts
  * - Add new accounts for tracking
- * - Sync account videos (delegates to SyncManager)
+ * - Sync account videos (calls backend API which uses modular services)
  * - Remove accounts
  * - Refresh account profiles
  * 
- * Note: This is now a thin wrapper around modular services.
- * All sync logic has been extracted to src/services/sync/
+ * Note: This is now a thin wrapper around Firebase/Firestore operations and API calls.
+ * All sync logic runs on the backend via /api/sync-single-account
  */
 export class AccountTrackingServiceFirebase {
   
@@ -149,7 +148,7 @@ export class AccountTrackingServiceFirebase {
 
   /**
    * Sync account videos
-   * Delegates to SyncManager which coordinates all sync operations
+   * Calls the backend API which uses the modular sync services
    * 
    * @returns Number of videos processed
    */
@@ -159,7 +158,53 @@ export class AccountTrackingServiceFirebase {
     userId: string,
     accountId: string
   ): Promise<number> {
-    return SyncManager.syncAccountVideos(orgId, projectId, userId, accountId);
+    try {
+      console.log(`🔄 Triggering backend sync for account ${accountId}...`);
+      
+      // Get Firebase ID token for authentication
+      const user = getAuth().currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      const token = await user.getIdToken();
+      
+      // Call the backend sync API (which uses the new modular services)
+      const response = await fetch('/api/sync-single-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          accountId,
+          orgId,
+          projectId,
+          userId,
+          manual: true // Mark as manual sync (not cron)
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to sync account';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      console.log(`✅ Sync completed:`, result);
+      
+      return result.videosAdded || 0;
+    } catch (error) {
+      console.error('❌ Error syncing account:', error);
+      throw error;
+    }
   }
 
   /**
