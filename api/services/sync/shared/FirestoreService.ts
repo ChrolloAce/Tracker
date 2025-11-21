@@ -195,16 +195,22 @@ export class FirestoreService {
     const snapshotsRef = videoRef.collection('snapshots');
     
     // Check for duplicate snapshots in last 5 minutes
+    // Simplified query to avoid composite index requirement
     const fiveMinutesAgo = Timestamp.fromMillis(Date.now() - 5 * 60 * 1000);
     
     const recentSnapshotsQuery = await snapshotsRef
       .where('capturedAt', '>=', fiveMinutesAgo)
-      .where('capturedBy', '==', capturedBy)
-      .limit(1)
+      .limit(5) // Get up to 5 recent snapshots to check
       .get();
     
-    if (!recentSnapshotsQuery.empty) {
-      console.log(`   ⏭️  Snapshot exists within 5 minutes, skipping duplicate`);
+    // Check if any match our capturedBy type
+    const hasDuplicate = recentSnapshotsQuery.docs.some(doc => {
+      const data = doc.data();
+      return data.capturedBy === capturedBy;
+    });
+    
+    if (hasDuplicate) {
+      console.log(`   ⏭️  Snapshot exists within 5 minutes (capturedBy: ${capturedBy}), skipping duplicate`);
       return false;
     }
     
