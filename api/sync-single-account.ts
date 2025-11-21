@@ -892,8 +892,56 @@ export default async function handler(
             const refreshedVideos = refreshData.items || [];
             console.log(`✅ [YOUTUBE] Refreshed ${refreshedVideos.length} existing Shorts`);
             
-            // Add refreshed videos to processing
-            newYouTubeVideos.push(...refreshedVideos);
+            // ===== CRITICAL: VALIDATE CHANNEL OWNERSHIP =====
+            // Extract the expected channel ID from the account or from discovered videos
+            let expectedChannelId = account.youtubeChannelId || null;
+            
+            // If we don't have a stored channelId, try to extract it from new videos
+            if (!expectedChannelId && newYouTubeVideos.length > 0) {
+              expectedChannelId = newYouTubeVideos[0].channelId || newYouTubeVideos[0].channel_id || null;
+              console.log(`📌 [YOUTUBE] Using channelId from discovered videos: ${expectedChannelId}`);
+            }
+            
+            // Filter out videos from wrong channels
+            const validVideos = refreshedVideos.filter(video => {
+              const videoChannelId = video.channelId || video.channel_id || null;
+              const videoChannelName = video.channelName || video.channel_name || '';
+              
+              // If we have a channel ID to validate against
+              if (expectedChannelId && videoChannelId) {
+                if (videoChannelId !== expectedChannelId) {
+                  console.warn(`⚠️ [YOUTUBE] FILTERED OUT video ${video.id} from wrong channel!`);
+                  console.warn(`   Expected: ${expectedChannelId} (${account.username})`);
+                  console.warn(`   Got: ${videoChannelId} (${videoChannelName})`);
+                  return false;
+                }
+              }
+              
+              // Additional check: if channel name doesn't match username (fuzzy)
+              if (videoChannelName && account.username) {
+                const normalizedChannelName = videoChannelName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const normalizedUsername = account.username.toLowerCase().replace(/[^a-z0-9]/g, '');
+                
+                // If names are VERY different (no overlap), warn but don't filter yet
+                if (normalizedChannelName.length > 3 && 
+                    normalizedUsername.length > 3 && 
+                    !normalizedChannelName.includes(normalizedUsername.substring(0, 4)) &&
+                    !normalizedUsername.includes(normalizedChannelName.substring(0, 4))) {
+                  console.warn(`⚠️ [YOUTUBE] Possible channel mismatch for video ${video.id}:`);
+                  console.warn(`   Channel: "${videoChannelName}" vs Username: "${account.username}"`);
+                }
+              }
+              
+              return true;
+            });
+            
+            console.log(`✅ [YOUTUBE] Validated ${validVideos.length}/${refreshedVideos.length} videos belong to correct channel`);
+            if (validVideos.length < refreshedVideos.length) {
+              console.warn(`🚨 [YOUTUBE] Filtered out ${refreshedVideos.length - validVideos.length} videos from wrong channels!`);
+            }
+            
+            // Add ONLY validated videos to processing
+            newYouTubeVideos.push(...validVideos);
           } catch (refreshError) {
             console.error('⚠️ [YOUTUBE] Failed to refresh existing videos (non-fatal):', refreshError);
             // Don't fail the whole sync if refresh fails
