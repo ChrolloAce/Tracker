@@ -112,6 +112,18 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       try {
         setCheckingLimits(true);
         
+        // ADMIN BYPASS: If usageLimits shows 999999 (admin), skip API call entirely
+        if (usageLimits.videosLeft === 999999) {
+          console.log('👑 [ADMIN] Unlimited video access - skipping limit checks');
+          setVideoLimitInfo({
+            current: 0,
+            limit: -1, // -1 means unlimited
+            available: Infinity
+          });
+          setCheckingLimits(false);
+          return;
+        }
+        
         // Get real-time counts directly (bypass cache for critical limit checks)
         console.log('🔄 Counting videos in real-time for accurate limit check...');
         const [realTimeCount, limits] = await Promise.all([
@@ -147,7 +159,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     };
 
     checkLimits();
-  }, [isOpen, orgId]);
+  }, [isOpen, orgId, usageLimits.videosLeft]);
 
   // Handle URL input change and auto-detect platform
   const handleUrlChange = useCallback((url: string) => {
