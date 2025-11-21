@@ -121,6 +121,14 @@ export class SyncCoordinator {
         console.log(`\n🔍 [DISCOVERY PHASE] Starting...`);
         discoveredVideos = await this.runDiscovery(platform, account, orgId, existingVideos);
         console.log(`   ✅ Discovery complete: ${discoveredVideos.length} new videos`);
+        
+        // If YouTube channelId was fetched during discovery, save it to Firestore
+        if (platform === 'youtube' && account.youtubeChannelId && !accountData.youtubeChannelId) {
+          console.log(`   💾 [YOUTUBE] Saving discovered channelId: ${account.youtubeChannelId}`);
+          await FirestoreService.updateTrackedAccount(accountRef, {
+            youtubeChannelId: account.youtubeChannelId
+          });
+        }
       } else {
         console.log(`   ⏭️  Skipping discovery (${syncStrategy === 'refresh_only' ? 'refresh_only mode' : 'static account'})`);
       }
