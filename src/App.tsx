@@ -33,6 +33,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import SupportPage from './pages/SupportPage';
 import CreatorInvitationPage from './pages/CreatorInvitationPage';
+import ApiDocsPage from './pages/ApiDocsPage';
 import { useEffect, useState } from 'react';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -138,6 +139,7 @@ function App() {
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/support" element={<SupportPage />} />
+        <Route path="/api-docs" element={<ApiDocsPage />} />
         <Route path="/l/:shortId" element={<LinkRedirect />} />
         
         {/* Creator invitation portal - public route */}

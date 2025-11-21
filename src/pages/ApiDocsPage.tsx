@@ -303,7 +303,6 @@ const codeLanguages = [
 ];
 
 export default function ApiDocsPage() {
-  const [activeSection, setActiveSection] = useState('tracked-accounts');
   const [activeEndpoint, setActiveEndpoint] = useState('list-accounts');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(apiSections.map(s => s.id)));
   const [selectedLanguage, setSelectedLanguage] = useState('shell');
@@ -423,7 +422,6 @@ data = JSON.parse(response.body)`;
                     <button
                       key={endpoint.id}
                       onClick={() => {
-                        setActiveSection(section.id);
                         setActiveEndpoint(endpoint.id);
                       }}
                       className={`
