@@ -260,7 +260,8 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   
   // Source
   platform: VideoPlatform;
-  trackedAccountId?: string; // If from a tracked account
+  accountId?: string; // If from a tracked account (new field name)
+  trackedAccountId?: string; // If from a tracked account (legacy field)
   url?: string; // Legacy field
   videoUrl?: string; // New field name
   videoId: string; // Platform-specific video ID
