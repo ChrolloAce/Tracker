@@ -38,11 +38,18 @@ const DropdownMenu: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const handleDelete = () => {
-    if (onDelete && window.confirm('Are you sure you want to delete this video submission?')) {
+  const [showSingleDeleteConfirm, setShowSingleDeleteConfirm] = useState(false);
+
+  const handleDeleteClick = () => {
+    setIsOpen(false);
+    setShowSingleDeleteConfirm(true);
+  };
+
+  const confirmSingleDelete = () => {
+    if (onDelete) {
       onDelete(submission.id);
     }
-    setIsOpen(false);
+    setShowSingleDeleteConfirm(false);
   };
 
   return (
@@ -118,10 +125,23 @@ const DropdownMenu: React.FC<{
           variant="danger"
               onClick={(e) => {
                 e.stopPropagation();
-                handleDelete();
+                handleDeleteClick();
               }}
         />
       </FloatingDropdown>
+
+      {/* Single Video Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showSingleDeleteConfirm}
+        title="Delete Video"
+        message={`⚠️ You are about to delete this video\n\nThis will permanently delete:\n• The video\n• All associated snapshots and data\n\nThis action CANNOT be undone!`}
+        confirmText="Delete Video"
+        cancelText="Cancel"
+        requireTyping={false}
+        onConfirm={confirmSingleDelete}
+        onCancel={() => setShowSingleDeleteConfirm(false)}
+        isDanger={true}
+      />
     </>
   );
 };
