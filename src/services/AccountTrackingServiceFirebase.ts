@@ -1,3 +1,4 @@
+// Trigger redeploy: 2025-11-22 Admin bypass fix
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import FirestoreDataService from './FirestoreDataService';
 import FirebaseStorageService from './FirebaseStorageService';
