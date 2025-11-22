@@ -173,6 +173,20 @@ class FirestoreDataService {
   }
 
   /**
+   * Get a single tracked account by ID
+   */
+  static async getTrackedAccount(orgId: string, projectId: string, accountId: string): Promise<TrackedAccount | null> {
+    const accountRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts', accountId);
+    const accountSnap = await getDoc(accountRef);
+    
+    if (!accountSnap.exists()) {
+      return null;
+    }
+    
+    return { id: accountSnap.id, ...accountSnap.data() } as TrackedAccount;
+  }
+
+  /**
    * Get all tracked accounts for a project
    */
   static async getTrackedAccounts(orgId: string, projectId: string, platform?: string): Promise<TrackedAccount[]> {
