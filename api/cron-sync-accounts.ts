@@ -413,19 +413,29 @@ export default async function handler(
           }
         });
 
-        // Check if user is admin - admins bypass video limits
+        // Check if user is admin or demo account - both bypass video limits
         const userId = account.syncRequestedBy || account.addedBy;
-        let isAdmin = false;
+        let shouldBypassLimits = false;
         if (userId) {
           const userDoc = await db.collection('users').doc(userId).get();
-          isAdmin = userDoc.exists && userDoc.data()?.isAdmin === true;
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            const isAdmin = userData?.isAdmin === true;
+            const isDemoAccount = userData?.email?.toLowerCase() === '001ernestolopez@gmail.com';
+            
+            shouldBypassLimits = isAdmin || isDemoAccount;
+            
+            if (isDemoAccount) {
+              console.log(`🎭 Demo account detected (${userData.email}) - bypassing ALL video limits for org ${account.orgId}`);
+            } else if (isAdmin) {
+              console.log(`🔓 Admin user ${userId} bypassing video limit check for org ${account.orgId}`);
+            }
+          }
         }
         
         let videosToSave = videos;
         
-        if (isAdmin) {
-          console.log(`🔓 Admin user ${userId} bypassing video limit check for org ${account.orgId}`);
-        } else {
+        if (!shouldBypassLimits) {
         // Check video limits before saving
         const usageDoc = await db
           .collection('organizations')

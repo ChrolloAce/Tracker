@@ -5,6 +5,7 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import UsageTrackingService from '../services/UsageTrackingService';
+import AdminService from '../services/AdminService';
 import { User } from 'firebase/auth';
 
 /**
@@ -111,6 +112,18 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
       try {
         setCheckingLimits(true);
+        
+        // DEMO ACCOUNT BYPASS: Demo account has unlimited access
+        if (user && await AdminService.shouldBypassLimits(user.uid)) {
+          console.log('🎭 [DEMO/ADMIN] Unlimited video access - bypassing ALL limit checks');
+          setVideoLimitInfo({
+            current: 0,
+            limit: -1, // -1 means unlimited
+            available: Infinity
+          });
+          setCheckingLimits(false);
+          return;
+        }
         
         // ADMIN BYPASS: If usageLimits shows 999999 (admin), skip API call entirely
         if (usageLimits.videosLeft === 999999) {

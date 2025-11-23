@@ -73,23 +73,50 @@ class AdminService {
    * Check if user should bypass limits
    * This is the main method other services should use
    * Admins can toggle this off to see the experience as a normal user
+   * Demo accounts ALWAYS bypass limits
    */
   static async shouldBypassLimits(userId: string): Promise<boolean> {
-    const isAdmin = await this.isAdmin(userId);
-    
-    if (!isAdmin) {
+    if (!userId) {
       return false;
     }
     
-    // Check if admin has toggled bypass off (to view as normal user)
-    const bypassDisabled = localStorage.getItem(`admin_bypass_disabled_${userId}`) === 'true';
-    
-    if (bypassDisabled) {
-      console.log(`🔒 Admin ${userId} viewing as normal user (bypass disabled)`);
+    try {
+      // DEMO ACCOUNT: Always bypass limits for demo account
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        const userEmail = userData.email?.toLowerCase() || '';
+        
+        // Demo account ALWAYS bypasses all limits
+        if (userEmail === '001ernestolopez@gmail.com') {
+          console.log(`🎭 Demo account detected (${userEmail}) - bypassing ALL limits`);
+          return true;
+        }
+      }
+      
+      // Regular admin check
+      const isAdmin = await this.isAdmin(userId);
+      
+      if (!isAdmin) {
+        return false;
+      }
+      
+      // Check if admin has toggled bypass off (to view as normal user)
+      const bypassDisabled = localStorage.getItem(`admin_bypass_disabled_${userId}`) === 'true';
+      
+      if (bypassDisabled) {
+        console.log(`🔒 Admin ${userId} viewing as normal user (bypass disabled)`);
+        return false;
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('Failed to check bypass limits:', error);
       return false;
     }
-    
-    return true;
   }
   
   /**
