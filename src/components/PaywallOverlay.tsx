@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
-import { Check, Eye } from 'lucide-react';
+import { Check, Eye, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
+import { getAuth } from 'firebase/auth';
 
 interface PaywallOverlayProps {
   isActive: boolean;
 }
 
 const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [testModeLoading, setTestModeLoading] = useState(false);
 
   if (!isActive) return null;
+
+  // Check if demo account
+  const isDemoAccount = user?.email?.toLowerCase() === '001ernestolopez@gmail.com';
 
   const handleUpgrade = async (plan: 'basic' | 'pro' | 'ultra') => {
     if (!currentOrgId) return;
@@ -29,11 +34,58 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
     }
   };
 
+  const handleTestModeGrant = async () => {
+    if (!currentOrgId || !user) return;
+    
+    setTestModeLoading(true);
+    try {
+      console.log('🧪 [TEST MODE] Granting Basic plan...');
+      
+      const authUser = getAuth().currentUser;
+      if (!authUser) {
+        throw new Error('Not authenticated');
+      }
+      
+      const token = await authUser.getIdToken();
+      
+      const response = await fetch('/api/test-grant-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orgId: currentOrgId,
+          planTier: 'basic',
+          userId: user.uid
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to grant test plan');
+      }
+      
+      const result = await response.json();
+      console.log('✅ [TEST MODE] Success:', result);
+      
+      alert(`✅ Test Mode Activated!\n\nPlan: ${result.planTier}\nExpires: ${new Date(result.expiresAt).toLocaleDateString()}\nPending accounts activated: ${result.pendingAccountsActivated}\n\nReloading dashboard...`);
+      
+      // Reload to update UI
+      window.location.reload();
+      
+    } catch (error: any) {
+      console.error('❌ [TEST MODE] Failed:', error);
+      alert(`Failed to grant test plan: ${error.message}`);
+      setTestModeLoading(false);
+    }
+  };
+
   return (
       <div className="relative z-10 max-w-6xl w-full mx-auto">
         <div className="text-center mb-8">
           {/* Demo Button - Minimalistic with subtle pulse */}
-          <div className="mb-8">
+          <div className="mb-8 flex flex-col items-center gap-3">
             <button
               onClick={() => navigate('/demo/dashboard')}
               className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-lg transition-all animate-pulse-subtle"
@@ -41,6 +93,18 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               <Eye className="w-4 h-4" />
               <span>View Demo Organization</span>
             </button>
+            
+            {/* TEST MODE BUTTON - Only for demo account */}
+            {isDemoAccount && (
+              <button
+                onClick={handleTestModeGrant}
+                disabled={testModeLoading}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500/50 text-green-400 hover:text-green-300 font-semibold rounded-lg transition-all disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4" />
+                <span>{testModeLoading ? 'Activating...' : '🧪 TEST MODE: Grant Basic Plan (Free)'}</span>
+              </button>
+            )}
           </div>
           
           <h2 className="text-4xl font-bold text-white mb-2">Choose Your Plan</h2>
