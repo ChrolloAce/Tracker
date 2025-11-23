@@ -17,6 +17,7 @@ export interface TrackedAccount {
   lastRefreshed?: any; // Firestore Timestamp for last refresh
   isActive: boolean;
   isRead?: boolean; // New field for unread notification
+  maxVideos?: number; // User's preference for how many videos to scrape on manual sync
   totalVideos: number;
   totalViews: number;
   totalLikes: number;

@@ -771,9 +771,16 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>,
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
-    const maxReels = 10; // Always fetch 10 for discovery
+    const isNewAccount = existingVideoIds.size === 0;
     
-    console.log(`🔍 Fetching up to ${maxReels} latest videos for discovery...`);
+    // For manual/initial sync: use user's maxVideos preference (or 100 default)
+    // For scheduled refresh: use 10 for discovery only
+    const maxReels = isNewAccount 
+      ? (account.maxVideos || 100) 
+      : 10;
+    
+    const syncType = isNewAccount ? 'MANUAL' : 'SCHEDULED';
+    console.log(`🔍 [Instagram ${syncType}] Fetching up to ${maxReels} latest videos for discovery...`);
     
         const proxyUrl = `${window.location.origin}/api/apify-proxy`;
         const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
@@ -1084,9 +1091,16 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>,
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
-    const maxVideos = 10; // Always fetch 10 for discovery
+    const isNewAccount = existingVideoIds.size === 0;
     
-    console.log(`🔍 Fetching up to ${maxVideos} latest TikTok videos for discovery...`);
+    // For manual/initial sync: use user's maxVideos preference (or 100 default)
+    // For scheduled refresh: use 10 for discovery only
+    const maxVideos = isNewAccount 
+      ? (account.maxVideos || 100) 
+      : 10;
+    
+    const syncType = isNewAccount ? 'MANUAL' : 'SCHEDULED';
+    console.log(`🔍 [TikTok ${syncType}] Fetching up to ${maxVideos} latest TikTok videos for discovery...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
     
@@ -1338,10 +1352,17 @@ export class AccountTrackingServiceFirebase {
     existingVideoIds: Set<string>,
     oldestVideoDate: Date | null = null
   ): Promise<AccountVideo[]> {
-    const maxResults = 10; // Always fetch 10 for discovery
+    const isNewAccount = existingVideoIds.size === 0;
+    
+    // For manual/initial sync: use user's maxVideos preference (or 100 default)
+    // For scheduled refresh: use 10 for discovery only
+    const maxResults = isNewAccount 
+      ? (account.maxVideos || 100) 
+      : 10;
 
     // Fetch ONLY the number we need (not 50 then slice!)
-    console.log(`🔍 [YouTube Discovery] Fetching latest ${maxResults} YouTube Shorts for channel: ${channelId}`);
+    const syncType = isNewAccount ? 'MANUAL' : 'SCHEDULED';
+    console.log(`🔍 [YouTube ${syncType}] Fetching latest ${maxResults} YouTube Shorts for channel: ${channelId}`);
     const shorts = await YoutubeAccountService.syncChannelShorts(channelId, account.displayName || account.username, maxResults);
     
     console.log(`📦 [YouTube Discovery] YouTube API returned ${shorts.length} Shorts (requested ${maxResults})`);
@@ -1426,8 +1447,14 @@ export class AccountTrackingServiceFirebase {
       const newVideos: AccountVideo[] = [];
       const updatedVideos: AccountVideo[] = [];
       
-      // Fetch tweets (always 10 for discovery)
-      const maxTweets = 10;
+      // For manual/initial sync: use user's maxVideos preference (or 100 default)
+      // For scheduled refresh: use 10 for discovery only
+      const maxTweets = isNewAccount 
+        ? (account.maxVideos || 100) 
+        : 10;
+      
+      const syncType = isNewAccount ? 'MANUAL' : 'SCHEDULED';
+      console.log(`📊 [Twitter ${syncType}] Fetching up to ${maxTweets} tweets`);
       
       const tweets = await TwitterApiService.fetchTweets(account.username, maxTweets);
       console.log(`📦 Twitter API returned ${tweets.length} tweets`);
