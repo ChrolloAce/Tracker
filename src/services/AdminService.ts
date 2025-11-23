@@ -77,6 +77,7 @@ class AdminService {
    */
   static async shouldBypassLimits(userId: string): Promise<boolean> {
     if (!userId) {
+      console.log('⚠️ [shouldBypassLimits] No userId provided');
       return false;
     }
     
@@ -89,11 +90,15 @@ class AdminService {
         const userData = userSnap.data();
         const userEmail = userData.email?.toLowerCase() || '';
         
+        console.log(`🔍 [shouldBypassLimits] Checking user: ${userEmail}`);
+        
         // Demo account ALWAYS bypasses all limits
         if (userEmail === '001ernestolopez@gmail.com') {
           console.log(`🎭 Demo account detected (${userEmail}) - bypassing ALL limits`);
           return true;
         }
+      } else {
+        console.log(`⚠️ [shouldBypassLimits] User document not found for userId: ${userId}`);
       }
       
       // Regular admin check
