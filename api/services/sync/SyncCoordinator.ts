@@ -113,7 +113,8 @@ export class SyncCoordinator {
       const account = {
         username,
         id: accountId,
-        youtubeChannelId: accountData.youtubeChannelId
+        youtubeChannelId: accountData.youtubeChannelId,
+        maxVideos: accountData.maxVideos // User's preference for how many videos to fetch on manual sync
       };
       
       // Run discovery first (if not refresh_only and account is automatic)

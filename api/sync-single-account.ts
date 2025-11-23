@@ -454,14 +454,19 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [TIKTOK] Forward discovery - fetching 10 most recent videos...`);
+          // For new accounts: use maxVideos (manual sync)
+          // For existing accounts: use 10 (scheduled discovery)
+          const videosToFetch = existingVideoIds.size === 0 ? maxVideos : 10;
+          const syncType = existingVideoIds.size === 0 ? 'MANUAL' : 'SCHEDULED';
+          
+          console.log(`🔍 [TIKTOK ${syncType}] Forward discovery - fetching ${videosToFetch} most recent videos...`);
           
           try {
             const data = await runApifyActor({
               actorId: 'apidojo/tiktok-scraper',
               input: {
                 startUrls: [`https://www.tiktok.com/@${username}`],
-                maxItems: 10,
+                maxItems: videosToFetch,
                 sortType: 'RELEVANCE',
                 dateRange: 'DEFAULT',
                 location: 'US',
@@ -756,14 +761,19 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [YOUTUBE] Forward discovery - fetching 10 most recent Shorts...`);
+          // For new accounts: use maxVideos (manual sync)
+          // For existing accounts: use 10 (scheduled discovery)
+          const videosToFetch = existingVideoIds.size === 0 ? maxVideos : 10;
+          const syncType = existingVideoIds.size === 0 ? 'MANUAL' : 'SCHEDULED';
+          
+          console.log(`🔍 [YOUTUBE ${syncType}] Forward discovery - fetching ${videosToFetch} most recent Shorts...`);
           
           try {
             const data = await runApifyActor({
               actorId: 'grow_media/youtube-shorts-scraper',
               input: {
                 channels: [channelHandle],
-                maxResults: 10,
+                maxResults: videosToFetch,
                 sortBy: 'latest',
                 proxy: {
                   useApifyProxy: true,
@@ -1131,18 +1141,23 @@ export default async function handler(
       
       // ===== NEW TWEET DISCOVERY (only if NOT refresh_only) =====
       if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-        console.log(`🔍 [TWITTER] Forward discovery - fetching 10 most recent tweets (excluding retweets)...`);
+        // For new accounts: use maxVideos (manual sync)
+        // For existing accounts: use 10 (scheduled discovery)
+        const tweetsToFetch = existingTweetIds.size === 0 ? maxVideos : 10;
+        const syncType = existingTweetIds.size === 0 ? 'MANUAL' : 'SCHEDULED';
+        
+        console.log(`🔍 [TWITTER ${syncType}] Forward discovery - fetching ${tweetsToFetch} most recent tweets (excluding retweets)...`);
         
         try {
           // Use searchTerms with -filter:nativeretweets to exclude retweets
-          // This ensures we get 10 ACTUAL posts (original tweets + quotes, no retweets)
+          // This ensures we get ACTUAL posts (original tweets + quotes, no retweets)
           const searchQuery = `from:${account.username.replace('@', '')} -filter:nativeretweets`;
           
           const tweetsData = await runApifyActor({
             actorId: 'apidojo/tweet-scraper',
             input: {
               searchTerms: [searchQuery], // ✅ Use searchTerms to exclude retweets
-              maxItems: 10,
+              maxItems: tweetsToFetch,
               sort: 'Latest',
               onlyImage: false,
               onlyVideo: false, // ✅ Fetch ALL tweet types (text, images, videos)
@@ -1346,13 +1361,18 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`🔍 [INSTAGRAM] Forward discovery - fetching 10 most recent reels...`);
+          // For new accounts: use maxVideos (manual sync)
+          // For existing accounts: use 10 (scheduled discovery)
+          const videosToFetch = existingVideoIds.size === 0 ? maxVideos : 10;
+          const syncType = existingVideoIds.size === 0 ? 'MANUAL' : 'SCHEDULED';
+          
+          console.log(`🔍 [INSTAGRAM ${syncType}] Forward discovery - fetching ${videosToFetch} most recent reels...`);
           
           try {
             const scraperInput: any = {
               tags: [`https://www.instagram.com/${account.username}/reels/`],
               target: 'reels_only',
-              reels_count: 10,
+              reels_count: videosToFetch,
               include_raw_data: true,
               // NO beginDate/endDate - date filtering doesn't work reliably
               custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
