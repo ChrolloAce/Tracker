@@ -231,6 +231,129 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
 
   console.log(`✅ SUCCESS: Updated subscription for org ${org.orgId} to ${planTier} (${subscription.status})`);
   console.log(`✅ Subscription expires: ${periodEnd.toDate().toISOString()}`);
+  
+  // If subscription is now active, activate any pending onboarding accounts
+  if (subscription.status === 'active' || subscription.status === 'trialing') {
+    console.log('');
+    console.log('🎯 [PENDING ACCOUNTS] Checking for pending onboarding accounts...');
+    try {
+      await activatePendingAccountsAfterPayment(db, org.orgId, Timestamp);
+    } catch (activationError) {
+      console.error('❌ [PENDING ACCOUNTS] Failed to activate pending accounts:', activationError);
+      // Don't fail the webhook - subscription is still updated
+    }
+  }
+}
+
+/**
+ * Activate pending accounts after successful payment
+ */
+async function activatePendingAccountsAfterPayment(db: any, orgId: string, Timestamp: any) {
+  try {
+    console.log(`🔍 [PENDING ACCOUNTS] Looking for pending accounts in org: ${orgId}`);
+    
+    // Get all pending accounts for this org
+    const pendingAccountsRef = db.collection('pendingOnboardingAccounts')
+      .where('orgId', '==', orgId)
+      .where('status', '==', 'pending');
+    
+    const pendingSnapshot = await pendingAccountsRef.get();
+    
+    if (pendingSnapshot.empty) {
+      console.log('ℹ️ [PENDING ACCOUNTS] No pending accounts found');
+      return;
+    }
+    
+    console.log(`📦 [PENDING ACCOUNTS] Found ${pendingSnapshot.size} pending accounts to activate`);
+    
+    let activated = 0;
+    let failed = 0;
+    
+    for (const doc of pendingSnapshot.docs) {
+      const account = doc.data();
+      
+      try {
+        console.log(`\n🔄 [PENDING ACCOUNTS] Activating @${account.username} (${account.platform})`);
+        console.log(`   Max videos: ${account.maxVideos}`);
+        console.log(`   Project: ${account.projectId}`);
+        
+        // Create the tracked account in the main collection
+        const accountRef = db.collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(account.projectId)
+          .collection('trackedAccounts')
+          .doc();
+        
+        await accountRef.set({
+          username: account.username,
+          platform: account.platform,
+          accountType: account.accountType || 'my',
+          isActive: true,
+          maxVideos: account.maxVideos || 100,
+          creatorType: 'automatic',
+          displayName: account.username,
+          profilePicture: '',
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          bio: '',
+          isVerified: false,
+          syncStatus: 'pending',
+          totalVideos: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          totalShares: 0,
+          dateAdded: Timestamp.now(),
+          addedBy: account.userId
+        });
+        
+        console.log(`✅ [PENDING ACCOUNTS] Account created with ID: ${accountRef.id}`);
+        
+        // Queue for sync
+        const jobRef = db.collection('syncQueue').doc();
+        await jobRef.set({
+          accountId: accountRef.id,
+          orgId: orgId,
+          projectId: account.projectId,
+          username: account.username,
+          platform: account.platform,
+          priority: 'high',
+          syncStrategy: 'progressive',
+          maxVideos: account.maxVideos,
+          status: 'queued',
+          createdAt: Timestamp.now(),
+          createdBy: account.userId,
+          capturedBy: 'post_payment_activation'
+        });
+        
+        console.log(`✅ [PENDING ACCOUNTS] Queued for sync (Job ID: ${jobRef.id})`);
+        
+        // Delete from pending collection
+        await doc.ref.delete();
+        console.log(`🗑️ [PENDING ACCOUNTS] Removed from pending collection`);
+        
+        activated++;
+        
+      } catch (error) {
+        console.error(`❌ [PENDING ACCOUNTS] Failed to activate @${account.username}:`, error);
+        failed++;
+      }
+    }
+    
+    console.log('');
+    console.log('✅ [PENDING ACCOUNTS] ========================================');
+    console.log(`✅ [PENDING ACCOUNTS] ACTIVATION COMPLETE`);
+    console.log(`   ✓ Activated: ${activated}`);
+    console.log(`   ✗ Failed: ${failed}`);
+    console.log('✅ [PENDING ACCOUNTS] ========================================');
+    console.log('');
+    
+  } catch (error) {
+    console.error('❌ [PENDING ACCOUNTS] Failed during activation:', error);
+    throw error;
+  }
 }
 
 /**

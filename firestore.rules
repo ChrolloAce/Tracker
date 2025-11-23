@@ -107,6 +107,38 @@ service cloud.firestore {
       }
     }
     
+    // ==================== PENDING ONBOARDING ACCOUNTS ====================
+    
+    // Accounts added during onboarding BEFORE payment
+    // These are activated once the user subscribes
+    match /pendingOnboardingAccounts/{accountId} {
+      // User can read their own pending accounts
+      // Backend (Admin SDK) can read/write all
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // User can create their own pending accounts during onboarding
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Backend (Admin SDK) can update/delete via Admin SDK (bypasses rules)
+      // Users cannot update/delete (onboarding is one-time flow)
+      allow update, delete: if false;
+    }
+    
+    // ==================== SYNC QUEUE ====================
+    
+    // Job queue for background video sync
+    match /syncQueue/{jobId} {
+      // Users can read their organization's jobs
+      // This requires looking up orgId - simplified to allow authenticated reads
+      allow read: if isSignedIn();
+      
+      // Only backend (Admin SDK) and authenticated users can create jobs
+      allow create: if isSignedIn();
+      
+      // Only backend (Admin SDK) can update/delete jobs
+      allow update, delete: if false;
+    }
+    
     // ==================== ORGANIZATIONS ====================
     
     match /organizations/{orgId} {

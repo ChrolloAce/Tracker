@@ -7,6 +7,7 @@ import ProjectService from '../services/ProjectService';
 import FirebaseStorageService from '../services/FirebaseStorageService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import TeamInvitationService from '../services/TeamInvitationService';
+import PendingAccountsService from '../services/PendingAccountsService';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { clsx } from 'clsx';
@@ -375,33 +376,31 @@ const OrganizationOnboarding: React.FC = () => {
         console.log('✅ Project created:', projectId);
       }
 
-      // Add tracked accounts with their video counts
+      // Save accounts to pending collection
+      // They will be activated once user subscribes
+      console.log('📝 Saving accounts to pending collection (pre-payment)...');
       for (const account of data.trackedAccounts) {
         const username = extractUsernameFromUrl(account.url);
         if (username) {
-          await FirestoreDataService.addTrackedAccount(
+          await PendingAccountsService.addPendingAccount(
             orgId,
             projectId,
             user.uid,
-            {
-              username,
-              platform: account.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
-              accountType: 'my',
-              isActive: true,
-              displayName: username,
-              profilePicture: '',
-              followerCount: 0,
-              followingCount: 0,
-              postCount: 0,
-              bio: '',
-              isVerified: false
-            }
+            username,
+            account.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
+            'my',
+            account.videoCount || 100,
+            account.url
           );
-          
-          // Note: Video count (account.videoCount) is stored in the UI state
-          // The actual video syncing logic will use this when fetching videos
-          // You may want to store this in account metadata if needed
+          console.log(`✅ Saved @${username} to pending collection (will activate after payment)`);
         }
+      }
+      
+      if (data.trackedAccounts.length > 0) {
+        console.log('');
+        console.log('🎯 Next Step: Subscribe to activate accounts');
+        console.log(`   ${data.trackedAccounts.length} accounts ready to sync after payment`);
+        console.log('');
       }
 
       // Send team invitations
