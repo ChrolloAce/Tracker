@@ -5,7 +5,6 @@ import { signOut } from 'firebase/auth';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
 import FirebaseStorageService from '../services/FirebaseStorageService';
-import FirestoreDataService from '../services/FirestoreDataService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import PendingAccountsService from '../services/PendingAccountsService';
 import { doc, setDoc } from 'firebase/firestore';
