@@ -6,7 +6,7 @@ import type { VercelRequest, VercelResponse} from '@vercel/node';
  * This endpoint bypasses Stripe and directly grants a subscription plan.
  * Used for testing pending accounts activation and other subscription features.
  * 
- * SECURITY: Only works for demo account (001ernestolopez@gmail.com)
+ * WARNING: This is for testing only. Remove in production!
  */
 export default async function handler(
   req: VercelRequest,
@@ -47,16 +47,9 @@ export default async function handler(
       return res.status(400).json({ error: 'userId required' });
     }
 
-    // SECURITY: Verify this is the demo account
+    // Get user info for logging
     const userRecord = await adminAuth.getUser(userId);
     const userEmail = userRecord.email?.toLowerCase();
-
-    if (userEmail !== '001ernestolopez@gmail.com') {
-      console.error(`⚠️ [TEST GRANT] Unauthorized attempt by: ${userEmail}`);
-      return res.status(403).json({ 
-        error: 'Test mode only available for demo account (001ernestolopez@gmail.com)' 
-      });
-    }
 
     console.log('');
     console.log('🧪 [TEST GRANT] ========================================');
