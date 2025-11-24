@@ -133,8 +133,12 @@ export class YoutubeSyncService {
     const expectedChannelId = account.youtubeChannelId;
     
     try {
+      // Force correct channel to prevent Apify from using cached/wrong channel data
+      const channelHandle = account.username.startsWith('@') ? account.username : `@${account.username}`;
+      
       const refreshInput = {
         videoIds: existingVideoIds,
+        channels: [channelHandle], // Force correct channel to prevent Apify confusion
         maxResults: existingVideoIds.length,
         sortBy: 'latest',
         proxy: {

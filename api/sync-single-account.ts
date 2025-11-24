@@ -890,6 +890,7 @@ export default async function handler(
               actorId: 'grow_media/youtube-shorts-scraper',
               input: {
                 videoIds: videoIds,
+                channels: [channelHandle], // Force correct channel to prevent Apify from using cached/wrong channel data
                 maxResults: videoIds.length,
                 sortBy: 'latest',
                 proxy: {
