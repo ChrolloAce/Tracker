@@ -60,7 +60,8 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to grant test plan');
+        console.error('❌ [TEST MODE] Server error response:', error);
+        throw new Error(error.message || error.error || 'Failed to grant test plan');
       }
       
       const result = await response.json();

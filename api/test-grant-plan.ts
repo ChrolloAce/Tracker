@@ -17,13 +17,18 @@ export default async function handler(
   }
 
   try {
+    console.log('🔧 [TEST GRANT] Initializing...');
+    
     // Initialize Firebase Admin
     const { initializeApp, cert, getApps } = await import('firebase-admin/app');
     const { getFirestore, Timestamp } = await import('firebase-admin/firestore');
     const { getAuth } = await import('firebase-admin/auth');
 
+    console.log('🔧 [TEST GRANT] Firebase Admin modules loaded');
+
     // Initialize Firebase if not already initialized
     if (getApps().length === 0) {
+      console.log('🔧 [TEST GRANT] Initializing Firebase Admin...');
       const serviceAccountKey = JSON.parse(
         Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 || '', 'base64').toString('utf-8')
       );
@@ -31,6 +36,9 @@ export default async function handler(
       initializeApp({
         credential: cert(serviceAccountKey),
       });
+      console.log('✅ [TEST GRANT] Firebase Admin initialized');
+    } else {
+      console.log('✅ [TEST GRANT] Firebase Admin already initialized');
     }
 
     const db = getFirestore();
@@ -38,6 +46,8 @@ export default async function handler(
 
     // Get request body
     const { orgId, planTier = 'basic', userId } = req.body;
+
+    console.log('📥 [TEST GRANT] Request body:', { orgId, planTier, userId });
 
     if (!orgId) {
       return res.status(400).json({ error: 'orgId required' });
@@ -47,9 +57,35 @@ export default async function handler(
       return res.status(400).json({ error: 'userId required' });
     }
 
+    // Verify auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('❌ [TEST GRANT] No auth token provided');
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    console.log('🔐 [TEST GRANT] Verifying auth token...');
+    
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      console.log('✅ [TEST GRANT] Token verified for user:', decodedToken.uid);
+      
+      // Make sure the userId in the request matches the authenticated user
+      if (decodedToken.uid !== userId) {
+        console.error('❌ [TEST GRANT] User ID mismatch');
+        return res.status(403).json({ error: 'User ID does not match authenticated user' });
+      }
+    } catch (tokenError: any) {
+      console.error('❌ [TEST GRANT] Token verification failed:', tokenError.message);
+      return res.status(401).json({ error: 'Invalid authentication token' });
+    }
+
     // Get user info for logging
+    console.log('📋 [TEST GRANT] Fetching user record...');
     const userRecord = await adminAuth.getUser(userId);
     const userEmail = userRecord.email?.toLowerCase();
+    console.log('✅ [TEST GRANT] User record fetched:', userEmail);
 
     console.log('');
     console.log('🧪 [TEST GRANT] ========================================');
@@ -197,9 +233,11 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('❌ [TEST GRANT] Error:', error);
+    console.error('❌ [TEST GRANT] Error stack:', error.stack);
     return res.status(500).json({
       error: 'Failed to grant test subscription',
-      message: error.message
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
