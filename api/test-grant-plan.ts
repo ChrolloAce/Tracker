@@ -217,7 +217,7 @@ export default async function handler(
             priority: 'high',
             syncStrategy: 'progressive',
             maxVideos: account.maxVideos,
-            status: 'queued',
+            status: 'pending', // Changed from 'queued' to 'pending' so queue-worker picks it up
             createdAt: Timestamp.now(),
             createdBy: account.userId,
             capturedBy: 'test_mode_activation'

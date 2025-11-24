@@ -322,7 +322,7 @@ async function activatePendingAccountsAfterPayment(db: any, orgId: string, Times
           priority: 'high',
           syncStrategy: 'progressive',
           maxVideos: account.maxVideos,
-          status: 'queued',
+          status: 'pending', // Changed from 'queued' to 'pending' so queue-worker picks it up
           createdAt: Timestamp.now(),
           createdBy: account.userId,
           capturedBy: 'post_payment_activation'
