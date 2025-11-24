@@ -89,6 +89,9 @@
     },
     "api/queue-manual-video.ts": {
       "maxDuration": 10
+    },
+    "api/test-grant-plan.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [

@@ -12,12 +12,27 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     console.log('🔧 [TEST GRANT] Initializing...');
+    console.log('🔧 [TEST GRANT] Environment check:', {
+      hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+      nodeEnv: process.env.NODE_ENV
+    });
     
     // Initialize Firebase Admin
     const { initializeApp, cert, getApps } = await import('firebase-admin/app');
@@ -29,12 +44,22 @@ export default async function handler(
     // Initialize Firebase if not already initialized
     if (getApps().length === 0) {
       console.log('🔧 [TEST GRANT] Initializing Firebase Admin...');
-      const serviceAccountKey = JSON.parse(
-        Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 || '', 'base64').toString('utf-8')
-      );
+      
+      // Handle private key - replace escaped newlines with actual newlines
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
+      const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      };
 
       initializeApp({
-        credential: cert(serviceAccountKey),
+        credential: cert(serviceAccount as any),
       });
       console.log('✅ [TEST GRANT] Firebase Admin initialized');
     } else {
