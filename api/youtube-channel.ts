@@ -86,7 +86,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ videos: videoData.items || [] });
     }
 
-    return res.status(400).json({ error: 'Invalid action. Use "getChannelInfo" or "getShorts"' });
+    // Batch refresh videos by IDs (up to 50 per call)
+    if (action === 'batchGetVideos') {
+      const { videoIds } = req.body || {};
+      
+      if (!videoIds || !Array.isArray(videoIds) || videoIds.length === 0) {
+        return res.status(400).json({ error: 'Missing videoIds array' });
+      }
+      
+      // YouTube API supports up to 50 video IDs per request
+      const limitedIds = videoIds.slice(0, 50);
+      
+      // Fetch full video details (statistics, contentDetails) for all videos
+      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${limitedIds.join(',')}&key=${apiKey}`;
+      const videoRes = await fetch(videoUrl);
+      
+      if (!videoRes.ok) {
+        const text = await videoRes.text();
+        return res.status(videoRes.status).json({ error: 'YouTube videos API error', details: text });
+      }
+
+      const videoData = await videoRes.json();
+      return res.status(200).json({ videos: videoData.items || [] });
+    }
+
+    return res.status(400).json({ error: 'Invalid action. Use "getChannelInfo", "getShorts", or "batchGetVideos"' });
   } catch (error) {
     return res.status(500).json({ 
       error: 'Internal server error', 

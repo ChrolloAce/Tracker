@@ -878,30 +878,91 @@ export default async function handler(
         
         // ===== REFRESH EXISTING VIDEOS (runs for ALL accounts with existing videos) =====
         if (existingVideoIds.size > 0) {
-          console.log(`🔄 [YOUTUBE] Refreshing ALL ${existingVideoIds.size} existing Shorts...`);
+          console.log(`🔄 [YOUTUBE] Refreshing ALL ${existingVideoIds.size} existing Shorts using YouTube Data API...`);
           
           try {
             // Build video IDs for ALL existing videos
             const videoIds = Array.from(existingVideoIds);
             
-            console.log(`📊 [YOUTUBE] Fetching updated metrics for ${videoIds.length} existing Shorts...`);
+            console.log(`📊 [YOUTUBE] Fetching updated metrics for ${videoIds.length} existing Shorts from YouTube API...`);
             
-            const refreshData = await runApifyActor({
-              actorId: 'grow_media/youtube-shorts-scraper',
-              input: {
-                videoIds: videoIds,
-                channels: [channelHandle], // Force correct channel to prevent Apify from using cached/wrong channel data
-                maxResults: videoIds.length,
-                sortBy: 'latest',
-                proxy: {
-                  useApifyProxy: true,
-                  apifyProxyGroups: ['RESIDENTIAL']
+            // Use YouTube Data API directly (free, fast, reliable)
+            // YouTube API supports up to 50 IDs per request, so batch them
+            const allRefreshedVideos: any[] = [];
+            
+            for (let i = 0; i < videoIds.length; i += 50) {
+              const batchIds = videoIds.slice(i, i + 50);
+              console.log(`📦 [YOUTUBE] Batch ${Math.floor(i / 50) + 1}: Fetching ${batchIds.length} videos...`);
+              
+              const apiKey = process.env.YOUTUBE_API_KEY;
+              if (!apiKey) {
+                console.error('❌ [YOUTUBE] YOUTUBE_API_KEY not configured');
+                break;
+              }
+              
+              const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${batchIds.join(',')}&key=${apiKey}`;
+              const videoRes = await fetch(videoUrl);
+              
+              if (!videoRes.ok) {
+                console.error(`❌ [YOUTUBE] Batch ${Math.floor(i / 50) + 1} failed: ${videoRes.status}`);
+                continue;
+              }
+              
+              const videoData = await videoRes.json();
+              const items = videoData.items || [];
+              allRefreshedVideos.push(...items);
+              console.log(`✅ [YOUTUBE] Batch ${Math.floor(i / 50) + 1}: Got ${items.length} videos`);
+            }
+            
+            // Normalize YouTube API format to match expected format
+            const refreshedVideos = allRefreshedVideos.map((video: any) => {
+              // Parse duration from ISO 8601 format (PT1M30S)
+              let durationSeconds = 0;
+              if (video.contentDetails?.duration) {
+                const durationStr = video.contentDetails.duration;
+                const match = durationStr.match(/PT(?:(\d+)M)?(?:(\d+)S)?/);
+                if (match) {
+                  const minutes = parseInt(match[1] || '0', 10);
+                  const seconds = parseInt(match[2] || '0', 10);
+                  durationSeconds = minutes * 60 + seconds;
                 }
               }
+              
+              // Get best thumbnail
+              let thumbnail = '';
+              if (video.snippet?.thumbnails?.maxres?.url) {
+                thumbnail = video.snippet.thumbnails.maxres.url;
+              } else if (video.snippet?.thumbnails?.standard?.url) {
+                thumbnail = video.snippet.thumbnails.standard.url;
+              } else if (video.snippet?.thumbnails?.high?.url) {
+                thumbnail = video.snippet.thumbnails.high.url;
+              } else if (video.snippet?.thumbnails?.medium?.url) {
+                thumbnail = video.snippet.thumbnails.medium.url;
+              } else if (video.snippet?.thumbnails?.default?.url) {
+                thumbnail = video.snippet.thumbnails.default.url;
+              }
+              
+              // Normalize to Apify-like format for compatibility with existing code
+              return {
+                id: video.id,
+                title: video.snippet?.title || '',
+                url: `https://www.youtube.com/shorts/${video.id}`,
+                channelId: video.snippet?.channelId,
+                channelName: video.snippet?.channelTitle || '',
+                channel_id: video.snippet?.channelId, // Alias
+                channel_name: video.snippet?.channelTitle || '', // Alias
+                thumbnailUrl: thumbnail,
+                thumbnails: video.snippet?.thumbnails,
+                duration: video.contentDetails?.duration || '',
+                viewCount: parseInt(video.statistics?.viewCount || '0', 10),
+                likes: parseInt(video.statistics?.likeCount || '0', 10),
+                commentsCount: parseInt(video.statistics?.commentCount || '0', 10),
+                date: video.snippet?.publishedAt,
+                text: video.snippet?.description || ''
+              };
             });
             
-            const refreshedVideos = refreshData.items || [];
-            console.log(`✅ [YOUTUBE] Refreshed ${refreshedVideos.length} existing Shorts`);
+            console.log(`✅ [YOUTUBE] Refreshed ${refreshedVideos.length}/${videoIds.length} Shorts via YouTube API`);
             
             // ===== CRITICAL: VALIDATE CHANNEL OWNERSHIP =====
             // Extract the expected channel ID from the account or from discovered videos
