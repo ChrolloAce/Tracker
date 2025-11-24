@@ -17,9 +17,6 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
 
   if (!isActive) return null;
 
-  // Check if demo account
-  const isDemoAccount = user?.email?.toLowerCase() === '001ernestolopez@gmail.com';
-
   const handleUpgrade = async (plan: 'basic' | 'pro' | 'ultra') => {
     if (!currentOrgId) return;
     
@@ -94,17 +91,15 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               <span>View Demo Organization</span>
             </button>
             
-            {/* TEST MODE BUTTON - Only for demo account */}
-            {isDemoAccount && (
-              <button
-                onClick={handleTestModeGrant}
-                disabled={testModeLoading}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500/50 text-green-400 hover:text-green-300 font-semibold rounded-lg transition-all disabled:opacity-50"
-              >
-                <Zap className="w-4 h-4" />
-                <span>{testModeLoading ? 'Activating...' : '🧪 TEST MODE: Grant Basic Plan (Free)'}</span>
-              </button>
-            )}
+            {/* TEST MODE BUTTON - Always visible for testing */}
+            <button
+              onClick={handleTestModeGrant}
+              disabled={testModeLoading}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500/50 text-green-400 hover:text-green-300 font-semibold rounded-lg transition-all disabled:opacity-50"
+            >
+              <Zap className="w-4 h-4" />
+              <span>{testModeLoading ? 'Activating...' : '🧪 TEST MODE: Grant Basic Plan (Free)'}</span>
+            </button>
           </div>
           
           <h2 className="text-4xl font-bold text-white mb-2">Choose Your Plan</h2>

@@ -64,9 +64,8 @@ const SubscriptionPage: React.FC = () => {
     }
   };
 
-  // Show Free, Basic, Pro, Ultra for main cards
+  // Show Basic, Pro, Ultra for main cards (Free plan removed)
   const mainPlans = [
-    SUBSCRIPTION_PLANS.free,
     SUBSCRIPTION_PLANS.basic,
     SUBSCRIPTION_PLANS.pro,
     SUBSCRIPTION_PLANS.ultra,
@@ -133,7 +132,7 @@ const SubscriptionPage: React.FC = () => {
 
         {/* Pricing Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {mainPlans.map((plan) => {
             const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
             const isCurrentPlan = currentPlan === plan.id;
