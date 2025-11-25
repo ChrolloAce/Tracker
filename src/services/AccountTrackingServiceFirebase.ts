@@ -4,7 +4,8 @@ import FirestoreDataService from './FirestoreDataService';
 import YoutubeAccountService from './YoutubeAccountService';
 import TwitterApiService from './TwitterApiService';
 import { SyncCoordinator } from './sync/SyncCoordinator';
-import { Timestamp } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import FirebaseStorageService from './FirebaseStorageService';
 
 /**
  * AccountTrackingServiceFirebase

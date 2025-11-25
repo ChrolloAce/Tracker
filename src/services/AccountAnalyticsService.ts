@@ -40,7 +40,7 @@ export class AccountAnalyticsService {
       
       // 3. Detect Outliers
       const outlierAnalysis = OutlierDetectionService.detectOutliers(
-        videos,
+        videos.map(v => ({ ...v, url: v.url || '' })),
         accountId,
         username
       );

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Flame, ExternalLink, ChevronLeft, ChevronRight, Trash2, Link2, Copy, Check } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Bookmark, Trash2, Link2, Copy, Check } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -9,7 +9,7 @@ import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
 import { VideoDeleteModal } from './video-modal/VideoDeleteModal';
 import { VideoSidebar } from './video-modal/VideoSidebar';
 import { VideoSnapshotsHistory } from './video-modal/VideoSnapshotsHistory';
-import { formatNumber, formatDuration } from '../utils/formatters';
+import { formatNumber } from '../utils/formatters';
 import FirestoreDataService from '../services/FirestoreDataService';
 import FirebaseService from '../services/FirebaseService';
 
@@ -52,9 +52,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     dataIndex: number;
   } | null>(null);
 
-  // Pagination state for snapshots
-  const [snapshotsPage, setSnapshotsPage] = useState(1);
-  const snapshotsPerPage = 5;
   const [imageError, setImageError] = useState(false);
 
   // Update URL when modal opens (if enabled)
@@ -440,7 +437,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
 
   // Twitter image slideshow state
-  const [currentMediaIndex, setCurrentMediaIndex] = React.useState(0);
   
   // Convert video URL to embed URL
   const getEmbedUrl = (url: string, platform: string): string => {

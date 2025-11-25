@@ -6,7 +6,6 @@ import { YoutubeSyncService } from './youtube/YoutubeSyncService';
 import { TwitterSyncService } from './twitter/TwitterSyncService';
 import { DateFilterService } from './shared/DateFilterService';
 import { AccountAnalyticsService } from '../AccountAnalyticsService';
-import { Timestamp } from 'firebase/firestore';
 
 /**
  * SyncCoordinator
