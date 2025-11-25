@@ -1,16 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { collection, query, where, getDocs, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { 
   Plus, 
-  Trash2,
-  Filter,
   AlertCircle,
-  Link as LinkIcon,
-  MoreVertical,
-  ChevronDown,
-  Download
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo, AccountWithFilteredStats } from '../types/accounts';
@@ -21,7 +14,6 @@ import { BlurEmptyState } from './ui/BlurEmptyState';
 import RulesService from '../services/RulesService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { TrackingRule } from '../types/rules';
-import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmission, VideoSnapshot } from '../types';
@@ -45,6 +37,7 @@ import { AttachCreatorModal } from './accounts/AttachCreatorModal';
 import { DeleteAccountModal } from './accounts/DeleteAccountModal';
 import { AccountDetailsView } from './accounts/AccountDetailsView';
 import { AccountsTable } from './accounts/AccountsTable';
+import { AccountsHeader } from './accounts/AccountsHeader';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -116,7 +109,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [creators, setCreators] = useState<Creator[]>([]);
-  const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [trackedLinks, setTrackedLinks] = useState<FirestoreTrackedLink[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [accountCreatorNames, setAccountCreatorNames] = useState<Map<string, string>>(new Map());
@@ -1668,147 +1660,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             />
           ) : (
           <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
-            {/* Table Header */}
-            <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
-                    {dateFilter === 'all' 
-                      ? 'Account stats - All Time' 
-                      : dateFilter === 'today'
-                      ? 'Account stats - Today'
-                      : dateFilter === 'yesterday'
-                      ? 'Account stats - Yesterday'
-                      : dateFilter === 'last7days'
-                      ? 'Account stats - Last 7 days'
-                      : dateFilter === 'last14days'
-                      ? 'Account stats - Last 14 days'
-                      : dateFilter === 'last30days'
-                      ? 'Account stats - Last 30 days'
-                      : dateFilter === 'last90days'
-                      ? 'Account stats - Last 90 days'
-                      : dateFilter === 'mtd'
-                      ? 'Account stats - Month to Date'
-                      : dateFilter === 'lastmonth'
-                      ? 'Account stats - Last Month'
-                      : dateFilter === 'ytd'
-                      ? 'Account stats - Year to Date'
-                      : 'Account stats'
-                    }
-                  </h2>
-                </div>
-                <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                  {/* Actions Dropdown */}
-                  <div className="relative">
-                    <button
-                      ref={actionsMenuRef}
-                      onClick={() => setShowActionsMenu(!showActionsMenu)}
-                      disabled={selectedAccounts.size === 0}
-                      className={clsx(
-                        "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
-                        selectedAccounts.size > 0
-                          ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
-                          : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
-                      )}
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                      <span className="hidden sm:inline">
-                        {selectedAccounts.size > 0 ? `Actions (${selectedAccounts.size})` : 'Actions'}
-                      </span>
-                      <ChevronDown className="w-3 h-3" />
-                    </button>
-
-                    {/* Actions Dropdown Menu (Portal) */}
-                    {showActionsMenu && selectedAccounts.size > 0 && actionsMenuRef.current && createPortal(
-                      <>
-                        {/* Backdrop */}
-                        <div 
-                          className="fixed inset-0 z-[9998]" 
-                          onClick={() => setShowActionsMenu(false)}
-                        />
-                        
-                        {/* Dropdown Menu */}
-                        <div 
-                          className="fixed w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-[9999] overflow-hidden"
-                          style={{
-                            top: `${actionsMenuRef.current.getBoundingClientRect().bottom + 8}px`,
-                            left: `${actionsMenuRef.current.getBoundingClientRect().right - 192}px`
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopyAccountLinks();
-                            }}
-                            className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                          >
-                            <LinkIcon className="w-4 h-4" />
-                            <span>Copy Links</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowExportModal(true);
-                              setShowActionsMenu(false);
-                            }}
-                            className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
-                          >
-                            <Download className="w-4 h-4" />
-                            <span>Export to CSV</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              console.log('🔴 ACCOUNTS DELETE BUTTON CLICK EVENT FIRED');
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleBulkDeleteAccounts();
-                            }}
-                            onMouseDown={() => console.log('🔴 MOUSE DOWN on delete accounts button')}
-                            onMouseUp={() => console.log('🔴 MOUSE UP on delete accounts button')}
-                            className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
-                            type="button"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Delete Selected</span>
-                          </button>
-                        </div>
-                      </>,
-                      document.body
-                    )}
-                  </div>
-
-                  {/* Column Visibility Toggle */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowColumnToggle(!showColumnToggle)}
-                      className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
-                    >
-                      <Filter className="w-4 h-4" />
-                      <span className="hidden sm:inline">Columns</span>
-                    </button>
-                    
-                    {showColumnToggle && createPortal(
-                      <>
-                        {/* Backdrop */}
-                        <div 
-                          className="fixed inset-0 z-[9998]" 
-                          onClick={() => setShowColumnToggle(false)}
-                        />
-                        {/* Dropdown */}
-                        <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-                          <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
-                          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                            <p className="text-xs text-white/50 mb-2">Column visibility is currently fixed for accounts. More customization coming soon!</p>
-                          </div>
-                        </div>
-                      </>,
-                      document.body
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AccountsHeader
+              dateFilter={dateFilter}
+              selectedCount={selectedAccounts.size}
+              showActionsMenu={showActionsMenu}
+              setShowActionsMenu={setShowActionsMenu}
+              actionsMenuRef={actionsMenuRef}
+              onCopyLinks={handleCopyAccountLinks}
+              onExport={() => setShowExportModal(true)}
+              onDelete={handleBulkDeleteAccounts}
+            />
           {(
             <AccountsTable 
               realAccounts={processedAccounts.slice((accountsCurrentPage - 1) * accountsItemsPerPage, (accountsCurrentPage - 1) * accountsItemsPerPage + accountsItemsPerPage)} 
@@ -1862,14 +1723,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             accountVideos={accountVideos}
             allAccountVideos={allAccountVideos}
             accountVideosSnapshots={accountVideosSnapshots}
-            dateFilter={dateFilter}
+                    dateFilter={dateFilter}
             trackedLinks={trackedLinks}
             linkClicks={linkClicks}
             accountCreatorNames={accountCreatorNames}
             isSyncing={isSyncing}
             onSyncAccount={handleSyncAccount}
             onAttachCreator={() => setShowAttachCreatorModal(true)}
-            onCreateLink={() => setShowCreateLinkModal(true)}
+                    onCreateLink={() => setShowCreateLinkModal(true)}
             onVideoClick={handleVideoClick}
           />
         )
