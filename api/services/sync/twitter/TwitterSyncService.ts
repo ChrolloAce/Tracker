@@ -116,11 +116,70 @@ export class TwitterSyncService {
       return [];
     }
     
-    // Twitter batch refresh is not implemented due to API limitations
-    // Apify actor doesn't support fetching specific tweet IDs efficiently
-    console.log(`    ⏭️ [TWITTER] Batch refresh not supported - skipping ${existingVideoIds.length} tweets`);
+    console.log(`🔄 [TWITTER] Refreshing ${existingVideoIds.length} existing tweets...`);
     
-    return [];
+    try {
+      const refreshData = await runApifyActor({
+        actorId: 'apidojo/tweet-scraper',
+        input: {
+          tweetIds: existingVideoIds,
+          sort: 'Latest'
+        }
+      });
+      
+      const refreshedTweets = refreshData.items || [];
+      console.log(`    ✅ [TWITTER] Refreshed ${refreshedTweets.length} existing tweets`);
+      
+      // Normalize refreshed tweets
+      const normalizedTweets: any[] = [];
+      
+      for (const tweet of refreshedTweets) {
+        try {
+          const normalized = this.normalizeVideoData(tweet, account);
+          normalizedTweets.push(normalized);
+        } catch (err: any) {
+          console.error(`    ❌ [TWITTER] Failed to normalize refreshed tweet:`, err.message);
+        }
+      }
+      
+      return normalizedTweets;
+    } catch (error: any) {
+      console.error(`❌ [TWITTER] Refresh failed:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Twitter profile data
+   */
+  static async getProfile(username: string): Promise<any> {
+    console.log(`👤 [TWITTER] Fetching profile data for ${username}...`);
+    try {
+      const profileData = await runApifyActor({
+        actorId: 'apidojo/tweet-scraper',
+        input: {
+          twitterHandles: [username],
+          maxItems: 1,
+          onlyVerifiedUsers: false,
+        }
+      });
+
+      const firstTweet = profileData.items?.[0];
+      
+      if (firstTweet?.author) {
+        return {
+          displayName: firstTweet.author.name,
+          followersCount: firstTweet.author.followers || 0,
+          followingCount: firstTweet.author.following || 0,
+          isVerified: firstTweet.author.isVerified || firstTweet.author.isBlueVerified || false,
+          profilePicUrl: firstTweet.author.profilePicture
+        };
+      }
+      return null;
+    } catch (error: any) {
+      console.error(`❌ [TWITTER] Profile fetch failed:`, error.message);
+      return null;
+    }
   }
   
   /**

@@ -27,7 +27,7 @@ export class InstagramSyncService {
     account: { username: string; id: string },
     orgId: string,
     existingVideos: Map<string, any>
-  ): Promise<Array<any>> {
+  ): Promise<{ videos: any[], foundDuplicate: boolean }> {
     console.log(`🔍 [INSTAGRAM] Forward discovery - fetching 10 most recent reels...`);
     
     try {
@@ -57,7 +57,7 @@ export class InstagramSyncService {
       
       if (batch.length === 0) {
         console.log(`    ⚠️ [INSTAGRAM] No reels returned`);
-        return [];
+        return { videos: [], foundDuplicate: false };
       }
       
       console.log(`    📦 [INSTAGRAM] Fetched ${batch.length} reels from Apify`);
@@ -93,7 +93,7 @@ export class InstagramSyncService {
         }
       }
       
-      return normalizedVideos;
+      return { videos: normalizedVideos, foundDuplicate };
     } catch (error: any) {
       console.error(`❌ [INSTAGRAM] Discovery failed:`, error.message);
       throw error;
@@ -154,6 +154,17 @@ export class InstagramSyncService {
       const normalizedVideos: any[] = [];
       
       for (const reel of refreshedReels) {
+        // Check for errors (deleted/restricted)
+        if (reel.error) {
+           // Return error object to be handled by caller
+           normalizedVideos.push({
+             error: reel.error,
+             input: reel.input,
+             isError: true
+           });
+           continue;
+        }
+
         try {
           const normalized = await this.normalizeVideoData(reel, account, orgId, false);
           normalizedVideos.push(normalized);
@@ -168,6 +179,37 @@ export class InstagramSyncService {
       throw error;
     }
   }
+
+  /**
+   * Fetch Instagram profile data
+   */
+  static async getProfile(username: string): Promise<any> {
+    console.log(`👤 [INSTAGRAM] Fetching profile data for ${username}...`);
+    try {
+      const profileData = await runApifyActor({
+        actorId: 'apify~instagram-profile-scraper',
+        input: {
+          usernames: [username.replace('@', '')],
+          proxyConfiguration: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL'],
+            apifyProxyCountry: 'US'
+          },
+          includeAboutSection: false
+        }
+      });
+
+      const profiles = profileData.items || [];
+      if (profiles.length > 0) {
+        return profiles[0];
+      }
+      return null;
+    } catch (error: any) {
+      console.error(`❌ [INSTAGRAM] Failed to fetch profile:`, error.message);
+      throw error;
+    }
+  }
+
   
   /**
    * Normalize Instagram reel data to standard format

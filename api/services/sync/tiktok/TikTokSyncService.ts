@@ -26,7 +26,7 @@ export class TikTokSyncService {
     account: { username: string; id: string },
     orgId: string,
     existingVideos: Map<string, any>
-  ): Promise<Array<any>> {
+  ): Promise<{ videos: any[], profile?: any }> {
     console.log(`🔍 [TIKTOK] Forward discovery - fetching 10 most recent videos...`);
     
     try {
@@ -48,10 +48,28 @@ export class TikTokSyncService {
       
       if (batch.length === 0) {
         console.log(`    ⚠️ [TIKTOK] No videos returned`);
-        return [];
+        return { videos: [] };
       }
       
       console.log(`    📦 [TIKTOK] Fetched ${batch.length} videos from Apify`);
+      
+      // Extract profile from first video
+      let profile = null;
+      if (batch.length > 0) {
+        const v = batch[0];
+        const author = v.authorMeta || {};
+        if (author.avatar) {
+          profile = {
+            username: author.name,
+            displayName: author.nickName || author.name,
+            profilePicUrl: author.avatar,
+            followersCount: author.fans,
+            followingCount: author.following,
+            likesCount: author.heart,
+            isVerified: author.verified || false
+          };
+        }
+      }
       
       // Filter out existing videos
       const newVideos: any[] = [];
@@ -84,7 +102,7 @@ export class TikTokSyncService {
         }
       }
       
-      return normalizedVideos;
+      return { videos: normalizedVideos, profile };
     } catch (error: any) {
       console.error(`❌ [TIKTOK] Discovery failed:`, error.message);
       throw error;

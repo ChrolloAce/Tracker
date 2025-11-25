@@ -68,6 +68,12 @@ export class LockService {
     
     // Check if there's an existing lock
     if (accountData.syncLockId && accountData.syncLockTimestamp) {
+      // ✅ ALLOW REENTRY: If we already own the lock, refresh it and proceed
+      if (accountData.syncLockId === lockId) {
+        await accountRef.update({ syncLockTimestamp: Timestamp.now() });
+        return { acquired: true };
+      }
+
       const isValid = this.isLockValid(accountData.syncLockTimestamp, maxAgeMinutes);
       
       if (isValid) {

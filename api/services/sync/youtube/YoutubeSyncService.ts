@@ -25,18 +25,14 @@ export class YoutubeSyncService {
     account: { username: string; id: string; youtubeChannelId?: string },
     orgId: string,
     existingVideos: Map<string, any>
-  ): Promise<Array<any>> {
+  ): Promise<{ videos: any[], profile?: any }> {
     console.log(`🔍 [YOUTUBE] Forward discovery - fetching 10 most recent Shorts...`);
     
-    // Get channelId (required for YouTube API)
+    // Get channelId (optional but recommended)
     const channelId = account.youtubeChannelId;
-    if (!channelId) {
-      throw new Error('YouTube channel ID is required for discovery');
-    }
     
     try {
-      const scraperInput = {
-        channelId: channelId,
+      const scraperInput: any = {
         maxResults: 10,
         sortBy: 'latest',
         proxy: {
@@ -44,6 +40,12 @@ export class YoutubeSyncService {
           apifyProxyGroups: ['RESIDENTIAL']
         }
       };
+
+      if (channelId) {
+        scraperInput.channelId = channelId;
+      } else {
+        scraperInput.channels = [account.username];
+      }
       
       const data = await runApifyActor({
         actorId: 'grow_media/youtube-shorts-scraper',
@@ -54,15 +56,30 @@ export class YoutubeSyncService {
       
       if (batch.length === 0) {
         console.log(`    ⚠️ [YOUTUBE] No Shorts returned`);
-        return [];
+        return { videos: [] };
       }
       
       console.log(`    📦 [YOUTUBE] Fetched ${batch.length} Shorts from Apify (requested 10)`);
       
       // Validate channel ownership (all videos should be from the same channel)
-      const invalidChannelVideos = batch.filter((v: any) => v.channelId && v.channelId !== channelId);
-      if (invalidChannelVideos.length > 0) {
-        console.warn(`    ⚠️ [YOUTUBE] Found ${invalidChannelVideos.length} videos from wrong channels - filtering out`);
+      if (channelId) {
+        const invalidChannelVideos = batch.filter((v: any) => v.channelId && v.channelId !== channelId);
+        if (invalidChannelVideos.length > 0) {
+          console.warn(`    ⚠️ [YOUTUBE] Found ${invalidChannelVideos.length} videos from wrong channels - filtering out`);
+        }
+      }
+      
+      // Extract profile from first valid video
+      let profile = null;
+      const validProfileVideo = batch.find((v: any) => !v.channelId || v.channelId === channelId);
+      
+      if (validProfileVideo) {
+        profile = {
+          displayName: validProfileVideo.channelName || account.username,
+          profilePicUrl: validProfileVideo.channelAvatarUrl,
+          followersCount: validProfileVideo.numberOfSubscribers,
+          isVerified: validProfileVideo.isChannelVerified
+        };
       }
       
       // Filter out existing videos and wrong channel videos
@@ -101,7 +118,7 @@ export class YoutubeSyncService {
         }
       }
       
-      return normalizedVideos;
+      return { videos: normalizedVideos, profile };
     } catch (error: any) {
       console.error(`❌ [YOUTUBE] Discovery failed:`, error.message);
       throw error;
