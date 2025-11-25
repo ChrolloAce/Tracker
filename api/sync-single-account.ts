@@ -1248,14 +1248,14 @@ export default async function handler(
         console.log(`🔍 [TWITTER ${syncType}] Forward discovery - fetching ${tweetsToFetch} most recent tweets (excluding retweets)...`);
         
         try {
-          // Use searchTerms with -filter:nativeretweets to exclude retweets
-          // This ensures we get ACTUAL posts (original tweets + quotes, no retweets)
-          const searchQuery = `from:${account.username.replace('@', '')} -filter:nativeretweets`;
+          // Use searchTerms with filters to exclude retweets AND replies
+          // This ensures we get ONLY original posts (no retweets, no replies/comments)
+          const searchQuery = `from:${account.username.replace('@', '')} -filter:nativeretweets -filter:replies`;
           
           const tweetsData = await runApifyActor({
             actorId: 'apidojo/tweet-scraper',
             input: {
-              searchTerms: [searchQuery], // ✅ Use searchTerms to exclude retweets
+              searchTerms: [searchQuery], // ✅ Use searchTerms to exclude retweets AND replies
               maxItems: tweetsToFetch,
               sort: 'Latest',
               onlyImage: false,
