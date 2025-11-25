@@ -5,6 +5,7 @@ import { TikTokSyncService } from './tiktok/TikTokSyncService';
 import { YoutubeSyncService } from './youtube/YoutubeSyncService';
 import { TwitterSyncService } from './twitter/TwitterSyncService';
 import { DateFilterService } from './shared/DateFilterService';
+import { AccountAnalyticsService } from '../AccountAnalyticsService';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -99,10 +100,8 @@ export class SyncCoordinator {
     // Save new and updated videos to Firestore
     const totalSaved = await this.saveVideoResults(orgId, projectId, userId, account, result);
     
-    // Update last synced timestamp
-    await FirestoreDataService.updateTrackedAccount(orgId, projectId, accountId, {
-      lastSynced: Timestamp.now() as any
-    });
+    // Update account stats (aggregation + outliers + lastSynced)
+    await AccountAnalyticsService.updateAccountStats(orgId, projectId, accountId, account.username);
     
     console.log(`✅ [SyncCoordinator] Sync complete for @${account.username}: ${totalSaved} videos processed`);
     
@@ -116,52 +115,54 @@ export class SyncCoordinator {
     orgId: string,
     projectId: string,
     userId: string,
-    _account: TrackedAccount,
+    account: TrackedAccount,
     result: { newVideos: AccountVideo[], updatedVideos: AccountVideo[] }
   ): Promise<number> {
     let savedCount = 0;
     
-    // Save new videos
-    for (const video of result.newVideos) {
+    // 1. Save new videos (Batch operation with limit checking)
+    if (result.newVideos.length > 0) {
       try {
-        // Convert AccountVideo to VideoDoc format
-        const videoDoc: any = {
-          platform: video.platform,
-          videoId: video.videoId,
-          videoUrl: video.url,
-          caption: video.caption,
-          thumbnail: video.thumbnail,
-          duration: video.duration,
-          hashtags: video.hashtags || [],
-          uploadDate: Timestamp.fromDate(video.uploadDate || new Date()),
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0,
-          bookmarks: video.saves || 0,
-          trackedAccountId: video.accountId,
-          status: 'pending',
-          isSingular: false
-        };
-        
-        await FirestoreDataService.addVideo(orgId, projectId, userId, videoDoc);
-        savedCount++;
+        await FirestoreDataService.syncAccountVideos(
+          orgId,
+          projectId,
+          account.id,
+          userId,
+          result.newVideos.map(v => ({
+            videoId: v.videoId || '',
+            url: v.url || '',
+            thumbnail: v.thumbnail || '',
+            caption: v.caption || '',
+            uploadDate: v.uploadDate || new Date(),
+            views: v.views || 0,
+            likes: v.likes || 0,
+            comments: v.comments || 0,
+            shares: v.shares || 0,
+            duration: v.duration || 0,
+            hashtags: v.hashtags || [],
+            mentions: v.mentions || []
+          })),
+          account.platform
+        );
+        savedCount += result.newVideos.length;
       } catch (error) {
-        console.error(`❌ Failed to save new video ${video.videoId}:`, error);
+        console.error(`❌ Failed to batch save new videos:`, error);
       }
     }
     
-    // Update existing videos by creating snapshots
+    // 2. Update existing videos by creating snapshots
     for (const video of result.updatedVideos) {
       try {
         // Create a snapshot for the updated metrics
-        await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, userId, {
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0
-        });
-        savedCount++;
+        if (video.id) {
+            await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, userId, {
+              views: video.views || 0,
+              likes: video.likes || 0,
+              comments: video.comments || 0,
+              shares: video.shares || 0
+            });
+            savedCount++;
+        }
       } catch (error) {
         console.error(`❌ Failed to update video ${video.videoId}:`, error);
       }
