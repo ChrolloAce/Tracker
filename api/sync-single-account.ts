@@ -1393,11 +1393,18 @@ export default async function handler(
       
       // Transform tweets to video format
       videos = tweets.map((tweet: any, index: number) => {
+        // Extract ALL media URLs (images/videos)
+        let mediaUrls: string[] = [];
         let thumbnail = '';
+        
         if (tweet.media && tweet.media.length > 0) {
-          thumbnail = tweet.media[0];
+          mediaUrls = tweet.media.filter((url: string) => url); // Get all media URLs
+          thumbnail = tweet.media[0]; // First image as thumbnail
         } else if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
-          thumbnail = tweet.extendedEntities.media[0].media_url_https || '';
+          mediaUrls = tweet.extendedEntities.media
+            .map((m: any) => m.media_url_https || m.media_url)
+            .filter((url: string) => url); // Get all media URLs
+          thumbnail = mediaUrls[0] || ''; // First image as thumbnail
         }
 
         const tweetId = tweet.id || `tweet_${Date.now()}_${index}`;
@@ -1419,6 +1426,7 @@ export default async function handler(
           videoUrl: tweetUrl,
           platform: 'twitter',
           thumbnail: thumbnail,
+          media: mediaUrls, // ✅ Store ALL media URLs for slideshow
           accountUsername: account.username,
           accountDisplayName: tweet.author?.name || account.username,
           uploadDate: uploadTimestamp,

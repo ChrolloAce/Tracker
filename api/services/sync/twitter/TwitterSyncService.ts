@@ -130,12 +130,18 @@ export class TwitterSyncService {
     tweet: any,
     account: { username: string; id: string }
   ): any {
-    // Get thumbnail (use first media image if available)
+    // Extract ALL media URLs (images/videos)
+    let mediaUrls: string[] = [];
     let thumbnail = '';
-    if (tweet.extendedEntities?.media?.[0]?.media_url_https) {
-      thumbnail = tweet.extendedEntities.media[0].media_url_https;
-    } else if (tweet.photos?.[0]) {
-      thumbnail = tweet.photos[0];
+    
+    if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
+      mediaUrls = tweet.extendedEntities.media
+        .map((m: any) => m.media_url_https || m.media_url)
+        .filter((url: string) => url); // Get all media URLs
+      thumbnail = mediaUrls[0] || ''; // First image as thumbnail
+    } else if (tweet.photos && tweet.photos.length > 0) {
+      mediaUrls = tweet.photos.filter((url: string) => url);
+      thumbnail = mediaUrls[0] || '';
     }
     
     // Parse upload date
@@ -153,6 +159,7 @@ export class TwitterSyncService {
       videoUrl: tweet.url || `https://twitter.com/${account.username}/status/${tweet.id}`,
       platform: 'twitter',
       thumbnail: thumbnail,
+      media: mediaUrls, // ✅ Store ALL media URLs for slideshow
       accountUsername: account.username,
       accountDisplayName: tweet.author?.name || account.username,
       uploadDate: uploadTimestamp,

@@ -38,6 +38,7 @@ export interface AccountVideo {
   url: string;
   platform?: 'instagram' | 'tiktok' | 'youtube' | 'twitter'; // Platform the video is from
   thumbnail?: string;
+  media?: string[]; // Array of media URLs (for Twitter multi-image posts)
   caption?: string;
   title?: string; // Video/post title
   uploader?: string; // Display name of uploader

@@ -451,6 +451,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return num.toLocaleString();
   };
 
+  // Twitter image slideshow state
+  const [currentMediaIndex, setCurrentMediaIndex] = React.useState(0);
+  
   // Convert video URL to embed URL
   const getEmbedUrl = (url: string, platform: string): string => {
     try {
@@ -498,6 +501,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   };
 
   const embedUrl = getEmbedUrl(video.url, video.platform);
+  
+  // Get Twitter media for slideshow
+  const twitterMedia = video.platform === 'twitter' 
+    ? (video.media && video.media.length > 0 
+        ? video.media 
+        : (video.thumbnail ? [video.thumbnail] : []))
+    : [];
 
   // Define metrics with their configurations (using cumulative totals, not deltas)
   const metrics = [
@@ -754,15 +764,68 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               />
               
               <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-white/10 z-10">
-                <iframe
-                  src={embedUrl}
-                  className="absolute inset-0 w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  style={{ border: 'none' }}
-                  title={video.title || video.caption || 'Video'}
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                />
+                {video.platform === 'twitter' && twitterMedia.length > 0 ? (
+                  // Twitter: Show images in slideshow
+                  <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+                    <img
+                      src={twitterMedia[currentMediaIndex]}
+                      alt={`Tweet media ${currentMediaIndex + 1}`}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fallback to placeholder on image error
+                        e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23333" width="100" height="100"/%3E%3Ctext fill="%23666" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
+                      }}
+                    />
+                    
+                    {/* Slideshow controls if multiple images */}
+                    {twitterMedia.length > 1 && (
+                      <>
+                        {/* Previous button */}
+                        <button
+                          onClick={() => setCurrentMediaIndex((currentMediaIndex - 1 + twitterMedia.length) % twitterMedia.length)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10"
+                          aria-label="Previous image"
+                        >
+                          ‹
+                        </button>
+                        
+                        {/* Next button */}
+                        <button
+                          onClick={() => setCurrentMediaIndex((currentMediaIndex + 1) % twitterMedia.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10"
+                          aria-label="Next image"
+                        >
+                          ›
+                        </button>
+                        
+                        {/* Image indicators */}
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                          {twitterMedia.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setCurrentMediaIndex(idx)}
+                              className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                idx === currentMediaIndex ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/60'
+                              }`}
+                              aria-label={`Go to image ${idx + 1}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  // Other platforms: Use iframe embed
+                  <iframe
+                    src={embedUrl}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    style={{ border: 'none' }}
+                    title={video.title || video.caption || 'Video'}
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                  />
+                )}
               </div>
 
               {/* Duration & Virality Info */}
