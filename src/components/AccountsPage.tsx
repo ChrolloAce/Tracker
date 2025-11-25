@@ -18,17 +18,12 @@ import {
   Share2,
   Activity,
   Link as LinkIcon,
-  X,
-  ChevronDown,
   MoreVertical,
-  TrendingUp,
-  Copy,
-  User,
-  BarChart3,
+  ChevronDown,
   Download
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';
-import { AccountVideo } from '../types/accounts';
+import { AccountVideo, AccountWithFilteredStats } from '../types/accounts';
 import { TrackedAccount } from '../types/firestore';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
@@ -49,8 +44,6 @@ import { VideoSubmission, VideoSnapshot } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
 import { DateFilterType } from './DateRangeFilter';
-import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
-import { FloatingTooltip } from './ui/FloatingTooltip';
 import { ExportVideosModal } from './ExportVideosModal';
 import { exportAccountsToCSV } from '../utils/accountCsvExport';
 import { Toast } from './ui/Toast';
@@ -67,7 +60,9 @@ import { useNavigate } from 'react-router-dom';
 import { Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
 import { AddAccountModal } from './accounts/AddAccountModal';
 import { AttachCreatorModal } from './accounts/AttachCreatorModal';
+import { formatNumber, formatDate } from '../utils/formatters';
 import { DeleteAccountModal } from './accounts/DeleteAccountModal';
+import { AccountsTable } from './accounts/AccountsTable';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -90,87 +85,7 @@ export interface AccountsPageRef {
   refreshData?: () => Promise<void>;
 }
 
-interface AccountWithFilteredStats extends TrackedAccount {
-  filteredTotalVideos: number;
-  filteredTotalViews: number;
-  filteredTotalLikes: number;
-  filteredTotalComments: number;
-  filteredTotalShares?: number;
-  filteredTotalBookmarks?: number;
-  highestViewedVideo?: { title: string; views: number; videoId: string };
-  postingStreak?: number;
-  postingFrequency?: string; // e.g., "2/day", "every 3 days", "3x/week"
-  avgEngagementRate?: number;
-}
 
-// Column header with tooltip component
-const ColumnHeader: React.FC<{
-  label: string;
-  tooltip: string;
-  sortable?: boolean;
-  sortKey?: string;
-  currentSortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  onSort?: () => void;
-  sticky?: boolean;
-}> = ({ label, tooltip, sortable, sortKey, currentSortBy, sortOrder, onSort, sticky }) => {
-  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
-    setTooltipPosition({ x: e.clientX, y: e.clientY });
-  };
-  
-  const handleMouseLeave = () => {
-    setTooltipPosition(null);
-  };
-  
-  return (
-    <>
-      <th 
-        className={`px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider ${sortable ? 'cursor-pointer hover:bg-zinc-800/40 transition-colors' : ''} ${sticky ? 'sticky left-0 bg-zinc-900/60 backdrop-blur z-20' : ''}`}
-        onClick={sortable ? onSort : undefined}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        <div className="flex items-center gap-2">
-          <span>{label}</span>
-          {sortable && currentSortBy === sortKey && (
-            <span className="text-white">
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </span>
-          )}
-        </div>
-      </th>
-      
-      {/* Tooltip portal - follows mouse cursor */}
-      {tooltipPosition && createPortal(
-        <div
-          className="absolute z-50 pointer-events-none"
-          style={{
-            left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y + 20}px`,
-            transform: 'translateX(-50%)',
-            maxWidth: '320px',
-            width: 'max-content'
-          }}
-        >
-          <div 
-            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
-            style={{
-              maxWidth: '320px',
-              width: 'max-content'
-            }}
-          >
-            <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
-              {tooltip}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
-  );
-};
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId, isDemoMode = false }, ref) => {
@@ -207,10 +122,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [hoveredTypeId, setHoveredTypeId] = useState<string | null>(null);
-  const typeBadgeRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
@@ -1009,7 +920,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       searchQuery
     });
     
-    let result = filteredAccounts.length > 0 ? filteredAccounts : accounts;
+    let result: AccountWithFilteredStats[] = filteredAccounts.length > 0 ? filteredAccounts : accounts.map(acc => ({
+      ...acc,
+      filteredTotalVideos: acc.totalVideos || 0,
+      filteredTotalViews: acc.totalViews || 0,
+      filteredTotalLikes: acc.totalLikes || 0,
+      filteredTotalComments: acc.totalComments || 0,
+      filteredTotalShares: acc.totalShares || 0,
+      filteredTotalBookmarks: 0,
+      highestViewedVideo: undefined,
+      postingStreak: undefined,
+      postingFrequency: undefined,
+      avgEngagementRate: undefined
+    }));
     console.log('🔧 Starting with result length:', result.length);
     
     // Apply account filter (filter by specific account ID)
@@ -1056,24 +979,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           comparison = (a.followerCount || 0) - (b.followerCount || 0);
           break;
         case 'videos':
-          const aVideos = ('filteredTotalVideos' in a ? (a as AccountWithFilteredStats).filteredTotalVideos : a.totalVideos);
-          const bVideos = ('filteredTotalVideos' in b ? (b as AccountWithFilteredStats).filteredTotalVideos : b.totalVideos);
-          comparison = aVideos - bVideos;
+          comparison = a.filteredTotalVideos - b.filteredTotalVideos;
           break;
         case 'views':
-          const aViews = ('filteredTotalViews' in a ? (a as AccountWithFilteredStats).filteredTotalViews : a.totalViews);
-          const bViews = ('filteredTotalViews' in b ? (b as AccountWithFilteredStats).filteredTotalViews : b.totalViews);
-          comparison = aViews - bViews;
+          comparison = a.filteredTotalViews - b.filteredTotalViews;
           break;
         case 'likes':
-          const aLikes = ('filteredTotalLikes' in a ? (a as AccountWithFilteredStats).filteredTotalLikes : a.totalLikes);
-          const bLikes = ('filteredTotalLikes' in b ? (b as AccountWithFilteredStats).filteredTotalLikes : b.totalLikes);
-          comparison = aLikes - bLikes;
+          comparison = a.filteredTotalLikes - b.filteredTotalLikes;
           break;
         case 'comments':
-          const aComments = ('filteredTotalComments' in a ? (a as AccountWithFilteredStats).filteredTotalComments : a.totalComments);
-          const bComments = ('filteredTotalComments' in b ? (b as AccountWithFilteredStats).filteredTotalComments : b.totalComments);
-          comparison = aComments - bComments;
+          comparison = a.filteredTotalComments - b.filteredTotalComments;
           break;
         case 'shares':
           comparison = (a.totalShares || 0) - (b.totalShares || 0);
@@ -1248,7 +1163,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         case 'twitter':
           return `https://twitter.com/${a.username}`;
         default:
-          return a.username;
+          return '';
       }
     }).join('\n');
     navigator.clipboard.writeText(links);
@@ -1523,6 +1438,70 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setDeleteConfirmText('');
   }, [filteredAccounts]);
 
+  const handleCancelSync = useCallback(async (account: TrackedAccount) => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    if (window.confirm(`Cancel sync for @${account.username}? This will clear the syncing state.`)) {
+      try {
+        const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', account.id);
+        await updateDoc(accountRef, {
+          syncStatus: 'completed',
+          lastSyncedAt: new Date(),
+          syncError: 'Manually cancelled by user'
+        });
+      } catch (error) {
+        console.error('Failed to cancel sync:', error);
+        alert('Failed to cancel sync');
+      }
+    }
+  }, [currentOrgId, currentProjectId]);
+
+  const handleToggleType = useCallback(async (account: TrackedAccount) => {
+    if (!currentOrgId || !currentProjectId) {
+      alert('Missing organization or project ID');
+      return;
+    }
+    
+    const currentType = account.creatorType || 'automatic';
+    const newType = currentType === 'automatic' ? 'static' : 'automatic';
+    
+    try {
+      const accountRef = doc(
+        db,
+        'organizations',
+        currentOrgId,
+        'projects',
+        currentProjectId,
+        'trackedAccounts',
+        account.id
+      );
+      await updateDoc(accountRef, { creatorType: newType });
+      
+      const typeLabel = newType === 'automatic' ? 'Automatic' : 'Static';
+      alert(`Account converted to ${typeLabel} mode`);
+    } catch (error) {
+      console.error('Failed to update account type:', error);
+      alert('Failed to update account type');
+    }
+  }, [currentOrgId, currentProjectId]);
+
+  const handleAccountSort = useCallback((key: string) => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key as any);
+      setSortOrder('asc');
+    }
+  }, [sortBy, sortOrder]);
+
+  const handleCancelProcessing = useCallback((index: number) => {
+    setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleImageError = useCallback((id: string) => {
+    setImageErrors(prev => new Set(prev).add(id));
+  }, []);
+
   const retryFailedAccount = useCallback(async (accountId: string, username: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
     
@@ -1660,22 +1639,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   }, [showAttachCreatorModal, currentOrgId, currentProjectId]);
 
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toString();
-  };
-
-  const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
-  };
 
   // Sorting handler
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate') => {
@@ -1937,932 +1900,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               </div>
             </div>
           {(
-            <div className="overflow-x-auto -mx-3 sm:-mx-0">
-              <table className="w-full min-w-max">
-                <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
-                  <tr>
-                    {/* Select All Checkbox */}
-                    <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-gray-50 dark:bg-zinc-900/40">
-                      <div className="flex items-center justify-center" title={`Select all ${processedAccounts.length} accounts`}>
-                        <input
-                          type="checkbox"
-                          checked={processedAccounts.length > 0 && selectedAccounts.size === processedAccounts.length}
-                          onChange={handleSelectAllAccounts}
-                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 cursor-pointer"
-                        />
-                      </div>
-                    </th>
-                    <ColumnHeader
-                      label="Username"
-                      tooltip="The account username along with profile picture. Platform icon shows which social media platform this account is on, and a verified badge appears if the account is verified."
-                      sortable
-                      sortKey="username"
-                      currentSortBy={sortBy}
+            <AccountsTable 
+              realAccounts={processedAccounts.slice((accountsCurrentPage - 1) * accountsItemsPerPage, (accountsCurrentPage - 1) * accountsItemsPerPage + accountsItemsPerPage)} 
+              processingAccounts={processingAccounts} 
+              pendingAccounts={pendingAccounts} 
+              selectedAccounts={selectedAccounts} 
+              syncingAccounts={syncingAccounts} 
+              sortBy={sortBy} 
                       sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'username') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('username');
-                          setSortOrder('asc');
-                        }
-                      }}
-                      sticky
-                    />
-                    <ColumnHeader
-                      label="Creator"
-                      tooltip="The team member or creator associated with this account. This helps you track which accounts belong to which team member."
-                      sortable={false}
-                    />
-                    <ColumnHeader
-                      label="Type"
-                      tooltip="Account tracking type. Automatic accounts discover new videos on refresh, while Static accounts only update existing videos."
-                      sortable={false}
-                    />
-                    <ColumnHeader
-                      label="Date Added"
-                      tooltip="The date and time when this account was first added to your tracking list."
-                      sortable
-                      sortKey="dateAdded"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'dateAdded') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('dateAdded');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Last Refreshed"
-                      tooltip="The date and time when data for this account was last updated from the platform."
-                      sortable
-                      sortKey="lastRefreshed"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'lastRefreshed') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('lastRefreshed');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Followers"
-                      tooltip="Total number of followers this account currently has on the platform. This metric helps gauge account reach and audience size."
-                      sortable
-                      sortKey="followers"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'followers') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('followers');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Last Post"
-                      tooltip="The date and time when the most recent content was posted by this account. Helps you track posting frequency and consistency."
-                      sortable={false}
-                    />
-                    <ColumnHeader
-                      label="Total Posts"
-                      tooltip="Total number of posts published by this account within the selected date range. Use this to monitor content output and activity levels."
-                      sortable
-                      sortKey="videos"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'videos') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('videos');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Views"
-                      tooltip="Total view count across all posts in the selected time period. This is a key metric for understanding content reach and visibility."
-                      sortable
-                      sortKey="views"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'views') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('views');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Top Video"
-                      tooltip="The highest-performing video by view count in the selected period. Click to see which content resonated most with your audience."
-                      sortable
-                      sortKey="highestViewed"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'highestViewed') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('highestViewed');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Likes"
-                      tooltip="Total number of likes received across all posts in the selected date range. This metric reflects content appeal and audience appreciation."
-                      sortable
-                      sortKey="likes"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'likes') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('likes');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Comments"
-                      tooltip="Total comments received across all posts in the selected period. High comment counts indicate strong audience engagement and conversation."
-                      sortable
-                      sortKey="comments"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'comments') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('comments');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Shares"
-                      tooltip="Total number of times posts were shared or reposted in the selected period. Shares indicate content virality and audience advocacy."
-                      sortable
-                      sortKey="shares"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'shares') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('shares');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Bookmarks"
-                      tooltip="Total number of times posts were bookmarked or saved by viewers. This shows content that people find valuable enough to reference later."
-                      sortable
-                      sortKey="bookmarks"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'bookmarks') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('bookmarks');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Engagement"
-                      tooltip="Average engagement rate calculated across all videos in the selected time period. Formula: (Likes + Comments + Shares) / Views × 100. Higher rates indicate more interactive audience."
-                      sortable
-                      sortKey="engagementRate"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'engagementRate') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('engagementRate');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <ColumnHeader
-                      label="Posting Frequency"
-                      tooltip="How often this account posts content in the selected time period. Shows posting rate as posts per day, posts per week, or average days between posts."
-                      sortable
-                      sortKey="postingFrequency"
-                      currentSortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={() => {
-                        if (sortBy === 'postingFrequency') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('postingFrequency');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    />
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-zinc-900/60 backdrop-blur z-10">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-zinc-900/60 divide-y divide-gray-200 dark:divide-white/5">
-                  {/* Processing & Regular Accounts - Merged for smooth transitions */}
-                  {(() => {
-                    // Apply pagination to processed accounts
-                    const startIndex = (accountsCurrentPage - 1) * accountsItemsPerPage;
-                    const endIndex = startIndex + accountsItemsPerPage;
-                    const paginatedAccounts = processedAccounts.slice(startIndex, endIndex);
-                    
-                    // Combine pending accounts (always show at top, not paginated) with paginated accounts
-                    const allAccountsToRender = [...pendingAccounts, ...paginatedAccounts];
-                    
-                    // Add processing accounts to the top
-                    const processingAccountsKeys = new Set(processingAccounts.map(p => `${p.platform}_${p.username}`));
-                    
-                    // Filter out real accounts that are in processing state (to avoid duplicates)
-                    const realAccountsToRender = allAccountsToRender.filter(acc => 
-                      !processingAccountsKeys.has(`${acc.platform}_${acc.username}`)
-                    );
-                    
-                    // Render processing accounts first, then real accounts
-                    return (
-                      <>
-                        {processingAccounts.map((procAccount, index) => {
-                          // Check if this processing account has started loading (exists in accounts but not fully loaded)
-                          const matchingAccount = allAccountsToRender.find(
-                            acc => acc.platform === procAccount.platform && acc.username === procAccount.username
-                          );
-                          const isPartiallyLoaded = matchingAccount && (!matchingAccount.profilePicture && matchingAccount.followerCount === 0);
-                          
-                          return (
-                    <tr 
-                              key={`processing-${procAccount.platform}-${procAccount.username}`}
-                              className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20 transition-all duration-500"
-                    >
-                      {/* Checkbox Column */}
-                      <td 
-                        className="w-10 px-2 sm:px-4 py-4 sticky left-0 z-20 bg-white/5 dark:bg-white/5 backdrop-blur"
-                      >
-                        <input
-                          type="checkbox"
-                          disabled
-                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 opacity-30"
-                        />
-                      </td>
-                      {/* Username Column */}
-                      <td className="px-6 py-4 whitespace-nowrap sticky left-10 bg-white/5 dark:bg-white/5 backdrop-blur z-10">
-                        <div className="flex items-center space-x-3">
-                          <div className="relative w-10 h-10">
-                                    {matchingAccount?.profilePicture ? (
-                                      <img
-                                        src={matchingAccount.profilePicture}
-                                        alt={`@${procAccount.username}`}
-                                        className="w-10 h-10 rounded-full object-cover animate-fade-in"
-                                      />
-                                    ) : (
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
-                              <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
-                            </div>
-                                    )}
-                            {/* Platform Icon Overlay */}
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
-                              <PlatformIcon platform={procAccount.platform as any} size="xs" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-white flex items-center gap-1.5">
-                                      {matchingAccount?.displayName || `@${procAccount.username}`}
-                              {matchingAccount?.isVerified && (
-                                <img 
-                                  src="/verified-badge.png" 
-                                  alt="Verified" 
-                                  className="w-3.5 h-3.5"
-                                />
-                              )}
-                            </div>
-                            <div className="text-xs text-white/40 font-medium flex items-center gap-1">
-                                      {isPartiallyLoaded || !matchingAccount ? (
-                                        <>
-                              <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
-                                          Loading account data...
-                                        </>
-                                      ) : (
-                                        `@${procAccount.username}`
-                                      )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                              {/* Creator Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                                {matchingAccount && accountCreatorNames.get(matchingAccount.id) ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20 animate-fade-in">
-                                    <Users className="w-3 h-3 mr-1" />
-                                    {accountCreatorNames.get(matchingAccount.id)}
-                                  </span>
-                                ) : (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
-                                )}
-                      </td>
-                              {/* Type Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-20 h-6 bg-white/10 rounded-full animate-pulse"></div>
-                      </td>
-                              {/* Date Added Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse"></div>
-                      </td>
-                              {/* Last Refreshed Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse"></div>
-                      </td>
-                              {/* Followers Column */}
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {matchingAccount && (matchingAccount.followerCount ?? 0) > 0 ? (
-                                  <span className="text-white animate-fade-in">{(matchingAccount.followerCount ?? 0).toLocaleString()}</span>
-                                ) : (
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                                )}
-                      </td>
-                              {/* Last Post Column */}
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {matchingAccount?.lastSynced ? (
-                                  <span className="text-white animate-fade-in">{formatDate(matchingAccount.lastSynced.toDate())}</span>
-                                ) : (
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                )}
-                      </td>
-                              {/* Total Posts Column */}
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {matchingAccount && (matchingAccount.postCount ?? 0) > 0 ? (
-                                  <span className="text-white animate-fade-in">{(matchingAccount.postCount ?? 0).toLocaleString()}</span>
-                                ) : (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                                )}
-                      </td>
-                      {/* Views Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                      </td>
-                      {/* Top Video Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                      </td>
-                      {/* Likes Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
-                      </td>
-                      {/* Comments Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.7s' }}></div>
-                      </td>
-                      {/* Shares Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
-                      </td>
-                      {/* Bookmarks Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.9s' }}></div>
-                      </td>
-                      {/* Engagement Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1.0s' }}></div>
-                      </td>
-                      {/* Posting Frequency Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1.1s' }}></div>
-                      </td>
-
-                      {/* Actions Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white/5 dark:bg-white/5 backdrop-blur z-20">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => {
-                              setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
-                            }}
-                            className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
-                            title="Cancel processing"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                          );
-                        })}
-
-                        {/* Regular fully-loaded accounts */}
-                        {realAccountsToRender.map((account) => {
-                      const isAccountSyncing = syncingAccounts.has(account.id);
-                      
-                      return (
-                      <tr
-                        key={account.id}
-                        onClick={(e) => {
-                          // Don't trigger row click if clicking on checkbox
-                          if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
-                          if (!isAccountSyncing) {
-                            // ✅ Navigate to dashboard with account filter query param
-                            navigate(`/dashboard?accounts=${account.id}`);
-                          }
-                        }}
-                        className={clsx(
-                          'transition-colors cursor-pointer',
-                          {
-                            'bg-gray-200 dark:bg-gray-800': selectedAccount?.id === account.id && !isAccountSyncing,
-                            'bg-white/5 dark:bg-white/5 border-l-2 border-white/20 animate-pulse-slow': isAccountSyncing,
-                            'hover:bg-white/5 dark:hover:bg-white/5': !isAccountSyncing,
-                          }
-                        )}
-                      >
-                        {/* Checkbox Column */}
-                        <td 
-                          className="w-10 px-2 sm:px-4 py-4 sticky left-0 z-20 bg-zinc-900/60 backdrop-blur group-hover:bg-white/5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedAccounts.has(account.id)}
-                            onChange={() => handleSelectAccount(account.id)}
-                            disabled={isAccountSyncing}
-                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 cursor-pointer disabled:opacity-30"
-                          />
-                        </td>
-                        {/* Username Column */}
-                        <td className="px-6 py-4 whitespace-nowrap sticky left-10 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
-                          <div className="flex items-center space-x-3">
-                            <div className="relative w-10 h-10">
-                              {account.profilePicture && !imageErrors.has(account.id) ? (
-                                <img
-                                  src={account.profilePicture}
-                                  alt={`@${account.username}`}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                  onError={() => {
-                                    setImageErrors(prev => new Set(prev).add(account.id));
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                  {(account.username || account.platform || 'A').charAt(0).toUpperCase()}
-                              </div>
-                              )}
-                              {/* Platform Icon Overlay */}
-                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
-                                <PlatformIcon platform={account.platform} size="xs" />
-                                </div>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
-                                  {account.displayName || account.username}
-                                  {/* Verified Badge next to username */}
-                                  {account.isVerified && (
-                                    <img 
-                                      src="/verified-badge.png" 
-                                      alt="Verified" 
-                                      className="w-3.5 h-3.5"
-                                    />
-                                  )}
-                                </div>
-                                {isAccountSyncing && (
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="inline-block w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
-                                      <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-                                      <span className="text-xs text-blue-400 font-medium">
-                                        Syncing videos...
-                                      </span>
-                                    </div>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        if (window.confirm(`Cancel sync for @${account.username}? This will clear the syncing state.`)) {
-                                          try {
-                                            const accountRef = doc(db, 'organizations', currentOrgId!, 'projects', currentProjectId!, 'trackedAccounts', account.id);
-                                            await updateDoc(accountRef, {
-                                              syncStatus: 'completed',
-                                              lastSyncedAt: new Date(),
-                                              syncError: 'Manually cancelled by user'
-                                            });
-                                          } catch (error) {
-                                            console.error('Failed to cancel sync:', error);
-                                            alert('Failed to cancel sync');
-                                          }
-                                        }
-                                      }}
-                                      className="px-2 py-0.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
-                                      title="Cancel sync"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                )}
-                                {(account.syncStatus === 'error' || account.hasError) && (
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5 group relative">
-                                      <span className="inline-block w-1.5 h-1.5 bg-red-400 rounded-full"></span>
-                                      <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                                      <span className="text-xs text-red-400 font-medium">
-                                        Sync Failed
-                                      </span>
-                                      {account.lastSyncError && (
-                                        <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl border border-gray-700">
-                                          <div className="font-semibold mb-1">Error Details:</div>
-                                          <div className="text-gray-300">{account.lastSyncError}</div>
-                                          {account.syncRetryCount && account.syncRetryCount > 0 && (
-                                            <div className="text-gray-400 mt-1">
-                                              Retry attempts: {account.syncRetryCount}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        await retryFailedAccount(account.id, account.username);
-                                      }}
-                                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
-                                      title="Retry sync"
-                                    >
-                                      <RefreshCw className="w-3 h-3" />
-                                      Retry
-                                    </button>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        await dismissAccountError(account.id, account.username);
-                                      }}
-                                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-400 hover:text-gray-300 hover:bg-gray-500/10 rounded transition-colors"
-                                      title="Dismiss error"
-                                    >
-                                      <X className="w-3 h-3" />
-                                      Dismiss
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-500">@{account.username}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Creator Column */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {(() => {
-                            const creatorName = accountCreatorNames.get(account.id);
-                            return creatorName ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                                <Users className="w-3 h-3 mr-1" />
-                                {creatorName}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
-                            );
-                          })()}
-                        </td>
-
-                        {/* Type Column */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <span 
-                            ref={(el) => {
-                              if (el) {
-                                typeBadgeRefs.current.set(account.id, el);
-                              } else {
-                                typeBadgeRefs.current.delete(account.id);
-                              }
-                            }}
-                            onMouseEnter={() => setHoveredTypeId(account.id)}
-                            onMouseLeave={() => setHoveredTypeId(null)}
-                              className={clsx(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-help transition-all",
-                                (account.creatorType || 'automatic') === 'automatic'
-                                  ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
-                                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
-                              )}
-                            >
-                              {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Static'}
-                            </span>
-                          
-                          <FloatingTooltip
-                            isVisible={hoveredTypeId === account.id}
-                            triggerRef={{ current: typeBadgeRefs.current.get(account.id) || null }}
-                            position="top"
-                          >
-                                {(account.creatorType || 'automatic') === 'automatic' ? (
-                              <div className="space-y-1.5 w-64">
-                                    <div className="font-semibold text-green-400">Automatic Mode</div>
-                                    <div className="text-gray-300">
-                                      • <span className="text-white font-medium">Discovers new videos</span> during refresh
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Updates <span className="text-white font-medium">all existing videos</span>
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Best for <span className="text-white font-medium">tracking full accounts</span>
-                                    </div>
-                                  </div>
-                                ) : (
-                              <div className="space-y-1.5 w-64">
-                                    <div className="font-semibold text-gray-400">Static Mode</div>
-                                    <div className="text-gray-300">
-                                      • <span className="text-white font-medium">Only refreshes existing videos</span>
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Does <span className="text-white font-medium">not discover new content</span>
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Best for <span className="text-white font-medium">specific video tracking</span>
-                                    </div>
-                                  </div>
-                                )}
-                          </FloatingTooltip>
-                        </td>
-
-                        {/* Date Added Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(account.createdAt || account.dateAdded) ? (
-                            <span className="text-xs">
-                              {new Date((account.createdAt || account.dateAdded).toDate()).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
-                          )}
-                        </td>
-
-                        {/* Last Refreshed Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.lastRefreshed ? (
-                            <span className="text-xs">
-                              {new Date(account.lastRefreshed.toDate()).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-500 dark:text-gray-600">Never</span>
-                          )}
-                        </td>
-
-                        {/* Followers Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.followerCount ? formatNumber(account.followerCount) : 'N/A'}
-                        </td>
-
-                        {/* Last Post Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.lastSynced ? formatDate(account.lastSynced.toDate()) : 'Never'}
-                        </td>
-
-                        {/* Total Posts Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)}
-                        </td>
-
-                        {/* Views Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)}
-                        </td>
-
-                        {/* Top Video Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(account as AccountWithFilteredStats).highestViewedVideo ? (
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                              <span>{formatNumber((account as AccountWithFilteredStats).highestViewedVideo!.views)}</span>
-                            </div>
-                          ) : (
-                            <span className="text-white/30">—</span>
-                          )}
-                        </td>
-
-                        {/* Likes Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalLikes' in account ? (account as AccountWithFilteredStats).filteredTotalLikes : account.totalLikes)}
-                        </td>
-
-                        {/* Comments Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)}
-                        </td>
-
-                        {/* Shares Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(() => {
-                            // Only TikTok provides share counts
-                            if (account.platform === 'tiktok') {
-                              return formatNumber('filteredTotalShares' in account ? (account as AccountWithFilteredStats).filteredTotalShares || 0 : account.totalShares || 0);
-                            }
-                            // Instagram, YouTube, and Twitter don't provide share counts
-                            return 'N/A';
-                          })()}
-                        </td>
-
-                        {/* Bookmarks Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(() => {
-                            // Twitter and TikTok provide bookmark/save counts
-                            if (account.platform === 'twitter' || account.platform === 'tiktok') {
-                              return formatNumber('filteredTotalBookmarks' in account ? (account as AccountWithFilteredStats).filteredTotalBookmarks || 0 : 0);
-                            }
-                            // Instagram and YouTube don't provide bookmark counts
-                            return 'N/A';
-                          })()}
-                        </td>
-
-                        {/* Engagement Rate Column - Average across videos */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(() => {
-                            // Use average engagement if available, otherwise calculate from totals
-                            if ('avgEngagementRate' in account && (account as AccountWithFilteredStats).avgEngagementRate !== undefined) {
-                              return `${((account as AccountWithFilteredStats).avgEngagementRate! * 100).toFixed(2)}%`;
-                            }
-                            // Fallback to total-based calculation
-                            const totalEngagements = (account.totalLikes || 0) + (account.totalComments || 0) + (account.totalShares || 0);
-                            const totalViews = account.totalViews || 0;
-                            const engagementRate = totalViews > 0 ? (totalEngagements / totalViews * 100) : 0;
-                            return `${engagementRate.toFixed(2)}%`;
-                          })()}
-                        </td>
-
-                        {/* Posting Frequency Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(account as AccountWithFilteredStats).postingFrequency && (account as AccountWithFilteredStats).postingFrequency !== 'N/A' ? (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                              <span>{(account as AccountWithFilteredStats).postingFrequency}</span>
-                            </div>
-                          ) : (
-                            <span className="text-white/30">N/A</span>
-                          )}
-                        </td>
-
-                        {/* Actions Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-zinc-900/60 backdrop-blur z-20 group-hover:bg-white/5">
-                          <div className="flex items-center justify-end space-x-2 relative">
-                            <button
-                              ref={(el) => {
-                                if (el) {
-                                  dropdownTriggerRefs.current.set(account.id, el);
-                                } else {
-                                  dropdownTriggerRefs.current.delete(account.id);
-                                }
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenDropdownId(openDropdownId === account.id ? null : account.id);
-                              }}
-                              disabled={isAccountSyncing}
-                              className="text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed p-1 hover:bg-white/5 rounded"
-                              title="More options"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                            
-                            {/* Dropdown Menu */}
-                            <FloatingDropdown
-                              isOpen={openDropdownId === account.id}
-                              onClose={() => setOpenDropdownId(null)}
-                              triggerRef={{ current: dropdownTriggerRefs.current.get(account.id) || null }}
-                              align="right"
-                            >
-                              <DropdownItem
-                                icon={<ExternalLink className="w-4 h-4" />}
-                                label="Go to Account"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
-                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
-                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
-                                        : `https://twitter.com/${account.username.replace('@', '')}`;
-                                      window.open(platformUrl, '_blank');
-                                      setOpenDropdownId(null);
-                                    }}
-                              />
-                              
-                              <DropdownItem
-                                icon={<Copy className="w-4 h-4" />}
-                                label="Copy Account Link"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
-                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
-                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
-                                        : `https://twitter.com/${account.username.replace('@', '')}`;
-                                      navigator.clipboard.writeText(platformUrl);
-                                      alert('Account link copied!');
-                                      setOpenDropdownId(null);
-                                    }}
-                              />
-                              
-                              <DropdownItem
-                                icon={<User className="w-4 h-4" />}
-                                label="Copy Username"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigator.clipboard.writeText(account.username);
-                                      alert('Username copied!');
-                                      setOpenDropdownId(null);
-                                    }}
-                              />
-                              
-                              <DropdownItem
-                                icon={<BarChart3 className="w-4 h-4" />}
-                                label="View Stats"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      navigate(`/dashboard?accounts=${account.id}`);
-                                    }}
-                              />
-                              
-                              <DropdownItem
-                                icon={<RefreshCw className="w-4 h-4" />}
-                                label={(account.creatorType || 'automatic') === 'automatic' 
-                                  ? 'Convert to Static' 
-                                  : 'Convert to Automatic'}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      
-                                      if (!organizationId || !projectId) {
-                                        alert('Missing organization or project ID');
-                                        return;
-                                      }
-                                      
-                                      const currentType = account.creatorType || 'automatic';
-                                      const newType = currentType === 'automatic' ? 'static' : 'automatic';
-                                      
-                                      try {
-                                        const accountRef = doc(
-                                          db,
-                                          'organizations',
-                                          organizationId,
-                                          'projects',
-                                          projectId,
-                                          'trackedAccounts',
-                                          account.id
-                                        );
-                                        await updateDoc(accountRef, { creatorType: newType });
-                                        
-                                        const typeLabel = newType === 'automatic' ? 'Automatic' : 'Static';
-                                        alert(`Account converted to ${typeLabel} mode`);
-                                      } catch (error) {
-                                        console.error('Failed to update account type:', error);
-                                        alert('Failed to update account type');
-                                      }
-                                    }}
-                              />
-                              
-                              <DropdownDivider />
-                              
-                              <DropdownItem
-                                icon={<Trash2 className="w-4 h-4" />}
-                                label="Remove Account"
-                                variant="danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      handleRemoveAccount(account.id);
-                                    }}
-                              />
-                            </FloatingDropdown>
-                          </div>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                      </>
-                    );
-                  })()}
-                </tbody>
-              </table>
-            </div>
-          )}
+              accountCreatorNames={accountCreatorNames} 
+              imageErrors={imageErrors} 
+              onSort={handleAccountSort} 
+              onSelectAccount={handleSelectAccount} 
+              onSelectAll={handleSelectAllAccounts} 
+              onCancelProcessing={handleCancelProcessing} 
+              onCancelSync={handleCancelSync} 
+              onRetrySync={(account) => retryFailedAccount(account.id, account.username)} 
+              onDismissError={(account) => dismissAccountError(account.id, account.username)} 
+              onRemoveAccount={handleRemoveAccount} 
+              onToggleType={handleToggleType} 
+              onNavigate={(url) => navigate(url)} 
+              onImageError={handleImageError} 
+            />          )}
           
           {/* Pagination for Accounts Table */}
           <div className="mt-6">
@@ -3688,9 +2747,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       <DeleteAccountModal
         isOpen={showDeleteModal}
         onClose={() => {
-          setShowDeleteModal(false);
-          setAccountToDelete(null);
-        }}
+                    setShowDeleteModal(false);
+                    setAccountToDelete(null);
+                  }}
         onConfirm={confirmDeleteAccount}
         account={accountToDelete}
       />
@@ -3716,11 +2775,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         userId={user?.uid || ''}
         onSuccess={(creatorName) => {
           if (selectedAccount) {
-            setAccountCreatorNames(prev => {
-              const updated = new Map(prev);
-              updated.set(selectedAccount.id, creatorName);
-              return updated;
-            });
+                              setAccountCreatorNames(prev => {
+                                const updated = new Map(prev);
+                                updated.set(selectedAccount.id, creatorName);
+                                return updated;
+                              });
           }
         }}
       />

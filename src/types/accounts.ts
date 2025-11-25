@@ -1,8 +1,11 @@
 export interface TrackedAccount {
   id: string;
+  orgId: string;
+  addedBy: string;
   username: string;
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
   accountType: 'my' | 'competitor'; // New field
+  creatorType?: 'automatic' | 'static';
   displayName?: string;
   profilePicture?: string;
   youtubeChannelId?: string; // Store YouTube channel ID to avoid wrong channel lookups
@@ -11,9 +14,9 @@ export interface TrackedAccount {
   postCount?: number;
   bio?: string;
   isVerified?: boolean;
-  dateAdded: Date;
+  dateAdded: any;
   createdAt?: any; // Firestore Timestamp for when account was added
-  lastSynced?: Date;
+  lastSynced?: any;
   lastRefreshed?: any; // Firestore Timestamp for last refresh
   isActive: boolean;
   isRead?: boolean; // New field for unread notification
@@ -27,8 +30,14 @@ export interface TrackedAccount {
   outlierAnalysis?: {
     topPerformersCount: number;
     underperformersCount: number;
-    lastCalculated: Date;
+    lastCalculated: any;
   };
+  // Sync errors
+  syncStatus?: 'idle' | 'pending' | 'syncing' | 'completed' | 'error';
+  syncError?: string; // Deprecated?
+  lastSyncError?: string;
+  hasError?: boolean;
+  syncRetryCount?: number;
 }
 
 export interface AccountVideo {
@@ -49,31 +58,46 @@ export interface AccountVideo {
   views?: number;
   likes?: number;
   comments?: number;
+  shares?: number;
+  playCount?: number;
+  diggCount?: number;
+  commentCount?: number;
+  shareCount?: number;
+  // Additional alias counts
   viewsCount?: number;
   likesCount?: number;
   commentsCount?: number;
-  playsCount?: number;
   sharesCount?: number;
-  shares?: number;
-  saves?: number;
   duration?: number;
-  isSponsored?: boolean;
+  // Metadata
   hashtags?: string[];
   mentions?: string[];
-  dateAdded?: Date;
-  lastRefreshed?: Date;
-  rawData?: any; // Store the full original API response data
+  // Additional fields
+  isSingular?: boolean;
+  description?: string;
+  status?: string;
+  syncStatus?: string;
+  syncRequestedBy?: string;
+  syncRequestedAt?: any;
+  syncRetryCount?: number;
+  commentsDelta30d?: number;
 }
 
-export interface AccountAnalytics {
-  accountId: string;
-  period: 'daily' | 'weekly' | 'monthly';
-  date: Date;
-  newVideos: number;
-  totalViews: number;
-  totalLikes: number;
-  totalComments: number;
-  totalShares: number;
-  avgEngagementRate: number;
-  topPerformingVideo?: AccountVideo;
+export interface VideoSubmission extends AccountVideo {
+  dateSubmitted: Date;
+  isLoading?: boolean;
+  snapshots?: any[]; // Allow snapshots
+}
+
+export interface AccountWithFilteredStats extends TrackedAccount {
+  filteredTotalVideos: number;
+  filteredTotalViews: number;
+  filteredTotalLikes: number;
+  filteredTotalComments: number;
+  filteredTotalShares?: number;
+  filteredTotalBookmarks?: number;
+  highestViewedVideo?: { title: string; views: number; videoId: string };
+  postingStreak?: number;
+  postingFrequency?: string; // e.g., "2/day", "every 3 days", "3x/week"
+  avgEngagementRate?: number;
 }
