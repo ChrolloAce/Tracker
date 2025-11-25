@@ -4,19 +4,9 @@ import { collection, query, where, getDocs, onSnapshot, orderBy, doc, updateDoc 
 import { db } from '../services/firebase';
 import { 
   Plus, 
-  Users, 
-  RefreshCw,
   Trash2,
   Filter,
   AlertCircle,
-  Play,
-  Eye,
-  Heart,
-  MessageCircle,
-  ExternalLink,
-  Calendar,
-  Share2,
-  Activity,
   Link as LinkIcon,
   MoreVertical,
   ChevronDown,
@@ -25,21 +15,15 @@ import {
 import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo, AccountWithFilteredStats } from '../types/accounts';
 import { TrackedAccount } from '../types/firestore';
-import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { ProxiedImage } from './ProxiedImage';
-import { HeicImage } from './HeicImage';
 import { BlurEmptyState } from './ui/BlurEmptyState';
 import RulesService from '../services/RulesService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { TrackingRule } from '../types/rules';
-import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
-import { MiniTrendChart } from './ui/MiniTrendChart';
-import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission, VideoSnapshot } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
@@ -49,8 +33,6 @@ import { exportAccountsToCSV } from '../utils/accountCsvExport';
 import { Toast } from './ui/Toast';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import Pagination from './ui/Pagination';
-import ColumnPreferencesService from '../services/ColumnPreferencesService';
-import KPICards from './KPICards';
 import DateFilterService from '../services/DateFilterService';
 import CreateLinkModal from './CreateLinkModal';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
@@ -60,8 +42,8 @@ import { useNavigate } from 'react-router-dom';
 import { Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
 import { AddAccountModal } from './accounts/AddAccountModal';
 import { AttachCreatorModal } from './accounts/AttachCreatorModal';
-import { formatNumber, formatDate } from '../utils/formatters';
 import { DeleteAccountModal } from './accounts/DeleteAccountModal';
+import { AccountDetailsView } from './accounts/AccountDetailsView';
 import { AccountsTable } from './accounts/AccountsTable';
 
 export interface AccountsPageProps {
@@ -177,12 +159,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     console.log('🟡 [AccountsPage] showDeleteConfirm state changed to:', showDeleteConfirm);
   }, [showDeleteConfirm]);
   
-  // Pagination state for videos (details view)
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(() => {
-    const saved = localStorage.getItem('accountVideos_itemsPerPage');
-    return saved ? Number(saved) : 10;
-  });
 
   // Pagination state for accounts table (list view)
   const [accountsCurrentPage, setAccountsCurrentPage] = useState(1);
@@ -191,37 +167,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     return saved ? Number(saved) : 10;
   });
   
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
-  // Load column preferences from localStorage
-  const [visibleColumns, setVisibleColumns] = useState(() => {
-    const saved = ColumnPreferencesService.getPreferences('accountVideos');
-    return saved || {
-    video: true,
-    platform: true,
-    preview: true,
-    trend: true,
-    views: true,
-    likes: true,
-    comments: true,
-    shares: true,
-    engagement: true,
-    uploadDate: true
-    };
-  });
 
-
-  // Save column preferences when they change
-  useEffect(() => {
-    ColumnPreferencesService.savePreferences('accountVideos', visibleColumns);
-  }, [visibleColumns]);
-
-  // Save items per page preference for videos
-  useEffect(() => {
-    localStorage.setItem('accountVideos_itemsPerPage', String(itemsPerPage));
-  }, [itemsPerPage]);
 
   // Save items per page preference for accounts table
   useEffect(() => {
@@ -1337,6 +1284,32 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [selectedAccount, currentOrgId, currentProjectId, user, loadAccountVideos, processedAccounts]);
 
+  const handleVideoClick = useCallback(async (video: VideoSubmission) => {
+    // Load snapshots before opening modal
+    if (!currentOrgId || !currentProjectId) return;
+    
+    try {
+      const snapshots = await FirestoreDataService.getVideoSnapshots(
+        currentOrgId,
+        currentProjectId,
+        video.id
+      );
+      
+      const videoWithSnapshots: VideoSubmission = {
+        ...video,
+        snapshots: snapshots
+      };
+      
+      setSelectedVideoForAnalytics(videoWithSnapshots);
+      setIsVideoAnalyticsModalOpen(true);
+    } catch (error) {
+      console.error('❌ Failed to load snapshots:', error);
+      // Still open modal without snapshots
+      setSelectedVideoForAnalytics(video);
+      setIsVideoAnalyticsModalOpen(true);
+    }
+  }, [currentOrgId, currentProjectId]);
+
 
   const handleAccountsAdded = useCallback(async (accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number}>) => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -1640,69 +1613,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
 
 
-  // Sorting handler
-  const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate') => {
-    if (sortColumn === column) {
-      // Toggle direction if clicking the same column
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Set new column and default to descending
-      setSortColumn(column);
-      setSortDirection('desc');
-    }
-  };
-
-  // Sort videos based on current sort state
-  const sortedVideos = useMemo(() => {
-    if (!sortColumn) return accountVideos;
-
-    return [...accountVideos].sort((a, b) => {
-      let aValue: number | Date;
-      let bValue: number | Date;
-
-      switch (sortColumn) {
-        case 'views':
-          aValue = a.viewsCount || a.views || 0;
-          bValue = b.viewsCount || b.views || 0;
-          break;
-        case 'likes':
-          aValue = a.likesCount || a.likes || 0;
-          bValue = b.likesCount || b.likes || 0;
-          break;
-        case 'comments':
-          aValue = a.commentsCount || a.comments || 0;
-          bValue = b.commentsCount || b.comments || 0;
-          break;
-        case 'shares':
-          aValue = a.sharesCount || a.shares || 0;
-          bValue = b.sharesCount || b.shares || 0;
-          break;
-        case 'engagement': {
-          const aViews = a.viewsCount || a.views || 0;
-          const bViews = b.viewsCount || b.views || 0;
-          const aLikes = a.likesCount || a.likes || 0;
-          const bLikes = b.likesCount || b.likes || 0;
-          const aComments = a.commentsCount || a.comments || 0;
-          const bComments = b.commentsCount || b.comments || 0;
-          aValue = aViews > 0 ? ((aLikes + aComments) / aViews) * 100 : 0;
-          bValue = bViews > 0 ? ((bLikes + bComments) / bViews) * 100 : 0;
-          break;
-        }
-        case 'uploadDate':
-          aValue = new Date(a.uploadDate || 0);
-          bValue = new Date(b.uploadDate || 0);
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
-    });
-  }, [accountVideos, sortColumn, sortDirection]);
 
   // Show loading state
   if (loading) {
@@ -1946,746 +1856,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       ) : (
         /* Account Details View */
         selectedAccount && (
-          loadingAccountDetail ? (
-            /* Loading Skeleton */
-            <div className="space-y-6 animate-pulse">
-              {/* Profile Card Skeleton */}
-              <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
-                <div className="flex items-center space-x-6">
-                  <div className="w-24 h-24 bg-zinc-800 rounded-2xl"></div>
-                  <div className="flex-1 space-y-3">
-                    <div className="h-8 bg-zinc-800 rounded w-1/3"></div>
-                    <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
-                  </div>
-                </div>
-              </div>
-              {/* KPI Cards Skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
-                    <div className="h-4 bg-zinc-800 rounded w-1/2 mb-4"></div>
-                    <div className="h-8 bg-zinc-800 rounded w-full"></div>
-                  </div>
-                ))}
-              </div>
-              {/* Videos Table Skeleton */}
-              <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-16 bg-zinc-800 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-          <div className="space-y-6">
-            {/* Account Profile Card */}
-            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  {selectedAccount.profilePicture ? (
-                    <ProxiedImage
-                      src={selectedAccount.profilePicture}
-                      alt={`@${selectedAccount.username}`}
-                      className="w-24 h-24 rounded-2xl object-cover border-4 border-gray-100"
-                      fallback={
-                        <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
-                          <Users className="w-12 h-12 text-gray-500" />
-                        </div>
-                      }
-                    />
-                  ) : (
-                    <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
-                      <Users className="w-12 h-12 text-gray-500" />
-                    </div>
-                  )}
-                  <div className="absolute -bottom-2 -right-2">
-                    <PlatformIcon platform={selectedAccount.platform} size="lg" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {selectedAccount.displayName || `@${selectedAccount.username}`}
-                    </h2>
-                    {(() => {
-                      const creatorName = accountCreatorNames.get(selectedAccount.id);
-                      return creatorName ? (
-                        <button
-                          onClick={() => setShowAttachCreatorModal(true)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-xs font-medium rounded-lg transition-colors border border-white/20"
-                        >
-                          <Users className="w-3 h-3" />
-                          {creatorName}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setShowAttachCreatorModal(true)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-xs font-medium rounded-lg transition-colors border border-white/20"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Attach to Creator
-                        </button>
-                      );
-                    })()}
-                  </div>
-                  <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-500 dark:text-gray-500">@{selectedAccount.username}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>Joined {formatDate(selectedAccount.dateAdded.toDate())}</span>
-                    </div>
-                    {selectedAccount.followerCount && (
-                      <div>
-                        <span className="font-semibold">{formatNumber(selectedAccount.followerCount)}</span> followers
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-             </div>
-
-            {/* KPI Cards */}
-              {(() => {
-              // Convert AccountVideo[] to VideoSubmission[]
-              // accountVideos is already filtered by both rules AND date
-              const filteredVideoSubmissions: VideoSubmission[] = accountVideos.map(video => {
-                const videoId = video.id || video.videoId || '';
-                const snapshots = accountVideosSnapshots.get(videoId) || [];
-                return {
-                  id: videoId,
-                url: video.url || '',
-                platform: selectedAccount.platform,
-                thumbnail: video.thumbnail || '',
-                title: video.caption || video.title || 'No caption',
-                uploader: selectedAccount.displayName || selectedAccount.username,
-                uploaderHandle: selectedAccount.username,
-                uploaderProfilePicture: selectedAccount.profilePicture,
-                followerCount: selectedAccount.followerCount,
-                status: 'approved' as const,
-                views: video.viewsCount || video.views || 0,
-                likes: video.likesCount || video.likes || 0,
-                comments: video.commentsCount || video.comments || 0,
-                shares: video.sharesCount || video.shares || 0,
-                dateSubmitted: video.uploadDate || new Date(),
-                uploadDate: video.uploadDate || new Date(),
-                  snapshots: snapshots
-                };
-              });
-
-              // ALL videos (unfiltered by date) for PP calculation
-              const allVideoSubmissions: VideoSubmission[] = allAccountVideos.map(video => {
-                const videoId = video.id || video.videoId || '';
-                const snapshots = accountVideosSnapshots.get(videoId) || [];
-                return {
-                  id: videoId,
-                url: video.url || '',
-                platform: selectedAccount.platform,
-                thumbnail: video.thumbnail || '',
-                title: video.caption || video.title || 'No caption',
-                uploader: selectedAccount.displayName || selectedAccount.username,
-                uploaderHandle: selectedAccount.username,
-                uploaderProfilePicture: selectedAccount.profilePicture,
-                followerCount: selectedAccount.followerCount,
-                status: 'approved' as const,
-                views: video.viewsCount || video.views || 0,
-                likes: video.likesCount || video.likes || 0,
-                comments: video.commentsCount || video.comments || 0,
-                shares: video.sharesCount || video.shares || 0,
-                dateSubmitted: video.uploadDate || new Date(),
-                uploadDate: video.uploadDate || new Date(),
-                  snapshots: snapshots
-                };
-              });
-
-              // Filter link clicks for this account
-              // 1. Find all links associated with this account
-              const accountLinkIds = trackedLinks
-                .filter(link => link.linkedAccountId === selectedAccount.id)
-                .map(link => link.id);
-              
-              // 2. Filter clicks to only those from this account's links
-              const accountLinkClicks = linkClicks.filter(click => 
-                accountLinkIds.includes(click.linkId)
-              );
-
-              return (
-                <div className="mb-6">
-                  <KPICards 
-                    submissions={filteredVideoSubmissions}
-                    allSubmissions={allVideoSubmissions}
-                    linkClicks={accountLinkClicks}
-                    dateFilter={dateFilter}
-                    timePeriod="days"
-                    onCreateLink={() => setShowCreateLinkModal(true)}
-                    onVideoClick={async (video) => {
-                      // Load snapshots before opening modal
-                      if (!currentOrgId || !currentProjectId) return;
-                      
-                      try {
-                        const snapshots = await FirestoreDataService.getVideoSnapshots(
-                          currentOrgId,
-                          currentProjectId,
-                          video.id
-                        );
-                        
-                        const videoWithSnapshots: VideoSubmission = {
-                          ...video,
-                          snapshots: snapshots
-                        };
-                        
-                        setSelectedVideoForAnalytics(videoWithSnapshots);
-                        setIsVideoAnalyticsModalOpen(true);
-                      } catch (error) {
-                        console.error('❌ Failed to load snapshots:', error);
-                        // Still open modal without snapshots
-                        setSelectedVideoForAnalytics(video);
-                        setIsVideoAnalyticsModalOpen(true);
-                      }
-                    }}
-                    cardVisibility={{
-                      revenue: false,
-                      downloads: false
-                    }}
-                  />
-                </div>
-              );
-              })()}
-
-            {/* Videos Table - Using VideoSubmissionsTable for consistent styling */}
-            {(() => {
-              // Convert sorted videos to VideoSubmissions for the table
-              const videoSubmissions: VideoSubmission[] = sortedVideos.map(video => ({
-                id: video.id || video.videoId || '',
-                url: video.url || '',
-                platform: selectedAccount!.platform,
-                thumbnail: video.thumbnail || '',
-                title: video.caption || video.title || '',
-                caption: video.caption || video.title || '',
-                uploader: selectedAccount!.displayName || selectedAccount!.username,
-                uploaderHandle: selectedAccount!.username,
-                uploaderProfilePicture: selectedAccount!.profilePicture,
-                followerCount: selectedAccount!.followerCount,
-                status: 'approved' as const,
-                views: video.viewsCount || video.views || 0,
-                likes: video.likesCount || video.likes || 0,
-                comments: video.commentsCount || video.comments || 0,
-                shares: video.sharesCount || video.shares || 0,
-                dateSubmitted: video.uploadDate || new Date(),
-                uploadDate: video.uploadDate || new Date(),
-                snapshots: []
-              }));
-
-              return (
-                <div className="mt-6">
-                  <VideoSubmissionsTable 
-                    submissions={videoSubmissions}
-                    onVideoClick={async (video) => {
-                      // Load snapshots before opening modal
-                      if (!currentOrgId || !currentProjectId) return;
-                      
-                      try {
-                        const snapshots = await FirestoreDataService.getVideoSnapshots(
-                          currentOrgId,
-                          currentProjectId,
-                          video.id
-                        );
-                        
-                        const videoWithSnapshots: VideoSubmission = {
-                          ...video,
-                          snapshots: snapshots
-                        };
-                        
-                        setSelectedVideoForAnalytics(videoWithSnapshots);
-                        setIsVideoAnalyticsModalOpen(true);
-                      } catch (error) {
-                        console.error('❌ Failed to load snapshots:', error);
-                        // Still open modal without snapshots
-                        setSelectedVideoForAnalytics(video);
-                        setIsVideoAnalyticsModalOpen(true);
-                      }
-                    }}
-                  />
-                </div>
-              );
-            })()}
-
-            {/* OLD Videos Table - HIDDEN via CSS */}
-            <div style={{ display: 'none' }} className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
-              <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Recent Videos</h2>
-                  <div className="flex items-center space-x-4">
-                    <p className="text-sm text-gray-400">{accountVideos.length} total videos</p>
-                    
-                    {/* Column Visibility Toggle */}
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowColumnToggle(!showColumnToggle)}
-                        className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
-                      >
-                        <Filter className="w-4 h-4" />
-                        <span>Columns</span>
-                      </button>
-                      
-                      {showColumnToggle && createPortal(
-                        <>
-                          {/* Backdrop */}
-                          <div 
-                            className="fixed inset-0 z-[9998]" 
-                            onClick={() => setShowColumnToggle(false)}
-                          />
-                          {/* Dropdown */}
-                          <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-                          <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
-                            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                            {Object.entries({
-                              video: 'Video',
-                              platform: 'Platform',
-                              preview: 'Preview',
-                              trend: 'Trend',
-                              views: 'Views',
-                              likes: 'Likes',
-                              comments: 'Comments',
-                              shares: 'Shares',
-                              engagement: 'Engagement Rate',
-                              uploadDate: 'Upload Date'
-                            }).map(([key, label]) => (
-                                <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors">
-                                <input
-                                  type="checkbox"
-                                  checked={visibleColumns[key as keyof typeof visibleColumns]}
-                                  onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
-                                    className="w-4 h-4 rounded border-white/20 bg-white/5 text-white focus:ring-white/50"
-                                />
-                                  <span className="text-sm text-gray-200">{label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        </>,
-                        document.body
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {accountVideos.length > 0 ? (
-                <>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-max">
-                    <thead>
-                      <tr className="border-b border-white/5">
-                        {visibleColumns.video && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
-                            Video
-                          </th>
-                        )}
-                        {visibleColumns.platform && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
-                            Platform
-                          </th>
-                        )}
-                        {visibleColumns.preview && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
-                            Preview
-                          </th>
-                        )}
-                        {visibleColumns.trend && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
-                            Trend
-                          </th>
-                        )}
-                        {visibleColumns.views && (
-                          <th 
-                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
-                            onClick={() => handleSort('views')}
-                          >
-                            <div className="flex items-center gap-1">
-                              Views
-                              {sortColumn === 'views' && (
-                                <span className="text-white">
-                                  {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.likes && (
-                          <th 
-                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
-                            onClick={() => handleSort('likes')}
-                          >
-                            <div className="flex items-center gap-1">
-                              Likes
-                              {sortColumn === 'likes' && (
-                                <span className="text-white">
-                                  {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.comments && (
-                          <th 
-                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
-                            onClick={() => handleSort('comments')}
-                          >
-                            <div className="flex items-center gap-1">
-                              Comments
-                              {sortColumn === 'comments' && (
-                                <span className="text-white">
-                                  {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.shares && (
-                          <th 
-                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
-                            onClick={() => handleSort('shares')}
-                          >
-                            <div className="flex items-center gap-1">
-                              Shares
-                              {sortColumn === 'shares' && (
-                                <span className="text-white">
-                                  {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.engagement && (
-                          <th 
-                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[140px] cursor-pointer hover:text-white transition-colors select-none"
-                            onClick={() => handleSort('engagement')}
-                          >
-                            <div className="flex items-center gap-1">
-                              Engagement
-                              {sortColumn === 'engagement' && (
-                                <span className="text-white">
-                                  {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.uploadDate && (
-                          <th 
-                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
-                            onClick={() => handleSort('uploadDate')}
-                          >
-                            <div className="flex items-center gap-1">
-                              Upload Date
-                              {sortColumn === 'uploadDate' && (
-                                <span className="text-white">
-                                  {sortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )}
-                        <th className="w-12 px-6 py-4 text-left"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-zinc-900/60 divide-y divide-white/5">
-                      {(() => {
-                        // Pagination calculations (use sortedVideos)
-                        const startIndex = (currentPage - 1) * itemsPerPage;
-                        const endIndex = startIndex + itemsPerPage;
-                        const paginatedVideos = sortedVideos.slice(startIndex, endIndex);
-                        
-                        return paginatedVideos.map((video) => {
-                        const views = video.viewsCount || video.views || 0;
-                        const likes = video.likesCount || video.likes || 0;
-                        const comments = video.commentsCount || video.comments || 0;
-                        const shares = video.sharesCount || video.shares || 0;
-                        const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
-                        
-                        // Convert AccountVideo to VideoSubmission for TrendCalculationService
-                        const videoSubmission: VideoSubmission = {
-                          id: video.id || video.videoId || '',
-                          url: video.url || '',
-                          platform: selectedAccount.platform,
-                          thumbnail: video.thumbnail || '',
-                          title: video.caption || video.title || 'No caption',
-                          uploader: selectedAccount.displayName || selectedAccount.username,
-                          uploaderHandle: selectedAccount.username,
-                          uploaderProfilePicture: selectedAccount.profilePicture,
-                          followerCount: selectedAccount.followerCount,
-                          status: 'approved' as const,
-                          views: views,
-                          likes: likes,
-                          comments: comments,
-                          shares: shares,
-                          dateSubmitted: new Date(),
-                          uploadDate: video.uploadDate || new Date(),
-                          snapshots: []
-                        };
-
-                        return (
-                          <tr 
-                            key={video.id}
-                            className="hover:bg-white/5 transition-colors cursor-pointer group"
-                            onClick={async () => {
-                              if (!currentOrgId || !currentProjectId) return;
-                              
-                              try {
-                                // Fetch snapshots for this video
-                                const snapshots = await FirestoreDataService.getVideoSnapshots(
-                                  currentOrgId, 
-                                  currentProjectId, 
-                                  video.id || video.videoId || ''
-                                );
-                                
-                                // Update videoSubmission with snapshots
-                                const videoSubmissionWithSnapshots: VideoSubmission = {
-                                  ...videoSubmission,
-                                  snapshots: snapshots
-                                };
-                                
-                                setSelectedVideoForAnalytics(videoSubmissionWithSnapshots);
-                                setIsVideoAnalyticsModalOpen(true);
-                              } catch (error) {
-                                console.error('❌ Failed to load snapshots:', error);
-                                // Still open modal without snapshots
-                                setSelectedVideoForAnalytics(videoSubmission);
-                                setIsVideoAnalyticsModalOpen(true);
-                              }
-                            }}
-                          >
-                            {visibleColumns.video && (
-                            <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
-                              <div className="flex items-center space-x-4">
-                                <div className="relative">
-                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
-                                    {video.thumbnail ? (
-                                      <HeicImage 
-                                        src={video.thumbnail} 
-                                        alt="Thumbnail"
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                                        <Play className="w-4 h-4 text-gray-400" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="absolute -bottom-1 -right-1">
-                                    <PlatformIcon platform={selectedAccount.platform} size="sm" />
-                                  </div>
-                                </div>
-                                <div className="min-w-0 flex-1 max-w-[200px]">
-                                  <p className="text-sm font-medium text-white truncate" title={video.caption || video.title || 'No caption'}>
-                                    {(() => {
-                                      const fullCaption = video.caption || video.title || 'No caption';
-                                      return fullCaption.length > 20 ? fullCaption.substring(0, 20) + '...' : fullCaption;
-                                    })()}
-                                  </p>
-                                  <p className="text-xs text-gray-400 mt-1 truncate">
-                                    @{selectedAccount.username}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.platform && (
-                            <td className="px-6 py-5">
-                              <PlatformIcon platform={selectedAccount.platform} size="md" />
-                            </td>
-                            )}
-                            {visibleColumns.preview && (
-                            <td className="px-6 py-5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  
-                                  console.log('Opening video player:', {
-                                    videoId: video.videoId,
-                                    url: video.url,
-                                    platform: selectedAccount.platform,
-                                    hasUrl: !!video.url
-                                  });
-                                  
-                                  // Validate URL before opening player
-                                  if (!video.url || video.url.trim() === '') {
-                                    console.error('❌ Video URL is empty, cannot open player');
-                                    alert('This video has no URL. Please refresh the account to sync video data.');
-                                    return;
-                                  }
-                                  
-                                  setSelectedVideoForPlayer({
-                                    url: video.url,
-                                    title: video.caption || video.title || 'No caption',
-                                    platform: selectedAccount.platform
-                                  });
-                                  setVideoPlayerOpen(true);
-                                }}
-                                className="block hover:opacity-80 transition-opacity group/video cursor-pointer"
-                              >
-                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
-                                  {video.thumbnail ? (
-                                    <HeicImage 
-                                      src={video.thumbnail} 
-                                      alt="Thumbnail"
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                                      <Play className="w-6 h-6 text-gray-400" />
-                                    </div>
-                                  )}
-                                  <div className="absolute inset-0 bg-black/0 group-hover/video:bg-black/40 transition-colors flex items-center justify-center">
-                                    <svg className="w-8 h-8 text-white opacity-0 group-hover/video:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
-                                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              </button>
-                            </td>
-                            )}
-                            {visibleColumns.trend && (
-                            <td className="px-6 py-5">
-                              <MiniTrendChart 
-                                data={TrendCalculationService.getViewsTrend(videoSubmission)}
-                                className="flex items-center justify-center"
-                              />
-                            </td>
-                            )}
-                            {visibleColumns.views && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Eye className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(views)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.likes && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Heart className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(likes)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.comments && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <MessageCircle className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(comments)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.shares && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Share2 className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(shares)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.engagement && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Activity className="w-4 h-4 text-white/70" />
-                                <span className="text-sm font-medium text-white">
-                                  {engagementRate.toFixed(2)}%
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.uploadDate && (
-                            <td className="px-6 py-5">
-                              <div className="text-sm text-zinc-300">
-                                {video.uploadDate ? 
-                                  new Date(video.uploadDate).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  }) : 
-                                  (video.timestamp ? 
-                                    new Date(video.timestamp).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric'
-                                    }) : 
-                                    'Unknown'
-                                  )
-                                }
-                              </div>
-                            </td>
-                            )}
-                            <td className="px-6 py-5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(video.url, '_blank');
-                                }}
-                                className="text-gray-400 hover:text-white transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                        });
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Pagination */}
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={Math.ceil(sortedVideos.length / itemsPerPage)}
-                  itemsPerPage={itemsPerPage}
-                  totalItems={sortedVideos.length}
-                  onPageChange={(page) => {
-                    setCurrentPage(page);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  onItemsPerPageChange={(newItemsPerPage) => {
-                    setItemsPerPage(newItemsPerPage);
-                    setCurrentPage(1);
-                  }}
-                />
-                </>
-              
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Play className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h4 className="text-lg font-medium text-white mb-2">No videos synced</h4>
-                  <p className="text-gray-400 mb-6">
-                    Click "Sync Videos" to fetch all videos from this account
-                  </p>
-                  <button
-                    onClick={() => handleSyncAccount(selectedAccount.id)}
-                    disabled={isSyncing === selectedAccount.id}
-                    className="inline-flex items-center space-x-2 px-6 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/10"
-                  >
-                    <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
-                    <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          )
+          <AccountDetailsView
+            selectedAccount={selectedAccount}
+            loading={loadingAccountDetail}
+            accountVideos={accountVideos}
+            allAccountVideos={allAccountVideos}
+            accountVideosSnapshots={accountVideosSnapshots}
+            dateFilter={dateFilter}
+            trackedLinks={trackedLinks}
+            linkClicks={linkClicks}
+            accountCreatorNames={accountCreatorNames}
+            isSyncing={isSyncing}
+            onSyncAccount={handleSyncAccount}
+            onAttachCreator={() => setShowAttachCreatorModal(true)}
+            onCreateLink={() => setShowCreateLinkModal(true)}
+            onVideoClick={handleVideoClick}
+          />
         )
       )}
 
