@@ -244,7 +244,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             }, 0);
 
             // Skip limit warnings if user has unlimited access (demo/admin)
-            const hasUnlimitedAccess = videoLimitInfo && videoLimitInfo.limit === -1;
+            const hasUnlimitedAccess = usageLimits.videosLeft === 999999 || usageLimits.accountsLeft === 999999;
             
             if (hasUnlimitedAccess) {
               // Demo/Admin user - no limit warnings
