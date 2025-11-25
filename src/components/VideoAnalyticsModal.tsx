@@ -6,6 +6,10 @@ import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
+import { VideoDeleteModal } from './video-modal/VideoDeleteModal';
+import { VideoSidebar } from './video-modal/VideoSidebar';
+import { VideoSnapshotsHistory } from './video-modal/VideoSnapshotsHistory';
+import { formatNumber, formatDuration } from '../utils/formatters';
 import FirestoreDataService from '../services/FirestoreDataService';
 import FirebaseService from '../services/FirebaseService';
 
@@ -168,13 +172,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     };
   }, [video?.views, video?.likes, video?.comments, video?.shares, viralityFactor, totalCreatorVideos]);
 
-  // Format duration from seconds to MM:SS
-  const formatDuration = (seconds: number): string => {
-    if (!seconds) return 'N/A';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // Prepare chart data from snapshots - always showing ALL data
   const chartData = useMemo((): ChartDataPoint[] => {
@@ -441,15 +438,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
   if (!isOpen || !video) return null;
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toLocaleString();
-  };
 
   // Twitter image slideshow state
   const [currentMediaIndex, setCurrentMediaIndex] = React.useState(0);
@@ -754,139 +742,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 overflow-hidden">
           {/* Left: Video Embed (Scrollable) */}
           <div className="overflow-hidden">
-            <div className="relative rounded-xl border border-white/5 shadow-lg p-3 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-              {/* Depth Gradient Overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none z-0"
-                style={{
-                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-                }}
-              />
-              
-              <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-white/10 z-10">
-                {video.platform === 'twitter' && twitterMedia.length > 0 ? (
-                  // Twitter: Show images in slideshow
-                  <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
-                    <img
-                      src={twitterMedia[currentMediaIndex]}
-                      alt={`Tweet media ${currentMediaIndex + 1}`}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        // Fallback to placeholder on image error
-                        e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23333" width="100" height="100"/%3E%3Ctext fill="%23666" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
-                      }}
-                    />
-                    
-                    {/* Slideshow controls if multiple images */}
-                    {twitterMedia.length > 1 && (
-                      <>
-                        {/* Previous button */}
-                        <button
-                          onClick={() => setCurrentMediaIndex((currentMediaIndex - 1 + twitterMedia.length) % twitterMedia.length)}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10"
-                          aria-label="Previous image"
-                        >
-                          ‹
-                        </button>
-                        
-                        {/* Next button */}
-                        <button
-                          onClick={() => setCurrentMediaIndex((currentMediaIndex + 1) % twitterMedia.length)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10"
-                          aria-label="Next image"
-                        >
-                          ›
-                        </button>
-                        
-                        {/* Image indicators */}
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                          {twitterMedia.map((_: string, idx: number) => (
-                            <button
-                              key={idx}
-                              onClick={() => setCurrentMediaIndex(idx)}
-                              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                idx === currentMediaIndex ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/60'
-                              }`}
-                              aria-label={`Go to image ${idx + 1}`}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  // Other platforms: Use iframe embed
-                  <iframe
-                    src={embedUrl}
-                    className="absolute inset-0 w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    style={{ border: 'none' }}
-                    title={video.title || video.caption || 'Video'}
-                    sandbox="allow-scripts allow-same-origin allow-presentation"
-                  />
-                )}
-              </div>
-
-              {/* Duration & Virality Info */}
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-white/5 p-2" style={{ backgroundColor: '#0a0a0b' }}>
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <Clock className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-xs text-gray-400">Duration</span>
-                  </div>
-                  <div className="text-sm font-bold text-white">
-                    {formatDuration(video.duration || 0)}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-white/5 p-2" style={{ backgroundColor: '#0a0a0b' }}>
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <Flame className="w-3.5 h-3.5 text-orange-400" />
-                    <span className="text-xs text-gray-400">Virality</span>
-                  </div>
-                  <div className="text-sm font-bold text-white">
-                    {viralityFactor.toFixed(2)}x
-                  </div>
-                </div>
-              </div>
-
-              {/* Posted & Last Refresh Info */}
-              <div className="mt-2 rounded-lg border border-white/5 p-2.5 space-y-1.5" style={{ backgroundColor: '#0a0a0b' }}>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-400">Posted:</span>
-                  <span className="text-white font-medium">
-                    {new Date(video.uploadDate || video.dateSubmitted).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </span>
-                </div>
-                {video.lastRefreshed && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-400">Last refresh:</span>
-                    <span className="text-white font-medium">
-                      {new Date(video.lastRefreshed).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* View on Platform Button */}
-              <a
-                href={video.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-sm font-medium text-white"
-              >
-                <ExternalLink className="w-4 h-4" />
-                View on Platform
-              </a>
-            </div>
+            <VideoSidebar
+              video={video}
+              twitterMedia={twitterMedia}
+              embedUrl={embedUrl}
+              viralityFactor={viralityFactor}
+            />
           </div>
 
           {/* Right: SCROLLABLE Content */}
@@ -1216,188 +1077,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </div>
               </div>
 
-              {/* Snapshots History */}
-              {video.snapshots && video.snapshots.length > 0 && (() => {
-                const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-                  new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
-                );
-                
-                // Apply date filter
-                // Always show all snapshots - no filtering
-                const filteredSnapshots = sortedSnapshots;
-                
-                // Calculate engagement for each snapshot with trend
-                const snapshotsWithEngagement = filteredSnapshots.map((snapshot, idx) => {
-                  const engagement = snapshot.views > 0 
-                    ? ((snapshot.likes + snapshot.comments + (snapshot.shares || 0)) / snapshot.views) * 100 
-                    : 0;
-                  
-                  let trend: 'up' | 'down' | 'neutral' = 'neutral';
-                  if (idx < filteredSnapshots.length - 1) {
-                    const prevSnapshot = filteredSnapshots[idx + 1];
-                    const prevEngagement = prevSnapshot.views > 0 
-                      ? ((prevSnapshot.likes + prevSnapshot.comments + (prevSnapshot.shares || 0)) / prevSnapshot.views) * 100 
-                      : 0;
-                    
-                    if (engagement > prevEngagement + 0.1) trend = 'up';
-                    else if (engagement < prevEngagement - 0.1) trend = 'down';
-                  }
-                  
-                  return { ...snapshot, engagement, trend };
-                });
-
-                const totalPages = Math.ceil(snapshotsWithEngagement.length / snapshotsPerPage);
-                const startIndex = (snapshotsPage - 1) * snapshotsPerPage;
-                const endIndex = startIndex + snapshotsPerPage;
-                const paginatedSnapshots = snapshotsWithEngagement.slice(startIndex, endIndex);
-                
-                return (
-                  <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden min-w-0" style={{ backgroundColor: '#121214' }}>
-                    {/* Depth Gradient Overlay */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none z-0"
-                      style={{
-                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-                      }}
-                    />
-                    
-                    {/* Header with Pagination */}
-                    <div className="relative px-6 py-4 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Bookmark className="w-4 h-4 text-gray-400" />
-                          <div>
-                            <h3 className="text-base font-semibold text-white">
-                              Snapshots History
-                            </h3>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {video.snapshots.length} {video.snapshots.length === 1 ? 'recording' : 'recordings'}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {/* Pagination Controls */}
-                        {totalPages > 1 && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setSnapshotsPage(p => Math.max(1, p - 1))}
-                              disabled={snapshotsPage === 1}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                              <ChevronLeft className="w-4 h-4 text-white" />
-                            </button>
-                            <span className="text-xs text-gray-400 min-w-[80px] text-center">
-                              Page {snapshotsPage} of {totalPages}
-                            </span>
-                            <button
-                              onClick={() => setSnapshotsPage(p => Math.min(totalPages, p + 1))}
-                              disabled={snapshotsPage === totalPages}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                              <ChevronRight className="w-4 h-4 text-white" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Horizontally Scrollable Table */}
-                    <div className="relative overflow-x-scroll overflow-y-auto z-10 scrollbar-thin" style={{ maxHeight: '400px' }}>
-                      <table className="w-full" style={{ minWidth: '1100px' }}>
-                        <thead className="sticky top-0 z-20">
-                          <tr className="border-b border-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Date & Time
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Type
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Views
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Likes
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Comments
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Shares
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Bookmarks
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                              Engagement
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {paginatedSnapshots.map((snapshot, index) => (
-                            <tr 
-                              key={snapshot.id || index}
-                              className="hover:bg-white/[0.03] transition-colors"
-                              style={{ backgroundColor: index % 2 === 0 ? '#121214' : 'rgba(18, 18, 20, 0.5)' }}
-                            >
-                              <td className="px-6 py-4 text-sm font-medium text-gray-300 whitespace-nowrap">
-                                {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`text-xs px-2.5 py-1 rounded-md border ${
-                                  snapshot.isInitialSnapshot 
-                                    ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' 
-                                    : 'text-gray-400 bg-white/5 border-white/10'
-                                }`}>
-                                  {snapshot.isInitialSnapshot 
-                                    ? 'Added' 
-                                    : (snapshot.capturedBy?.replace('_', ' ') || 'unknown')}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
-                                {formatNumber(snapshot.views || 0)}
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
-                                {formatNumber(snapshot.likes || 0)}
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
-                                {formatNumber(snapshot.comments || 0)}
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
-                                {formatNumber(snapshot.shares || 0)}
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
-                                {formatNumber(snapshot.saves || 0)}
-                              </td>
-                              <td className="px-6 py-4 text-center whitespace-nowrap">
-                                <div className="flex items-center justify-center gap-2">
-                                  <span className="text-sm font-semibold text-white">
-                                    {snapshot.engagement.toFixed(2)}%
-                                  </span>
-                                  {snapshot.trend === 'up' && (
-                                    <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-                                  )}
-                                  {snapshot.trend === 'down' && (
-                                    <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                                  )}
-                                  {snapshot.trend === 'neutral' && (
-                                    <Minus className="w-3.5 h-3.5 text-gray-400" />
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })()}
+            {/* Snapshots History */}
+            <VideoSnapshotsHistory snapshots={video.snapshots || []} />
             </div>
           </div>
         </div>
@@ -1473,61 +1154,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       })()}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && video && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-[#0A0A0A] rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
-                    <Trash2 className="w-5 h-5 text-red-400" />
-                  </div>
-                  <h2 className="text-xl font-bold text-white">Delete Video</h2>
-                </div>
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-6">
-              <p className="text-gray-400 text-sm mb-3">
-                Are you sure you want to delete this video?
-              </p>
-              <p className="text-gray-500 text-xs mb-4">
-                <span className="text-white font-medium">
-                  {video.title || video.caption || 'Untitled video'}
-                </span>
-              </p>
-              <p className="text-gray-500 text-xs">
-                This action cannot be undone. The video will be permanently removed from your account.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteVideo}
-                className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors font-medium"
-              >
-                Delete Video
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Delete Confirmation Modal */}
+      <VideoDeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteVideo}
+        videoTitle={video.title || video.caption || 'Untitled video'}
+      />
     </div>
   );
 };
