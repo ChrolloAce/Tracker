@@ -43,6 +43,7 @@ import DemoBanner from '../components/DemoBanner';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
+import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
 import DemoOrgService from '../services/DemoOrgService';
@@ -1761,6 +1762,39 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [user, currentOrgId, currentProjectId]);
 
+  const handleAddAccounts = useCallback(async (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number}>) => {
+    if (!currentOrgId || !currentProjectId || !user) return;
+
+    // Close modal immediately
+    setIsAddAccountModalOpen(false);
+
+    try {
+      // Process all accounts in PARALLEL
+      const addPromises = accounts.map(account => 
+        AccountTrackingServiceFirebase.addAccount(
+          currentOrgId,
+          currentProjectId,
+          user.uid,
+          account.username,
+          account.platform,
+          'my',
+          account.videoCount
+        )
+      );
+
+      await Promise.all(addPromises);
+      
+      // Refresh accounts list
+      if (currentOrgId && currentProjectId) {
+        const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
+        setTrackedAccounts(updatedAccounts);
+        console.log('✅ Accounts list refreshed:', updatedAccounts.length, 'accounts');
+      }
+    } catch (error) {
+      console.error('Failed to add accounts:', error);
+    }
+  }, [currentOrgId, currentProjectId, user]);
+
   const handleDelete = useCallback((id: string) => {
     if (!user || !currentOrgId || !currentProjectId) return;
     
@@ -3449,23 +3483,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <AddAccountModal
         isOpen={isAddAccountModalOpen}
         onClose={() => setIsAddAccountModalOpen(false)}
-        onSuccess={async () => {
-          console.log('✅ Account added successfully - refreshing accounts list...');
-          // Don't reload page - this would cancel the immediate sync API call
-          // Instead, manually refresh just the accounts list
-          if (currentOrgId && currentProjectId) {
-            try {
-              const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
-              setTrackedAccounts(updatedAccounts);
-              console.log('✅ Accounts list refreshed:', updatedAccounts.length, 'accounts');
-            } catch (error) {
-              console.error('⚠️ Failed to refresh accounts list:', error);
-            }
-          }
-        }}
-        orgId={currentOrgId || ''}
-        projectId={currentProjectId || ''}
-        user={user}
+        onAdd={handleAddAccounts}
         usageLimits={usageLimits}
       />
 

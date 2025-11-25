@@ -141,49 +141,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </button>
         </div>
 
-        {/* Video Limit Warning Banner */}
-        {!checkingLimits && videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-          // Calculate total videos from ALL inputs (COUNT EVERYTHING, even without URL)
-          const totalVideosRequested = accountInputs.reduce((sum, input) => {
-            // Count ALL video counts, regardless of URL/platform
-            // User wants instant feedback when they type a number
-            return sum + input.videoCount;
-          }, 0);
-          
-          console.log(`[Video Limit Check] Total requested: ${totalVideosRequested}, Available: ${videoLimitInfo.available}, Limit: ${videoLimitInfo.limit}`);
-          
-          const wouldExceedLimit = totalVideosRequested > videoLimitInfo.available;
-          const videosOver = totalVideosRequested - videoLimitInfo.available;
-          
-          if (wouldExceedLimit) {
-            console.log(`⚠️ [Video Limit Check] EXCEEDS LIMIT by ${videosOver} videos!`);
-            return (
-              <div className="mb-4 bg-red-500 rounded-xl p-4">
-                <div className="flex items-start gap-3 mb-3">
-                  <AlertCircle className="w-5 h-5 text-white mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-white mb-1">
-                      Not Enough Video Space
-                    </div>
-                    <div className="text-xs text-white/90">
-                      You're requesting {totalVideosRequested.toLocaleString()} videos but only have {videoLimitInfo.available.toLocaleString()} slots available 
-                      ({videosOver.toLocaleString()} over limit). 
-                      Reduce video counts or upgrade your plan.
-                    </div>
-                  </div>
-                </div>
-                <a
-                  href="/settings?tab=billing"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-red-500 hover:bg-gray-100 text-xs font-semibold rounded-lg transition-all"
-                >
-                  <Crown className="w-3.5 h-3.5" />
-                  Upgrade Plan
-                </a>
-              </div>
-            );
-          }
-          return null;
-        })()}
         
         {/* Input Fields - Multiple */}
         <div className="space-y-3 mb-6 max-h-[400px] overflow-y-auto">
@@ -382,34 +339,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </button>
             <button
               onClick={handleAddAccount}
-              disabled={(() => {
-                if (isSubmitting) return true;
-                if (usageLimits.isAtAccountLimit) return true;
-                if (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform)) return true;
-                
-                // Check video limit (count ALL videos, even without URL)
-                if (videoLimitInfo && videoLimitInfo.limit !== -1) {
-                  const totalVideosRequested = accountInputs.reduce((sum, input) => sum + input.videoCount, 0);
-                  if (totalVideosRequested > videoLimitInfo.available) return true;
-                }
-                
-                return false;
-              })()}
-              className={`px-4 py-2 text-sm font-bold rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-                  const totalVideosRequested = accountInputs.reduce((sum, input) => sum + input.videoCount, 0);
-                  return totalVideosRequested > videoLimitInfo.available;
-                })()
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'text-black bg-white hover:bg-gray-100'
-              }`}
+              disabled={usageLimits.isAtAccountLimit || (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform))}
+              className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
-              {isSubmitting ? 'Processing...' : 
-               usageLimits.isAtAccountLimit ? 'Limit Reached' : 
-               videoLimitInfo && videoLimitInfo.limit !== -1 && (() => {
-                 const totalVideosRequested = accountInputs.reduce((sum, input) => sum + input.videoCount, 0);
-                 return totalVideosRequested > videoLimitInfo.available ? 'Not Enough Space' : 'Track Accounts';
-               })() || 'Track Accounts'}
+              {usageLimits.isAtAccountLimit ? 'Limit Reached' : 'Track Accounts'}
             </button>
           </div>
         </div>
