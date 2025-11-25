@@ -605,8 +605,15 @@ export default async function handler(
               const refreshedVideos = refreshData.items || [];
               console.log(`✅ [TIKTOK] Refreshed ${refreshedVideos.length} existing videos`);
               
+              // CRITICAL: Mark these as refresh-only to prevent data corruption
+              // Refreshed videos should ONLY update metrics, never overwrite title/date/etc
+              const markedRefreshedVideos = refreshedVideos.map((v: any) => ({
+                ...v,
+                _isRefreshOnly: true // Flag to prevent treating as new video
+              }));
+              
               // Add refreshed videos to processing
-              newTikTokVideos.push(...refreshedVideos);
+              newTikTokVideos.push(...markedRefreshedVideos);
             } catch (refreshError) {
               console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
               // Don't fail the whole sync if refresh fails
@@ -658,6 +665,9 @@ export default async function handler(
         
         // Transform TikTok data to video format (apidojo/tiktok-scraper format)
         videos = tiktokVideos.map((item: any, index: number) => {
+          // Check if this is a refresh-only video (should only update metrics)
+          const isRefreshOnly = item._isRefreshOnly === true;
+          
           // Handle both nested and flat key formats
           const channel = item.channel || {};
           const video = item.video || {};
@@ -697,35 +707,62 @@ export default async function handler(
             console.log(`🔧 [TIKTOK] Reconstructed URL from ID: ${videoUrl}`);
           }
           
-          // 🔧 FIX: Use Unix epoch (Jan 1, 1970) for videos without upload date instead of current time
-          // This prevents old videos from appearing in "today's" NEW UPLOADS section
-          let uploadTimestamp: FirebaseFirestore.Timestamp;
-          if (item.uploadedAt) {
-            uploadTimestamp = Timestamp.fromMillis(item.uploadedAt * 1000);
-          } else if (item.uploaded_at) {
-            uploadTimestamp = Timestamp.fromMillis(item.uploaded_at * 1000);
+          // 🔧 CRITICAL FIX: For refresh-only videos, skip normalization with defaults
+          // Refresh should ONLY update metrics, never overwrite title/date/etc
+          let uploadTimestamp: FirebaseFirestore.Timestamp | null = null;
+          let videoTitle: string | null = null;
+          
+          if (!isRefreshOnly) {
+            // Normal discovery: use defaults if data is missing
+            if (item.uploadedAt) {
+              uploadTimestamp = Timestamp.fromMillis(item.uploadedAt * 1000);
+            } else if (item.uploaded_at) {
+              uploadTimestamp = Timestamp.fromMillis(item.uploaded_at * 1000);
+            } else {
+              console.warn(`⚠️ [TIKTOK] Video ${videoId} missing upload date - using epoch`);
+              uploadTimestamp = Timestamp.fromMillis(0); // Unix epoch = Jan 1, 1970
+            }
+            
+            videoTitle = item.title || item.caption || item.subtitle || 'Untitled TikTok';
           } else {
-            console.warn(`⚠️ [TIKTOK] Video ${videoId} missing upload date - using epoch`);
-            uploadTimestamp = Timestamp.fromMillis(0); // Unix epoch = Jan 1, 1970
+            // Refresh-only: use data if available, otherwise leave null (will preserve existing)
+            if (item.uploadedAt) {
+              uploadTimestamp = Timestamp.fromMillis(item.uploadedAt * 1000);
+            } else if (item.uploaded_at) {
+              uploadTimestamp = Timestamp.fromMillis(item.uploaded_at * 1000);
+            }
+            
+            if (item.title || item.caption || item.subtitle) {
+              videoTitle = item.title || item.caption || item.subtitle;
+            }
           }
           
-          return {
+          const baseData: any = {
             videoId: videoId || `tiktok_${Date.now()}_${index}`,
-            videoTitle: item.title || item.caption || item.subtitle || 'Untitled TikTok',
             videoUrl: videoUrl,
             platform: 'tiktok',
             thumbnail: thumbnail,
             accountUsername: account.username,
             accountDisplayName: channel.name || item['channel.name'] || account.username,
-            uploadDate: uploadTimestamp,
             views: item.views || 0,
             likes: item.likes || 0,
             comments: item.comments || 0,
             shares: item.shares || 0,
             saves: item.bookmarks || 0, // ✅ ADD BOOKMARKS
             caption: item.title || item.subtitle || item.caption || '',
-            duration: video.duration || 0
+            duration: video.duration || 0,
+            _isRefreshOnly: isRefreshOnly // Pass flag to save logic
           };
+          
+          // Only add title/date if we have them (or if not refresh-only)
+          if (videoTitle) {
+            baseData.videoTitle = videoTitle;
+          }
+          if (uploadTimestamp) {
+            baseData.uploadDate = uploadTimestamp;
+          }
+          
+          return baseData;
         });
       } catch (tiktokError) {
         console.error('TikTok fetch error:', tiktokError);
@@ -1833,18 +1870,36 @@ export default async function handler(
 
       // Check if video already exists (fast doc.get instead of query)
       const existingVideo = await videoRef.get();
+      const isRefreshOnly = video._isRefreshOnly === true;
         
       if (existingVideo.exists) {
-        // VIDEO EXISTS - Update metrics only
-        batch.update(videoRef, {
+        // VIDEO EXISTS - Update metrics only (and thumbnail if we have a new one)
+        const updateData: any = {
           views: video.views || 0,
           likes: video.likes || 0,
           comments: video.comments || 0,
           shares: video.shares || 0,
           saves: video.saves || 0,
-          lastRefreshed: snapshotTime,
-          thumbnail: firebaseThumbnailUrl || existingVideo.data()?.thumbnail
-        });
+          lastRefreshed: snapshotTime
+        };
+        
+        // Update thumbnail only if we have a new one
+        if (firebaseThumbnailUrl) {
+          updateData.thumbnail = firebaseThumbnailUrl;
+        }
+        
+        // For non-refresh videos, also update title/date if provided
+        // (Refresh-only videos should NEVER overwrite title/date)
+        if (!isRefreshOnly) {
+          if (video.videoTitle) {
+            updateData.videoTitle = video.videoTitle;
+          }
+          if (video.uploadDate) {
+            updateData.uploadDate = video.uploadDate;
+          }
+        }
+        
+        batch.update(videoRef, updateData);
 
         // ==================== FIX #4: SNAPSHOT DEDUPLICATION ====================
         // Check for recent snapshot to prevent duplicates
@@ -1876,9 +1931,21 @@ export default async function handler(
           console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
         }
       } else {
-        // NEW VIDEO - Create with initial snapshot
+        // Video doesn't exist
+        
+        if (isRefreshOnly) {
+          // CRITICAL: Refresh-only videos should NEVER create new entries
+          // If video doesn't exist, it was probably deleted - skip it
+          console.log(`    ⏭️  Skipping refresh-only video ${video.videoId} - doesn't exist in DB (likely deleted)`);
+          continue; // Skip to next video
+        }
+        
+        // NEW VIDEO - Create with initial snapshot (only for discovery, not refresh)
+        // Remove internal flags before saving
+        const { _isRefreshOnly, ...cleanVideoData } = video;
+        
       batch.set(videoRef, {
-        ...video,
+        ...cleanVideoData,
           thumbnail: firebaseThumbnailUrl,
         orgId: orgId,
         projectId: projectId,
