@@ -11,7 +11,7 @@ import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
-import { AddAccountModal } from '../components/AddAccountModal';
+import { AddAccountModal } from '../components/accounts/AddAccountModal';
 import { AddTypeSelector } from '../components/AddTypeSelector';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';

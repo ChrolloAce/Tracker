@@ -51,7 +51,6 @@ import VideoAnalyticsModal from './VideoAnalyticsModal';
 import { DateFilterType } from './DateRangeFilter';
 import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 import { FloatingTooltip } from './ui/FloatingTooltip';
-import { UrlParserService } from '../services/UrlParserService';
 import { ExportVideosModal } from './ExportVideosModal';
 import { exportAccountsToCSV } from '../utils/accountCsvExport';
 import { Toast } from './ui/Toast';
@@ -66,53 +65,9 @@ import UsageTrackingService from '../services/UsageTrackingService';
 import AdminService from '../services/AdminService';
 import { useNavigate } from 'react-router-dom';
 import { Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
-
-/**
- * Extract username from social media URL
- */
-function extractUsernameFromUrl(url: string, platform: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-    
-    // Remove trailing slash
-    const cleanPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-    
-    if (platform === 'instagram') {
-      // Instagram: Extract first path segment (username), ignore extras like /reels/, /p/, /reel/
-      // Examples: /username/ → username, /username/reels/ → username, /username/p/ABC123/ → username
-      const match = cleanPath.match(/^\/([^\/]+)/);
-      return match ? match[1] : null;
-    }
-    
-    if (platform === 'tiktok') {
-      // TikTok: Extract @username from first segment, ignore extras like /video/123
-      // Examples: /@username → username, /@username/video/123 → username
-      const match = cleanPath.match(/^\/@?([^\/]+)/);
-      return match ? match[1] : null;
-    }
-    
-    if (platform === 'youtube') {
-      // YouTube: https://www.youtube.com/@username or /c/username or /user/username
-      // Allow paths like /@username/shorts, /@username/videos, etc.
-      const match = cleanPath.match(/^\/@?([^\/]+)/) || 
-                   cleanPath.match(/^\/c\/([^\/]+)/) ||
-                   cleanPath.match(/^\/user\/([^\/]+)/);
-      return match ? match[1] : null;
-    }
-    
-    if (platform === 'twitter') {
-      // Twitter/X: Extract username from first segment, ignore extras like /status/123
-      // Examples: /username → username, /username/status/123 → username
-      const match = cleanPath.match(/^\/([^\/]+)/);
-      return match ? match[1] : null;
-    }
-    
-    return null;
-  } catch {
-    return null;
-  }
-}
+import { AddAccountModal } from './accounts/AddAccountModal';
+import { AttachCreatorModal } from './accounts/AttachCreatorModal';
+import { DeleteAccountModal } from './accounts/DeleteAccountModal';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -252,12 +207,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
-  const [accountInputs, setAccountInputs] = useState<Array<{id: string; url: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null; error: string | null; videoCount: number}>>([
-    { id: '1', url: '', platform: null, error: null, videoCount: 10 }
-  ]);
-  const [newAccountUrl, setNewAccountUrl] = useState('');
-  const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
-  const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const [hoveredTypeId, setHoveredTypeId] = useState<string | null>(null);
@@ -274,7 +223,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [creators, setCreators] = useState<Creator[]>([]);
-  const [selectedCreatorId, setSelectedCreatorId] = useState<string>('');
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [trackedLinks, setTrackedLinks] = useState<FirestoreTrackedLink[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
@@ -619,27 +567,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     refreshData
   }), [handleBackToTable, refreshData]);
 
-  // Auto-detect account URL from clipboard when modal opens
-  useEffect(() => {
-    if (isAddModalOpen) {
-      const checkClipboard = async () => {
-        const parsed = await UrlParserService.autoDetectFromClipboard();
-        
-        if (parsed && parsed.isValid && parsed.platform) {
-          setNewAccountUrl(parsed.url);
-          setDetectedPlatform(parsed.platform);
-        }
-      };
-      
-      checkClipboard();
-    } else {
-      // Reset when modal closes
-      setNewAccountUrl('');
-      setDetectedPlatform(null);
-      setUrlValidationError(null);
-      setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
-    }
-  }, [isAddModalOpen]);
 
   // Load videos and rules when an account is selected OR filters change
   useEffect(() => {
@@ -1495,53 +1422,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [selectedAccount, currentOrgId, currentProjectId, user, loadAccountVideos, processedAccounts]);
 
-  // Handle URL input change and auto-detect platform
-  const handleUrlChange = useCallback((url: string) => {
-    setNewAccountUrl(url);
-    setUrlValidationError(null);
-    
-    if (!url.trim()) {
-      setDetectedPlatform(null);
-      return;
-    }
-    
-    const parsed = UrlParserService.parseUrl(url);
-    
-    if (parsed.platform) {
-      setDetectedPlatform(parsed.platform);
-      setUrlValidationError(null);
-    } else if (url.trim().length > 5) {
-      // Only show error if they've typed enough
-      setDetectedPlatform(null);
-      setUrlValidationError('Please enter a valid Instagram, TikTok, YouTube, or Twitter URL');
-    }
-  }, []);
 
-  const handleAddAccount = useCallback(async () => {
+  const handleAccountsAdded = useCallback(async (accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number}>) => {
     if (!currentOrgId || !currentProjectId || !user) return;
-
-    // Collect all valid accounts from ALL inputs (including first one) with their specific video counts
-    const accountsToAdd: Array<{url: string; username: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'; videoCount: number}> = [];
-    
-    // Check ALL inputs using accountInputs array
-    for (let i = 0; i < accountInputs.length; i++) {
-      const input = accountInputs[i];
-      const url = (i === 0 ? newAccountUrl : input.url).trim();
-      const platform = i === 0 ? detectedPlatform : input.platform;
-      const videoCount = input.videoCount; // Each input has its own video count
-      
-      if (url && platform) {
-        const username = extractUsernameFromUrl(url, platform);
-        if (username) {
-          accountsToAdd.push({ url, username, platform, videoCount });
-        }
-      }
-    }
-    
-    if (accountsToAdd.length === 0) {
-      setUrlValidationError('Please enter at least one valid account URL.');
-      return;
-    }
 
     // Add all to processing accounts immediately AT THE TOP
     setProcessingAccounts(prev => [
@@ -1549,11 +1432,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       ...prev
     ]);
     
-    // Close modal and reset form immediately
-    setNewAccountUrl('');
-    setDetectedPlatform(null);
-    setUrlValidationError(null);
-    setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
+    // Close modal immediately
     setIsAddModalOpen(false);
 
     // Process all accounts in PARALLEL, each with its own video count
@@ -1577,9 +1456,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     // Wait for all to complete
     await Promise.all(addPromises);
     
-    // Note: Real-time listener will automatically update accounts and clean up processing state
-    // No need to manually reload - this prevents flickering
-    
     // Safety cleanup: Remove from processing after 10 seconds if real-time listener hasn't already
     setTimeout(() => {
       const usernames = accountsToAdd.map(acc => acc.username);
@@ -1590,7 +1466,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         return filtered;
       });
     }, 10000);
-  }, [newAccountUrl, detectedPlatform, accountInputs, currentOrgId, currentProjectId, user]);
+  }, [currentOrgId, currentProjectId, user]);
 
   // Helper to generate short code for links
   const generateShortCode = (length: number = 6): string => {
@@ -3756,237 +3632,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
 
       {/* Add Account Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#151515] rounded-[14px] w-full max-w-[580px] shadow-2xl" style={{ padding: '24px' }}>
-            {/* Header */}
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-white mb-1">Track Accounts</h2>
-                <p className="text-sm text-[#A1A1AA]">Enter accounts you want to track videos & analytics for.</p>
-              </div>
-              <button
-                onClick={() => {
-                  setIsAddModalOpen(false);
-                  setNewAccountUrl('');
-                  setDetectedPlatform(null);
-                  setUrlValidationError(null);
-                  setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
-                }}
-                className="text-white/80 hover:text-white transition-colors p-1"
-              >
-                <X className="w-5 h-5" strokeWidth={1.5} />
-              </button>
-            </div>
-            
-            {/* Input Fields - Multiple */}
-            <div className="space-y-3 mb-6 max-h-[400px] overflow-y-auto">
-              {accountInputs.map((input, index) => (
-                <div key={input.id} className="flex gap-2 items-start">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={index === 0 ? newAccountUrl : input.url}
-                      onChange={(e) => {
-                        if (index === 0) {
-                          handleUrlChange(e.target.value);
-                          // Also update accountInputs[0] for consistency
-                          const newInputs = [...accountInputs];
-                          newInputs[0].url = e.target.value;
-                          const result = UrlParserService.parseUrl(e.target.value);
-                          newInputs[0].platform = result.platform || null;
-                          newInputs[0].error = !result.isValid && e.target.value.trim() ? 'Invalid URL' : null;
-                          setAccountInputs(newInputs);
-                        } else {
-                          const newInputs = [...accountInputs];
-                          newInputs[index].url = e.target.value;
-                          // Detect platform
-                          const result = UrlParserService.parseUrl(e.target.value);
-                          newInputs[index].platform = result.platform || null;
-                          newInputs[index].error = !result.isValid && e.target.value.trim() ? 'Invalid URL' : null;
-                          setAccountInputs(newInputs);
-                        }
-                      }}
-                      placeholder="Enter TikTok, YouTube, Instagram, or X URL"
-                      className="w-full pl-4 pr-10 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm"
-                    />
-                    {(index === 0 ? detectedPlatform : input.platform) ? (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <PlatformIcon platform={index === 0 ? detectedPlatform! : input.platform!} size="sm" />
-                      </div>
-                    ) : (
-                      <LinkIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
-                    )}
-                  </div>
-                  
-                  {/* Video count selector for each input */}
-                  <div className="relative">
-                    <select
-                      value={input.videoCount}
-                      onChange={(e) => {
-                        const newInputs = [...accountInputs];
-                        newInputs[index].videoCount = Number(e.target.value);
-                        setAccountInputs(newInputs);
-                      }}
-                      className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
-                    >
-                      <option value={10}>10 videos</option>
-                      <option value={25}>25 videos</option>
-                      <option value={50}>50 videos</option>
-                      <option value={100}>100 videos</option>
-                      <option value={250}>250 videos</option>
-                      <option value={500}>500 videos</option>
-                      <option value={1000}>1000 videos</option>
-                      <option value={2000}>2000 videos</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                  </div>
-
-                  {/* Delete button for additional inputs */}
-                  {index > 0 && (
-                    <button
-                      onClick={() => {
-                        setAccountInputs(prev => prev.filter(i => i.id !== input.id));
-                      }}
-                      className="p-2.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                    </button>
-                  )}
-                  {/* Spacer for first input when alone */}
-                  {index === 0 && accountInputs.length === 1 && (
-                    <div className="w-10" /> 
-                  )}
-                </div>
-              ))}
-
-              {/* Show validation error */}
-              {urlValidationError && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-red-400" />
-                  <span className="text-xs text-red-300">
-                    {urlValidationError}
-                  </span>
-                </div>
-              )}
-
-              {/* Usage Limit Warnings */}
-              {(() => {
-                const validAccountsCount = accountInputs.filter(input => input.url.trim() && input.platform).length;
-                const totalVideosRequested = accountInputs.reduce((sum, input) => {
-                  if (input.url.trim() && input.platform) {
-                    return sum + input.videoCount;
-                  }
-                  return sum;
-                }, 0);
-
-                // Skip limit warnings if user has unlimited access (demo/admin with 999999 slots)
-                const hasUnlimitedAccess = usageLimits.videosLeft === 999999 || usageLimits.accountsLeft === 999999;
-                
-                if (hasUnlimitedAccess) {
-                  // Demo/Admin user - no limit warnings
-                  return null;
-                }
-
-                const accountsOverLimit = validAccountsCount > usageLimits.accountsLeft;
-                const videosOverLimit = totalVideosRequested > usageLimits.videosLeft;
-                const accountsToAdd = Math.min(validAccountsCount, usageLimits.accountsLeft);
-                const videosToAdd = Math.min(totalVideosRequested, usageLimits.videosLeft);
-
-                if (usageLimits.isAtAccountLimit) {
-                  return (
-                    <div className="flex items-start gap-3 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-red-300 mb-1">
-                          Account limit reached!
-                        </p>
-                        <p className="text-xs text-red-300/80 mb-2">
-                          You've reached your maximum of tracked accounts. Upgrade to add more.
-                        </p>
-                        <button
-                          onClick={() => navigate('/subscription')}
-                          className="text-xs font-medium text-white bg-red-500/20 hover:bg-red-500/30 px-3 py-1.5 rounded-md transition-colors"
-                        >
-                          Upgrade Plan →
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (accountsOverLimit || videosOverLimit) {
-                  return (
-                    <div className="flex items-start gap-3 px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                      <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-yellow-300 mb-1">
-                          Limit warning
-                        </p>
-                        <p className="text-xs text-yellow-300/80 mb-2">
-                          {accountsOverLimit && (
-                            <>Only <span className="font-semibold">{accountsToAdd} of {validAccountsCount} accounts</span> will be tracked. </>
-                          )}
-                          {videosOverLimit && (
-                            <>Only <span className="font-semibold">{videosToAdd} of {totalVideosRequested} videos</span> will be scraped. </>
-                          )}
-                          {(accountsOverLimit || videosOverLimit) && (
-                            <>You have {usageLimits.accountsLeft} account slots and {usageLimits.videosLeft} video slots remaining.</>
-                          )}
-                        </p>
-                        <button
-                          onClick={() => navigate('/subscription')}
-                          className="text-xs font-medium text-white bg-yellow-500/20 hover:bg-yellow-500/30 px-3 py-1.5 rounded-md transition-colors"
-                        >
-                          Upgrade for More →
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                return null;
-              })()}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
-              <div className="flex items-center gap-2 text-[#9B9B9B] text-xs">
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Processing takes up to 5 minutes.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    // Add another input field, copying videoCount from the last input
-                    setAccountInputs(prev => {
-                      const lastInput = prev[prev.length - 1];
-                      const videoCountToCopy = lastInput?.videoCount || 10;
-                      return [...prev, { 
-                        id: Date.now().toString(), 
-                        url: '', 
-                        platform: null, 
-                        error: null,
-                        videoCount: videoCountToCopy 
-                      }];
-                    });
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-300 border border-gray-700 rounded-full hover:border-gray-600 hover:text-white transition-colors"
-                >
-                  Add More
-                </button>
-                <button
-                  onClick={handleAddAccount}
-                  disabled={usageLimits.isAtAccountLimit || (!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform))}
-                  className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-                >
-                  {usageLimits.isAtAccountLimit ? 'Limit Reached' : 'Track Accounts'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddAccountModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={handleAccountsAdded}
+        usageLimits={usageLimits}
+      />
 
       {/* Video Player Modal */}
       {selectedVideoForPlayer && (
@@ -4034,61 +3685,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       />
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && accountToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0A0A0A] rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
-                    <Trash2 className="w-5 h-5 text-red-400" />
-                  </div>
-                  <h2 className="text-xl font-bold text-white">Delete Account</h2>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setAccountToDelete(null);
-                  }}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-6">
-              <p className="text-gray-400 text-sm mb-3">
-                Are you sure you want to delete <span className="text-white font-medium">@{accountToDelete.username}</span>?
-              </p>
-              <p className="text-gray-500 text-xs">
-                This will permanently delete {accountToDelete.totalVideos || 0} videos and all account data
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setAccountToDelete(null);
-                }}
-                className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteAccount}
-                className="px-6 py-2.5 bg-white hover:bg-gray-100 text-black rounded-full transition-colors font-medium"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setAccountToDelete(null);
+        }}
+        onConfirm={confirmDeleteAccount}
+        account={accountToDelete}
+      />
 
       {/* Create Link Modal */}
       {showCreateLinkModal && selectedAccount && (
@@ -4101,145 +3706,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       )}
 
       {/* Attach to Creator Modal */}
-      {showAttachCreatorModal && selectedAccount && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-300 dark:border-gray-700">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gray-200 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Attach to Creator</h2>
-              <p className="text-gray-400">
-                Link @{selectedAccount.username} to a creator profile
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
-                <div className="flex items-center gap-3">
-                  {selectedAccount.profilePicture ? (
-                    <img 
-                      src={selectedAccount.profilePicture} 
-                      alt={selectedAccount.username}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-white" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="font-semibold text-white">@{selectedAccount.username}</div>
-                    <div className="text-sm text-gray-400 capitalize">{selectedAccount.platform}</div>
-                  </div>
-                </div>
-              </div>
-
-              {creators.length > 0 ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Select Creator
-                    </label>
-                    <select
-                      value={selectedCreatorId}
-                      onChange={(e) => setSelectedCreatorId(e.target.value)}
-                      className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">Choose a creator...</option>
-                      {creators.map((creator) => (
-                        <option key={creator.id} value={creator.id}>
-                          {creator.displayName} ({creator.email})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-2 text-xs text-gray-500">
-                      Link this account to a creator for better organization and tracking
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setShowAttachCreatorModal(false);
-                        setSelectedCreatorId('');
-                      }}
-                      className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (selectedCreatorId && user && currentOrgId && currentProjectId) {
-                          try {
-                            await CreatorLinksService.linkCreatorToAccounts(
-                              currentOrgId,
-                              currentProjectId,
-                              selectedCreatorId,
-                              [selectedAccount.id],
-                              user.uid
-                            );
-                            
-                            // Reload creator names to update UI
-                            const creatorName = await CreatorLinksService.getCreatorNameForAccount(
-                              currentOrgId,
-                              currentProjectId,
-                              selectedAccount.id
-                            );
-                            
-                            if (creatorName) {
-                              setAccountCreatorNames(prev => {
-                                const updated = new Map(prev);
-                                updated.set(selectedAccount.id, creatorName);
-                                return updated;
-                              });
-                            }
-                            
-                            setShowAttachCreatorModal(false);
-                            setSelectedCreatorId('');
-                          } catch (error) {
-                            console.error('Failed to attach account to creator:', error);
-                            alert('Failed to attach account. Please try again.');
-                          }
-                        }
-                      }}
-                      disabled={!selectedCreatorId}
-                      className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/15 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/20"
-                    >
-                      Attach Account
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="bg-zinc-800/30 rounded-lg p-6 border border-zinc-700/50 text-center">
-                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Users className="w-6 h-6 text-gray-900 dark:text-white" />
-                    </div>
-                    <h3 className="text-white font-medium mb-2">No Creators Found</h3>
-                    <p className="text-sm text-gray-400 mb-4">
-                      You need to create a creator profile first before linking accounts
-                    </p>
-                    <div className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60 border border-white/20">
-                      <AlertCircle className="w-4 h-4" />
-                      Go to <span className="font-semibold">Creators</span> tab to create one
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowAttachCreatorModal(false)}
-                      className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <AttachCreatorModal
+        isOpen={showAttachCreatorModal}
+        onClose={() => setShowAttachCreatorModal(false)}
+        selectedAccount={selectedAccount}
+        creators={creators}
+        orgId={currentOrgId || ''}
+        projectId={currentProjectId || ''}
+        userId={user?.uid || ''}
+        onSuccess={(creatorName) => {
+          if (selectedAccount) {
+            setAccountCreatorNames(prev => {
+              const updated = new Map(prev);
+              updated.set(selectedAccount.id, creatorName);
+              return updated;
+            });
+          }
+        }}
+      />
 
       {/* Export Accounts Modal */}
       <ExportVideosModal

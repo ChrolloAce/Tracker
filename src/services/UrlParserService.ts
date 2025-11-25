@@ -132,5 +132,48 @@ export class UrlParserService {
     
     return `https://${trimmed}`;
   }
+
+  /**
+   * Extract username from social media URL
+   */
+  static extractUsername(url: string, platform: string): string | null {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      
+      // Remove trailing slash
+      const cleanPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+      
+      if (platform === 'instagram') {
+        // Instagram: Extract first path segment (username), ignore extras like /reels/, /p/, /reel/
+        const match = cleanPath.match(/^\/([^\/]+)/);
+        return match ? match[1] : null;
+      }
+      
+      if (platform === 'tiktok') {
+        // TikTok: Extract @username from first segment
+        const match = cleanPath.match(/^\/@?([^\/]+)/);
+        return match ? match[1] : null;
+      }
+      
+      if (platform === 'youtube') {
+        // YouTube: https://www.youtube.com/@username or /c/username or /user/username
+        const match = cleanPath.match(/^\/@?([^\/]+)/) || 
+                     cleanPath.match(/^\/c\/([^\/]+)/) ||
+                     cleanPath.match(/^\/user\/([^\/]+)/);
+        return match ? match[1] : null;
+      }
+      
+      if (platform === 'twitter') {
+        // Twitter/X: Extract username from first segment
+        const match = cleanPath.match(/^\/([^\/]+)/);
+        return match ? match[1] : null;
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  }
 }
 
