@@ -800,7 +800,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                         
                         {/* Image indicators */}
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                          {twitterMedia.map((_, idx) => (
+                          {twitterMedia.map((_: string, idx: number) => (
                             <button
                               key={idx}
                               onClick={() => setCurrentMediaIndex(idx)}

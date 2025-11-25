@@ -18,6 +18,7 @@ export interface VideoSubmission {
   url: string; // Renamed from instagramUrl to support both platforms
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
   thumbnail: string;
+  media?: string[]; // Array of media URLs (for Twitter multi-image posts)
   title: string;
   caption?: string; // Video description/caption for rules filtering
   uploader: string;
