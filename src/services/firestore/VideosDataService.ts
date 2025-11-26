@@ -1,7 +1,6 @@
 import { 
   collection, 
   doc, 
-  setDoc, 
   getDoc, 
   getDocs, 
   query,
@@ -10,8 +9,7 @@ import {
   limit,
   Timestamp,
   writeBatch,
-  increment,
-  updateDoc
+  increment
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../firebase';
