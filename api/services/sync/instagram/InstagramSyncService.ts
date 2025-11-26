@@ -224,8 +224,22 @@ export class InstagramSyncService {
   ): Promise<any> {
     const reelId = reel.shortCode || reel.id;
     
-    // Upload thumbnail if requested
-    let thumbnailUrl = reel.displayUrl || reel.thumbnailUrl || '';
+    // Upload thumbnail if requested - try multiple possible fields
+    let thumbnailUrl = reel.displayUrl || 
+                       reel.thumbnailUrl || 
+                       reel.thumbnail || 
+                       reel.videoUrl || 
+                       reel.thumbnailSrc ||
+                       reel.display_url ||
+                       reel.thumbnail_url ||
+                       (reel.images && reel.images.length > 0 ? reel.images[0].url : '') ||
+                       '';
+    
+    // Log available fields if thumbnail is missing for debugging
+    if (!thumbnailUrl) {
+      console.warn(`    ⚠️ [INSTAGRAM] No thumbnail found for ${reelId}. Available fields:`, Object.keys(reel).filter(k => k.toLowerCase().includes('url') || k.toLowerCase().includes('image') || k.toLowerCase().includes('thumb')));
+    }
+    
     if (uploadThumbnail && thumbnailUrl) {
       try {
         thumbnailUrl = await ImageUploadService.downloadAndUpload(
