@@ -298,14 +298,45 @@ export const useAccounts = ({
         if (!accounts.length) { setFilteredAccounts([]); return; }
         
         const results = accounts.map(account => {
+            const totalViews = account.totalViews || 0;
+            const totalLikes = account.totalLikes || 0;
+            const totalComments = account.totalComments || 0;
+            const totalShares = account.totalShares || 0;
+            const totalVideos = account.totalVideos || 0;
+            
+            // Calculate engagement rate: (Likes + Comments + Shares) / Views * 100
+            const avgEngagementRate = totalViews > 0 
+              ? ((totalLikes + totalComments + totalShares) / totalViews) * 100 
+              : 0;
+            
+            // Calculate posting frequency based on account age and total videos
+            let postingFrequency = '—';
+            if (totalVideos > 0 && account.dateAdded) {
+              const daysSinceAdded = (Date.now() - toDate(account.dateAdded).getTime()) / (1000 * 60 * 60 * 24);
+              if (daysSinceAdded > 0) {
+                const postsPerDay = totalVideos / daysSinceAdded;
+                if (postsPerDay >= 1) {
+                  postingFrequency = `${postsPerDay.toFixed(1)}/day`;
+                } else if (postsPerDay >= 0.14) {
+                  const postsPerWeek = postsPerDay * 7;
+                  postingFrequency = `${postsPerWeek.toFixed(1)}/week`;
+                } else {
+                  const daysBetweenPosts = Math.round(1 / postsPerDay);
+                  postingFrequency = `every ${daysBetweenPosts} days`;
+                }
+              }
+            }
+            
             const stats: AccountWithFilteredStats = {
                 ...account,
-                filteredTotalVideos: account.totalVideos || 0,
-                filteredTotalViews: account.totalViews || 0,
-                filteredTotalLikes: account.totalLikes || 0,
-                filteredTotalComments: account.totalComments || 0,
-                filteredTotalShares: account.totalShares || 0,
+                filteredTotalVideos: totalVideos,
+                filteredTotalViews: totalViews,
+                filteredTotalLikes: totalLikes,
+                filteredTotalComments: totalComments,
+                filteredTotalShares: totalShares,
                 filteredTotalBookmarks: 0,
+                avgEngagementRate,
+                postingFrequency,
             };
             return stats;
         });
@@ -316,15 +347,46 @@ export const useAccounts = ({
 
   // Processed Accounts (Filtering & Sorting)
   const processedAccounts = useMemo(() => {
-    let result = filteredAccounts.length > 0 ? filteredAccounts : accounts.map(acc => ({
-        ...acc,
-        filteredTotalVideos: acc.totalVideos || 0,
-        filteredTotalViews: acc.totalViews || 0,
-        filteredTotalLikes: acc.totalLikes || 0,
-        filteredTotalComments: acc.totalComments || 0,
-        filteredTotalShares: acc.totalShares || 0,
-        filteredTotalBookmarks: 0
-    } as AccountWithFilteredStats));
+    let result = filteredAccounts.length > 0 ? filteredAccounts : accounts.map(acc => {
+        const totalViews = acc.totalViews || 0;
+        const totalLikes = acc.totalLikes || 0;
+        const totalComments = acc.totalComments || 0;
+        const totalShares = acc.totalShares || 0;
+        const totalVideos = acc.totalVideos || 0;
+        
+        const avgEngagementRate = totalViews > 0 
+          ? ((totalLikes + totalComments + totalShares) / totalViews) * 100 
+          : 0;
+        
+        let postingFrequency = '—';
+        if (totalVideos > 0 && acc.dateAdded) {
+          const daysSinceAdded = (Date.now() - toDate(acc.dateAdded).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceAdded > 0) {
+            const postsPerDay = totalVideos / daysSinceAdded;
+            if (postsPerDay >= 1) {
+              postingFrequency = `${postsPerDay.toFixed(1)}/day`;
+            } else if (postsPerDay >= 0.14) {
+              const postsPerWeek = postsPerDay * 7;
+              postingFrequency = `${postsPerWeek.toFixed(1)}/week`;
+            } else {
+              const daysBetweenPosts = Math.round(1 / postsPerDay);
+              postingFrequency = `every ${daysBetweenPosts} days`;
+            }
+          }
+        }
+        
+        return {
+          ...acc,
+          filteredTotalVideos: totalVideos,
+          filteredTotalViews: totalViews,
+          filteredTotalLikes: totalLikes,
+          filteredTotalComments: totalComments,
+          filteredTotalShares: totalShares,
+          filteredTotalBookmarks: 0,
+          avgEngagementRate,
+          postingFrequency,
+        } as AccountWithFilteredStats;
+    });
 
     // Filters
     if (accountFilterId) result = result.filter(a => a.id === accountFilterId);

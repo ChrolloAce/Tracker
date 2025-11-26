@@ -547,7 +547,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                 </td>
                 {/* Engagement */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                  {((account.avgEngagementRate ?? 0)).toFixed(2)}%
+                  {account.avgEngagementRate !== undefined ? `${account.avgEngagementRate.toFixed(2)}%` : '—'}
                 </td>
                 {/* Posting Frequency */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
