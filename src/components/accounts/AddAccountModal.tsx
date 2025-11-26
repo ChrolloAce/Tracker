@@ -49,9 +49,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         if (parsed && parsed.isValid && parsed.platform) {
           setNewAccountUrl(parsed.url);
           setDetectedPlatform(parsed.platform);
-        }
-      };
-      
+      }
+    };
+
       checkClipboard();
     }
   }, [isOpen]);
@@ -107,13 +107,13 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
     // Call onAdd prop and close immediately
     onAdd(accountsToAdd);
-    
+
     // Reset form
-    setNewAccountUrl('');
-    setDetectedPlatform(null);
-    setUrlValidationError(null);
-    setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
-    onClose();
+        setNewAccountUrl('');
+        setDetectedPlatform(null);
+        setUrlValidationError(null);
+        setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
+        onClose();
   }, [accountInputs, newAccountUrl, detectedPlatform, onClose, onAdd]);
 
   if (!isOpen) return null;
@@ -182,27 +182,66 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 )}
               </div>
               
-              {/* Video count selector for each input */}
+              {/* Video count input with dropdown presets */}
               <div className="relative">
-                <select
+                <input
+                  type="number"
                   value={input.videoCount}
                   onChange={(e) => {
+                    const value = Math.max(1, Math.min(5000, Number(e.target.value) || 10));
                     const newInputs = [...accountInputs];
-                    newInputs[index].videoCount = Number(e.target.value);
+                    newInputs[index].videoCount = value;
                     setAccountInputs(newInputs);
                   }}
-                  className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
-                >
-                  <option value={10}>10 videos</option>
-                  <option value={25}>25 videos</option>
-                  <option value={50}>50 videos</option>
-                  <option value={100}>100 videos</option>
-                  <option value={250}>250 videos</option>
-                  <option value={500}>500 videos</option>
-                  <option value={1000}>1000 videos</option>
-                  <option value={2000}>2000 videos</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  min="1"
+                  max="5000"
+                  className="w-20 pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium text-center focus:outline-none focus:ring-1 focus:ring-white/20"
+                />
+                <div className="relative inline-block">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const btn = e.currentTarget;
+                      const dropdown = btn.nextElementSibling as HTMLElement;
+                      if (dropdown) {
+                        dropdown.classList.toggle('hidden');
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Delay to allow click on dropdown items
+                      setTimeout(() => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown && !dropdown.matches(':hover')) {
+                          dropdown.classList.add('hidden');
+                        }
+                      }, 150);
+                    }}
+                    className="ml-1 p-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-gray-400 hover:text-white hover:bg-[#252528] transition-colors"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="hidden absolute right-0 mt-1 w-32 bg-[#1E1E20] border border-gray-700/50 rounded-lg shadow-xl z-10">
+                    {[10, 25, 50, 100, 250, 500, 1000, 2000].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const newInputs = [...accountInputs];
+                          newInputs[index].videoCount = preset;
+                          setAccountInputs(newInputs);
+                          // Close dropdown
+                          const dropdown = e.currentTarget.parentElement;
+                          if (dropdown) dropdown.classList.add('hidden');
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/5 first:rounded-t-lg last:rounded-b-lg transition-colors"
+                      >
+                        {preset} videos
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Delete button for additional inputs */}
