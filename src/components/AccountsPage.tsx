@@ -48,6 +48,7 @@ export interface AccountsPageProps {
 export interface AccountsPageRef {
   openAddModal: () => void;
   refreshData?: () => Promise<void>;
+  handleBackToTable: () => void;
 }
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
@@ -134,30 +135,30 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     });
 
     // UI State (Modals)
-    const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
-    const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
-    const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
-    const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
-    const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
-    const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
-    const [showActionsMenu, setShowActionsMenu] = useState(false);
-    const [showExportModal, setShowExportModal] = useState(false);
-    const actionsMenuRef = useRef<HTMLButtonElement>(null);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-    
-    // Pagination State
-    const [accountsCurrentPage, setAccountsCurrentPage] = useState(1);
-    const [accountsItemsPerPage, setAccountsItemsPerPage] = useState(() => {
-      const saved = localStorage.getItem('accounts_itemsPerPage');
-      return saved ? Number(saved) : 10;
-    });
+  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
+  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
+  const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
+  const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
+  const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const actionsMenuRef = useRef<HTMLButtonElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+    // Pagination State
+  const [accountsCurrentPage, setAccountsCurrentPage] = useState(1);
+  const [accountsItemsPerPage, setAccountsItemsPerPage] = useState(() => {
+    const saved = localStorage.getItem('accounts_itemsPerPage');
+    return saved ? Number(saved) : 10;
+  });
+  
     // Sync viewMode with internal state and props
-    useEffect(() => {
+  useEffect(() => {
       if (selectedAccount) {
         setViewMode('details');
         onViewModeChange('details');
@@ -168,18 +169,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }, [selectedAccount, onViewModeChange]);
 
     // Reset pagination on search
-    useEffect(() => {
+  useEffect(() => {
       setAccountsCurrentPage(1);
     }, [searchQuery]);
 
     // Save pagination pref
-    useEffect(() => {
-      localStorage.setItem('accounts_itemsPerPage', String(accountsItemsPerPage));
-    }, [accountsItemsPerPage]);
+  useEffect(() => {
+    localStorage.setItem('accounts_itemsPerPage', String(accountsItemsPerPage));
+  }, [accountsItemsPerPage]);
 
     // Restore selected account from localStorage on load
     const hasRestoredFromLocalStorage = useRef(false);
-    useEffect(() => {
+  useEffect(() => {
       if (!loading && accounts.length > 0 && !hasRestoredFromLocalStorage.current) {
         const savedAccountId = localStorage.getItem('selectedAccountId');
         if (savedAccountId) {
@@ -194,7 +195,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }, [loading, accounts, setSelectedAccount, loadAccountVideos]);
 
     // Save selected account to localStorage
-    useEffect(() => {
+  useEffect(() => {
       if (selectedAccount) {
         localStorage.setItem('selectedAccountId', selectedAccount.id);
       } else {
@@ -210,29 +211,30 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         if (selectedAccount) {
           await loadAccountVideos(selectedAccount.id);
         }
-      }
+      },
+      handleBackToTable
     }));
 
     // Handlers
     
-    const handleBackToTable = useCallback(() => {
-      setSelectedAccount(null);
-      navigate('/accounts');
-      setAccountVideos([]);
-      setAccountVideosSnapshots(new Map());
-      setViewMode('table');
-      onViewModeChange('table');
-      localStorage.removeItem('selectedAccountId');
+  const handleBackToTable = useCallback(() => {
+    setSelectedAccount(null);
+    navigate('/accounts');
+    setAccountVideos([]);
+    setAccountVideosSnapshots(new Map());
+    setViewMode('table');
+    onViewModeChange('table');
+    localStorage.removeItem('selectedAccountId');
     }, [navigate, setSelectedAccount, setAccountVideos, setAccountVideosSnapshots, onViewModeChange]);
 
     const handleVideoClick = useCallback(async (video: VideoSubmission) => {
-      if (!currentOrgId || !currentProjectId) return;
+    if (!currentOrgId || !currentProjectId) return;
       try {
         const snapshots = await FirestoreDataService.getVideoSnapshots(currentOrgId, currentProjectId, video.id);
         const videoWithSnapshots: VideoSubmission = { ...video, snapshots: snapshots };
         setSelectedVideoForAnalytics(videoWithSnapshots);
         setIsVideoAnalyticsModalOpen(true);
-      } catch (error) {
+    } catch (error) {
         console.error('❌ Failed to load snapshots:', error);
         setSelectedVideoForAnalytics(video);
         setIsVideoAnalyticsModalOpen(true);
@@ -249,7 +251,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             if (selectedAccount?.id === accountId) {
                 await loadAccountVideos(accountId);
             }
-        } catch (error) {
+      } catch (error) {
             const msg = error instanceof Error ? error.message : 'Unknown error';
             setShowToast({ message: `❌ Failed to sync @${accountName}: ${msg}`, type: 'error' });
         }
@@ -286,71 +288,71 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         // Cleanup handled by hook effect
     }, [currentOrgId, currentProjectId, user, setProcessingAccounts]);
 
-    const handleCopyAccountLinks = useCallback(() => {
-        const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
-        const links = selected.map(a => {
-          switch (a.platform) {
+  const handleCopyAccountLinks = useCallback(() => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    const links = selected.map(a => {
+      switch (a.platform) {
             case 'instagram': return `https://www.instagram.com/${a.username}`;
             case 'tiktok': return `https://www.tiktok.com/@${a.username}`;
             case 'youtube': return `https://www.youtube.com/@${a.username}`;
             case 'twitter': return `https://twitter.com/${a.username}`;
             default: return '';
-          }
-        }).join('\n');
-        navigator.clipboard.writeText(links);
-        setShowActionsMenu(false);
-        setShowToast({ message: `Copied ${selected.length} account link${selected.length !== 1 ? 's' : ''} to clipboard`, type: 'success' });
-    }, [processedAccounts, selectedAccounts]);
+      }
+    }).join('\n');
+    navigator.clipboard.writeText(links);
+    setShowActionsMenu(false);
+    setShowToast({ message: `Copied ${selected.length} account link${selected.length !== 1 ? 's' : ''} to clipboard`, type: 'success' });
+  }, [processedAccounts, selectedAccounts]);
 
     const handleBulkDeleteAccounts = useCallback(() => {
         if (selectedAccounts.size === 0) return;
-        setShowActionsMenu(false);
+    setShowActionsMenu(false);
         setTimeout(() => setShowDeleteConfirm(true), 10);
     }, [selectedAccounts]);
 
-    const confirmBulkDeleteAccounts = useCallback(async () => {
-        const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
-        const count = selected.length;
-        const selectedIds = new Set(selected.map(a => a.id));
-        
+  const confirmBulkDeleteAccounts = useCallback(async () => {
+    const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
+    const count = selected.length;
+    const selectedIds = new Set(selected.map(a => a.id));
+      
         // Optimistic UI Update
-        setShowActionsMenu(false);
-        setSelectedAccounts(new Set());
-        setAccounts(prev => prev.filter(a => !selectedIds.has(a.id)));
-        setFilteredAccounts(prev => prev.filter(a => !selectedIds.has(a.id)));
-        
-        if (selectedAccount && selectedIds.has(selectedAccount.id)) {
+      setShowActionsMenu(false);
+      setSelectedAccounts(new Set());
+      setAccounts(prev => prev.filter(a => !selectedIds.has(a.id)));
+      setFilteredAccounts(prev => prev.filter(a => !selectedIds.has(a.id)));
+      
+      if (selectedAccount && selectedIds.has(selectedAccount.id)) {
             handleBackToTable();
-        }
-        
+      }
+      
         // Background Deletion
-        (async () => {
-            try {
+      (async () => {
+        try {
                 await Promise.all(selected.map(account =>
-                    AccountTrackingServiceFirebase.removeAccount(
+              AccountTrackingServiceFirebase.removeAccount(
                         currentOrgId!, currentProjectId!, account.id, account.username, account.platform
                     ).catch(console.error)
                 ));
             } catch (error) { console.error('Bulk delete failed', error); }
-        })();
-        
-        setShowToast({ message: `Deleting ${count} account${count !== 1 ? 's' : ''}...`, type: 'success' });
+      })();
+      
+      setShowToast({ message: `Deleting ${count} account${count !== 1 ? 's' : ''}...`, type: 'success' });
         setShowDeleteConfirm(false);
     }, [processedAccounts, selectedAccounts, currentOrgId, currentProjectId, selectedAccount, handleBackToTable, setAccounts, setFilteredAccounts, setSelectedAccounts]);
 
     const handleRemoveAccount = useCallback((id: string) => {
         const account = processedAccounts.find(a => a.id === id);
-        if (!account) return;
+    if (!account) return;
         setAccountToDelete(account);
-        setShowDeleteModal(true);
+    setShowDeleteModal(true);
     }, [processedAccounts]);
 
-    const confirmDeleteAccount = useCallback(async () => {
-        if (!currentOrgId || !currentProjectId || !accountToDelete) return;
+  const confirmDeleteAccount = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || !accountToDelete) return;
         const { id, username, platform } = accountToDelete;
         
-        setShowDeleteModal(false);
-        setAccountToDelete(null);
+    setShowDeleteModal(false);
+    setAccountToDelete(null);
         
         // Optimistic
         setAccounts(prev => prev.filter(a => a.id !== id));
@@ -358,11 +360,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         if (selectedAccount?.id === id) handleBackToTable();
         
         // Background
-        (async () => {
-            try {
+    (async () => {
+      try {
                 await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, id, username, platform);
             } catch (e) { console.error(e); alert(`Failed to delete @${username}`); }
-        })();
+    })();
     }, [accountToDelete, currentOrgId, currentProjectId, selectedAccount, handleBackToTable, setAccounts, setFilteredAccounts]);
 
     const handleExportAccounts = useCallback((filename: string) => {
@@ -382,35 +384,35 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     if (loading) return <PageLoadingSkeleton type="accounts" />;
     if (!user || !currentOrgId) return <PageLoadingSkeleton type="accounts" />;
 
-    return (
-        <div className="space-y-6">
-            {/* Error Display */}
+  return (
+    <div className="space-y-6">
+      {/* Error Display */}
             {hookSyncError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-500" />
                     <p className="text-red-700">{hookSyncError}</p>
                     <button onClick={() => setSyncError(null)} className="ml-auto text-red-500 hover:text-red-700">×</button>
-                </div>
-            )}
+        </div>
+      )}
 
-            {viewMode === 'table' ? (
-                <div className="space-y-6">
-                    {!loading && accounts.length === 0 && processingAccounts.length === 0 ? (
-                        <BlurEmptyState
-                            title="Add Your First Account to Track"
-                            description="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement, and growth."
-                            animation={profileAnimation}
+      {viewMode === 'table' ? (
+        <div className="space-y-6">
+          {!loading && accounts.length === 0 && processingAccounts.length === 0 ? (
+            <BlurEmptyState
+              title="Add Your First Account to Track"
+              description="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement, and growth."
+              animation={profileAnimation}
                             tooltipText="Track accounts to get started."
                             actions={[{
-                                label: isDemoMode ? "Can't Add - Not Your Org" : 'Add Account',
+                  label: isDemoMode ? "Can't Add - Not Your Org" : 'Add Account',
                                 onClick: () => !isDemoMode && setIsAddModalOpen(true),
-                                icon: Plus,
-                                primary: true,
-                                disabled: isDemoMode
+                  icon: Plus,
+                  primary: true,
+                  disabled: isDemoMode
                             }]}
-                        />
-                    ) : (
-                        <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
+            />
+          ) : (
+          <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
                             <AccountsHeader
                                 dateFilter={dateFilter}
                                 selectedCount={selectedAccounts.size}
@@ -428,7 +430,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 selectedAccounts={selectedAccounts} 
                                 syncingAccounts={syncingAccounts} 
                                 sortBy={sortBy} 
-                                sortOrder={sortOrder}
+                      sortOrder={sortOrder}
                                 accountCreatorNames={accountCreatorNames} 
                                 imageErrors={imageErrors} 
                                 onSort={(key) => {
@@ -450,7 +452,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                         // AccountsTable renders pendingAccounts too.
                                         pendingAccounts.forEach(a => allIds.add(a.id));
                                         setSelectedAccounts(allIds);
-                                    } else {
+                        } else {
                                         setSelectedAccounts(new Set());
                                     }
                                 }}
@@ -463,35 +465,35 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 onNavigate={(url) => navigate(url)} 
                                 onImageError={(id) => setImageErrors(prev => new Set(prev).add(id))} 
                             />
-                            <div className="mt-6">
-                                <Pagination
-                                    currentPage={accountsCurrentPage}
-                                    totalPages={Math.ceil(processedAccounts.length / accountsItemsPerPage)}
-                                    totalItems={processedAccounts.length}
-                                    itemsPerPage={accountsItemsPerPage}
+          <div className="mt-6">
+            <Pagination
+              currentPage={accountsCurrentPage}
+              totalPages={Math.ceil(processedAccounts.length / accountsItemsPerPage)}
+              totalItems={processedAccounts.length}
+              itemsPerPage={accountsItemsPerPage}
                                     onPageChange={(page) => { setAccountsCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                     onItemsPerPageChange={(newItemsPerPage) => { setAccountsItemsPerPage(newItemsPerPage); setAccountsCurrentPage(1); }}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                selectedAccount && (
+            />
+          </div>
+          </div>
+          )}
+        </div>
+      ) : (
+        selectedAccount && (
                     <AccountDetailsView
                         selectedAccount={selectedAccount}
                         loading={loadingAccountDetail}
                         accountVideos={accountVideos}
                         allAccountVideos={allAccountVideos}
                         accountVideosSnapshots={accountVideosSnapshots}
-                        dateFilter={dateFilter}
+                    dateFilter={dateFilter}
                         trackedLinks={trackedLinks}
                         linkClicks={linkClicks}
                         accountCreatorNames={accountCreatorNames}
                         isSyncing={isSyncing}
                         onSyncAccount={handleSyncAccount}
                         onAttachCreator={() => setShowAttachCreatorModal(true)}
-                        onCreateLink={() => setShowCreateLinkModal(true)}
+                    onCreateLink={() => setShowCreateLinkModal(true)}
                         onVideoClick={handleVideoClick}
                     />
                 )
@@ -505,29 +507,29 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 usageLimits={usageLimits}
             />
             
-            {selectedVideoForPlayer && (
-                <VideoPlayerModal
-                    isOpen={videoPlayerOpen}
+      {selectedVideoForPlayer && (
+        <VideoPlayerModal
+          isOpen={videoPlayerOpen}
                     onClose={() => { setVideoPlayerOpen(false); setSelectedVideoForPlayer(null); }}
-                    videoUrl={selectedVideoForPlayer.url}
-                    title={selectedVideoForPlayer.title}
-                    platform={selectedVideoForPlayer.platform}
-                />
-            )}
+          videoUrl={selectedVideoForPlayer.url}
+          title={selectedVideoForPlayer.title}
+          platform={selectedVideoForPlayer.platform}
+        />
+      )}
 
-            <VideoAnalyticsModal
-                video={selectedVideoForAnalytics}
-                isOpen={isVideoAnalyticsModalOpen}
+      <VideoAnalyticsModal
+        video={selectedVideoForAnalytics}
+        isOpen={isVideoAnalyticsModalOpen}
                 onClose={() => { setIsVideoAnalyticsModalOpen(false); setSelectedVideoForAnalytics(null); }}
-                onDelete={async () => {
-                    if (selectedAccount && currentOrgId && currentProjectId) {
-                        await loadAccountVideos(selectedAccount.id);
+        onDelete={async () => {
+          if (selectedAccount && currentOrgId && currentProjectId) {
+              await loadAccountVideos(selectedAccount.id);
                     }
                 }}
                 totalCreatorVideos={selectedVideoForAnalytics ? allAccountVideos.filter(v => v.uploaderHandle === selectedVideoForAnalytics.uploaderHandle).length : undefined}
-                orgId={currentOrgId}
-                projectId={currentProjectId}
-            />
+        orgId={currentOrgId}
+        projectId={currentProjectId}
+      />
 
             <DeleteAccountModal
                 isOpen={showDeleteModal}
@@ -536,17 +538,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 account={accountToDelete}
             />
 
-            {showCreateLinkModal && selectedAccount && (
-                <CreateLinkModal
-                    isOpen={showCreateLinkModal}
-                    onClose={() => setShowCreateLinkModal(false)}
+      {showCreateLinkModal && selectedAccount && (
+        <CreateLinkModal
+          isOpen={showCreateLinkModal}
+          onClose={() => setShowCreateLinkModal(false)}
                     onCreate={() => {
                         // Refresh logic if needed
                         setShowCreateLinkModal(false);
                     }}
-                    preselectedAccountId={selectedAccount.id}
-                />
-            )}
+          preselectedAccountId={selectedAccount.id}
+        />
+      )}
 
             <AttachCreatorModal
                 isOpen={showAttachCreatorModal}
@@ -558,44 +560,44 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 userId={user?.uid || ''}
                 onSuccess={(creatorName) => {
                     if (selectedAccount) {
-                        setAccountCreatorNames(prev => {
-                            const updated = new Map(prev);
-                            updated.set(selectedAccount.id, creatorName);
-                            return updated;
-                        });
+                              setAccountCreatorNames(prev => {
+                                const updated = new Map(prev);
+                                updated.set(selectedAccount.id, creatorName);
+                                return updated;
+                              });
                     }
                 }}
             />
 
-            <ExportVideosModal
-                isOpen={showExportModal}
-                onClose={() => setShowExportModal(false)}
-                onExport={handleExportAccounts}
-                selectedCount={selectedAccounts.size}
-            />
+      <ExportVideosModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExportAccounts}
+        selectedCount={selectedAccounts.size}
+      />
 
-            <ConfirmDialog
-                isOpen={showDeleteConfirm}
-                title="Delete Accounts"
-                message={`⚠️ You are about to delete ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}\n\nThis will permanently delete:\n• ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}\n• ${deleteTotalVideosCount} video${deleteTotalVideosCount !== 1 ? 's' : ''}\n• All associated snapshots and data\n\nThis action CANNOT be undone!`}
-                confirmText="Delete Accounts"
-                cancelText="Cancel"
-                requireTyping={true}
-                typingConfirmation="DELETE"
-                onConfirm={confirmBulkDeleteAccounts}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Accounts"
+        message={`⚠️ You are about to delete ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}\n\nThis will permanently delete:\n• ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}\n• ${deleteTotalVideosCount} video${deleteTotalVideosCount !== 1 ? 's' : ''}\n• All associated snapshots and data\n\nThis action CANNOT be undone!`}
+        confirmText="Delete Accounts"
+        cancelText="Cancel"
+        requireTyping={true}
+        typingConfirmation="DELETE"
+        onConfirm={confirmBulkDeleteAccounts}
                 onCancel={() => setShowDeleteConfirm(false)}
-                isDanger={true}
-            />
+        isDanger={true}
+      />
 
-            {showToast && (
-                <Toast
-                    message={showToast.message}
-                    type={showToast.type}
-                    onClose={() => setShowToast(null)}
-                />
-            )}
-        </div>
-    );
+      {showToast && (
+        <Toast
+          message={showToast.message}
+          type={showToast.type}
+          onClose={() => setShowToast(null)}
+        />
+      )}
+    </div>
+  );
   }
 );
 

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
@@ -40,7 +40,7 @@ export const useAccounts = ({
   creatorFilterId,
   isDemoMode
 }: UseAccountsProps) => {
-  const { user, orgId: authOrgId, projectId: authProjectId } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   const currentOrgId = organizationId || authOrgId;
   const currentProjectId = projectId || authProjectId;
@@ -93,6 +93,13 @@ export const useAccounts = ({
 
   // Other State
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Helper for dates
+  const toDate = (date: any): Date => {
+    if (!date) return new Date();
+    if (date && typeof date.toDate === 'function') return date.toDate();
+    return new Date(date);
+  };
 
   // --- Effects ---
 
@@ -168,19 +175,9 @@ export const useAccounts = ({
         const creatorsList = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
         setCreators(creatorsList);
         
-        // Creator Names Map
-        const namesMap = new Map<string, string>();
-        const linkedIds: string[] = [];
-        
         // Links
-        const links = await FirestoreDataService.getTrackedLinks(currentOrgId, currentProjectId);
+        const links = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
         setTrackedLinks(links);
-        
-        // Creator Links Logic
-        // Ideally fetching creator links for all accounts?
-        // AccountsPage did this iteratively or on demand?
-        // Let's check AccountsPage logic for accountCreatorNames.
-        // It was done in filteredAccounts useEffect.
         
         // Usage Limits
         if (user) {
@@ -199,7 +196,7 @@ export const useAccounts = ({
         }
 
         // Link Clicks (Last 30 days default)
-        const clicks = await LinkClicksService.getLinkClicks(currentOrgId, currentProjectId, { period: 'last_30_days' });
+        const clicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId, 5000);
         setLinkClicks(clicks);
 
       } catch (error) {
@@ -214,11 +211,11 @@ export const useAccounts = ({
     const loadCreatorNames = async () => {
         if (!currentOrgId || !currentProjectId || accounts.length === 0) return;
         const map = new Map<string, string>();
-        const linked = [];
+        const linked: string[] = [];
+        
         // Optimization: Fetch all links once instead of per account?
         // CreatorLinksService doesn't have batch get?
         // AccountsPage was fetching iteratively in useEffect.
-        // We can replicate or optimize.
         for (const acc of accounts) {
             try {
                 const name = await CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, acc.id);
@@ -258,17 +255,12 @@ export const useAccounts = ({
             }
         }
         
-        setAllAccountVideos(rulesFilteredVideos); // "all" in context of rules? Or really ALL?
-        // AccountsPage setAllAccountVideos to rulesFilteredVideos?
-        // L1274: setAllAccountVideos(rulesFilteredVideos);
-        // Then it filtered by DATE for setAccountVideos.
+        setAllAccountVideos(rulesFilteredVideos); 
         
         // Apply Date Filter
-        // Logic...
         const filteredByDate = rulesFilteredVideos.filter(video => {
-            const date = video.uploadDate ? (video.uploadDate.toDate ? video.uploadDate.toDate() : new Date(video.uploadDate)) : new Date();
-            // ... date filter logic ...
-            // Replicate AccountsPage logic (L1380 approx)
+            const date = video.uploadDate ? ((video.uploadDate as any).toDate ? (video.uploadDate as any).toDate() : new Date(video.uploadDate)) : new Date();
+            
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
@@ -280,7 +272,13 @@ export const useAccounts = ({
                 case 'last14days': { const d = new Date(today); d.setDate(d.getDate() - 14); return date >= d; }
                 case 'last30days': { const d = new Date(today); d.setDate(d.getDate() - 30); return date >= d; }
                 case 'last90days': { const d = new Date(today); d.setDate(d.getDate() - 90); return date >= d; }
-                // ... other cases ...
+                case 'mtd': { const d = new Date(now.getFullYear(), now.getMonth(), 1); return date >= d; }
+                case 'lastmonth': { 
+                    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+                    return date >= start && date <= end;
+                }
+                case 'ytd': { const d = new Date(now.getFullYear(), 0, 1); return date >= d; }
                 case 'all': default: return true;
             }
         });
@@ -294,60 +292,12 @@ export const useAccounts = ({
     }
   }, [currentOrgId, currentProjectId, accounts, selectedRuleIds, dashboardRules, dateFilter]);
 
-  // Calculate Stats & Filter Accounts (The BIG useEffect)
-  // Replicate "processedAccounts" logic (renamed to finalAccounts here?)
-  // AccountsPage had `filteredAccounts` state and `processedAccounts` memo.
-  // I should merge them.
-  
-  // Step 1: Calculate stats for ALL accounts (Effect)
+  // Calculate Stats & Filter Accounts
   useEffect(() => {
-    // ... calculate filtered stats based on rules/date ...
-    // This updates `filteredAccounts` state.
-    // Logic from AccountsPage lines 500-900
-    // I'll define this function below
     const updateStats = () => {
-        // ...
         if (!accounts.length) { setFilteredAccounts([]); return; }
         
         const results = accounts.map(account => {
-            // For now, just return account with defaults if calculation is heavy?
-            // No, we need stats.
-            // But calculation requires VIDEOS. We don't have videos for ALL accounts loaded!
-            // AccountsPage assumed `account.totalVideos` etc from Firestore?
-            // AccountsPage `useEffect` (L500) iterates accounts.
-            // But it doesn't fetch videos.
-            // It uses `account` properties directly?
-            // No, `filteredAccounts` logic in AccountsPage calculated stats from... where?
-            // L500: `const calculateStats = async () => { ... }`
-            // It was commented out? Or effective?
-            // L500-L900 was HUGE.
-            // It checks `accountVideos`? No, that's selected account.
-            
-            // Wait, `AccountsPage` L500:
-            /*
-            // Calculate filtered stats for each account
-            useEffect(() => {
-              if (accounts.length === 0) return;
-              
-              const calculateStats = async () => {
-                 // It iterates accounts.
-                 // For each, it fetches videos? NO, that would be kill.
-                 // It uses `account` data?
-                 // Ah, `filteredTotalVideos` etc are calculated how?
-                 // "This is complex - for now we just use the account totals if no filter/rules"
-                 // If date filter/rules, we might need aggregation from backend?
-                 // Or we just use the `account` document which has `totalVideos` etc.
-                 // AccountsPage logic was:
-                 // "If no rules/date filter, use account totals."
-                 // "If filters, we might show totals but filtered?"
-                 // Actually, the AccountsPage implementation seemed to rely on CLIENT-SIDE filtering of something?
-                 // But we don't load all videos for all accounts.
-                 // So `filteredTotalVideos` was likely just `totalVideos` unless we have data.
-            */
-            
-            // Simplification: Just map accounts to AccountWithFilteredStats using their own properties.
-            // Unless we want to implement the complex backend aggregation.
-            
             const stats: AccountWithFilteredStats = {
                 ...account,
                 filteredTotalVideos: account.totalVideos || 0,
@@ -356,14 +306,13 @@ export const useAccounts = ({
                 filteredTotalComments: account.totalComments || 0,
                 filteredTotalShares: account.totalShares || 0,
                 filteredTotalBookmarks: 0,
-                // ...
             };
             return stats;
         });
         setFilteredAccounts(results);
     };
     updateStats();
-  }, [accounts, dateFilter, selectedRuleIds]); // simplified dependencies
+  }, [accounts, dateFilter, selectedRuleIds]);
 
   // Processed Accounts (Filtering & Sorting)
   const processedAccounts = useMemo(() => {
@@ -392,7 +341,6 @@ export const useAccounts = ({
         switch (sortBy) {
             case 'username': res = a.username.localeCompare(b.username); break;
             case 'followers': res = (a.followerCount || 0) - (b.followerCount || 0); break;
-            // ... other sort cases ...
             case 'videos': res = (a.filteredTotalVideos || 0) - (b.filteredTotalVideos || 0); break;
             case 'views': res = (a.filteredTotalViews || 0) - (b.filteredTotalViews || 0); break;
             case 'dateAdded': res = (toDate(a.dateAdded).getTime()) - (toDate(b.dateAdded).getTime()); break;
@@ -401,12 +349,6 @@ export const useAccounts = ({
         return sortOrder === 'asc' ? res : -res;
     });
   }, [filteredAccounts, accounts, accountFilterId, creatorFilterId, creatorLinkedAccountIds, platformFilter, searchQuery, sortBy, sortOrder]);
-
-  const toDate = (date: any): Date => {
-    if (!date) return new Date();
-    if (date && typeof date.toDate === 'function') return date.toDate();
-    return new Date(date);
-  };
 
   // Handlers
   const handleSyncAccount = useCallback(async (accountId: string) => {
@@ -421,10 +363,6 @@ export const useAccounts = ({
     }
     finally { setIsSyncing(null); }
   }, [currentOrgId, currentProjectId, user]);
-
-  const handleBulkDeleteAccounts = useCallback(async () => {
-    // Logic handled in UI for now (Modal)
-  }, []);
 
   const retryFailedAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -475,7 +413,7 @@ export const useAccounts = ({
   return {
     // Data
     accounts,
-    processedAccounts, // The final list to display
+    processedAccounts,
     processingAccounts,
     loading,
     error,
@@ -527,10 +465,9 @@ export const useAccounts = ({
     // Misc
     currentOrgId,
     currentProjectId,
-    setProcessingAccounts, // needed for adding accounts
-    user, // needed for modals
-    setAccounts, // needed for instant delete
-    setFilteredAccounts // needed for instant delete
+    setProcessingAccounts,
+    user,
+    setAccounts,
+    setFilteredAccounts
   };
 };
-

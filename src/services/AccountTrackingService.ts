@@ -69,6 +69,8 @@ export class AccountTrackingService {
         postCount: profileData.postCount,
         bio: profileData.bio,
         isVerified: profileData.isVerified,
+        orgId: 'local-demo-org',
+        addedBy: 'local-user',
         dateAdded: new Date(),
         lastSynced: undefined,
         isActive: true,

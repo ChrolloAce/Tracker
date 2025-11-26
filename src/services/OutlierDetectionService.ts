@@ -68,7 +68,7 @@ class OutlierDetectionService {
     const allOutliers: VideoOutlier[] = [];
 
     videos.forEach(video => {
-      const views = video.views || video.viewsCount || video.playsCount || 0;
+      const views = video.views || video.viewsCount || video.playCount || 0;
       const likes = video.likes || video.likesCount || 0;
       const comments = video.comments || video.commentsCount || 0;
       const shares = video.shares || video.sharesCount || 0;

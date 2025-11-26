@@ -40,6 +40,8 @@ export class SyncCoordinator {
     
     const account: TrackedAccount = {
       id: firestoreAccount.id,
+      orgId: firestoreAccount.orgId,
+      addedBy: firestoreAccount.addedBy,
       username: firestoreAccount.username,
       platform: firestoreAccount.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
       accountType: firestoreAccount.accountType as 'my' | 'competitor',
@@ -154,13 +156,13 @@ export class SyncCoordinator {
       try {
         // Create a snapshot for the updated metrics
         if (video.id) {
-            await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, userId, {
-              views: video.views || 0,
-              likes: video.likes || 0,
-              comments: video.comments || 0,
-              shares: video.shares || 0
-            });
-            savedCount++;
+        await FirestoreDataService.addVideoSnapshot(orgId, projectId, video.id, userId, {
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0
+        });
+        savedCount++;
         }
       } catch (error) {
         console.error(`❌ Failed to update video ${video.videoId}:`, error);

@@ -81,6 +81,8 @@ export interface AccountVideo {
   syncRequestedAt?: any;
   syncRetryCount?: number;
   commentsDelta30d?: number;
+  isSponsored?: boolean;
+  saves?: number;
 }
 
 export interface VideoSubmission extends AccountVideo {
