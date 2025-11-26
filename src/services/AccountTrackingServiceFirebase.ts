@@ -29,6 +29,8 @@ export class AccountTrackingServiceFirebase {
       // Convert Firestore format to TrackedAccount format
       return firestoreAccounts.map(acc => ({
         id: acc.id,
+        orgId: acc.orgId,
+        addedBy: acc.addedBy,
         username: acc.username,
         platform: acc.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
         accountType: acc.accountType as 'my' | 'competitor',
