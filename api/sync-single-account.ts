@@ -156,25 +156,25 @@ export default async function handler(
     
     if (!lockResult.acquired) {
       console.log(`⏭️  Account ${accountId} is locked by another job (age: ${lockResult.lockAge}s), skipping to prevent duplicates`);
-      
-      // Delete this job since account is being processed
-      if (jobId) {
-        try {
-          await db.collection('syncQueue').doc(jobId).delete();
-          console.log(`   ✅ Job ${jobId} deleted (duplicate prevented)`);
-        } catch (err: any) {
-          console.warn(`   ⚠️  Could not delete job:`, err.message);
+        
+        // Delete this job since account is being processed
+        if (jobId) {
+          try {
+            await db.collection('syncQueue').doc(jobId).delete();
+            console.log(`   ✅ Job ${jobId} deleted (duplicate prevented)`);
+          } catch (err: any) {
+            console.warn(`   ⚠️  Could not delete job:`, err.message);
+          }
         }
-      }
-      
-      return res.status(200).json({ 
-        success: true,
-        skipped: true,
+        
+        return res.status(200).json({ 
+          success: true,
+          skipped: true,
         reason: lockResult.reason,
         lockAge: lockResult.lockAge
-      });
+        });
     }
-    console.log(`🔒 Acquired sync lock: ${lockKey}`);
+      console.log(`🔒 Acquired sync lock: ${lockKey}`);
     // ==================== END FIX #1 ====================
 
     const account = accountDoc.data() as any;
@@ -267,7 +267,7 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          const result = await TikTokSyncService.discovery(account, orgId, existingVideoIds);
+          const result = await TikTokSyncService.discovery(account, orgId, existingVideoIds, maxVideos);
           newTikTokVideos = result.videos;
           
           // Profile handling from discovery result
@@ -318,8 +318,8 @@ export default async function handler(
             }));
             
             tiktokVideos.push(...markedRefreshedVideos);
-          } catch (refreshError) {
-            console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
+            } catch (refreshError) {
+              console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
           }
         }
         
@@ -361,7 +361,7 @@ export default async function handler(
         // ===== NEW VIDEO DISCOVERY =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
           // Pass channel handle via username, and ID if present
-          const result = await YoutubeSyncService.discovery(account, orgId, existingVideoIds);
+          const result = await YoutubeSyncService.discovery(account, orgId, existingVideoIds, maxVideos);
           newYouTubeVideos = result.videos;
           
           // Profile handling
@@ -369,33 +369,33 @@ export default async function handler(
              const profile = result.profile;
              console.log(`✅ Fetched profile: ${profile.followersCount || 0} subscribers`);
              
-             const profileUpdates: any = {
+          const profileUpdates: any = {
                displayName: profile.displayName,
                followerCount: profile.followersCount || 0,
                isVerified: profile.isVerified || false
-             };
-             
+          };
+          
              if (profile.profilePicUrl) {
-               try {
+            try {
                  const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
                    profile.profilePicUrl,
-                   orgId,
-                   `youtube_profile_${account.username}.jpg`,
-                   'profile'
-                 );
-                 profileUpdates.profilePicture = uploadedProfilePic;
+                orgId,
+                `youtube_profile_${account.username}.jpg`,
+                'profile'
+              );
+              profileUpdates.profilePicture = uploadedProfilePic;
                } catch (err: any) {
                  console.warn('⚠️ Could not upload profile pic:', err.message);
-               }
-             }
-             
-             await accountRef.update(profileUpdates);
+            }
+          }
+          
+          await accountRef.update(profileUpdates);
           }
         } else if (syncStrategy === 'refresh_only') {
           console.log(`🔄 [YOUTUBE] Refresh-only mode - skipping new video discovery`);
         } else {
           console.log(`🔒 [YOUTUBE] Static account - skipping new video discovery`);
-        }
+            }
         
         const youtubeVideos = newYouTubeVideos;
         
@@ -427,7 +427,7 @@ export default async function handler(
            if (profile) {
              console.log(`✅ Fetched profile: ${profile.followersCount} followers`);
              
-             const profileUpdates: any = {
+          const profileUpdates: any = {
                 displayName: profile.displayName,
                 followerCount: profile.followersCount,
                 followingCount: profile.followingCount,
@@ -438,64 +438,64 @@ export default async function handler(
                 try {
                     const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
                         profile.profilePicUrl,
-                        orgId,
-                        `twitter_profile_${account.username}.jpg`,
-                        'profile'
-                    );
-                    profileUpdates.profilePicture = uploadedProfilePic;
+              orgId,
+              `twitter_profile_${account.username}.jpg`,
+              'profile'
+            );
+            profileUpdates.profilePicture = uploadedProfilePic;
                 } catch (uploadError: any) {
                     console.warn('⚠️ Could not upload profile pic:', uploadError.message);
                 }
-             }
-             
-             await accountRef.update(profileUpdates);
-           }
-        } catch (profileError) {
-             console.error('Profile fetch error:', profileError);
+          }
+          
+          await accountRef.update(profileUpdates);
         }
+      } catch (profileError) {
+        console.error('Profile fetch error:', profileError);
+      }
       
-        const creatorType = account.creatorType || 'automatic';
-        console.log(`🔧 Account type: ${creatorType}`);
-        
+      const creatorType = account.creatorType || 'automatic';
+      console.log(`🔧 Account type: ${creatorType}`);
+      
         let newTweets: any[] = [];
-        
+      
         // Get existing tweet IDs
-        const existingTweetsSnapshot = await db
-          .collection('organizations')
-          .doc(orgId)
-          .collection('projects')
-          .doc(projectId)
-          .collection('videos')
-          .where('trackedAccountId', '==', accountId)
-          .where('platform', '==', 'twitter')
-          .select('videoId')
-          .get();
-        
-        const existingTweetIds = new Set(
-          existingTweetsSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-        );
-        
-        console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
-        
+      const existingTweetsSnapshot = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .where('trackedAccountId', '==', accountId)
+        .where('platform', '==', 'twitter')
+        .select('videoId')
+        .get();
+      
+      const existingTweetIds = new Set(
+        existingTweetsSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
+      );
+      
+      console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
+      
         // ===== NEW TWEET DISCOVERY =====
-        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-           newTweets = await TwitterSyncService.discovery(account, orgId, existingTweetIds);
-        } else if (syncStrategy === 'refresh_only') {
-           console.log(`🔄 [TWITTER] Refresh-only mode - skipping new tweet discovery`);
-        } else {
-           console.log(`🔒 [TWITTER] Static account - skipping new tweet discovery`);
-        }
-        
+      if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+           newTweets = await TwitterSyncService.discovery(account, orgId, existingTweetIds, maxVideos);
+      } else if (syncStrategy === 'refresh_only') {
+        console.log(`🔄 [TWITTER] Refresh-only mode - skipping new tweet discovery`);
+      } else {
+        console.log(`🔒 [TWITTER] Static account - skipping new tweet discovery`);
+      }
+      
         const tweets = newTweets;
         
         // ===== REFRESH EXISTING TWEETS =====
-        if (existingTweetIds.size > 0) {
+      if (existingTweetIds.size > 0) {
            try {
              const refreshedTweets = await TwitterSyncService.refresh(account, orgId, Array.from(existingTweetIds));
              tweets.push(...refreshedTweets);
-           } catch (refreshError) {
-             console.error('⚠️ [TWITTER] Failed to refresh existing tweets (non-fatal):', refreshError);
-           }
+        } catch (refreshError) {
+          console.error('⚠️ [TWITTER] Failed to refresh existing tweets (non-fatal):', refreshError);
+        }
         }
         
         console.log(`📊 [TWITTER] Processing ${tweets.length} tweets`);
@@ -535,7 +535,7 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          const result = await InstagramSyncService.discovery(account, orgId, existingVideoIds);
+          const result = await InstagramSyncService.discovery(account, orgId, existingVideoIds, maxVideos);
           newInstagramReels = result.videos;
           
           // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
@@ -570,16 +570,16 @@ export default async function handler(
                   console.log(`🔍 Marking video ${videoCode} as deleted/restricted in database...`);
                   
                   const videoQuery = await db
-                    .collection('organizations')
-                    .doc(orgId)
-                    .collection('projects')
-                    .doc(projectId)
-                    .collection('videos')
+              .collection('organizations')
+              .doc(orgId)
+              .collection('projects')
+              .doc(projectId)
+              .collection('videos')
                     .where('videoId', '==', videoCode)
-                    .where('platform', '==', 'instagram')
+              .where('platform', '==', 'instagram')
                     .limit(1)
-                    .get();
-                  
+              .get();
+            
                   if (!videoQuery.empty) {
                     const videoRef = videoQuery.docs[0].ref;
                     await videoRef.update({
@@ -591,15 +591,15 @@ export default async function handler(
                               reel.error.includes('private') ? 'private' : 'deleted',
                         message: reel.error,
                         detectedAt: Timestamp.now()
-                      }
-                    });
+          }
+        });
                     console.log(`✅ Marked video ${videoCode} with error status: ${reel.error}`);
                   }
                 }
                 continue;
               }
-              
-              // Add refreshed reels to instagramItems array (will be processed together)
+                
+                // Add refreshed reels to instagramItems array (will be processed together)
               instagramItems.push(reel);
             }
           } catch (refreshError) {
@@ -610,39 +610,39 @@ export default async function handler(
         console.log(`📦 Total reels to process: ${instagramItems.length}`);
         
         // Profile Update
-        try {
+      try {
           const profile = await InstagramSyncService.getProfile(account.username);
           if (profile) {
             console.log(`✅ Fetched profile: ${profile.followersCount || 0} followers`);
-            
-            const profileUpdates: any = {
-              displayName: profile.fullName || account.username,
-              followerCount: profile.followersCount || 0,
-              followingCount: profile.followsCount || 0,
-              isVerified: profile.verified || false
-            };
+          
+          const profileUpdates: any = {
+            displayName: profile.fullName || account.username,
+            followerCount: profile.followersCount || 0,
+            followingCount: profile.followsCount || 0,
+            isVerified: profile.verified || false
+          };
 
             if (profile.profilePicUrl) {
-              try {
+            try {
                 console.log(`📸 Downloading Instagram profile pic for @${account.username}...`);
                 const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
                   profile.profilePicUrl,
-                  orgId,
-                  `instagram_profile_${account.username}.jpg`,
-                  'profile'
-                );
+                orgId,
+                `instagram_profile_${account.username}.jpg`,
+                'profile'
+              );
                 profileUpdates.profilePicture = uploadedProfilePic;
                 console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
               } catch (uploadError: any) {
-                console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+              console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
                 console.warn(`⚠️ Skipping profile picture - will retry on next sync`);
-              }
             }
-
-            await accountRef.update(profileUpdates);
-            console.log(`✅ Updated Instagram profile: ${profile.fullName || account.username}`);
           }
-        } catch (profileError) {
+
+          await accountRef.update(profileUpdates);
+            console.log(`✅ Updated Instagram profile: ${profile.fullName || account.username}`);
+        }
+      } catch (profileError) {
           console.error(`❌ Failed to fetch profile via apify/instagram-profile-scraper:`, profileError);
         }
         
@@ -670,7 +670,7 @@ export default async function handler(
     const savedCount = await VideoStorageService.saveVideos(
       videos,
       account,
-      orgId,
+            orgId,
       projectId,
       db
     );

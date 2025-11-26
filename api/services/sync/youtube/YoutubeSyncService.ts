@@ -24,16 +24,17 @@ export class YoutubeSyncService {
   static async discovery(
     account: { username: string; id: string; youtubeChannelId?: string },
     orgId: string,
-    existingVideos: Map<string, any>
+    existingVideos: Map<string, any>,
+    limit: number = 10
   ): Promise<{ videos: any[], profile?: any }> {
-    console.log(`🔍 [YOUTUBE] Forward discovery - fetching 10 most recent Shorts...`);
+    console.log(`🔍 [YOUTUBE] Forward discovery - fetching ${limit} most recent Shorts...`);
     
     // Get channelId (optional but recommended)
     const channelId = account.youtubeChannelId;
     
     try {
       const scraperInput: any = {
-        maxResults: 10,
+        maxResults: limit,
         sortBy: 'latest',
         proxy: {
           useApifyProxy: true,
@@ -63,9 +64,9 @@ export class YoutubeSyncService {
       
       // Validate channel ownership (all videos should be from the same channel)
       if (channelId) {
-        const invalidChannelVideos = batch.filter((v: any) => v.channelId && v.channelId !== channelId);
-        if (invalidChannelVideos.length > 0) {
-          console.warn(`    ⚠️ [YOUTUBE] Found ${invalidChannelVideos.length} videos from wrong channels - filtering out`);
+      const invalidChannelVideos = batch.filter((v: any) => v.channelId && v.channelId !== channelId);
+      if (invalidChannelVideos.length > 0) {
+        console.warn(`    ⚠️ [YOUTUBE] Found ${invalidChannelVideos.length} videos from wrong channels - filtering out`);
         }
       }
       
@@ -189,7 +190,7 @@ export class YoutubeSyncService {
             const minutes = parseInt(match[1] || '0', 10);
             const seconds = parseInt(match[2] || '0', 10);
             durationSeconds = minutes * 60 + seconds;
-          }
+        }
         }
         
         // Get best thumbnail

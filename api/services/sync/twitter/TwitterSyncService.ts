@@ -26,16 +26,17 @@ export class TwitterSyncService {
   static async discovery(
     account: { username: string; id: string },
     orgId: string,
-    existingVideos: Map<string, any>
+    existingVideos: Map<string, any>,
+    limit: number = 10
   ): Promise<Array<any>> {
-    console.log(`🔍 [TWITTER] Forward discovery - fetching 10 most recent tweets...`);
+    console.log(`🔍 [TWITTER] Forward discovery - fetching ${limit} most recent tweets...`);
     
     try {
       // Use advanced search to exclude retweets AND replies
       // searchTerms: "from:username -filter:nativeretweets -filter:replies"
       const scraperInput = {
         searchTerms: [`from:${account.username} -filter:nativeretweets -filter:replies`],
-        maxItems: 10,
+        maxItems: limit,
         onlyVideo: false, // Include ALL tweets (text, images, videos)
         onlyVerifiedUsers: false,
         proxy: {

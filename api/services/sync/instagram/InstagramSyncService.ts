@@ -26,15 +26,16 @@ export class InstagramSyncService {
   static async discovery(
     account: { username: string; id: string },
     orgId: string,
-    existingVideos: Map<string, any>
+    existingVideos: Map<string, any>,
+    limit: number = 10
   ): Promise<{ videos: any[], foundDuplicate: boolean }> {
-    console.log(`🔍 [INSTAGRAM] Forward discovery - fetching 10 most recent reels...`);
+    console.log(`🔍 [INSTAGRAM] Forward discovery - fetching ${limit} most recent reels...`);
     
     try {
       const scraperInput: any = {
         tags: [`https://www.instagram.com/${account.username}/reels/`],
         target: 'reels_only',
-        reels_count: 10,
+        reels_count: limit,
         include_raw_data: true,
         custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
         proxy: {

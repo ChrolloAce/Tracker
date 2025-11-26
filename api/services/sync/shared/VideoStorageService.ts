@@ -28,7 +28,7 @@ export class VideoStorageService {
     projectId: string,
     db: FirebaseFirestore.Firestore
   ): Promise<number> {
-    const batch = db.batch();
+    let batch = db.batch();
     let savedCount = 0;
     const accountId = account.id;
 
@@ -199,13 +199,15 @@ export class VideoStorageService {
       if (savedCount % 500 === 0) {
         await batch.commit();
         console.log(`    💾 Committed batch of 500 videos`);
+        batch = db.batch();
       }
     }
 
     // Commit remaining
     if (savedCount % 500 !== 0) {
+      console.log(`    💾 Committing final batch of ${savedCount % 500} videos...`);
       await batch.commit();
-      console.log(`    💾 Committed final batch`);
+      console.log(`    ✅ Final batch committed`);
     }
 
     return savedCount;

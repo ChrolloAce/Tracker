@@ -25,14 +25,15 @@ export class TikTokSyncService {
   static async discovery(
     account: { username: string; id: string },
     orgId: string,
-    existingVideos: Map<string, any>
+    existingVideos: Map<string, any>,
+    limit: number = 10
   ): Promise<{ videos: any[], profile?: any }> {
-    console.log(`🔍 [TIKTOK] Forward discovery - fetching 10 most recent videos...`);
+    console.log(`🔍 [TIKTOK] Forward discovery - fetching ${limit} most recent videos...`);
     
     try {
       const scraperInput = {
         profiles: [`https://www.tiktok.com/@${account.username}`],
-        maxItems: 10,
+        maxItems: limit,
         proxy: {
           useApifyProxy: true,
           apifyProxyGroups: ['RESIDENTIAL']
