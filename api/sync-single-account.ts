@@ -267,7 +267,15 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          const result = await TikTokSyncService.discovery(account, orgId, existingVideoIds, maxVideos);
+          // For first-time syncs (never synced before), pass empty set to fetch ALL videos up to limit
+          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
+          
+          if (isFirstTimeSync) {
+            console.log(`🆕 [TIKTOK] First-time sync detected - will fetch ALL ${maxVideos} videos (ignoring duplicates)`);
+          }
+          
+          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, maxVideos);
           newTikTokVideos = result.videos;
           
           // Profile handling from discovery result
@@ -360,8 +368,16 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+          // For first-time syncs (never synced before), pass empty set to fetch ALL videos up to limit
+          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
+          
+          if (isFirstTimeSync) {
+            console.log(`🆕 [YOUTUBE] First-time sync detected - will fetch ALL ${maxVideos} Shorts (ignoring duplicates)`);
+          }
+          
           // Pass channel handle via username, and ID if present
-          const result = await YoutubeSyncService.discovery(account, orgId, existingVideoIds, maxVideos);
+          const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, maxVideos);
           newYouTubeVideos = result.videos;
           
           // Profile handling
@@ -479,7 +495,15 @@ export default async function handler(
       
         // ===== NEW TWEET DISCOVERY =====
       if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-           newTweets = await TwitterSyncService.discovery(account, orgId, existingTweetIds, maxVideos);
+           // For first-time syncs (never synced before), pass empty set to fetch ALL tweets up to limit
+           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+           const tweetsToCheck = isFirstTimeSync ? new Set<string>() : existingTweetIds;
+           
+           if (isFirstTimeSync) {
+             console.log(`🆕 [TWITTER] First-time sync detected - will fetch ALL ${maxVideos} tweets (ignoring duplicates)`);
+           }
+           
+           newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, maxVideos);
       } else if (syncStrategy === 'refresh_only') {
         console.log(`🔄 [TWITTER] Refresh-only mode - skipping new tweet discovery`);
       } else {
@@ -535,7 +559,15 @@ export default async function handler(
         
         // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          const result = await InstagramSyncService.discovery(account, orgId, existingVideoIds, maxVideos);
+          // For first-time syncs (never synced before), pass empty set to fetch ALL videos up to limit
+          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
+          
+          if (isFirstTimeSync) {
+            console.log(`🆕 [INSTAGRAM] First-time sync detected - will fetch ALL ${maxVideos} reels (ignoring duplicates)`);
+          }
+          
+          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, maxVideos);
           newInstagramReels = result.videos;
           
           // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
