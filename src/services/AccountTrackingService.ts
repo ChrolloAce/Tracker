@@ -668,24 +668,6 @@ export class AccountTrackingService {
           isSponsored: false,
           hashtags: [], // Could extract from caption if needed
           mentions: [], // Could extract from caption if needed
-          // Store the full original API data for reference
-          rawData: {
-            // NEW SCRAPER FIELDS
-            code: media.code,
-            id: media.id,
-            pk: media.pk,
-            taken_at: media.taken_at,
-            caption: media.caption,
-            like_count: media.like_count,
-            comment_count: media.comment_count,
-            play_count: media.play_count,
-            ig_play_count: media.ig_play_count,
-            video_duration: media.video_duration,
-            media_type: media.media_type,
-            product_type: media.product_type,
-            user: media.user,
-            owner: media.owner
-          }
         };
         
         console.log('✅ Added video to account from NEW scraper:', {

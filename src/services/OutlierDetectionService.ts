@@ -135,7 +135,7 @@ class OutlierDetectionService {
     const getValues = (key: 'views' | 'likes' | 'comments' | 'shares') => {
       return videos.map(v => {
         switch (key) {
-          case 'views': return v.views || v.viewsCount || v.playsCount || 0;
+          case 'views': return v.views || v.viewsCount || v.playCount || 0;
           case 'likes': return v.likes || v.likesCount || 0;
           case 'comments': return v.comments || v.commentsCount || 0;
           case 'shares': return v.shares || v.sharesCount || 0;
@@ -144,7 +144,7 @@ class OutlierDetectionService {
     };
 
     const engagementValues = videos.map(v => {
-      const views = v.views || v.viewsCount || v.playsCount || 0;
+      const views = v.views || v.viewsCount || v.playCount || 0;
       const likes = v.likes || v.likesCount || 0;
       const comments = v.comments || v.commentsCount || 0;
       const shares = v.shares || v.sharesCount || 0;
