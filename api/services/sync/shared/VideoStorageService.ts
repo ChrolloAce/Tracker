@@ -55,7 +55,8 @@ export class VideoStorageService {
             console.log(`    ✅ [${account.platform.toUpperCase()}] Thumbnail uploaded: ${firebaseThumbnailUrl}`);
           } catch (thumbError) {
             console.error(`    ❌ [${account.platform.toUpperCase()}] Thumbnail upload failed for ${video.videoId}:`, thumbError);
-            console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No fallback - thumbnail will retry on next sync`);
+            console.warn(`    ⚠️ [${account.platform.toUpperCase()}] Using original URL as fallback`);
+            firebaseThumbnailUrl = video.thumbnail; // Fallback to original URL
           }
         } else {
           // Already a Firebase URL (e.g. from platform service)
@@ -63,6 +64,7 @@ export class VideoStorageService {
         }
       } else {
         console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No valid thumbnail URL for video ${video.videoId}`);
+        firebaseThumbnailUrl = video.thumbnail || ''; // Use whatever we have
       }
 
       // ==================== DETERMINISTIC IDs + NO DUPLICATES ====================

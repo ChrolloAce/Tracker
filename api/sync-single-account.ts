@@ -675,6 +675,38 @@ export default async function handler(
       db
     );
 
+    // Calculate and update account-level aggregated stats
+    try {
+      console.log(`📊 Calculating account stats for @${account.username}...`);
+      const allVideosSnapshot = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .where('trackedAccountId', '==', accountId)
+          .get();
+
+      const allVideos = allVideosSnapshot.docs.map(doc => doc.data());
+      const totalVideos = allVideos.length;
+      const totalViews = allVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+      const totalLikes = allVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
+      const totalComments = allVideos.reduce((sum, v) => sum + (v.comments || 0), 0);
+      const totalShares = allVideos.reduce((sum, v) => sum + (v.shares || 0), 0);
+      
+      await accountRef.update({
+        totalVideos,
+        totalViews,
+        totalLikes,
+        totalComments,
+        totalShares
+      });
+      
+      console.log(`✅ Updated account stats: ${totalVideos} videos, ${totalViews.toLocaleString()} views, ${totalLikes.toLocaleString()} likes`);
+    } catch (statsError: any) {
+      console.error(`❌ Failed to update account stats (non-critical):`, statsError.message);
+    }
+
     // Mark as completed (but first check if account still exists)
     try {
       const accountCheckDoc = await accountRef.get();
