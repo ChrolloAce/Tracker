@@ -260,9 +260,9 @@ export class InstagramSyncService {
       accountUsername: account.username,
       accountDisplayName: reel.ownerUsername || account.username,
       uploadDate: uploadTimestamp,
-      views: reel.videoViewCount || reel.viewCount || 0,
-      likes: reel.likesCount || 0,
-      comments: reel.commentsCount || 0,
+      views: reel.videoViewCount || reel.viewCount || reel.playCount || reel.play_count || 0,
+      likes: reel.likesCount || reel.likeCount || reel.like_count || 0,
+      comments: reel.commentsCount || reel.commentCount || reel.comment_count || 0,
       shares: 0, // Instagram API doesn't provide share count
       saves: 0, // Instagram doesn't expose saves via scraping
       caption: reel.caption || '',

@@ -223,11 +223,11 @@ export class TwitterSyncService {
       accountUsername: account.username,
       accountDisplayName: tweet.author?.name || account.username,
       uploadDate: uploadTimestamp,
-      views: tweet.viewCount || 0,
-      likes: tweet.likeCount || 0,
-      comments: tweet.replyCount || 0,
-      shares: tweet.retweetCount || 0,
-      saves: tweet.bookmarkCount || 0,
+      views: tweet.viewCount || tweet.views || 0,
+      likes: tweet.likeCount || tweet.favoriteCount || tweet.likes || 0,
+      comments: tweet.replyCount || tweet.replies || 0,
+      shares: tweet.retweetCount || tweet.retweets || 0,
+      saves: tweet.bookmarkCount || tweet.bookmarks || 0,
       caption: tweet.text || '',
       duration: 0 // Twitter doesn't provide video duration easily
     };

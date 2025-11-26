@@ -317,9 +317,9 @@ export class YoutubeSyncService {
       accountUsername: account.username,
       accountDisplayName: video.channelName || account.username,
       uploadDate: uploadTimestamp,
-      views: video.viewCount || 0,
-      likes: video.likes || 0,
-      comments: video.commentsCount || 0,
+      views: video.viewCount || video.views || video.numberOfViews || 0,
+      likes: video.likes || video.likeCount || video.numberOfLikes || 0,
+      comments: video.commentsCount || video.commentCount || video.numberOfComments || 0,
       shares: 0, // YouTube doesn't expose share count
       saves: video.favoriteCount || video.favorites || 0,
       caption: video.text || '',
