@@ -246,9 +246,18 @@ export class InstagramSyncService {
         ? new Date(reel.timestamp)
         : new Date(Number(reel.timestamp) * 1000);
       uploadTimestamp = Timestamp.fromDate(uploadDate);
+    } else if (reel.taken_at || reel.takenAt) {
+      // Alternative timestamp fields
+      const ts = reel.taken_at || reel.takenAt;
+      const uploadDate = typeof ts === 'string' ? new Date(ts) : new Date(Number(ts) * 1000);
+      uploadTimestamp = Timestamp.fromDate(uploadDate);
+    } else if (reel.created_time || reel.createdTime) {
+      // Another variation
+      const uploadDate = new Date(reel.created_time || reel.createdTime);
+      uploadTimestamp = Timestamp.fromDate(uploadDate);
     } else {
-      console.warn(`    ⚠️ [INSTAGRAM] Reel ${reelId} missing timestamp - using epoch`);
-      uploadTimestamp = Timestamp.fromMillis(0);
+      console.warn(`    ⚠️ [INSTAGRAM] Reel ${reelId} missing timestamp - using current time as fallback`);
+      uploadTimestamp = Timestamp.now();
     }
     
     return {

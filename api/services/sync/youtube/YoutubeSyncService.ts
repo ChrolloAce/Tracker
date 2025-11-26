@@ -303,9 +303,12 @@ export class YoutubeSyncService {
     let uploadTimestamp: FirebaseFirestore.Timestamp;
     if (video.date) {
       uploadTimestamp = Timestamp.fromDate(new Date(video.date));
+    } else if (video.publishedAt || video.uploadDate) {
+      // Alternative date fields
+      uploadTimestamp = Timestamp.fromDate(new Date(video.publishedAt || video.uploadDate));
     } else {
-      console.warn(`    ⚠️ [YOUTUBE] Video ${video.id} missing upload date - using epoch`);
-      uploadTimestamp = Timestamp.fromMillis(0);
+      console.warn(`    ⚠️ [YOUTUBE] Video ${video.id} missing upload date - using current time as fallback`);
+      uploadTimestamp = Timestamp.now();
     }
     
     return {

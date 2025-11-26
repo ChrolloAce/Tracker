@@ -208,9 +208,12 @@ export class TwitterSyncService {
     let uploadTimestamp: FirebaseFirestore.Timestamp;
     if (tweet.createdAt) {
       uploadTimestamp = Timestamp.fromDate(new Date(tweet.createdAt));
+    } else if (tweet.created_at || tweet.timestamp) {
+      // Alternative date fields
+      uploadTimestamp = Timestamp.fromDate(new Date(tweet.created_at || tweet.timestamp));
     } else {
-      console.warn(`    ⚠️ [TWITTER] Tweet ${tweet.id} missing createdAt - using epoch`);
-      uploadTimestamp = Timestamp.fromMillis(0);
+      console.warn(`    ⚠️ [TWITTER] Tweet ${tweet.id} missing createdAt - using current time as fallback`);
+      uploadTimestamp = Timestamp.now();
     }
     
     return {

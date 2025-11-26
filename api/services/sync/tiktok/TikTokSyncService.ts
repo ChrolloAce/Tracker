@@ -203,9 +203,13 @@ export class TikTokSyncService {
     if (video.createTime || video.createTimeISO) {
       const uploadDate = new Date(video.createTimeISO || Number(video.createTime) * 1000);
       uploadTimestamp = Timestamp.fromDate(uploadDate);
+    } else if (video.created_time || video.createdAt) {
+      // Alternative timestamp fields
+      const uploadDate = new Date(video.created_time || video.createdAt);
+      uploadTimestamp = Timestamp.fromDate(uploadDate);
     } else {
-      console.warn(`    ⚠️ [TIKTOK] Video ${videoId} missing timestamp - using epoch`);
-      uploadTimestamp = Timestamp.fromMillis(0);
+      console.warn(`    ⚠️ [TIKTOK] Video ${videoId} missing timestamp - using current time as fallback`);
+      uploadTimestamp = Timestamp.now();
     }
     
     return {
