@@ -50,8 +50,8 @@ export class AccountsDataService {
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
-      // Background sync fields - set to 'completed' if skipping sync, 'pending' otherwise
-      syncStatus: skipSync ? 'completed' : 'pending',
+      // Background sync fields - set to 'completed' if skipping sync, 'idle' otherwise (queue will pick it up)
+      syncStatus: skipSync ? 'completed' : 'idle',
       syncRequestedBy: userId,
       syncRequestedAt: Timestamp.now(),
       syncRetryCount: 0,
