@@ -31,12 +31,15 @@ export class TikTokSyncService {
     console.log(`🔍 [TIKTOK] Forward discovery - fetching ${limit} most recent videos...`);
     
     try {
-      const scraperInput = {
+      const scraperInput: any = {
         startUrls: [`https://www.tiktok.com/@${account.username}`],
         maxItems: limit,
-        location: null,
         includeSearchKeywords: false
       };
+      
+      // Only include location if it's a valid string (API rejects null)
+      // Location should be ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'CA')
+      // Omit if not needed
       
       const data = await runApifyActor({
         actorId: 'apidojo/tiktok-scraper',
@@ -133,12 +136,15 @@ export class TikTokSyncService {
       // Build TikTok video URLs
       const videoUrls = existingVideoIds.map(id => `https://www.tiktok.com/@${account.username}/video/${id}`);
       
-      const refreshInput = {
+      const refreshInput: any = {
         startUrls: videoUrls,
         maxItems: videoUrls.length,
-        location: null,
         includeSearchKeywords: false
       };
+      
+      // Only include location if it's a valid string (API rejects null)
+      // Location should be ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'CA')
+      // Omit if not needed
       
       const data = await runApifyActor({
         actorId: 'apidojo/tiktok-scraper',
