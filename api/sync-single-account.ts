@@ -658,7 +658,7 @@ export default async function handler(
         const creatorType = account.creatorType || 'automatic';
         console.log(`🔧 Account type: ${creatorType}`);
         
-        const instagramItems: any[] = [];
+        let instagramItems: any[] = [];
         
         // Get existing video IDs
         const existingVideosSnapshot = await db

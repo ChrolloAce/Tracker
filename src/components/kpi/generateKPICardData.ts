@@ -254,23 +254,90 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
   let ppVideos = 0;
   
   if (ppDateRangeStart && ppDateRangeEnd) {
+    // Calculate PP metrics with snapshot deltas (same logic as CP calculation)
+    (allSubmissions || submissions).forEach(video => {
+      const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+      
+      if (video.snapshots && video.snapshots.length > 0) {
+        const snapshotBeforeOrAtStart = video.snapshots
+          .filter(s => new Date(s.capturedAt) <= ppDateRangeStart!)
+          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+        
+        const snapshotBeforeOrAtEnd = video.snapshots
+          .filter(s => new Date(s.capturedAt) <= ppDateRangeEnd!)
+          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+        
+        const snapshotsInRange = video.snapshots.filter(s => {
+          const capturedDate = new Date(s.capturedAt);
+          return capturedDate >= ppDateRangeStart! && capturedDate <= ppDateRangeEnd!;
+        });
+        
+        if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart !== snapshotBeforeOrAtEnd) {
+          ppViews += Math.max(0, (snapshotBeforeOrAtEnd.views || 0) - (snapshotBeforeOrAtStart.views || 0));
+          ppLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
+          ppComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
+          ppShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+        } else if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart === snapshotBeforeOrAtEnd && snapshotsInRange.length > 0) {
+          const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+          );
+          
+          const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
+          
+          ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeOrAtStart.views || 0));
+          ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
+          ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
+          ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+        } else if (!snapshotBeforeOrAtStart && snapshotsInRange.length > 0) {
+          const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+          );
+          
+          const firstSnapshotInRange = sortedSnapshotsInRange[0];
+          const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
+          
+          if (uploadDate >= ppDateRangeStart && uploadDate <= ppDateRangeEnd) {
+            ppViews += lastSnapshotInRange.views || 0;
+            ppLikes += lastSnapshotInRange.likes || 0;
+            ppComments += lastSnapshotInRange.comments || 0;
+            ppShares += lastSnapshotInRange.shares || 0;
+          } else {
+            ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (firstSnapshotInRange.views || 0));
+            ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (firstSnapshotInRange.likes || 0));
+            ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (firstSnapshotInRange.comments || 0));
+            ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (firstSnapshotInRange.shares || 0));
+          }
+        } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
+          if (uploadDate >= ppDateRangeStart && uploadDate <= ppDateRangeEnd) {
+            ppViews += video.views || 0;
+            ppLikes += video.likes || 0;
+            ppComments += video.comments || 0;
+            ppShares += video.shares || 0;
+          }
+        }
+      } else {
+        if (uploadDate >= ppDateRangeStart && uploadDate <= ppDateRangeEnd) {
+          ppViews += video.views || 0;
+          ppLikes += video.likes || 0;
+          ppComments += video.comments || 0;
+          ppShares += video.shares || 0;
+        }
+      }
+    });
+    
+    // Count videos uploaded in PP period
     const relevantVideosForPP = (allSubmissions || submissions).filter(video => {
       const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
       return uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!;
     });
-    
-    console.log('📊 PP Calculation - Total videos:', (allSubmissions || submissions).length, '| Relevant for PP:', relevantVideosForPP.length);
-    
-    relevantVideosForPP.forEach(video => {
-      ppViews += video.views || 0;
-      ppLikes += video.likes || 0;
-      ppComments += video.comments || 0;
-      ppShares += video.shares || 0;
-    });
-    
     ppVideos = relevantVideosForPP.length;
     
-    console.log('📊 PP Metrics:', {
+    console.log('📊 PP Calculation with Refreshed Data:', {
+      totalVideos: (allSubmissions || submissions).length,
+      videosUploadedInPP: ppVideos
+    });
+    
+    console.log('📊 PP Metrics (including refreshed data):', {
       views: ppViews,
       likes: ppLikes,
       comments: ppComments,
