@@ -90,8 +90,9 @@ export class YoutubeSyncService {
       let foundDuplicate = false;
       
       for (const video of batch) {
-        // Skip if from wrong channel
-        if (video.channelId && video.channelId !== channelId) {
+        // Skip if from wrong channel (only validate if we have a channelId to compare against)
+        if (channelId && video.channelId && video.channelId !== channelId) {
+          console.log(`    ⏭️  [YOUTUBE] Skipping video ${video.id} from wrong channel: ${video.channelId}`);
           continue;
         }
         
