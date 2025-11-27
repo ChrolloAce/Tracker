@@ -304,11 +304,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   const totalMetricFromNewUploads = videosInInterval.reduce((sum, video) => sum + ((video as any)[metricKey] || 0), 0);
   const totalMetricFromRefreshedVideos = allTopGainers.reduce((sum: number, item: any) => sum + (item.absoluteGain || 0), 0);
   
-  // CRITICAL FIX: Add refreshed video metrics to the tooltip header value
-  // The sparkline point.value only includes NEW UPLOADS, we need to add REFRESHED VIDEOS growth
-  if (totalMetricFromRefreshedVideos > 0) {
-    value = (value || 0) + totalMetricFromRefreshedVideos;
-  }
+  // NOTE: sparkline point.value now ALREADY includes both new uploads AND refreshed video deltas
+  // No need to add totalMetricFromRefreshedVideos here (that would be double-counting)
   
   let sortedItems: any[] = [];
   if (data.id === 'accounts' || data.id === 'active-accounts') {

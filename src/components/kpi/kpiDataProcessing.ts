@@ -139,8 +139,7 @@ export const generateSparklineData = (
         // Check if video was uploaded before this interval started
         if (uploadDate < interval.startDate) {
           // Video was uploaded before this interval - calculate growth delta ONLY for this interval
-          // BUT only if the video was uploaded before the selected period (not just before the interval)
-          if (!isUploadedInSelectedPeriod && video.snapshots && video.snapshots.length > 0) {
+          if (video.snapshots && video.snapshots.length > 0) {
             // Find snapshot at or before interval START (baseline)
             const snapshotAtStart = video.snapshots
               .filter(s => new Date(s.capturedAt) <= interval.startDate)
@@ -158,7 +157,7 @@ export const generateSparklineData = (
               intervalValue += delta;
             }
           }
-        } else if (DataAggregationService.isDateInInterval(uploadDate, interval) && isUploadedInSelectedPeriod) {
+        } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
           // Video was uploaded during this interval AND within the selected period
           // This represents NEW CONTENT added during this period
           const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
@@ -187,9 +186,8 @@ export const generateSparklineData = (
           
           // Use the same logic as CP, but for PP interval dates
           if (uploadDate < ppInterval.startDate) {
-            // Video was uploaded before PP started - calculate growth delta ONLY for this PP interval
-            // BUT only if the video was uploaded before the PP period
-            if (!isUploadedInPPPeriod && video.snapshots && video.snapshots.length > 0) {
+            // Video was uploaded before PP interval started - calculate growth delta ONLY for this PP interval
+            if (video.snapshots && video.snapshots.length > 0) {
               // Find snapshot at or before PP interval START (baseline)
               const snapshotAtStart = video.snapshots
                 .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
@@ -207,7 +205,7 @@ export const generateSparklineData = (
                 ppIntervalValue += delta;
               }
             }
-          } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval) && isUploadedInPPPeriod) {
+          } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
             // Video was uploaded during PP interval AND within the PP period
             if (video.snapshots && video.snapshots.length > 0) {
               const firstSnapshot = video.snapshots
