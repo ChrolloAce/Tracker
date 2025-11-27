@@ -343,10 +343,32 @@ export default async function handler(
         }
         
         // ==================== PHASE 3: PROCESS ALL VIDEOS ====================
-        const refreshedCount = existingVideoIds.size;
-        const newCount = tiktokVideos.length - refreshedCount;
-        console.log(`\n📊 [TIKTOK] Processing ${tiktokVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new)`);
-        videos = tiktokVideos;
+        // CRITICAL: Deduplicate by videoId (keep refreshed version if duplicate exists)
+        const videoMap = new Map();
+        for (const video of tiktokVideos) {
+          const videoId = video.videoId;
+          if (!videoMap.has(videoId)) {
+            videoMap.set(videoId, video);
+          } else {
+            // Duplicate found - keep the REFRESHED version (has _isRefreshOnly flag)
+            const existing = videoMap.get(videoId);
+            if (video._isRefreshOnly && !existing._isRefreshOnly) {
+              console.log(`   🔄 Deduplicating ${videoId} - keeping refreshed version`);
+              videoMap.set(videoId, video);
+            } else if (!video._isRefreshOnly && existing._isRefreshOnly) {
+              console.log(`   🔄 Deduplicating ${videoId} - already have refreshed version`);
+              // Keep existing (refreshed) version
+            } else {
+              console.log(`   ⚠️  Duplicate ${videoId} with same type - keeping first`);
+            }
+          }
+        }
+        
+        const dedupedVideos = Array.from(videoMap.values());
+        const refreshedCount = dedupedVideos.filter(v => v._isRefreshOnly).length;
+        const newCount = dedupedVideos.length - refreshedCount;
+        console.log(`\n📊 [TIKTOK] Processing ${dedupedVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new) - removed ${tiktokVideos.length - dedupedVideos.length} duplicates`);
+        videos = dedupedVideos;
         
       } catch (tiktokError) {
         console.error('TikTok fetch error:', tiktokError);
@@ -457,10 +479,32 @@ export default async function handler(
         }
         
         // ==================== PHASE 3: PROCESS ALL VIDEOS ====================
-        const refreshedCount = existingVideoIds.size;
-        const newCount = youtubeVideos.length - refreshedCount;
-        console.log(`\n📊 [YOUTUBE] Processing ${youtubeVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new)`);
-        videos = youtubeVideos;
+        // CRITICAL: Deduplicate by videoId (keep refreshed version if duplicate exists)
+        const videoMap = new Map();
+        for (const video of youtubeVideos) {
+          const videoId = video.videoId;
+          if (!videoMap.has(videoId)) {
+            videoMap.set(videoId, video);
+          } else {
+            // Duplicate found - keep the REFRESHED version (has _isRefreshOnly flag)
+            const existing = videoMap.get(videoId);
+            if (video._isRefreshOnly && !existing._isRefreshOnly) {
+              console.log(`   🔄 Deduplicating ${videoId} - keeping refreshed version`);
+              videoMap.set(videoId, video);
+            } else if (!video._isRefreshOnly && existing._isRefreshOnly) {
+              console.log(`   🔄 Deduplicating ${videoId} - already have refreshed version`);
+              // Keep existing (refreshed) version
+            } else {
+              console.log(`   ⚠️  Duplicate ${videoId} with same type - keeping first`);
+            }
+          }
+        }
+        
+        const dedupedVideos = Array.from(videoMap.values());
+        const refreshedCount = dedupedVideos.filter(v => v._isRefreshOnly).length;
+        const newCount = dedupedVideos.length - refreshedCount;
+        console.log(`\n📊 [YOUTUBE] Processing ${dedupedVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new) - removed ${youtubeVideos.length - dedupedVideos.length} duplicates`);
+        videos = dedupedVideos;
         
       } catch (youtubeError) {
         console.error('YouTube fetch error:', youtubeError);
@@ -576,10 +620,32 @@ export default async function handler(
       }
       
       // ==================== PHASE 3: PROCESS ALL TWEETS ====================
-      const refreshedCount = existingTweetIds.size;
-      const newCount = tweets.length - refreshedCount;
-      console.log(`\n📊 [TWITTER] Processing ${tweets.length} total tweets (${refreshedCount} refreshed + ${newCount} new)`);
-      videos = tweets;
+      // CRITICAL: Deduplicate by videoId (keep refreshed version if duplicate exists)
+      const tweetMap = new Map();
+      for (const tweet of tweets) {
+        const videoId = tweet.videoId;
+        if (!tweetMap.has(videoId)) {
+          tweetMap.set(videoId, tweet);
+        } else {
+          // Duplicate found - keep the REFRESHED version (has _isRefreshOnly flag)
+          const existing = tweetMap.get(videoId);
+          if (tweet._isRefreshOnly && !existing._isRefreshOnly) {
+            console.log(`   🔄 Deduplicating ${videoId} - keeping refreshed version`);
+            tweetMap.set(videoId, tweet);
+          } else if (!tweet._isRefreshOnly && existing._isRefreshOnly) {
+            console.log(`   🔄 Deduplicating ${videoId} - already have refreshed version`);
+            // Keep existing (refreshed) version
+          } else {
+            console.log(`   ⚠️  Duplicate ${videoId} with same type - keeping first`);
+          }
+        }
+      }
+      
+      const dedupedTweets = Array.from(tweetMap.values());
+      const refreshedCount = dedupedTweets.filter(t => t._isRefreshOnly).length;
+      const newCount = dedupedTweets.length - refreshedCount;
+      console.log(`\n📊 [TWITTER] Processing ${dedupedTweets.length} total tweets (${refreshedCount} refreshed + ${newCount} new) - removed ${tweets.length - dedupedTweets.length} duplicates`);
+      videos = dedupedTweets;
         
       } catch (twitterError) {
         console.error('Twitter fetch error:', twitterError);
@@ -707,9 +773,34 @@ export default async function handler(
         }
         
         // ==================== PHASE 3: PROCESS ALL REELS ====================
-        const refreshedCount = Math.min(existingVideoIds.size, instagramItems.filter(i => i._isRefreshOnly).length);
-        const newCount = instagramItems.length - refreshedCount;
-        console.log(`\n📊 [INSTAGRAM] Processing ${instagramItems.length} total reels (${refreshedCount} refreshed + ${newCount} new)`);
+        // CRITICAL: Deduplicate by videoId (keep refreshed version if duplicate exists)
+        const reelMap = new Map();
+        for (const reel of instagramItems) {
+          const videoId = reel.videoId;
+          if (!reelMap.has(videoId)) {
+            reelMap.set(videoId, reel);
+          } else {
+            // Duplicate found - keep the REFRESHED version (has _isRefreshOnly flag)
+            const existing = reelMap.get(videoId);
+            if (reel._isRefreshOnly && !existing._isRefreshOnly) {
+              console.log(`   🔄 Deduplicating ${videoId} - keeping refreshed version`);
+              reelMap.set(videoId, reel);
+            } else if (!reel._isRefreshOnly && existing._isRefreshOnly) {
+              console.log(`   🔄 Deduplicating ${videoId} - already have refreshed version`);
+              // Keep existing (refreshed) version
+            } else {
+              console.log(`   ⚠️  Duplicate ${videoId} with same type - keeping first`);
+            }
+          }
+        }
+        
+        const dedupedReels = Array.from(reelMap.values());
+        const originalCount = instagramItems.length;
+        instagramItems = dedupedReels; // Replace with deduplicated array
+        
+        const refreshedCount = dedupedReels.filter(r => r._isRefreshOnly).length;
+        const newCount = dedupedReels.length - refreshedCount;
+        console.log(`\n📊 [INSTAGRAM] Processing ${dedupedReels.length} total reels (${refreshedCount} refreshed + ${newCount} new) - removed ${originalCount - dedupedReels.length} duplicates`);
         
         // Profile Update
         try {
