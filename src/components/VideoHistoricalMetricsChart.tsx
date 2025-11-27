@@ -93,7 +93,7 @@ const timeFrameOptions: { value: TimeFrame; label: string; days: number | null }
 
 export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartProps> = ({ data, cumulativeTotals }) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('views');
-  const [timeFrame, setTimeFrame] = useState<TimeFrame>('all');
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>('7d'); // Default to Last 7 Days instead of All Time
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isTimeFrameDropdownOpen, setIsTimeFrameDropdownOpen] = useState(false);
 
