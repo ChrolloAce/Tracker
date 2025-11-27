@@ -168,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .collection('videos');
       
       const videosSnapshot = await videosRef
-        .where('accountId', '==', trackedAccountId)
+        .where('trackedAccountId', '==', trackedAccountId)
         .get();
       
       // Calculate fresh totals from remaining videos
