@@ -138,18 +138,9 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     transformX = '-100%';
   }
   
-  // CRITICAL FIX: Add refreshed video metrics to the tooltip value
-  // The sparkline point.value only includes NEW UPLOADS, we need to add REFRESHED VIDEOS growth
+  // Get base values from sparkline data (will be adjusted later after calculations)
   let value = point.value;
   let ppValue = point.ppValue;
-  
-  // Add refreshed video metrics to the value if they exist
-  if (totalMetricFromRefreshedVideos > 0) {
-    value = (value || 0) + totalMetricFromRefreshedVideos;
-  }
-  
-  // For PP, we need to calculate refreshed videos for the previous period too
-  // (This will be calculated separately below for PP comparison)
   
   // Format functions
   // For revenue metrics, use point.date if available (direct date from data)
@@ -312,6 +303,12 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   // Calculate total metrics from NEW UPLOADS and REFRESHED VIDEOS (based on current metric)
   const totalMetricFromNewUploads = videosInInterval.reduce((sum, video) => sum + ((video as any)[metricKey] || 0), 0);
   const totalMetricFromRefreshedVideos = allTopGainers.reduce((sum: number, item: any) => sum + (item.absoluteGain || 0), 0);
+  
+  // CRITICAL FIX: Add refreshed video metrics to the tooltip header value
+  // The sparkline point.value only includes NEW UPLOADS, we need to add REFRESHED VIDEOS growth
+  if (totalMetricFromRefreshedVideos > 0) {
+    value = (value || 0) + totalMetricFromRefreshedVideos;
+  }
   
   let sortedItems: any[] = [];
   if (data.id === 'accounts' || data.id === 'active-accounts') {
