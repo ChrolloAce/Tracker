@@ -437,7 +437,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
 
   // Twitter image slideshow state
-  
+
   // Convert video URL to embed URL
   const getEmbedUrl = (url: string, platform: string): string => {
     try {
@@ -1073,10 +1073,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </div>
               </div>
 
-            {/* Snapshots History */}
+              {/* Snapshots History */}
             <VideoSnapshotsHistory snapshots={video.snapshots || []} />
-            </div>
-          </div>
+                          </div>
+                        </div>
         </div>
       </div>
 

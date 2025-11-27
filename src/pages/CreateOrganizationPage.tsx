@@ -385,7 +385,7 @@ const OrganizationOnboarding: React.FC = () => {
             orgId,
             projectId,
             user.uid,
-            username,
+              username,
             account.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
             'my',
             account.videoCount || 100,

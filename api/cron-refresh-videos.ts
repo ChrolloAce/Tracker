@@ -43,6 +43,25 @@ const storage = getStorage();
  * - Manual triggers: Accepts authenticated user requests (no CRON_SECRET needed)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // ❌ DEPRECATED - This endpoint is no longer used
+  // Use the new queue-based system instead:
+  // - cron-orchestrator.ts (scheduled refreshes)
+  // - queue-worker.ts (job processing)
+  // - sync-single-account.ts (actual sync logic)
+  
+  console.warn('⚠️ DEPRECATED: cron-refresh-videos.ts was called - use cron-orchestrator.ts instead');
+  
+  return res.status(410).json({
+    success: false,
+    error: 'This endpoint is deprecated. Use /api/cron-orchestrator for scheduled refreshes.',
+    deprecated: true,
+    migration: {
+      scheduledRefresh: '/api/cron-orchestrator',
+      manualRefresh: 'Use "Refresh All" button in dashboard (calls /api/cron-orchestrator)',
+      queueSystem: '/api/queue-worker processes jobs created by orchestrator'
+    }
+  });
+  
   // Add top-level error handling
   try {
     // Verify Firebase is initialized

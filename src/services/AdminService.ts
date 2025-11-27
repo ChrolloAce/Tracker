@@ -102,21 +102,21 @@ class AdminService {
       }
       
       // Regular admin check
-      const isAdmin = await this.isAdmin(userId);
-      
-      if (!isAdmin) {
-        return false;
-      }
-      
-      // Check if admin has toggled bypass off (to view as normal user)
-      const bypassDisabled = localStorage.getItem(`admin_bypass_disabled_${userId}`) === 'true';
-      
-      if (bypassDisabled) {
-        console.log(`🔒 Admin ${userId} viewing as normal user (bypass disabled)`);
-        return false;
-      }
-      
-      return true;
+    const isAdmin = await this.isAdmin(userId);
+    
+    if (!isAdmin) {
+      return false;
+    }
+    
+    // Check if admin has toggled bypass off (to view as normal user)
+    const bypassDisabled = localStorage.getItem(`admin_bypass_disabled_${userId}`) === 'true';
+    
+    if (bypassDisabled) {
+      console.log(`🔒 Admin ${userId} viewing as normal user (bypass disabled)`);
+      return false;
+    }
+    
+    return true;
       
     } catch (error) {
       console.error('Failed to check bypass limits:', error);

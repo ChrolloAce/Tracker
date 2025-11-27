@@ -178,8 +178,9 @@ export class FirestoreService {
   }
   
   /**
-   * Create snapshot for a video with 5-minute deduplication
-   * Returns true if snapshot was created, false if skipped (duplicate)
+   * Create snapshot for a video
+   * No deduplication - REFRESH→DISCOVERY architecture prevents duplicates naturally
+   * Returns true if snapshot was created, false if skipped
    */
   static async createSnapshot(
     videoRef: FirebaseFirestore.DocumentReference,
@@ -194,27 +195,10 @@ export class FirestoreService {
   ): Promise<boolean> {
     const snapshotsRef = videoRef.collection('snapshots');
     
-    // Check for duplicate snapshots in last 5 minutes
-    // Simplified query to avoid composite index requirement
-    const fiveMinutesAgo = Timestamp.fromMillis(Date.now() - 5 * 60 * 1000);
+    // ✅ REMOVED: Deduplication check (new REFRESH→DISCOVERY architecture prevents duplicates)
+    // The phase separation ensures snapshots are only created once per refresh cycle
     
-    const recentSnapshotsQuery = await snapshotsRef
-      .where('capturedAt', '>=', fiveMinutesAgo)
-      .limit(5) // Get up to 5 recent snapshots to check
-      .get();
-    
-    // Check if any match our capturedBy type
-    const hasDuplicate = recentSnapshotsQuery.docs.some(doc => {
-      const data = doc.data();
-      return data.capturedBy === capturedBy;
-    });
-    
-    if (hasDuplicate) {
-      console.log(`   ⏭️  Snapshot exists within 5 minutes (capturedBy: ${capturedBy}), skipping duplicate`);
-      return false;
-    }
-    
-    // Create new snapshot
+    // Always create snapshot
     await snapshotsRef.add({
       views: metrics.views,
       likes: metrics.likes,

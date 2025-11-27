@@ -1,0 +1,10 @@
+            <AccountsHeader
+              dateFilter={dateFilter}
+              selectedCount={selectedAccounts.size}
+              showActionsMenu={showActionsMenu}
+              setShowActionsMenu={setShowActionsMenu}
+              actionsMenuRef={actionsMenuRef}
+              onCopyLinks={handleCopyAccountLinks}
+              onExport={() => setShowExportModal(true)}
+              onDelete={handleBulkDeleteAccounts}
+            />
