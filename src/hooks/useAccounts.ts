@@ -326,7 +326,7 @@ export const useAccounts = ({
                 );
                 if (topVideo && topVideo.views && topVideo.views > 0) {
                   highestViewedVideo = {
-                    title: topVideo.videoTitle || 'Untitled',
+                    title: topVideo.title || topVideo.caption || 'Untitled',
                     views: topVideo.views,
                     videoId: topVideo.videoId || topVideo.id || ''
                   };
