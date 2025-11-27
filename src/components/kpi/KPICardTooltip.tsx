@@ -138,8 +138,18 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     transformX = '-100%';
   }
   
-  const value = point.value;
-  const ppValue = point.ppValue;
+  // CRITICAL FIX: Add refreshed video metrics to the tooltip value
+  // The sparkline point.value only includes NEW UPLOADS, we need to add REFRESHED VIDEOS growth
+  let value = point.value;
+  let ppValue = point.ppValue;
+  
+  // Add refreshed video metrics to the value if they exist
+  if (totalMetricFromRefreshedVideos > 0) {
+    value = (value || 0) + totalMetricFromRefreshedVideos;
+  }
+  
+  // For PP, we need to calculate refreshed videos for the previous period too
+  // (This will be calculated separately below for PP comparison)
   
   // Format functions
   // For revenue metrics, use point.date if available (direct date from data)
