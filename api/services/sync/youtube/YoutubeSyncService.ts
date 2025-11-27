@@ -72,17 +72,24 @@ export class YoutubeSyncService {
       }
       
       // Extract profile from first valid video
-      // API format: channelName, numberOfSubscribers, aboutChannelInfo.isChannelVerified
+      // API format: channelName, numberOfSubscribers, channelAvatarUrl, aboutChannelInfo.isChannelVerified
       let profile = null;
-      const validProfileVideo = batch.find((v: any) => !v.channelId || v.channelId === channelId);
+      const validProfileVideo = batch.find((v: any) => !channelId || !v.channelId || v.channelId === channelId);
       
       if (validProfileVideo) {
+        const avatarUrl = validProfileVideo.channelAvatarUrl || 
+                          validProfileVideo.aboutChannelInfo?.channelAvatarUrl ||
+                          validProfileVideo.channelThumbnail ||
+                          null;
+        
         profile = {
-          displayName: validProfileVideo.channelName || account.username,
-          profilePicUrl: validProfileVideo.channelAvatarUrl || validProfileVideo.channelThumbnail,
-          followersCount: validProfileVideo.numberOfSubscribers,
+          displayName: validProfileVideo.channelName || validProfileVideo.snippet?.channelTitle || account.username,
+          profilePicUrl: avatarUrl,
+          followersCount: validProfileVideo.numberOfSubscribers || validProfileVideo.aboutChannelInfo?.numberOfSubscribers || 0,
           isVerified: validProfileVideo.aboutChannelInfo?.isChannelVerified || validProfileVideo.isChannelVerified || false
         };
+        
+        console.log(`    👤 [YOUTUBE] Profile extracted: ${profile.displayName}, ${profile.followersCount} subscribers, verified: ${profile.isVerified}, avatar: ${avatarUrl ? 'yes' : 'no'}`);
       }
       
       // Filter out existing videos and wrong channel videos
@@ -275,23 +282,44 @@ export class YoutubeSyncService {
     video: any,
     account: { username: string; id: string }
   ): any {
-    // Parse duration from "HH:MM:SS" or "MM:SS" format
+    // Parse duration - API returns BOTH "00:00:59" AND "PT7S" formats
     let durationSeconds = 0;
-    if (video.duration) {
+    
+    // First try contentDetails.duration (ISO 8601 format like "PT7S")
+    if (video.contentDetails?.duration) {
+      const durationStr = video.contentDetails.duration;
+      const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (match) {
+        const hours = parseInt(match[1] || '0', 10);
+        const minutes = parseInt(match[2] || '0', 10);
+        const seconds = parseInt(match[3] || '0', 10);
+        durationSeconds = hours * 3600 + minutes * 60 + seconds;
+      }
+    }
+    // Then try video.duration ("00:00:59" format)
+    else if (video.duration) {
       if (typeof video.duration === 'number') {
         durationSeconds = video.duration;
       } else if (typeof video.duration === 'string') {
-        // Parse "00:00:59" or "59" format
-        const parts = video.duration.split(':').map(p => parseInt(p, 10));
-        if (parts.length === 3) {
-          // HH:MM:SS
-          durationSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-        } else if (parts.length === 2) {
-          // MM:SS
-          durationSeconds = parts[0] * 60 + parts[1];
-        } else if (parts.length === 1) {
-          // SS
-          durationSeconds = parts[0];
+        // Try ISO 8601 format first (PT7S)
+        if (video.duration.startsWith('PT')) {
+          const match = video.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+          if (match) {
+            const hours = parseInt(match[1] || '0', 10);
+            const minutes = parseInt(match[2] || '0', 10);
+            const seconds = parseInt(match[3] || '0', 10);
+            durationSeconds = hours * 3600 + minutes * 60 + seconds;
+          }
+        } else {
+          // Parse "00:00:59" or "59" format
+          const parts = video.duration.split(':').map(p => parseInt(p, 10));
+          if (parts.length === 3) {
+            durationSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+          } else if (parts.length === 2) {
+            durationSeconds = parts[0] * 60 + parts[1];
+          } else if (parts.length === 1) {
+            durationSeconds = parts[0];
+          }
         }
       }
     } else if (video.lengthSeconds) {
@@ -319,36 +347,38 @@ export class YoutubeSyncService {
       );
     }
     
-    // Parse upload date - API returns ISO 8601 date string
+    // Parse upload date - API returns in snippet.publishedAt OR top-level date
     let uploadTimestamp: FirebaseFirestore.Timestamp;
-    if (video.date) {
+    if (video.snippet?.publishedAt) {
+      uploadTimestamp = Timestamp.fromDate(new Date(video.snippet.publishedAt));
+    } else if (video.date) {
       uploadTimestamp = Timestamp.fromDate(new Date(video.date));
     } else if (video.publishedAt) {
       uploadTimestamp = Timestamp.fromDate(new Date(video.publishedAt));
     } else if (video.uploadDate) {
       uploadTimestamp = Timestamp.fromDate(new Date(video.uploadDate));
-    } else if (video.published) {
-      uploadTimestamp = Timestamp.fromDate(new Date(video.published));
     } else {
       console.warn(`    ⚠️ [YOUTUBE] Video ${video.id} missing upload date - using current time as fallback`);
       uploadTimestamp = Timestamp.now();
     }
     
-    // Parse metrics from API response
-    // API format: viewCount, likes, commentsCount
-    const views = video.viewCount || 
+    // Parse metrics - API returns in statistics object as STRINGS or top-level as numbers
+    const views = parseInt(video.statistics?.viewCount || '0', 10) || 
+                  video.viewCount || 
                   video.views || 
                   video.numberOfViews || 
                   (video.engagement?.viewCount) ||
                   0;
     
-    const likes = video.likes || 
+    const likes = parseInt(video.statistics?.likeCount || '0', 10) ||
+                  video.likes || 
                   video.likeCount || 
                   video.numberOfLikes || 
                   (video.engagement?.likeCount) ||
                   0;
     
-    const comments = video.commentsCount || 
+    const comments = parseInt(video.statistics?.commentCount || '0', 10) ||
+                     video.commentsCount || 
                      video.commentCount || 
                      video.numberOfComments || 
                      (video.engagement?.commentCount) ||
