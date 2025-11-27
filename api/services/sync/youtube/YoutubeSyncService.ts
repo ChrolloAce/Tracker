@@ -60,7 +60,8 @@ export class YoutubeSyncService {
         return { videos: [] };
       }
       
-      console.log(`    📦 [YOUTUBE] Fetched ${batch.length} Shorts from Apify (requested 10)`);
+      console.log(`    📦 [YOUTUBE] Fetched ${batch.length} Shorts from Apify`);
+      console.log(`    🔍 [YOUTUBE] Sample video structure:`, JSON.stringify(batch[0], null, 2).substring(0, 500));
       
       // Validate channel ownership (all videos should be from the same channel)
       if (channelId) {
@@ -271,19 +272,25 @@ export class YoutubeSyncService {
     video: any,
     account: { username: string; id: string }
   ): any {
-    // Parse duration from ISO 8601 format (PT1M30S)
+    // Parse duration from ISO 8601 format (PT1M30S) or seconds
     let durationSeconds = 0;
     if (video.duration) {
-      const durationStr = video.duration;
-      const match = durationStr.match(/PT(?:(\d+)M)?(?:(\d+)S)?/);
-      if (match) {
-        const minutes = parseInt(match[1] || '0', 10);
-        const seconds = parseInt(match[2] || '0', 10);
-        durationSeconds = minutes * 60 + seconds;
+      if (typeof video.duration === 'number') {
+        durationSeconds = video.duration;
+      } else {
+        const durationStr = video.duration;
+        const match = durationStr.match(/PT(?:(\d+)M)?(?:(\d+)S)?/);
+        if (match) {
+          const minutes = parseInt(match[1] || '0', 10);
+          const seconds = parseInt(match[2] || '0', 10);
+          durationSeconds = minutes * 60 + seconds;
+        }
       }
+    } else if (video.lengthSeconds) {
+      durationSeconds = parseInt(video.lengthSeconds, 10);
     }
     
-    // Get best thumbnail
+    // Get best thumbnail - check multiple possible field names
     let thumbnail = '';
     if (video.thumbnails?.maxres?.url) {
       thumbnail = video.thumbnails.maxres.url;
@@ -297,19 +304,58 @@ export class YoutubeSyncService {
       thumbnail = video.thumbnails.default.url;
     } else if (video.thumbnailUrl) {
       thumbnail = video.thumbnailUrl;
+    } else if (video.thumbnail) {
+      thumbnail = video.thumbnail;
     }
     
-    // Parse upload date
+    if (!thumbnail) {
+      console.warn(`    ⚠️ [YOUTUBE] No valid thumbnail URL for video ${video.id}. Available fields:`,
+        Object.keys(video).filter(k =>
+          k.toLowerCase().includes('url') ||
+          k.toLowerCase().includes('image') ||
+          k.toLowerCase().includes('thumb') ||
+          k.toLowerCase().includes('cover')
+        )
+      );
+    }
+    
+    // Parse upload date - check multiple possible field names
     let uploadTimestamp: FirebaseFirestore.Timestamp;
     if (video.date) {
       uploadTimestamp = Timestamp.fromDate(new Date(video.date));
-    } else if (video.publishedAt || video.uploadDate) {
-      // Alternative date fields
-      uploadTimestamp = Timestamp.fromDate(new Date(video.publishedAt || video.uploadDate));
+    } else if (video.publishedAt) {
+      uploadTimestamp = Timestamp.fromDate(new Date(video.publishedAt));
+    } else if (video.uploadDate) {
+      uploadTimestamp = Timestamp.fromDate(new Date(video.uploadDate));
+    } else if (video.published) {
+      uploadTimestamp = Timestamp.fromDate(new Date(video.published));
+    } else if (video.publishedTimeText) {
+      // Try parsing relative time like "2 days ago"
+      uploadTimestamp = Timestamp.now();
     } else {
       console.warn(`    ⚠️ [YOUTUBE] Video ${video.id} missing upload date - using current time as fallback`);
       uploadTimestamp = Timestamp.now();
     }
+    
+    // Parse metrics - check multiple possible field names
+    const views = video.viewCount || 
+                  video.views || 
+                  video.numberOfViews || 
+                  video.viewsCount ||
+                  (typeof video.viewCountText === 'string' ? parseInt(video.viewCountText.replace(/[^0-9]/g, '')) : 0) ||
+                  0;
+    
+    const likes = video.likes || 
+                  video.likeCount || 
+                  video.numberOfLikes || 
+                  video.likesCount ||
+                  0;
+    
+    const comments = video.commentsCount || 
+                     video.commentCount || 
+                     video.numberOfComments || 
+                     video.comments ||
+                     0;
     
     return {
       videoId: video.id,
@@ -318,14 +364,14 @@ export class YoutubeSyncService {
       platform: 'youtube',
       thumbnail: thumbnail,
       accountUsername: account.username,
-      accountDisplayName: video.channelName || account.username,
+      accountDisplayName: video.channelName || video.channel_name || video.channelTitle || account.username,
       uploadDate: uploadTimestamp,
-      views: video.viewCount || video.views || video.numberOfViews || 0,
-      likes: video.likes || video.likeCount || video.numberOfLikes || 0,
-      comments: video.commentsCount || video.commentCount || video.numberOfComments || 0,
+      views: views,
+      likes: likes,
+      comments: comments,
       shares: 0, // YouTube doesn't expose share count
       saves: video.favoriteCount || video.favorites || 0,
-      caption: video.text || '',
+      caption: video.text || video.description || '',
       duration: durationSeconds
     };
   }

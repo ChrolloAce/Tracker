@@ -32,16 +32,14 @@ export class TikTokSyncService {
     
     try {
       const scraperInput = {
-        profiles: [`https://www.tiktok.com/@${account.username}`],
+        startUrls: [`https://www.tiktok.com/@${account.username}`],
         maxItems: limit,
-        proxy: {
-          useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL']
-        }
+        location: null,
+        includeSearchKeywords: false
       };
       
       const data = await runApifyActor({
-        actorId: 'OtzYfK1ndEGdwWFKQ',
+        actorId: 'apidojo/tiktok-scraper',
         input: scraperInput
       });
 
@@ -58,16 +56,16 @@ export class TikTokSyncService {
       let profile = null;
       if (batch.length > 0) {
         const v = batch[0];
-        const author = v.authorMeta || {};
-        if (author.avatar) {
+        const channel = v.channel || {};
+        if (channel.avatar) {
           profile = {
-            username: author.name,
-            displayName: author.nickName || author.name,
-            profilePicUrl: author.avatar,
-            followersCount: author.fans,
-            followingCount: author.following,
-            likesCount: author.heart,
-            isVerified: author.verified || false
+            username: channel.username || channel.name,
+            displayName: channel.name || channel.username,
+            profilePicUrl: channel.avatar,
+            followersCount: channel.followers,
+            followingCount: channel.following,
+            likesCount: 0,
+            isVerified: channel.verified || false
           };
         }
       }
@@ -136,16 +134,14 @@ export class TikTokSyncService {
       const videoUrls = existingVideoIds.map(id => `https://www.tiktok.com/@${account.username}/video/${id}`);
       
       const refreshInput = {
-        postURLs: videoUrls,
+        startUrls: videoUrls,
         maxItems: videoUrls.length,
-        proxy: {
-          useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL']
-        }
+        location: null,
+        includeSearchKeywords: false
       };
       
       const data = await runApifyActor({
-        actorId: 'OtzYfK1ndEGdwWFKQ',
+        actorId: 'apidojo/tiktok-scraper',
         input: refreshInput
       });
       
@@ -184,7 +180,13 @@ export class TikTokSyncService {
     const videoId = video.id;
     
     // Upload thumbnail if requested
-    let thumbnailUrl = video.videoMeta?.coverUrl || video.coverUrl || '';
+    // New API format: video.video.cover, video.video.thumbnail, video.video.url
+    let thumbnailUrl = video.video?.cover || 
+                       video.video?.thumbnail || 
+                       video.videoMeta?.coverUrl || 
+                       video.coverUrl || 
+                       '';
+    
     if (uploadThumbnail && thumbnailUrl) {
       try {
         thumbnailUrl = await ImageUploadService.downloadAndUpload(
@@ -198,36 +200,54 @@ export class TikTokSyncService {
       }
     }
     
+    if (!thumbnailUrl) {
+      console.warn(`    ⚠️ [TIKTOK] No valid thumbnail URL for video ${videoId}. Available fields:`,
+        Object.keys(video).filter(k =>
+          k.toLowerCase().includes('url') ||
+          k.toLowerCase().includes('image') ||
+          k.toLowerCase().includes('thumb') ||
+          k.toLowerCase().includes('cover') ||
+          k.toLowerCase().includes('video')
+        )
+      );
+    }
+    
     // Parse upload date
+    // New API format: video.uploadedAtFormatted, video.uploadedAt
     let uploadTimestamp: FirebaseFirestore.Timestamp;
-    if (video.createTime || video.createTimeISO) {
+    if (video.uploadedAtFormatted) {
+      uploadTimestamp = Timestamp.fromDate(new Date(video.uploadedAtFormatted));
+    } else if (video.uploadedAt) {
+      uploadTimestamp = Timestamp.fromMillis(video.uploadedAt * 1000);
+    } else if (video.createTime || video.createTimeISO) {
       const uploadDate = new Date(video.createTimeISO || Number(video.createTime) * 1000);
       uploadTimestamp = Timestamp.fromDate(uploadDate);
     } else if (video.created_time || video.createdAt) {
-      // Alternative timestamp fields
-      const uploadDate = new Date(video.created_time || video.createdAt);
-      uploadTimestamp = Timestamp.fromDate(uploadDate);
+      uploadTimestamp = Timestamp.fromDate(new Date(video.created_time || video.createdAt));
     } else {
       console.warn(`    ⚠️ [TIKTOK] Video ${videoId} missing timestamp - using current time as fallback`);
       uploadTimestamp = Timestamp.now();
     }
     
+    // Get channel info
+    const channel = video.channel || {};
+    
     return {
       videoId: videoId,
-      videoTitle: (video.text || '').substring(0, 100) || 'Untitled Video',
-      videoUrl: video.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${videoId}`,
+      videoTitle: (video.title || video.text || '').substring(0, 100) || 'Untitled Video',
+      videoUrl: video.postPage || video.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${videoId}`,
       platform: 'tiktok',
       thumbnail: thumbnailUrl,
-      accountUsername: account.username,
-      accountDisplayName: video.authorMeta?.name || account.username,
+      accountUsername: channel.username || account.username,
+      accountDisplayName: channel.name || video.authorMeta?.name || account.username,
       uploadDate: uploadTimestamp,
-      views: video.playCount || video.views || 0,
-      likes: video.diggCount || video.likes || 0,
-      comments: video.commentCount || video.comments || 0,
-      shares: video.shareCount || video.shares || 0,
-      saves: video.collectCount || 0,
-      caption: video.text || '',
-      duration: video.videoMeta?.duration || 0
+      views: video.views || video.playCount || 0,
+      likes: video.likes || video.diggCount || 0,
+      comments: video.comments || video.commentCount || 0,
+      shares: video.shares || video.shareCount || 0,
+      saves: video.bookmarks || video.collectCount || 0,
+      caption: video.title || video.text || '',
+      duration: video.video?.duration || video.videoMeta?.duration || 0
     };
   }
 }
