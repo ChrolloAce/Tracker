@@ -244,8 +244,7 @@ export default async function handler(
         const creatorType = account.creatorType || 'automatic';
         console.log(`🔧 Account type: ${creatorType}`);
         
-        let newTikTokVideos: any[] = [];
-        let existingVideoIds = new Set<string>();
+        const tiktokVideos: any[] = [];
         
         // Get existing video IDs
         const existingVideosSnapshot = await db
@@ -259,79 +258,94 @@ export default async function handler(
           .select('videoId')
           .get();
         
-        existingVideoIds = new Set(
+        const existingVideoIds = new Set(
           existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
         );
         
         console.log(`📊 Found ${existingVideoIds.size} existing TikTok videos in database`);
         
-        // ===== NEW VIDEO DISCOVERY =====
-        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          // For first-time syncs (never synced before), pass empty set to fetch ALL videos up to limit
-          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
-          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
-          
-          if (isFirstTimeSync) {
-            console.log(`🆕 [TIKTOK] First-time sync detected - will fetch ALL ${maxVideos} videos (ignoring duplicates)`);
-          }
-          
-          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, maxVideos);
-          newTikTokVideos = result.videos;
-          
-          // Profile handling from discovery result
-          if (result.profile) {
-             const profile = result.profile;
-             console.log(`✅ Fetched profile: ${profile.followersCount || 0} followers`);
-             
-             const profileUpdates: any = {
-               displayName: profile.displayName,
-               followerCount: profile.followersCount || 0,
-               followingCount: profile.followingCount || 0,
-               isVerified: profile.isVerified || false
-             };
-             
-             if (profile.profilePicUrl) {
-               try {
-                 const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
-                   profile.profilePicUrl,
-                   orgId,
-                   `tiktok_profile_${account.username}.jpg`,
-                   'profile'
-                 );
-                 profileUpdates.profilePicture = uploadedProfilePic;
-               } catch (err: any) {
-                 console.warn('⚠️ Could not upload profile pic:', err.message);
-               }
-             }
-             
-             await accountRef.update(profileUpdates);
-          }
-        } else if (syncStrategy === 'refresh_only') {
-          console.log(`🔄 [TIKTOK] Refresh-only mode - skipping new video discovery`);
-        } else {
-          console.log(`🔒 [TIKTOK] Static account - skipping new video discovery`);
-        }
-        
-        const tiktokVideos = newTikTokVideos;
-        
-        // ===== REFRESH EXISTING VIDEOS =====
+        // ==================== PHASE 1: REFRESH EXISTING VIDEOS ====================
+        // Always run refresh FIRST for any account with existing videos
         if (existingVideoIds.size > 0) {
+          console.log(`\n🔄 [TIKTOK PHASE 1] Refreshing ${existingVideoIds.size} existing videos...`);
           try {
             const refreshedVideos = await TikTokSyncService.refresh(account, orgId, Array.from(existingVideoIds));
             
-            // Mark refreshed videos as refresh-only (important!)
+            // Mark ALL refreshed videos with flag to prevent duplication
             const markedRefreshedVideos = refreshedVideos.map((v: any) => ({
               ...v,
               _isRefreshOnly: true
             }));
             
             tiktokVideos.push(...markedRefreshedVideos);
-            } catch (refreshError) {
-              console.error('⚠️ [TIKTOK] Failed to refresh existing videos (non-fatal):', refreshError);
+            console.log(`   ✅ Refreshed ${refreshedVideos.length} videos`);
+          } catch (refreshError) {
+            console.error('⚠️ [TIKTOK] Refresh failed (non-fatal):', refreshError);
           }
         }
         
-        console.log(`📊 [TIKTOK] Processing ${tiktokVideos.length} videos`);
+        // ==================== PHASE 2: DISCOVER NEW VIDEOS ====================
+        // Only run discovery for automatic accounts (static accounts skip this)
+        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+          console.log(`\n🔍 [TIKTOK PHASE 2] Discovering new videos...`);
+          
+          // For first-time syncs, pass EMPTY set (fetch all up to limit)
+          // For regular syncs, pass FULL set (stop at first duplicate)
+          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
+          
+          if (isFirstTimeSync) {
+            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} videos`);
+        } else {
+            console.log(`   🔄 Regular sync - will stop at first duplicate`);
+          }
+          
+          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+          const newVideos = result.videos;
+          
+          console.log(`   ✅ Discovered ${newVideos.length} NEW videos`);
+          
+          // Add NEW videos (not marked as _isRefreshOnly, so they'll be created)
+          tiktokVideos.push(...newVideos);
+          
+          // Profile handling
+          if (result.profile) {
+            const profile = result.profile;
+            console.log(`   👤 Fetched profile: ${profile.followersCount || 0} followers`);
+            
+              const profileUpdates: any = {
+              displayName: profile.displayName,
+              followerCount: profile.followersCount || 0,
+              followingCount: profile.followingCount || 0,
+              isVerified: profile.isVerified || false
+            };
+            
+            if (profile.profilePicUrl) {
+              try {
+                const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
+                  profile.profilePicUrl,
+                  orgId,
+                  `tiktok_profile_${account.username}.jpg`,
+                  'profile'
+                );
+                profileUpdates.profilePicture = uploadedProfilePic;
+              } catch (err: any) {
+                console.warn('⚠️ Could not upload profile pic:', err.message);
+              }
+              }
+              
+              await accountRef.update(profileUpdates);
+          }
+        } else if (syncStrategy === 'refresh_only') {
+          console.log(`\n⏭️  [TIKTOK PHASE 2] Refresh-only mode - skipping discovery`);
+          } else {
+          console.log(`\n⏭️  [TIKTOK PHASE 2] Static account - skipping discovery`);
+        }
+        
+        // ==================== PHASE 3: PROCESS ALL VIDEOS ====================
+        const refreshedCount = existingVideoIds.size;
+        const newCount = tiktokVideos.length - refreshedCount;
+        console.log(`\n📊 [TIKTOK] Processing ${tiktokVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new)`);
         videos = tiktokVideos;
         
       } catch (tiktokError) {
@@ -345,8 +359,7 @@ export default async function handler(
         const creatorType = account.creatorType || 'automatic';
         console.log(`🔧 Account type: ${creatorType}`);
         
-        let newYouTubeVideos: any[] = [];
-        const channelHandle = account.username.startsWith('@') ? account.username : `@${account.username}`;
+        const youtubeVideos: any[] = [];
         
         // Get existing video IDs
         const existingVideosSnapshot = await db
@@ -366,66 +379,87 @@ export default async function handler(
         
         console.log(`📊 Found ${existingVideoIds.size} existing YouTube Shorts in database`);
         
-        // ===== NEW VIDEO DISCOVERY =====
+        // ==================== PHASE 1: REFRESH EXISTING VIDEOS ====================
+        // Always run refresh FIRST for any account with existing videos
+        if (existingVideoIds.size > 0) {
+          console.log(`\n🔄 [YOUTUBE PHASE 1] Refreshing ${existingVideoIds.size} existing Shorts...`);
+          try {
+            const refreshedVideos = await YoutubeSyncService.refresh(account, orgId, Array.from(existingVideoIds));
+            
+            // Mark ALL refreshed videos with flag to prevent duplication (CRITICAL FIX!)
+            const markedRefreshedVideos = refreshedVideos.map((v: any) => ({
+              ...v,
+              _isRefreshOnly: true
+            }));
+            
+            youtubeVideos.push(...markedRefreshedVideos);
+            console.log(`   ✅ Refreshed ${refreshedVideos.length} Shorts`);
+          } catch (refreshError) {
+            console.error('⚠️ [YOUTUBE] Refresh failed (non-fatal):', refreshError);
+          }
+        }
+        
+        // ==================== PHASE 2: DISCOVER NEW VIDEOS ====================
+        // Only run discovery for automatic accounts (static accounts skip this)
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          // For first-time syncs (never synced before), pass empty set to fetch ALL videos up to limit
+          console.log(`\n🔍 [YOUTUBE PHASE 2] Discovering new Shorts...`);
+          
+          // For first-time syncs, pass EMPTY set (fetch all up to limit)
+          // For regular syncs, pass FULL set (stop at first duplicate)
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
           
           if (isFirstTimeSync) {
-            console.log(`🆕 [YOUTUBE] First-time sync detected - will fetch ALL ${maxVideos} Shorts (ignoring duplicates)`);
+            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} Shorts`);
+          } else {
+            console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
           
-          // Pass channel handle via username, and ID if present
           const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, maxVideos);
-          newYouTubeVideos = result.videos;
+          const newVideos = result.videos;
+          
+          console.log(`   ✅ Discovered ${newVideos.length} NEW Shorts`);
+          
+          // Add NEW videos (not marked as _isRefreshOnly, so they'll be created)
+          youtubeVideos.push(...newVideos);
           
           // Profile handling
           if (result.profile) {
-             const profile = result.profile;
-             console.log(`✅ Fetched profile: ${profile.followersCount || 0} subscribers`);
-             
-          const profileUpdates: any = {
-               displayName: profile.displayName,
-               followerCount: profile.followersCount || 0,
-               isVerified: profile.isVerified || false
-          };
-          
-             if (profile.profilePicUrl) {
-            try {
-                 const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
-                   profile.profilePicUrl,
-                orgId,
-                `youtube_profile_${account.username}.jpg`,
-                'profile'
-              );
-              profileUpdates.profilePicture = uploadedProfilePic;
-               } catch (err: any) {
-                 console.warn('⚠️ Could not upload profile pic:', err.message);
+            const profile = result.profile;
+            console.log(`   👤 Fetched profile: ${profile.followersCount || 0} subscribers`);
+            
+            const profileUpdates: any = {
+              displayName: profile.displayName,
+              followerCount: profile.followersCount || 0,
+              isVerified: profile.isVerified || false
+            };
+            
+            if (profile.profilePicUrl) {
+              try {
+                const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
+                  profile.profilePicUrl,
+                  orgId,
+                  `youtube_profile_${account.username}.jpg`,
+                  'profile'
+                );
+                profileUpdates.profilePicture = uploadedProfilePic;
+              } catch (err: any) {
+                console.warn('⚠️ Could not upload profile pic:', err.message);
+              }
             }
-          }
-          
-          await accountRef.update(profileUpdates);
+            
+            await accountRef.update(profileUpdates);
           }
         } else if (syncStrategy === 'refresh_only') {
-          console.log(`🔄 [YOUTUBE] Refresh-only mode - skipping new video discovery`);
+          console.log(`\n⏭️  [YOUTUBE PHASE 2] Refresh-only mode - skipping discovery`);
         } else {
-          console.log(`🔒 [YOUTUBE] Static account - skipping new video discovery`);
-            }
-        
-        const youtubeVideos = newYouTubeVideos;
-        
-        // ===== REFRESH EXISTING VIDEOS =====
-        if (existingVideoIds.size > 0) {
-          try {
-            const refreshedVideos = await YoutubeSyncService.refresh(account, orgId, Array.from(existingVideoIds));
-            youtubeVideos.push(...refreshedVideos);
-          } catch (refreshError) {
-            console.error('⚠️ [YOUTUBE] Failed to refresh existing videos (non-fatal):', refreshError);
-          }
+          console.log(`\n⏭️  [YOUTUBE PHASE 2] Static account - skipping discovery`);
         }
         
-        console.log(`📊 [YOUTUBE] Processing ${youtubeVideos.length} videos`);
+        // ==================== PHASE 3: PROCESS ALL VIDEOS ====================
+        const refreshedCount = existingVideoIds.size;
+        const newCount = youtubeVideos.length - refreshedCount;
+        console.log(`\n📊 [YOUTUBE] Processing ${youtubeVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new)`);
         videos = youtubeVideos;
         
       } catch (youtubeError) {
@@ -473,9 +507,9 @@ export default async function handler(
       const creatorType = account.creatorType || 'automatic';
       console.log(`🔧 Account type: ${creatorType}`);
       
-        let newTweets: any[] = [];
+      const tweets: any[] = [];
       
-        // Get existing tweet IDs
+      // Get existing tweet IDs
       const existingTweetsSnapshot = await db
         .collection('organizations')
         .doc(orgId)
@@ -493,37 +527,59 @@ export default async function handler(
       
       console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
       
-        // ===== NEW TWEET DISCOVERY =====
-      if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-           // For first-time syncs (never synced before), pass empty set to fetch ALL tweets up to limit
-           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
-           const tweetsToCheck = isFirstTimeSync ? new Set<string>() : existingTweetIds;
-           
-           if (isFirstTimeSync) {
-             console.log(`🆕 [TWITTER] First-time sync detected - will fetch ALL ${maxVideos} tweets (ignoring duplicates)`);
-           }
-           
-           newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, maxVideos);
-      } else if (syncStrategy === 'refresh_only') {
-        console.log(`🔄 [TWITTER] Refresh-only mode - skipping new tweet discovery`);
-      } else {
-        console.log(`🔒 [TWITTER] Static account - skipping new tweet discovery`);
+      // ==================== PHASE 1: REFRESH EXISTING TWEETS ====================
+      // Always run refresh FIRST for any account with existing tweets
+      if (existingTweetIds.size > 0) {
+        console.log(`\n🔄 [TWITTER PHASE 1] Refreshing ${existingTweetIds.size} existing tweets...`);
+        try {
+          const refreshedTweets = await TwitterSyncService.refresh(account, orgId, Array.from(existingTweetIds));
+          
+          // Mark ALL refreshed tweets with flag to prevent duplication
+          const markedRefreshedTweets = refreshedTweets.map((v: any) => ({
+            ...v,
+            _isRefreshOnly: true
+          }));
+          
+          tweets.push(...markedRefreshedTweets);
+          console.log(`   ✅ Refreshed ${refreshedTweets.length} tweets`);
+        } catch (refreshError) {
+          console.error('⚠️ [TWITTER] Refresh failed (non-fatal):', refreshError);
+        }
       }
       
-        const tweets = newTweets;
+      // ==================== PHASE 2: DISCOVER NEW TWEETS ====================
+      // Only run discovery for automatic accounts (static accounts skip this)
+      if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+        console.log(`\n🔍 [TWITTER PHASE 2] Discovering new tweets...`);
         
-        // ===== REFRESH EXISTING TWEETS =====
-      if (existingTweetIds.size > 0) {
-           try {
-             const refreshedTweets = await TwitterSyncService.refresh(account, orgId, Array.from(existingTweetIds));
-             tweets.push(...refreshedTweets);
-        } catch (refreshError) {
-          console.error('⚠️ [TWITTER] Failed to refresh existing tweets (non-fatal):', refreshError);
-        }
+        // For first-time syncs, pass EMPTY set (fetch all up to limit)
+        // For regular syncs, pass FULL set (stop at first duplicate)
+        const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+        const tweetsToCheck = isFirstTimeSync ? new Set<string>() : existingTweetIds;
+        
+        if (isFirstTimeSync) {
+          console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} tweets`);
+        } else {
+          console.log(`   🔄 Regular sync - will stop at first duplicate`);
         }
         
-        console.log(`📊 [TWITTER] Processing ${tweets.length} tweets`);
-        videos = tweets;
+        const newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, maxVideos);
+        
+        console.log(`   ✅ Discovered ${newTweets.length} NEW tweets`);
+        
+        // Add NEW tweets (not marked as _isRefreshOnly, so they'll be created)
+        tweets.push(...newTweets);
+      } else if (syncStrategy === 'refresh_only') {
+        console.log(`\n⏭️  [TWITTER PHASE 2] Refresh-only mode - skipping discovery`);
+      } else {
+        console.log(`\n⏭️  [TWITTER PHASE 2] Static account - skipping discovery`);
+      }
+      
+      // ==================== PHASE 3: PROCESS ALL TWEETS ====================
+      const refreshedCount = existingTweetIds.size;
+      const newCount = tweets.length - refreshedCount;
+      console.log(`\n📊 [TWITTER] Processing ${tweets.length} total tweets (${refreshedCount} refreshed + ${newCount} new)`);
+      videos = tweets;
         
       } catch (twitterError) {
         console.error('Twitter fetch error:', twitterError);
@@ -536,10 +592,9 @@ export default async function handler(
         const creatorType = account.creatorType || 'automatic';
         console.log(`🔧 Account type: ${creatorType}`);
         
-        let newInstagramReels: any[] = [];
-        let existingVideoIds = new Set<string>();
+        const instagramItems: any[] = [];
         
-        // Get existing video IDs (used for duplicate checking)
+        // Get existing video IDs
         const existingVideosSnapshot = await db
           .collection('organizations')
           .doc(orgId)
@@ -551,70 +606,47 @@ export default async function handler(
           .select('videoId')
           .get();
         
-        existingVideoIds = new Set(
+        const existingVideoIds = new Set(
           existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
         );
         
         console.log(`📊 Found ${existingVideoIds.size} existing Instagram reels in database`);
         
-        // ===== NEW VIDEO DISCOVERY (only if NOT refresh_only) =====
-        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          // For first-time syncs (never synced before), pass empty set to fetch ALL videos up to limit
-          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
-          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
-          
-          if (isFirstTimeSync) {
-            console.log(`🆕 [INSTAGRAM] First-time sync detected - will fetch ALL ${maxVideos} reels (ignoring duplicates)`);
-          }
-          
-          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, maxVideos);
-          newInstagramReels = result.videos;
-          
-          // TODO: SPIDERWEB - Re-enable later (multi-phase discovery)
-          // if (useProgressiveFetch && !result.foundDuplicate) { ... }
-        } else if (syncStrategy === 'refresh_only') {
-          console.log(`🔄 [INSTAGRAM] Refresh-only mode - skipping new video discovery`);
-        } else {
-          console.log(`🔒 [INSTAGRAM] Static account - skipping new video discovery`);
-        }
-        
-        const instagramItems = newInstagramReels;
-        console.log(`📊 [INSTAGRAM] Processing ${instagramItems.length} new reels`);
-        
-        // ===== REFRESH EXISTING REELS (runs for ALL accounts with existing videos) =====
+        // ==================== PHASE 1: REFRESH EXISTING REELS ====================
+        // Always run refresh FIRST for any account with existing videos
         if (existingVideoIds.size > 0) {
-          console.log(`🔄 Fetching updated metrics for existing reels...`);
+          console.log(`\n🔄 [INSTAGRAM PHASE 1] Refreshing ${existingVideoIds.size} existing reels...`);
           
           try {
             const refreshedReels = await InstagramSyncService.refresh(account, orgId, Array.from(existingVideoIds));
             
+            let successCount = 0;
+            let errorCount = 0;
+            
             // Handle errors and add valid ones
             for (const reel of refreshedReels) {
               if (reel.isError) {
+                errorCount++;
                 console.warn(`⚠️ [INSTAGRAM] Video error: ${reel.error}`);
-                console.warn(`   Input URL: ${reel.input}`);
                 
                 // Extract video code from URL to mark it in database
                 const urlMatch = reel.input?.match(/\/p\/([^\/]+)/);
                 const videoCode = urlMatch ? urlMatch[1] : null;
                 
                 if (videoCode) {
-                  console.log(`🔍 Marking video ${videoCode} as deleted/restricted in database...`);
-                  
                   const videoQuery = await db
-              .collection('organizations')
-              .doc(orgId)
-              .collection('projects')
-              .doc(projectId)
-              .collection('videos')
+                    .collection('organizations')
+                    .doc(orgId)
+                    .collection('projects')
+                    .doc(projectId)
+                    .collection('videos')
                     .where('videoId', '==', videoCode)
-              .where('platform', '==', 'instagram')
+                    .where('platform', '==', 'instagram')
                     .limit(1)
-              .get();
-            
+                    .get();
+                  
                   if (!videoQuery.empty) {
-                    const videoRef = videoQuery.docs[0].ref;
-                    await videoRef.update({
+                    await videoQuery.docs[0].ref.update({
                       status: 'error',
                       lastRefreshError: reel.error,
                       lastRefreshed: Timestamp.now(),
@@ -623,36 +655,74 @@ export default async function handler(
                               reel.error.includes('private') ? 'private' : 'deleted',
                         message: reel.error,
                         detectedAt: Timestamp.now()
-          }
-        });
-                    console.log(`✅ Marked video ${videoCode} with error status: ${reel.error}`);
+                      }
+                    });
+                    console.log(`   ✅ Marked video ${videoCode} with error status`);
                   }
                 }
                 continue;
               }
-                
-                // Add refreshed reels to instagramItems array (will be processed together)
-              instagramItems.push(reel);
+              
+              // Mark valid refreshed reels with flag to prevent duplication
+              instagramItems.push({
+                ...reel,
+                _isRefreshOnly: true
+              });
+              successCount++;
             }
+            
+            console.log(`   ✅ Refreshed ${successCount} reels (${errorCount} errors)`);
           } catch (refreshError) {
-            console.error('⚠️ Failed to refresh existing reels (non-fatal):', refreshError);
+            console.error('⚠️ [INSTAGRAM] Refresh failed (non-fatal):', refreshError);
           }
         }
         
-        console.log(`📦 Total reels to process: ${instagramItems.length}`);
+        // ==================== PHASE 2: DISCOVER NEW REELS ====================
+        // Only run discovery for automatic accounts (static accounts skip this)
+        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+          console.log(`\n🔍 [INSTAGRAM PHASE 2] Discovering new reels...`);
+          
+          // For first-time syncs, pass EMPTY set (fetch all up to limit)
+          // For regular syncs, pass FULL set (stop at first duplicate)
+          const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
+          const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
+          
+          if (isFirstTimeSync) {
+            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} reels`);
+          } else {
+            console.log(`   🔄 Regular sync - will stop at first duplicate`);
+          }
+          
+          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+          const newReels = result.videos;
+          
+          console.log(`   ✅ Discovered ${newReels.length} NEW reels`);
+          
+          // Add NEW reels (not marked as _isRefreshOnly, so they'll be created)
+          instagramItems.push(...newReels);
+        } else if (syncStrategy === 'refresh_only') {
+          console.log(`\n⏭️  [INSTAGRAM PHASE 2] Refresh-only mode - skipping discovery`);
+        } else {
+          console.log(`\n⏭️  [INSTAGRAM PHASE 2] Static account - skipping discovery`);
+        }
+        
+        // ==================== PHASE 3: PROCESS ALL REELS ====================
+        const refreshedCount = Math.min(existingVideoIds.size, instagramItems.filter(i => i._isRefreshOnly).length);
+        const newCount = instagramItems.length - refreshedCount;
+        console.log(`\n📊 [INSTAGRAM] Processing ${instagramItems.length} total reels (${refreshedCount} refreshed + ${newCount} new)`);
         
         // Profile Update
-      try {
+        try {
           const profile = await InstagramSyncService.getProfile(account.username);
           if (profile) {
-            console.log(`✅ Fetched profile: ${profile.followersCount || 0} followers`);
-          
-          const profileUpdates: any = {
-            displayName: profile.fullName || account.username,
-            followerCount: profile.followersCount || 0,
-            followingCount: profile.followsCount || 0,
-            isVerified: profile.verified || false
-          };
+            console.log(`   👤 Fetched profile: ${profile.followersCount || 0} followers`);
+            
+            const profileUpdates: any = {
+              displayName: profile.fullName || account.username,
+              followerCount: profile.followersCount || 0,
+              followingCount: profile.followsCount || 0,
+              isVerified: profile.verified || false
+            };
 
             if (profile.profilePicUrl) {
             try {

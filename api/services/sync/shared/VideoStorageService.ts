@@ -118,35 +118,24 @@ export class VideoStorageService {
         
         batch.update(videoRef, updateData);
 
-        // ==================== SNAPSHOT DEDUPLICATION ====================
-        // Check for recent snapshot to prevent duplicates (within 5 minutes)
-        const fiveMinutesAgo = Timestamp.fromMillis(snapshotTime.toMillis() - (5 * 60 * 1000));
-        const recentSnapshotQuery = await videoRef.collection('snapshots')
-          .where('capturedAt', '>=', fiveMinutesAgo)
-          .limit(1)
-          .get();
-
-        if (!recentSnapshotQuery.empty) {
-          const snapshotAge = Math.round((snapshotTime.toMillis() - recentSnapshotQuery.docs[0].data().capturedAt.toMillis()) / 1000);
-          console.log(`    ⏭️  Skipping snapshot for ${video.videoId} - recent one exists (${snapshotAge}s ago)`);
-        } else {
-          // Create refresh snapshot
-          const snapshotRef = videoRef.collection('snapshots').doc();
-          batch.set(snapshotRef, {
-            id: snapshotRef.id,
-            videoId: video.videoId,
-            views: video.views || 0,
-            likes: video.likes || 0,
-            comments: video.comments || 0,
-            shares: video.shares || 0,
-            saves: video.saves || 0,
-            capturedAt: snapshotTime,
-            timestamp: snapshotTime,
-            capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
-            isInitialSnapshot: false
-          });
-          console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
-        }
+        // ==================== CREATE REFRESH SNAPSHOT ====================
+        // New architecture (REFRESH → DISCOVERY) prevents duplicate snapshots naturally
+        // No deduplication check needed!
+        const snapshotRef = videoRef.collection('snapshots').doc();
+        batch.set(snapshotRef, {
+          id: snapshotRef.id,
+          videoId: video.videoId,
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          saves: video.saves || 0,
+          capturedAt: snapshotTime,
+          timestamp: snapshotTime,
+          capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
+          isInitialSnapshot: false
+        });
+        console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
       } else {
         // Video doesn't exist
         
