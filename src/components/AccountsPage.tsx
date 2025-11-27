@@ -397,6 +397,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
       {viewMode === 'table' ? (
         <div className="space-y-6">
+          {/* Only show empty state if ABSOLUTELY NO accounts exist (not just filtered) */}
           {!loading && accounts.length === 0 && processingAccounts.length === 0 ? (
             <BlurEmptyState
               title="Add Your First Account to Track"

@@ -200,6 +200,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
+  
+  // Total counts (unfiltered) - for empty state check
+  const [totalAccountsInOrg, setTotalAccountsInOrg] = useState(0);
+  const [totalVideosInOrg, setTotalVideosInOrg] = useState(0);
   const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
   const [revenueIntegrations, setRevenueIntegrations] = useState<RevenueIntegration[]>([]);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
@@ -1081,6 +1085,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         };
       });
       setSubmissions(allSubmissions);
+      
+      // Set total counts (unfiltered) for empty state check
+      setTotalAccountsInOrg(accountsSnapshot.size);
+      setTotalVideosInOrg(allSubmissions.length);
     
       // Process rules
       const rules = rulesSnapshot.docs.map(doc => ({
@@ -2972,8 +2980,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
           {activeTab === 'dashboard' && (
             <div>
-              {/* Empty State - Show when no accounts AND no videos (and not loading) */}
-              {!loadingDashboard && trackedAccounts.length === 0 && submissions.length === 0 && (
+              {/* Empty State - Show ONLY when absolutely NO accounts AND NO videos exist in org (not just filtered) */}
+              {!loadingDashboard && totalAccountsInOrg === 0 && totalVideosInOrg === 0 && (
                 <BlurEmptyState
                   title="Start Tracking Your Content"
                   description="Add your first social media account or video to start monitoring performance and growing your audience."
@@ -2998,8 +3006,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 />
               )}
               
-              {/* Dashboard Content - Show when there's data */}
-              {(trackedAccounts.length > 0 || submissions.length > 0) && (
+              {/* Dashboard Content - Show when there's ANY data in org (even if filtered out) */}
+              {(totalAccountsInOrg > 0 || totalVideosInOrg > 0) && (
               <div>
               {/* Render dashboard sections in order */}
               {dashboardSectionOrder
