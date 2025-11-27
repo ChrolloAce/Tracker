@@ -149,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error(`⚠️ Failed to delete video document:`, error);
     }
 
-    // Step 4: Update usage counter (decrement)
+    // Step 4: Recalculate account stats after video deletion
     try {
       const accountRef = db
         .collection('organizations')
@@ -159,16 +159,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .collection('trackedAccounts')
         .doc(trackedAccountId);
       
-      const accountSnap = await accountRef.get();
-      if (accountSnap.exists) {
-        const currentVideos = accountSnap.data()?.videos || 0;
-        await accountRef.update({
-          videos: Math.max(0, currentVideos - 1)
-        });
-        console.log(`✅ Updated usage counter`);
-      }
+      // Get all remaining videos for this account
+      const videosRef = db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos');
+      
+      const videosSnapshot = await videosRef
+        .where('accountId', '==', trackedAccountId)
+        .get();
+      
+      // Calculate fresh totals from remaining videos
+      let totalVideos = 0;
+      let totalViews = 0;
+      let totalLikes = 0;
+      let totalComments = 0;
+      let totalShares = 0;
+      
+      videosSnapshot.docs.forEach(doc => {
+        const video = doc.data();
+        totalVideos++;
+        totalViews += video.views || 0;
+        totalLikes += video.likes || 0;
+        totalComments += video.comments || 0;
+        totalShares += video.shares || 0;
+      });
+      
+      // Update account with recalculated stats
+      await accountRef.update({
+        totalVideos,
+        totalViews,
+        totalLikes,
+        totalComments,
+        totalShares
+      });
+      
+      console.log(`✅ Recalculated account stats: ${totalVideos} videos, ${totalViews} views, ${totalLikes} likes`);
     } catch (error) {
-      console.error(`⚠️ Failed to update usage counter (non-critical):`, error);
+      console.error(`⚠️ Failed to recalculate account stats (non-critical):`, error);
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
