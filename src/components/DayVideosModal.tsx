@@ -1066,7 +1066,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   <>
                     {/* New Videos Table - Full Width - Only show if has videos */}
                     {hasNewVideos && (
-                      <div className="w-full overflow-hidden">
+                      <div className="w-full max-h-[500px] overflow-y-auto overflow-x-hidden">
                         <VideoSubmissionsTable
                           submissions={videosToShow}
                           onVideoClick={onVideoClick}
@@ -1078,7 +1078,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
                     {/* Refreshed Videos Table - Full Width - Only show if has gainers */}
                     {hasRefreshedVideos && (
-                      <div className="w-full overflow-hidden">
+                      <div className="w-full max-h-[500px] overflow-y-auto overflow-x-hidden">
                         <VideoSubmissionsTable
                           submissions={gainersToShow.map((item: any) => {
                           // Calculate growth for all metrics from snapshots

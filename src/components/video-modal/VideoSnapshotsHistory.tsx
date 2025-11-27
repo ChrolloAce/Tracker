@@ -103,8 +103,8 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
         <div className="text-right">Engagement</div>
       </div>
 
-      {/* Snapshots List */}
-      <div className="relative divide-y divide-white/5 z-10">
+      {/* Snapshots List - Scrollable */}
+      <div className="relative divide-y divide-white/5 z-10 max-h-[400px] overflow-y-auto">
         {paginatedSnapshots.map((snapshot) => (
           <div 
             key={snapshot.capturedAt instanceof Date ? snapshot.capturedAt.toISOString() : String(snapshot.capturedAt)}
