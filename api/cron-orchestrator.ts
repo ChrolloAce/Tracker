@@ -34,11 +34,11 @@ function initializeFirebase() {
 
 /**
  * Cron Orchestrator - Hierarchical Dispatcher
- * Runs at 00:00 (midnight) and 12:00 (noon) UTC
+ * Runs at 05:00 UTC (Midnight EST) and 17:00 UTC (Noon EST)
  * 
- * SCHEDULE:
- * - Premium (Ultra/Enterprise): Refresh at 00:00 AND 12:00 (2x per day)
- * - Regular (Free/Basic/Pro): Refresh at 12:00 only (1x per day)
+ * SCHEDULE (EST Timezone):
+ * - Premium (Ultra/Enterprise): Refresh at Midnight EST AND Noon EST (2x per day)
+ * - Regular (Free/Basic/Pro): Refresh at Noon EST only (1x per day)
  * 
  * ARCHITECTURE:
  * Orchestrator → Organization Jobs → Project Jobs → Account Jobs
@@ -167,7 +167,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // For scheduled cron (not manual), check time-based restrictions
         if (!isManualTrigger) {
           const isPremium = planTier === 'ultra' || planTier === 'enterprise';
-          shouldProcess = isPremium || currentHour === 12;
+          // 17:00 UTC is 12:00 PM EST (Noon) - Process everyone
+          // 05:00 UTC is 00:00 AM EST (Midnight) - Process Premium only
+          shouldProcess = isPremium || currentHour === 17;
           
           if (!shouldProcess) {
             console.log(`⏭️  Skip ${orgId} (${planTier} - not their refresh time)`);

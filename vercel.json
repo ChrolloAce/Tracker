@@ -97,7 +97,7 @@
   "crons": [
     {
       "path": "/api/cron-orchestrator",
-      "schedule": "0 0,12 * * *"
+      "schedule": "0 5,17 * * *"
     },
     {
       "path": "/api/queue-worker",
