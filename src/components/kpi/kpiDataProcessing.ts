@@ -132,10 +132,6 @@ export const generateSparklineData = (
         const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         // === CURRENT PERIOD (CP) CALCULATION ===
-        // CRITICAL: Video must be uploaded within the selected date range to be counted
-        // This prevents videos from before the period being included in partial intervals
-        const isUploadedInSelectedPeriod = uploadDate >= actualStartDate && uploadDate <= actualEndDate;
-        
         // Check if video was uploaded before this interval started
         if (uploadDate < interval.startDate) {
           // Video was uploaded before this interval - calculate growth delta ONLY for this interval
@@ -174,15 +170,8 @@ export const generateSparklineData = (
       // === PREVIOUS PERIOD (PP) CALCULATION ===
       // Use ALL submissions (not filtered) for PP calculation
       if (ppInterval) {
-        // Calculate PP period boundaries
-        const ppPeriodStart = ppIntervals[0]?.startDate || ppInterval.startDate;
-        const ppPeriodEnd = ppIntervals[ppIntervals.length - 1]?.endDate || ppInterval.endDate;
-        
         submissionsForPP.forEach(video => {
           const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
-          
-          // CRITICAL: Video must be uploaded within the PP date range to be counted
-          const isUploadedInPPPeriod = uploadDate >= ppPeriodStart && uploadDate <= ppPeriodEnd;
           
           // Use the same logic as CP, but for PP interval dates
           if (uploadDate < ppInterval.startDate) {
