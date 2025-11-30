@@ -124,7 +124,11 @@ export class InstagramSyncService {
     
     try {
       // Build Instagram post URLs - use /reel/ for reels
-      const postUrls = existingVideoIds.map(id => `https://www.instagram.com/reel/${id}/`);
+      // Clean IDs: If ID contains underscore (e.g. 12345_6789), strip the suffix as it breaks URLs
+      const postUrls = existingVideoIds.map(id => {
+        const cleanId = id.includes('_') ? id.split('_')[0] : id;
+        return `https://www.instagram.com/reel/${cleanId}/`;
+      });
       
       const refreshInput: any = {
         post_urls: postUrls,
