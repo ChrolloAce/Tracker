@@ -226,7 +226,26 @@ export class InstagramSyncService {
     orgId: string,
     uploadThumbnail: boolean = true
   ): Promise<any> {
-    const reelId = reel.shortCode || reel.id;
+    // Extract shortcode with multiple fallbacks to ensure we get the string ID (e.g. C8FCqbbMRlt)
+    // Avoid using numeric IDs (e.g. 37710321...) as they break URL construction
+    let reelId = reel.shortCode || reel.code || reel.shortcode;
+
+    // If no direct shortcode field, try to extract from URL
+    if (!reelId && (reel.url || reel.link)) {
+      const url = reel.url || reel.link;
+      const match = url.match(/\/(?:p|reel|tv)\/([^\/\?]+)/);
+      if (match) {
+        reelId = match[1];
+      }
+    }
+
+    // Fallback to ID if nothing else (usually numeric) - log warning if it looks numeric
+    if (!reelId) {
+      reelId = reel.id;
+      if (reelId && /^\d+(_\d+)?$/.test(reelId)) {
+        console.warn(`    ⚠️ [INSTAGRAM] Could not find shortcode for video, using numeric ID: ${reelId}. This may cause refresh issues.`);
+      }
+    }
     
     // Upload thumbnail if requested - try multiple possible fields
     let thumbnailUrl = reel.displayUrl || 
@@ -281,7 +300,8 @@ export class InstagramSyncService {
     return {
       videoId: reelId,
       videoTitle: (reel.caption || '').substring(0, 100) || 'Untitled Reel',
-      videoUrl: reel.url || `https://www.instagram.com/p/${reelId}/`,
+      // Force standard /reel/ URL format for consistency and reliability
+      videoUrl: `https://www.instagram.com/reel/${reelId}/`,
       platform: 'instagram',
       thumbnail: thumbnailUrl,
       accountUsername: account.username,
