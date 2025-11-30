@@ -128,6 +128,7 @@ export class InstagramSyncService {
       
       const refreshInput: any = {
         post_urls: postUrls,
+        target: 'reels_only',
         reels_count: postUrls.length,
         include_raw_data: true,
         custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
