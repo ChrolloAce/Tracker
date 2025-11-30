@@ -696,7 +696,8 @@ export default async function handler(
                 console.warn(`⚠️ [INSTAGRAM] Video error: ${reel.error}`);
                 
                 // Extract video code from URL to mark it in database
-                const urlMatch = reel.input?.match(/\/p\/([^\/]+)/);
+                // Support /p/ (posts), /reel/ (reels), and /tv/ (IGTV)
+                const urlMatch = reel.input?.match(/\/(?:p|reel|tv)\/([^\/\?]+)/);
                 const videoCode = urlMatch ? urlMatch[1] : null;
                 
                 if (videoCode) {
