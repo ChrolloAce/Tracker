@@ -123,12 +123,11 @@ export class InstagramSyncService {
     console.log(`🔄 [INSTAGRAM] Refreshing ${existingVideoIds.length} existing reels...`);
     
     try {
-      // Build Instagram post URLs
-      const postUrls = existingVideoIds.map(id => `https://www.instagram.com/p/${id}/`);
+      // Build Instagram post URLs - use /reel/ for reels
+      const postUrls = existingVideoIds.map(id => `https://www.instagram.com/reel/${id}/`);
       
       const refreshInput: any = {
         post_urls: postUrls,
-        target: 'reels_only',
         reels_count: postUrls.length,
         include_raw_data: true,
         custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
