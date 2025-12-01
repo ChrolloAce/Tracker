@@ -112,13 +112,20 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
   const transformedData = useMemo(() => {
     if (filteredData.length === 0) return filteredData;
 
-    // Determine transformation based on time frame
+    // Determine transformation based on actual data span
+    // This ensures we don't force 'monthly' on a video that only has 1 week of data
     let transformer: 'daily' | 'weekly' | 'monthly' = 'daily';
-    if (timeFrame === '90d' || timeFrame === 'all') {
+    
+    const firstTimestamp = filteredData[0].timestamp;
+    const lastTimestamp = filteredData[filteredData.length - 1].timestamp;
+    const daySpan = (lastTimestamp - firstTimestamp) / (1000 * 60 * 60 * 24);
+
+    if (daySpan > 180) {
       transformer = 'monthly';
-    } else if (timeFrame === '30d' && filteredData.length > 20) {
+    } else if (daySpan > 60) {
       transformer = 'weekly';
     }
+    // Default to daily for spans <= 60 days
 
     // If daily or not enough data points, return as-is
     if (transformer === 'daily' || filteredData.length <= 3) {
