@@ -689,18 +689,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         lastRefreshed: Timestamp.now()
       });
 
-      // Send error notification email and log to Firestore
-      await ErrorNotificationService.notifyError({
-        type: 'video_processing',
-        platform: video?.platform || 'unknown',
-        videoId: videoId,
-        videoUrl: video?.url || 'unknown',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorStack: error instanceof Error ? error.stack : undefined,
-        orgId: orgId,
-        projectId: projectId,
-        timestamp: new Date()
-      });
+      // DISABLED: Error notification emails to users
+      // await ErrorNotificationService.notifyError({
+      //   type: 'video_processing',
+      //   platform: video?.platform || 'unknown',
+      //   videoId: videoId,
+      //   videoUrl: video?.url || 'unknown',
+      //   errorMessage: error instanceof Error ? error.message : String(error),
+      //   errorStack: error instanceof Error ? error.stack : undefined,
+      //   orgId: orgId,
+      //   projectId: projectId,
+      //   timestamp: new Date()
+      // });
     } catch (updateError) {
       console.error('Failed to update video with error:', updateError);
     }
