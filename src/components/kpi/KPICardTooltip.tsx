@@ -461,7 +461,17 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       
       {/* Two-Column Layout */}
       {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
-        <div className="flex">
+        <>
+          {/* Current Period Breakdown Header */}
+          {(hasNewUploads || hasTopGainers) && (
+            <div className="px-5 pt-3 pb-2">
+              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                Current Period Breakdown
+              </h2>
+            </div>
+          )}
+          
+          <div className="flex">
           {hasNewUploads && (
             <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -570,7 +580,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
               )}
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
       
       {/* Single Column Layout for Accounts/Links/Videos */}
