@@ -67,7 +67,7 @@ export class FirestoreService {
       .collection('videos');
     
     const videosSnapshot = await videosRef
-      .where('accountId', '==', accountId)
+      .where('trackedAccountId', '==', accountId)
       .get();
     
     const videosMap = new Map<string, any>();
@@ -149,7 +149,7 @@ export class FirestoreService {
     } else {
       // New video - create it
       await videoRef.set({
-        accountId: accountId,
+        trackedAccountId: accountId,
         videoId: videoData.videoId,
         platform: videoData.platform,
         videoTitle: videoData.videoTitle,
