@@ -116,10 +116,20 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
   } else if (dateFilter === 'all') {
     // For 'all' time: find the earliest video upload date
     if (submissions.length > 0) {
-      const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
-      const earliestTime = Math.min(...dates);
-      dateRangeStart = new Date(earliestTime);
-      dateRangeStart.setHours(0, 0, 0, 0);
+      const dates = submissions
+        .map(v => new Date(v.uploadDate || v.dateSubmitted).getTime())
+        .filter(t => !isNaN(t)); // Filter out invalid dates
+      
+      if (dates.length > 0) {
+        const earliestTime = Math.min(...dates);
+        dateRangeStart = new Date(earliestTime);
+        dateRangeStart.setHours(0, 0, 0, 0);
+      } else {
+        // No valid dates found, default to 30 days ago
+        dateRangeStart = new Date();
+        dateRangeStart.setDate(dateRangeStart.getDate() - 29);
+        dateRangeStart.setHours(0, 0, 0, 0);
+      }
     } else {
       // No videos yet, default to 30 days ago
       dateRangeStart = new Date();
