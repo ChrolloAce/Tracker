@@ -248,6 +248,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else if (video.platform === 'tiktok') {
         // For TikTok, upload profile pic from already-fetched profile data
         console.log(`👤 [TIKTOK] Uploading profile pic for @${videoData.username}...`);
+        console.log(`   Profile pic URL: ${videoData.profile_pic_url ? videoData.profile_pic_url.substring(0, 100) + '...' : 'NONE'}`);
+        
         if (videoData.profile_pic_url) {
           try {
             uploadedProfilePic = await downloadAndUploadImage(
@@ -259,7 +261,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log(`✅ [TIKTOK] Profile pic uploaded to Firebase Storage: ${uploadedProfilePic}`);
           } catch (uploadError) {
             console.error(`❌ [TIKTOK] Profile pic upload failed:`, uploadError);
+            console.warn(`⚠️ [TIKTOK] Using original URL as fallback`);
+            uploadedProfilePic = videoData.profile_pic_url; // Fallback to original URL
           }
+        } else {
+          console.warn(`⚠️ [TIKTOK] No profile pic URL available from profile scraper`);
         }
         followerCount = videoData.follower_count || 0;
         displayName = videoData.display_name || videoData.username;
@@ -418,7 +424,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`📊 [${video.platform.toUpperCase()}] Updating follower count: ${videoData.follower_count}`);
     }
 
-      // Update profile pic if available - for Instagram and Twitter, upload to Firebase Storage
+      // Update profile pic if available - upload to Firebase Storage for all platforms
       if (videoData.profile_pic_url) {
         if (video.platform === 'instagram') {
           try {
@@ -432,6 +438,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log(`✅ [INSTAGRAM] Updated profile picture uploaded to Firebase Storage`);
           } catch (uploadError) {
             console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed, using direct URL:`, uploadError);
+            updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
+          }
+        } else if (video.platform === 'tiktok') {
+          try {
+            console.log(`📸 [TIKTOK] Downloading updated profile pic to Firebase Storage for @${videoData.username}...`);
+            const uploadedProfilePic = await downloadAndUploadThumbnail(
+              videoData.profile_pic_url,
+              orgId,
+              `tiktok_profile_${videoData.username}.jpg`
+            );
+            updateData.profilePicture = uploadedProfilePic;
+            console.log(`✅ [TIKTOK] Updated profile picture uploaded to Firebase Storage`);
+          } catch (uploadError) {
+            console.warn(`⚠️ [TIKTOK] Profile pic upload failed, using direct URL:`, uploadError);
             updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
           }
         } else if (video.platform === 'twitter') {
