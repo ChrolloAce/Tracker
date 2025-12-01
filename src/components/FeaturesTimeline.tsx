@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import trackViewImg from '/LANDINGPAGE-PHOOTS/TrackView.png';
 import createCampaignsImg from '/LANDINGPAGE-PHOOTS/CreateCampaigns.png';
 import signContractsImg from '/LANDINGPAGE-PHOOTS/SignContracts.png';
-import trackLinksImg from '/LANDINGPAGE-PHOOTS/TrackLinks.png';
+import trackLinksImg from '/linksimage.png';
 import chromeExtensionImg from '/LANDINGPAGE-PHOOTS/ChromeExtension.png';
 import creatorPortalImg from '/LANDINGPAGE-PHOOTS/Creator Portal.png';
 
