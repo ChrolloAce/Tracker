@@ -58,7 +58,7 @@ const OrganizationOnboarding: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('member');
   const [currentAccountUrl, setCurrentAccountUrl] = useState('');
 
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   // Auto-generate unique slug from website + name + unique ID
   const generateUniqueSlug = (name: string, website: string) => {
@@ -726,71 +726,8 @@ const OrganizationOnboarding: React.FC = () => {
             </div>
           )}
 
-          {/* Step 3: Team Invites */}
+          {/* Step 3: Personalization */}
           {step === 3 && (
-            <div className="space-y-6">
-              {/* Step Header */}
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                  Build Your Team
-                </h2>
-                <p className="text-gray-600">
-                  Invite team members to collaborate on campaigns and content
-                </p>
-              </div>
-              
-              <div className="flex items-center space-x-3 mb-6">
-                <input
-                  type="email"
-                  value={currentEmail}
-                  onChange={(e) => setCurrentEmail(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddTeamMember()}
-                  placeholder="email@example.com"
-                  className="flex-1 px-0 py-3 bg-transparent border-0 border-b border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#2282FF] transition-colors"
-                />
-                <select
-                  value={currentRole}
-                  onChange={(e) => setCurrentRole(e.target.value)}
-                  className="px-0 py-3 bg-transparent border-0 border-b border-gray-300 text-gray-900 focus:outline-none focus:border-[#2282FF] transition-colors"
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
-              <button
-                onClick={handleAddTeamMember}
-                disabled={!currentEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail)}
-                className="w-full px-4 py-3 bg-[#2282FF] text-white rounded-lg hover:bg-[#1b6dd9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium"
-              >
-                <Users className="w-5 h-5" />
-                <span>Add member</span>
-              </button>
-
-              {/* Team members list */}
-              {data.teamEmails.length > 0 && (
-                <div className="space-y-2 mt-6">
-                  {data.teamEmails.map((email, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg"
-                    >
-                      <span className="text-gray-900">{email}</span>
-                      <button
-                        onClick={() => handleRemoveTeamMember(email)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Personalization */}
-          {step === 4 && (
             <div className="space-y-6">
               {/* Step Header */}
               <div className="mb-8">
@@ -878,14 +815,6 @@ const OrganizationOnboarding: React.FC = () => {
               <div className="flex items-center gap-3">
               {step < totalSteps ? (
                 <>
-                  {step === 3 && ( /* Only allow skip on Team step */
-                  <button
-                    onClick={() => setStep(totalSteps)}
-                      className="px-6 py-3 text-gray-500 hover:text-gray-900 transition-colors font-medium"
-                  >
-                    Skip
-                  </button>
-                  )}
                   <button
                     onClick={handleNext}
                     disabled={!canProceed()}

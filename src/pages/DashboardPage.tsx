@@ -2636,22 +2636,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     <Edit2 className="w-4 h-4" />
                   </button>
                   )}
-                  
-                  {/* Scheduled Refresh Button - Trigger async refresh (Hidden in demo mode and on mobile) */}
-                  {!isDemoMode && (
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={isRefreshing}
-                    className={`hidden sm:block p-2 rounded-lg transition-all border ${
-                      isRefreshing 
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
-                        : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
-                    }`}
-                    title="Refresh all accounts in background"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  </button>
-                  )}
                 </>
                ) : (
                  <>
