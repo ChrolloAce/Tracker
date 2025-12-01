@@ -180,7 +180,12 @@ export const useAccounts = ({
   useEffect(() => {
     console.log('🔍 useAccounts - isDemoMode:', isDemoMode, 'currentOrgId:', currentOrgId, 'currentProjectId:', currentProjectId);
     
-    if (isDemoMode) {
+    // STRICT: Only use mock data if explicitly in demo mode AND using demo org/project IDs
+    const DEMO_ORG_ID = 'Vx2UpxGCV3uD8Xj2ioX4';
+    const DEMO_PROJECT_ID = 'ayGJEIQc23rJlamuOqp3';
+    const isActuallyDemoMode = isDemoMode && currentOrgId === DEMO_ORG_ID && currentProjectId === DEMO_PROJECT_ID;
+    
+    if (isActuallyDemoMode) {
       // Use mock data in demo mode
       console.log('🎭 Using MOCK_ACCOUNTS for demo mode:', MOCK_ACCOUNTS);
       setAccounts(MOCK_ACCOUNTS);
@@ -189,6 +194,9 @@ export const useAccounts = ({
     }
 
     if (!currentOrgId || !currentProjectId) {
+      console.log('⚠️ No orgId or projectId - not loading accounts');
+      setAccounts([]);
+      setLoading(false);
       return;
     }
 
