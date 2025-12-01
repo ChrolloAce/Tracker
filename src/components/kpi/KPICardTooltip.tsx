@@ -442,7 +442,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         
         {ppComparison && ppDateStr && ppComparison.percentChange !== Infinity && ppComparison.percentChange !== 0 && (
           <div className="pt-2 border-t border-white/5">
-            <p className="text-xs font-medium text-gray-400">
+            <p className="text-xs font-medium text-gray-400 text-center">
               <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
                 {ppComparison.isPositive ? '↑' : '↓'} {(() => {
                   const percent = Math.abs(ppComparison.percentChange);
@@ -451,7 +451,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                   return percent.toFixed(1);
                 })()}%
               </span>
-              {' '}{ppComparison.isPositive ? 'increase' : 'decrease'} on CP
+              {' '}{ppComparison.isPositive ? 'increase' : 'decrease'} from Current Period
             </p>
           </div>
         )}
@@ -461,17 +461,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       
       {/* Two-Column Layout */}
       {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
-        <>
-          {/* Current Period Breakdown Header */}
-          {(hasNewUploads || hasTopGainers) && (
-            <div className="px-5 pt-3 pb-2">
-              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                Current Period Breakdown
-              </h2>
-            </div>
-          )}
-          
-          <div className="flex">
+        <div className="flex">
           {hasNewUploads && (
             <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -497,16 +487,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white font-medium leading-tight">
-                        {((video.title || video.caption || '(No caption)').length > 13 
-                          ? (video.title || video.caption || '(No caption)').substring(0, 13) + '...'
-                          : (video.title || video.caption || '(No caption)'))}
+                      <p className="text-xs text-white font-medium leading-tight truncate">
+                        {video.title || video.caption || '(No caption)'}
                       </p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <div className="w-3 h-3">
+                        <div className="w-3 h-3 flex-shrink-0">
                           <PlatformIcon platform={video.platform} size="sm" />
                         </div>
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-[10px] text-gray-400 truncate">
                           {video.uploaderHandle || video.platform}
                         </span>
                       </div>
@@ -549,16 +537,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white font-medium leading-tight">
-                          {((item.video.title || item.video.caption || '(No caption)').length > 13 
-                            ? (item.video.title || item.video.caption || '(No caption)').substring(0, 13) + '...'
-                            : (item.video.title || item.video.caption || '(No caption)'))}
+                        <p className="text-xs text-white font-medium leading-tight truncate">
+                          {item.video.title || item.video.caption || '(No caption)'}
                         </p>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <div className="w-3 h-3">
+                          <div className="w-3 h-3 flex-shrink-0">
                             <PlatformIcon platform={item.video.platform} size="sm" />
                           </div>
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-[10px] text-gray-400 truncate">
                             {item.video.uploaderHandle || item.video.platform}
                           </span>
                         </div>
@@ -580,8 +566,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
               )}
             </div>
           )}
-          </div>
-        </>
+        </div>
       )}
       
       {/* Single Column Layout for Accounts/Links/Videos */}

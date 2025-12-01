@@ -155,47 +155,48 @@ export const generateSparklineData = (
       const submissionsForCP = submissions;
       const submissionsForPP = allSubmissions || submissions;
       
+      // SIMPLIFIED LOGIC: Calculate like the tooltip does
+      // 1. New uploads = videos uploaded in this interval
+      // 2. Refreshed videos = videos with growth in this interval
+      
       submissionsForCP.forEach(video => {
         const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         // === CURRENT PERIOD (CP) CALCULATION ===
-        // Check if video was uploaded before this interval started
-        if (uploadDate < interval.startDate) {
-          // Video was uploaded before this interval - calculate growth delta ONLY for this interval
-          if (video.snapshots && video.snapshots.length > 0) {
-            // Find snapshot at or before interval START (baseline)
-            const snapshotAtStart = video.snapshots
-              .filter(s => new Date(s.capturedAt) <= interval.startDate)
-              .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-            
-            // Find snapshot at or before interval END (current value)
-            const snapshotAtEnd = video.snapshots
-              .filter(s => new Date(s.capturedAt) <= interval.endDate)
-              .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-            
-            // Only count growth if we have both start and end snapshots (compare by timestamp, not reference)
-            if (snapshotAtStart && snapshotAtEnd) {
-              const startTime = new Date(snapshotAtStart.capturedAt).getTime();
-              const endTime = new Date(snapshotAtEnd.capturedAt).getTime();
-              
-              // Only add delta if they're different snapshots OR if there's actual growth
-              if (startTime !== endTime || (snapshotAtEnd[metric] || 0) > (snapshotAtStart[metric] || 0)) {
-                // Calculate growth from start to end of THIS interval only
-                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                intervalValue += delta;
-              }
-            }
-          }
-        } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
-          // Video was uploaded during this interval AND within the selected period
-          // This represents NEW CONTENT added during this period
+        if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
+          // NEW UPLOAD: Video was uploaded during this interval
           const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
           if (initialSnapshot) {
-            // Use the initial snapshot value (what the video had when first added)
             intervalValue += initialSnapshot[metric] || 0;
           } else {
-            // No initial snapshot, use current value as fallback
             intervalValue += video[metric] || 0;
+          }
+        } else {
+          // REFRESHED VIDEO: Video was uploaded before this interval - calculate growth IN this interval
+          if (video.snapshots && video.snapshots.length > 0) {
+            const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+            );
+            
+            // Find snapshot at or before interval START (baseline)
+            const snapshotAtStart = sortedSnapshots
+              .filter(s => new Date(s.capturedAt) <= interval.startDate)
+              .pop();
+            
+            // Find snapshot at or before interval END (current value)
+            const snapshotAtEnd = sortedSnapshots
+              .filter(s => new Date(s.capturedAt) <= interval.endDate)
+              .pop();
+            
+            if (snapshotAtEnd) {
+              if (snapshotAtStart && new Date(snapshotAtStart.capturedAt).getTime() !== new Date(snapshotAtEnd.capturedAt).getTime()) {
+                // Calculate growth from start to end of THIS interval
+                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                if (delta > 0) {
+                  intervalValue += delta;
+                }
+              }
+            }
           }
         }
       });
@@ -206,41 +207,37 @@ export const generateSparklineData = (
         submissionsForPP.forEach(video => {
           const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
           
-          // Use the same logic as CP, but for PP interval dates
-          if (uploadDate < ppInterval.startDate) {
-            // Video was uploaded before PP interval started - calculate growth delta ONLY for this PP interval
-            if (video.snapshots && video.snapshots.length > 0) {
-              // Find snapshot at or before PP interval START (baseline)
-              const snapshotAtStart = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              // Find snapshot at or before PP interval END (current value)
-              const snapshotAtEnd = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              // Only count growth if we have both start and end snapshots (compare by timestamp, not reference)
-              if (snapshotAtStart && snapshotAtEnd) {
-                const startTime = new Date(snapshotAtStart.capturedAt).getTime();
-                const endTime = new Date(snapshotAtEnd.capturedAt).getTime();
-                
-                // Only add delta if they're different snapshots OR if there's actual growth
-                if (startTime !== endTime || (snapshotAtEnd[metric] || 0) > (snapshotAtStart[metric] || 0)) {
-                  // Calculate growth from start to end of THIS PP interval only
-                  const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                  ppIntervalValue += delta;
-                }
-              }
-            }
-          } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
-            // Video was uploaded during PP interval AND within the PP period
-            if (video.snapshots && video.snapshots.length > 0) {
-              const firstSnapshot = video.snapshots
-                .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
-              ppIntervalValue += firstSnapshot[metric] || 0;
+          if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
+            // NEW UPLOAD in PP: Video was uploaded during PP interval
+            const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+            if (initialSnapshot) {
+              ppIntervalValue += initialSnapshot[metric] || 0;
             } else {
               ppIntervalValue += video[metric] || 0;
+            }
+          } else {
+            // REFRESHED VIDEO in PP: Video was uploaded before PP interval - calculate growth IN PP interval
+            if (video.snapshots && video.snapshots.length > 0) {
+              const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+                new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+              );
+              
+              const snapshotAtStart = sortedSnapshots
+                .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
+                .pop();
+              
+              const snapshotAtEnd = sortedSnapshots
+                .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
+                .pop();
+              
+              if (snapshotAtEnd) {
+                if (snapshotAtStart && new Date(snapshotAtStart.capturedAt).getTime() !== new Date(snapshotAtEnd.capturedAt).getTime()) {
+                  const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                  if (delta > 0) {
+                    ppIntervalValue += delta;
+                  }
+                }
+              }
             }
           }
         });
