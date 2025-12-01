@@ -13,12 +13,8 @@ const ComingSoonLocked: React.FC<ComingSoonLockedProps> = ({
   title, 
   description = "This feature is currently under development and will be available soon."
 }) => {
-  // Set launch date to 3 days from now
-  const [launchDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 3);
-    return date;
-  });
+  // Set launch date to December 5th, 2025
+  const [launchDate] = useState(new Date('2025-12-05T00:00:00'));
 
   const [timeRemaining, setTimeRemaining] = useState({
     days: 0,
@@ -39,6 +35,9 @@ const ComingSoonLocked: React.FC<ComingSoonLockedProps> = ({
           minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
           seconds: Math.floor((distance % (1000 * 60)) / 1000)
         });
+      } else {
+        // If date is passed, set to 0
+        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
     };
 
@@ -120,4 +119,3 @@ const TimeUnit: React.FC<{ value: number; label: string }> = ({ value, label }) 
 );
 
 export default ComingSoonLocked;
-
