@@ -373,6 +373,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       const newAccountRef = accountsRef.doc();
+      
+      console.log(`\n📝 [${video.platform.toUpperCase()}] Creating account with data:`);
+      console.log(`   - Username: ${videoData.username.toLowerCase()}`);
+      console.log(`   - Display Name: ${displayName}`);
+      console.log(`   - Profile Picture: ${uploadedProfilePic ? uploadedProfilePic.substring(0, 100) + '...' : 'EMPTY ❌'}`);
+      console.log(`   - Follower Count: ${followerCount.toLocaleString()}`);
+      console.log(`   - Is Verified: ${isVerified}`);
+      
       await newAccountRef.set({
         id: newAccountRef.id,
         username: videoData.username.toLowerCase(), // Lowercase for consistency with queries
