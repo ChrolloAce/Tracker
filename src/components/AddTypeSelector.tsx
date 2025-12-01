@@ -1,5 +1,6 @@
 import { Video, UserPlus } from 'lucide-react';
 import { Modal } from './ui/Modal';
+import { PlatformIcon } from './ui/PlatformIcon';
 
 interface AddTypeSelectorProps {
   isOpen: boolean;
@@ -27,9 +28,15 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Track Video</h3>
-              <p className="text-sm text-white/50">
+              <p className="text-sm text-white/50 mb-4">
                 Add individual videos from TikTok, Instagram, YouTube, or Twitter
               </p>
+              <div className="flex items-center justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                <PlatformIcon platform="instagram" size="md" />
+                <PlatformIcon platform="tiktok" size="md" />
+                <PlatformIcon platform="youtube" size="md" />
+                <PlatformIcon platform="twitter" size="md" />
+              </div>
             </div>
           </div>
         </button>
@@ -46,9 +53,15 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Track Account</h3>
-              <p className="text-sm text-white/50">
+              <p className="text-sm text-white/50 mb-4">
                 Track all videos from a social media account automatically
               </p>
+              <div className="flex items-center justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                <PlatformIcon platform="instagram" size="md" />
+                <PlatformIcon platform="tiktok" size="md" />
+                <PlatformIcon platform="youtube" size="md" />
+                <PlatformIcon platform="twitter" size="md" />
+              </div>
             </div>
           </div>
         </button>
