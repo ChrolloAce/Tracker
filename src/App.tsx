@@ -28,7 +28,6 @@ import BillingManagementPage from './components/BillingManagementPage';
 import CampaignDetailsPage from './components/CampaignDetailsPage';
 import CreateCampaignPage from './pages/CreateCampaignPage';
 import EditCampaignPage from './pages/EditCampaignPage';
-import { PreLaunchCover } from './components/PreLaunchCover';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import SupportPage from './pages/SupportPage';
@@ -133,7 +132,6 @@ function App() {
   }
 
   return (
-    <PreLaunchCover>
     <Routes>
         {/* Public pages - NOT covered by pre-launch */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -523,7 +521,6 @@ function App() {
 
       <Route path="*" element={<NotFoundPage type="404" />} />
     </Routes>
-    </PreLaunchCover>
   );
 }
 
