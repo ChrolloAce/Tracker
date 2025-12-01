@@ -382,7 +382,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     // --- Render ---
     
     if (loading) return <PageLoadingSkeleton type="accounts" />;
-    if (!user || !currentOrgId) return <PageLoadingSkeleton type="accounts" />;
+    if (!user || !currentOrgId || loading) return <PageLoadingSkeleton type="accounts" />;
 
   return (
     <div className="space-y-6">
