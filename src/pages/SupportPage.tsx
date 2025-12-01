@@ -57,15 +57,18 @@ const SupportPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 hover:shadow-lg transition-all cursor-pointer">
+          <a 
+            href="mailto:support@viewtrack.app"
+            className="bg-gray-50 border border-gray-100 rounded-2xl p-8 hover:shadow-lg transition-all cursor-pointer block"
+          >
             <Mail className="w-10 h-10 text-black mb-4" />
             <h3 className="text-lg font-bold text-gray-900 mb-2">Email Support</h3>
             <p className="text-gray-500 text-sm">
               Get help via email - we respond within 24 hours.
               <br />
-              <span className="font-medium text-gray-900">team@viewtrack.com</span>
+              <span className="font-medium text-gray-900">support@viewtrack.app</span>
             </p>
-          </div>
+          </a>
         </div>
 
         {/* FAQ Section */}
