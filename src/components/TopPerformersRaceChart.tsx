@@ -33,7 +33,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
   // Tooltip states
   const [hoveredVideo, setHoveredVideo] = useState<{ video: VideoSubmission; x: number; y: number } | null>(null);
   const [hoveredAccount, setHoveredAccount] = useState<{ handle: string; x: number; y: number } | null>(null);
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // Info tooltip states
   const [showVideosInfo, setShowVideosInfo] = useState(false);
