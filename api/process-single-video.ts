@@ -234,7 +234,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const accountSnapshot = await accountQuery.get();
     let accountId = video.trackedAccountId;
 
-    console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: ${accountSnapshot.empty ? 'NOT FOUND - Will create' : 'FOUND - Will use existing'}`);
+    if (!accountSnapshot.empty) {
+      const existingAccount = accountSnapshot.docs[0].data();
+      console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: FOUND - Will use existing`);
+      console.log(`   📋 Existing account ID: ${accountSnapshot.docs[0].id}`);
+      console.log(`   📋 Profile pic: ${existingAccount.profilePicture ? existingAccount.profilePicture.substring(0, 100) + '...' : 'NONE'}`);
+    } else {
+      console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: NOT FOUND - Will create`);
+      console.log(`   📋 Query: username='${videoData.username.toLowerCase()}' AND platform='${video.platform}'`);
+    }
 
     // Create account if it doesn't exist
     if (accountSnapshot.empty && !accountId) {
