@@ -215,24 +215,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         followerCount = videoData.follower_count || 0;
         displayName = videoData.display_name || videoData.username;
       } else if (video.platform === 'tiktok') {
-        // For TikTok, upload profile pic from video data (channel.avatar)
-        console.log(`👤 [TIKTOK] Uploading profile pic for @${videoData.username}...`);
-        if (videoData.profile_pic_url) {
-          try {
-            uploadedProfilePic = await downloadAndUploadImage(
-              videoData.profile_pic_url,
-              orgId,
-              `tiktok_profile_${videoData.username}.jpg`,
-              'profile'
-            );
-            console.log(`✅ [TIKTOK] Profile pic uploaded to Firebase Storage: ${uploadedProfilePic}`);
-          } catch (uploadError) {
-            console.error(`❌ [TIKTOK] Profile pic upload failed:`, uploadError);
-            console.warn(`⚠️ [TIKTOK] No fallback - will retry on next sync`);
+        // For TikTok single videos, fetch profile data separately
+        // The single video scraper doesn't reliably return profile data, so we scrape the profile
+        console.log(`👤 [TIKTOK] Fetching profile data for @${videoData.username}...`);
+        
+        try {
+          const profileData = await runApifyActor({
+            actorId: 'apidojo/tiktok-scraper',
+            input: {
+              startUrls: [`https://www.tiktok.com/@${videoData.username}`],
+              maxItems: 1, // Only need 1 video to get profile data
+              includeSearchKeywords: false,
+              proxy: {
+                useApifyProxy: true,
+                apifyProxyGroups: ['RESIDENTIAL']
+              }
+            }
+          });
+          
+          const profileVideos = profileData.items || [];
+          if (profileVideos.length > 0) {
+            const channel = profileVideos[0].channel || {};
+            console.log(`✅ [TIKTOK] Profile data fetched from scraper`);
+            console.log(`📊 [TIKTOK] Followers: ${channel.followers || 0}, Avatar: ${channel.avatar ? 'YES' : 'NO'}`);
+            
+            // Upload profile pic from channel data
+            if (channel.avatar) {
+              try {
+                uploadedProfilePic = await downloadAndUploadImage(
+                  channel.avatar,
+                  orgId,
+                  `tiktok_profile_${videoData.username}.jpg`,
+                  'profile'
+                );
+                console.log(`✅ [TIKTOK] Profile pic uploaded to Firebase Storage: ${uploadedProfilePic}`);
+              } catch (uploadError) {
+                console.error(`❌ [TIKTOK] Profile pic upload failed:`, uploadError);
+              }
+            }
+            
+            followerCount = channel.followers || 0;
+            displayName = channel.name || channel.username || videoData.username;
+            isVerified = channel.verified || false;
+          } else {
+            console.warn(`⚠️ [TIKTOK] No profile data returned from scraper, using video data as fallback`);
+            followerCount = videoData.follower_count || 0;
+            displayName = videoData.display_name || videoData.username;
           }
+        } catch (profileError) {
+          console.error(`❌ [TIKTOK] Profile fetch failed:`, profileError);
+          console.warn(`⚠️ [TIKTOK] Using video data as fallback`);
+          followerCount = videoData.follower_count || 0;
+          displayName = videoData.display_name || videoData.username;
         }
-        followerCount = videoData.follower_count || 0;
-        displayName = videoData.display_name || videoData.username;
       } else if (video.platform === 'twitter') {
         // For Twitter, upload profile pic and cover pic from video data
         console.log(`👤 [TWITTER] Uploading profile pic and cover pic for @${videoData.username}...`);
