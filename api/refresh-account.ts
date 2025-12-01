@@ -234,11 +234,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // For MANUAL accounts, only refresh existing videos (no new video discovery)
     let results: any[] = [];
+    let existingVideosSnapshot: any = null; // Declare outside for fallback access
     
     if (creatorType === 'manual') {
       // Get existing videos for this account
       console.log(`  📊 Fetching existing videos from database...`);
-      const existingVideosSnapshot = await db
+      existingVideosSnapshot = await db
         .collection('organizations')
         .doc(orgId)
         .collection('projects')
@@ -403,8 +404,94 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
+    // 🔥 FALLBACK for manual accounts: If profile scrape didn't return videos, fetch them individually
+    if ((!results || results.length === 0) && creatorType === 'manual' && existingVideosSnapshot && !existingVideosSnapshot.empty) {
+      console.log(`  ⚠️ Profile API didn't return existing videos - trying individual video fetches...`);
+      console.log(`  📋 Will fetch ${existingVideosSnapshot.size} videos individually`);
+      
+      const individualResults: any[] = [];
+      
+      for (const videoDoc of existingVideosSnapshot.docs) {
+        const videoData = videoDoc.data();
+        const videoUrl = videoData.url;
+        
+        if (!videoUrl) {
+          console.warn(`  ⚠️ Video ${videoData.videoId} has no URL, skipping`);
+          continue;
+        }
+        
+        try {
+          console.log(`  🔄 Fetching individual video: ${videoUrl.substring(0, 80)}...`);
+          
+          // Call the same API we use for single videos
+          if (account.platform === 'tiktok') {
+            const singleVideoResponse = await runApifyActor({
+              actorId: 'apidojo/tiktok-scraper',
+              input: {
+                startUrls: [videoUrl],
+                maxItems: 1,
+                includeSearchKeywords: false,
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL']
+                }
+              }
+            });
+            
+            if (singleVideoResponse.items && singleVideoResponse.items.length > 0) {
+              individualResults.push({
+                ...singleVideoResponse.items[0],
+                _isExistingVideo: true,
+                _manualAccountRefreshOnly: true
+              });
+              console.log(`  ✅ Fetched individual video successfully`);
+            } else {
+              console.warn(`  ⚠️ No data returned for video: ${videoUrl}`);
+            }
+          } else if (account.platform === 'instagram') {
+            const singleVideoResponse = await runApifyActor({
+              actorId: 'hpix~ig-reels-scraper',
+              input: {
+                post_urls: [videoUrl],
+                target: 'reels_only',
+                include_raw_data: true,
+                proxy: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL'],
+                  apifyProxyCountry: 'US'
+                }
+              }
+            });
+            
+            if (singleVideoResponse.items && singleVideoResponse.items.length > 0) {
+              individualResults.push({
+                ...singleVideoResponse.items[0],
+                _isExistingVideo: true,
+                _manualAccountRefreshOnly: true
+              });
+              console.log(`  ✅ Fetched individual video successfully`);
+            } else {
+              console.warn(`  ⚠️ No data returned for video: ${videoUrl}`);
+            }
+          }
+          // YouTube and Twitter handled by progressiveFetchVideos already
+          
+        } catch (fetchError) {
+          console.error(`  ❌ Failed to fetch individual video:`, fetchError);
+          // Continue to next video
+        }
+      }
+      
+      if (individualResults.length > 0) {
+        console.log(`  ✅ Individual fetches complete: ${individualResults.length}/${existingVideosSnapshot.size} videos found`);
+        results = individualResults;
+      } else {
+        console.warn(`  ⚠️ Individual fetches failed - no videos to update`);
+      }
+    }
+    
     if (!results || results.length === 0) {
-      console.log(`  ⚠️ No videos to process`);
+      console.log(`  ⚠️ No videos to process (even after fallback)`);
       await accountRef.update({
         lastRefreshed: Timestamp.now(),
         refreshStatus: 'completed',

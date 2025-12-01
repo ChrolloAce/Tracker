@@ -244,6 +244,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`   📋 Query: username='${videoData.username.toLowerCase()}' AND platform='${video.platform}'`);
     }
 
+    // Track the final uploaded profile picture URL to use in video document
+    let finalUploadedProfilePic = '';
+    let finalUploadedCoverPic = '';
+    
     // Create account if it doesn't exist
     if (accountSnapshot.empty && !accountId) {
       console.log(`✨ [${video.platform.toUpperCase()}] Creating new account for @${videoData.username}`);
@@ -447,6 +451,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       
       accountId = newAccountRef.id;
+      finalUploadedProfilePic = uploadedProfilePic; // Track for video document
+      finalUploadedCoverPic = uploadedCoverPic;
       console.log(`✅ [${video.platform.toUpperCase()}] Created account: ${accountId}`);
     } else if (!accountSnapshot.empty) {
       accountId = accountSnapshot.docs[0].id;
@@ -477,10 +483,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               'profile'
             );
             updateData.profilePicture = uploadedProfilePic;
+            finalUploadedProfilePic = uploadedProfilePic; // Track for video document
             console.log(`✅ [INSTAGRAM] Updated profile picture uploaded to Firebase Storage`);
           } catch (uploadError) {
             console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed, using direct URL:`, uploadError);
             updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
+            finalUploadedProfilePic = videoData.profile_pic_url;
           }
         } else if (video.platform === 'tiktok') {
           try {
@@ -492,10 +500,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               'profile'
             );
             updateData.profilePicture = uploadedProfilePic;
+            finalUploadedProfilePic = uploadedProfilePic; // Track for video document
             console.log(`✅ [TIKTOK] Updated profile picture uploaded to Firebase Storage`);
           } catch (uploadError) {
             console.warn(`⚠️ [TIKTOK] Profile pic upload failed, using direct URL:`, uploadError);
             updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
+            finalUploadedProfilePic = videoData.profile_pic_url;
           }
         } else if (video.platform === 'twitter') {
           try {
@@ -507,13 +517,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               'profile'
             );
             updateData.profilePicture = uploadedProfilePic;
+            finalUploadedProfilePic = uploadedProfilePic; // Track for video document
             console.log(`✅ [TWITTER] Updated profile picture uploaded to Firebase Storage`);
           } catch (uploadError) {
             console.warn(`⚠️ [TWITTER] Profile pic upload failed, using direct URL:`, uploadError);
             updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
+            finalUploadedProfilePic = videoData.profile_pic_url;
           }
         } else {
           updateData.profilePicture = videoData.profile_pic_url;
+          finalUploadedProfilePic = videoData.profile_pic_url;
           console.log(`📸 [${video.platform.toUpperCase()}] Updating profile picture`);
         }
       }
@@ -528,10 +541,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             `twitter_cover_${videoData.username}.jpg`
           );
           updateData.coverPicture = uploadedCoverPic;
+          finalUploadedCoverPic = uploadedCoverPic; // Track for video document
           console.log(`✅ [TWITTER] Updated cover picture uploaded to Firebase Storage`);
         } catch (uploadError) {
           console.warn(`⚠️ [TWITTER] Cover pic upload failed, using direct URL:`, uploadError);
           updateData.coverPicture = videoData.cover_pic_url; // Fallback to direct URL
+          finalUploadedCoverPic = videoData.cover_pic_url;
         }
       }
       
@@ -541,6 +556,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       await existingAccountRef.update(updateData);
+      
+      // Also set finalUploadedProfilePic if we have it in existing account
+      const existingAccount = accountSnapshot.docs[0].data();
+      if (!finalUploadedProfilePic && existingAccount.profilePicture) {
+        finalUploadedProfilePic = existingAccount.profilePicture;
+      }
+      if (!finalUploadedCoverPic && existingAccount.coverPicture) {
+        finalUploadedCoverPic = existingAccount.coverPicture;
+      }
+      
       console.log(`✅ [${video.platform.toUpperCase()}] Using existing account: ${accountId} (updated profile data)`);
     }
 
@@ -576,8 +601,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       thumbnail: finalThumbnail,
       uploader: videoData.display_name || videoData.username || 'Unknown',
       uploaderHandle: videoData.username || '',
-      uploaderProfilePicture: videoData.profile_pic_url || '', // May be empty for alpha-scraper
-      uploaderCoverPicture: videoData.cover_pic_url || '', // ✅ ADD COVER/BANNER IMAGE
+      uploaderProfilePicture: finalUploadedProfilePic || videoData.profile_pic_url || '', // Use uploaded Firebase Storage URL
+      uploaderCoverPicture: finalUploadedCoverPic || videoData.cover_pic_url || '', // Use uploaded Firebase Storage URL
       uploadDate: Timestamp.fromDate(uploadDate),
       views: videoData.view_count || 0,
       likes: videoData.like_count || 0,
