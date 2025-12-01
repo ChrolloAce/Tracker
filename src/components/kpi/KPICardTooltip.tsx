@@ -392,12 +392,13 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         transform: `translateX(${transformX})`,
         zIndex: 999999999,
         width: `${tooltipWidth}px`,
-        maxHeight: '500px',
+        maxHeight: '80vh', // Flexible height, up to 80% of viewport
+        overflowY: 'auto', // Scroll if needed
         pointerEvents: 'none'
       }}
     >
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 space-y-2.5">
+      <div className="px-5 pt-4 pb-3 space-y-2.5 bg-[#1a1a1a]/95 sticky top-0 z-10 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           {(data.id === 'revenue' || data.id === 'downloads') ? (
             <div className="flex flex-col gap-1.5 flex-1">
@@ -441,7 +442,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         )}
         
         {ppComparison && ppDateStr && ppComparison.percentChange !== Infinity && ppComparison.percentChange !== 0 && (
-          <div className="pt-2 border-t border-white/5">
+          <div className="pt-2 border-t border-white/5 flex justify-center">
             <p className="text-xs font-medium text-gray-400 text-center">
               <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
                 {ppComparison.isPositive ? '↑' : '↓'} {(() => {

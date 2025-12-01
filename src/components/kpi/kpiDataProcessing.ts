@@ -189,12 +189,34 @@ export const generateSparklineData = (
               .pop();
             
             if (snapshotAtEnd) {
-              if (snapshotAtStart && new Date(snapshotAtStart.capturedAt).getTime() !== new Date(snapshotAtEnd.capturedAt).getTime()) {
-                // Calculate growth from start to end of THIS interval
-                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                if (delta > 0) {
-                  intervalValue += delta;
+              // If we have a start snapshot, calculate delta from there
+              // If NOT (e.g. added during interval), use initial snapshot or first available as baseline
+              // This matches the tooltip logic which falls back to initial snapshot
+              let startValue = 0;
+              
+              if (snapshotAtStart) {
+                startValue = snapshotAtStart[metric] || 0;
+              } else {
+                // Fallback: try to find initial snapshot or just use the very first snapshot
+                const initialSnapshot = sortedSnapshots.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
+                if (initialSnapshot && new Date(initialSnapshot.capturedAt) <= interval.endDate) {
+                  startValue = initialSnapshot[metric] || 0;
+                } else {
+                  // If even the first snapshot is after the interval end, then no growth in this interval
+                  startValue = snapshotAtEnd[metric] || 0; // Resulting delta will be 0
                 }
+              }
+
+              const endValue = snapshotAtEnd[metric] || 0;
+              
+              // Ensure we don't count same snapshot twice if reference/time matches, unless we are using fallback logic which implies growth from 0-ish
+              // Actually, simple delta is enough: End - Start. 
+              // If Start is from before interval, delta is growth IN interval.
+              // If Start is from DURING interval (fallback), delta is growth FROM start of tracking TO now.
+              
+              const delta = Math.max(0, endValue - startValue);
+              if (delta > 0) {
+                intervalValue += delta;
               }
             }
           }
@@ -231,11 +253,25 @@ export const generateSparklineData = (
                 .pop();
               
               if (snapshotAtEnd) {
-                if (snapshotAtStart && new Date(snapshotAtStart.capturedAt).getTime() !== new Date(snapshotAtEnd.capturedAt).getTime()) {
-                  const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                  if (delta > 0) {
-                    ppIntervalValue += delta;
+                // Same fallback logic as CP
+                let startValue = 0;
+                
+                if (snapshotAtStart) {
+                  startValue = snapshotAtStart[metric] || 0;
+                } else {
+                  const initialSnapshot = sortedSnapshots.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
+                  if (initialSnapshot && new Date(initialSnapshot.capturedAt) <= ppInterval.endDate) {
+                    startValue = initialSnapshot[metric] || 0;
+                  } else {
+                    startValue = snapshotAtEnd[metric] || 0;
                   }
+                }
+
+                const endValue = snapshotAtEnd[metric] || 0;
+                const delta = Math.max(0, endValue - startValue);
+                
+                if (delta > 0) {
+                  ppIntervalValue += delta;
                 }
               }
             }
