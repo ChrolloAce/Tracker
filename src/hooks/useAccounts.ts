@@ -178,8 +178,11 @@ export const useAccounts = ({
 
   // Load Accounts (Realtime)
   useEffect(() => {
+    console.log('🔍 useAccounts - isDemoMode:', isDemoMode, 'currentOrgId:', currentOrgId, 'currentProjectId:', currentProjectId);
+    
     if (isDemoMode) {
       // Use mock data in demo mode
+      console.log('🎭 Using MOCK_ACCOUNTS for demo mode:', MOCK_ACCOUNTS);
       setAccounts(MOCK_ACCOUNTS);
       setLoading(false);
       return;
