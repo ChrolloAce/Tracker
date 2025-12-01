@@ -433,14 +433,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
       // Update profile pic if available - upload to Firebase Storage for all platforms
+      // CRITICAL: Use downloadAndUploadImage (not downloadAndUploadThumbnail) for profile pics
+      // because it saves to /profile/ folder instead of /thumbnails/ folder
       if (videoData.profile_pic_url) {
         if (video.platform === 'instagram') {
           try {
             console.log(`📸 [INSTAGRAM] Downloading updated profile pic to Firebase Storage for @${videoData.username}...`);
-            const uploadedProfilePic = await downloadAndUploadThumbnail(
+            const uploadedProfilePic = await downloadAndUploadImage(
               videoData.profile_pic_url,
               orgId,
-              `instagram_profile_${videoData.username}.jpg`
+              `instagram_profile_${videoData.username}.jpg`,
+              'profile'
             );
             updateData.profilePicture = uploadedProfilePic;
             console.log(`✅ [INSTAGRAM] Updated profile picture uploaded to Firebase Storage`);
@@ -451,10 +454,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else if (video.platform === 'tiktok') {
           try {
             console.log(`📸 [TIKTOK] Downloading updated profile pic to Firebase Storage for @${videoData.username}...`);
-            const uploadedProfilePic = await downloadAndUploadThumbnail(
+            const uploadedProfilePic = await downloadAndUploadImage(
               videoData.profile_pic_url,
               orgId,
-              `tiktok_profile_${videoData.username}.jpg`
+              `tiktok_profile_${videoData.username}.jpg`,
+              'profile'
             );
             updateData.profilePicture = uploadedProfilePic;
             console.log(`✅ [TIKTOK] Updated profile picture uploaded to Firebase Storage`);
@@ -465,10 +469,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else if (video.platform === 'twitter') {
           try {
             console.log(`📸 [TWITTER] Downloading updated profile pic to Firebase Storage for @${videoData.username}...`);
-            const uploadedProfilePic = await downloadAndUploadThumbnail(
+            const uploadedProfilePic = await downloadAndUploadImage(
               videoData.profile_pic_url,
               orgId,
-              `twitter_profile_${videoData.username}.jpg`
+              `twitter_profile_${videoData.username}.jpg`,
+              'profile'
             );
             updateData.profilePicture = uploadedProfilePic;
             console.log(`✅ [TWITTER] Updated profile picture uploaded to Firebase Storage`);
