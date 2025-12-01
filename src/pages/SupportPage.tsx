@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, MessageSquare, Book, Send, CheckCircle } from 'lucide-react';
-import vtLogo from '/vtlogo.png';
+import NavBar from '../components/NavBar';
+import Footer from '../components/Footer';
+import viewtrackLogo from '/Viewtrack Logo Black.png';
+import { Mail, Book, Send, CheckCircle } from 'lucide-react';
 
 const SupportPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,116 +37,91 @@ const SupportPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-white">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/')}
-                className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span>Back to Home</span>
-              </button>
-            </div>
-            <img src={vtLogo} alt="ViewTrack" className="h-8 w-auto" />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white text-gray-900">
+      <NavBar logo={viewtrackLogo} onGetStarted={() => navigate('/login')} />
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-6 pt-32 pb-20">
         <div className="mb-12 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-2xl mb-6">
-            <MessageSquare className="w-8 h-8 text-emerald-400" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Support Center</h1>
-          <p className="text-gray-400">We're here to help you get the most out of ViewTrack</p>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">Support Center</h1>
+          <p className="text-gray-500">We're here to help you get the most out of ViewTrack</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Quick Links */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer">
-            <Book className="w-10 h-10 text-emerald-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Documentation</h3>
-            <p className="text-gray-400 text-sm">
-              Learn how to use ViewTrack with our comprehensive guides
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 hover:shadow-lg transition-all cursor-pointer">
+            <Book className="w-10 h-10 text-black mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Documentation</h3>
+            <p className="text-gray-500 text-sm">
+              Learn how to use ViewTrack with our comprehensive guides.
             </p>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer">
-            <MessageSquare className="w-10 h-10 text-emerald-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Live Chat</h3>
-            <p className="text-gray-400 text-sm">
-              Chat with our support team in real-time
-            </p>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer">
-            <Mail className="w-10 h-10 text-emerald-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Email Support</h3>
-            <p className="text-gray-400 text-sm">
-              Get help via email - we respond within 24 hours
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 hover:shadow-lg transition-all cursor-pointer">
+            <Mail className="w-10 h-10 text-black mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Email Support</h3>
+            <p className="text-gray-500 text-sm">
+              Get help via email - we respond within 24 hours.
+              <br />
+              <span className="font-medium text-gray-900">team@viewtrack.com</span>
             </p>
           </div>
         </div>
 
         {/* FAQ Section */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold mb-6">Frequently Asked Questions</h2>
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold mb-8 text-gray-900">Frequently Asked Questions</h2>
           <div className="space-y-4">
-            <details className="bg-white/5 border border-white/10 rounded-xl p-6 group hover:bg-white/10 transition-all">
-              <summary className="font-semibold cursor-pointer list-none flex items-center justify-between">
+            <details className="bg-gray-50 border border-gray-100 rounded-xl p-6 group cursor-pointer open:bg-white open:shadow-sm transition-all">
+              <summary className="font-semibold text-gray-900 list-none flex items-center justify-between select-none">
                 <span>How do I connect my social media accounts?</span>
-                <span className="text-emerald-400 group-open:rotate-180 transition-transform">▼</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
-              <p className="text-gray-400 mt-4">
+              <p className="text-gray-600 mt-4 leading-relaxed">
                 Go to the Accounts tab and click "Add Account". Enter your social media handle and we'll 
                 start tracking your content automatically.
               </p>
             </details>
 
-            <details className="bg-white/5 border border-white/10 rounded-xl p-6 group hover:bg-white/10 transition-all">
-              <summary className="font-semibold cursor-pointer list-none flex items-center justify-between">
+            <details className="bg-gray-50 border border-gray-100 rounded-xl p-6 group cursor-pointer open:bg-white open:shadow-sm transition-all">
+              <summary className="font-semibold text-gray-900 list-none flex items-center justify-between select-none">
                 <span>How often is data refreshed?</span>
-                <span className="text-emerald-400 group-open:rotate-180 transition-transform">▼</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
-              <p className="text-gray-400 mt-4">
+              <p className="text-gray-600 mt-4 leading-relaxed">
                 Data is refreshed every 30 minutes for Pro users and every 2 hours for Free users. 
                 You can also manually refresh any account from the account details page.
               </p>
             </details>
 
-            <details className="bg-white/5 border border-white/10 rounded-xl p-6 group hover:bg-white/10 transition-all">
-              <summary className="font-semibold cursor-pointer list-none flex items-center justify-between">
+            <details className="bg-gray-50 border border-gray-100 rounded-xl p-6 group cursor-pointer open:bg-white open:shadow-sm transition-all">
+              <summary className="font-semibold text-gray-900 list-none flex items-center justify-between select-none">
                 <span>Can I track multiple accounts?</span>
-                <span className="text-emerald-400 group-open:rotate-180 transition-transform">▼</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
-              <p className="text-gray-400 mt-4">
+              <p className="text-gray-600 mt-4 leading-relaxed">
                 Yes! Free plans can track up to 3 accounts. Pro plans offer unlimited account tracking 
                 across all platforms.
               </p>
             </details>
 
-            <details className="bg-white/5 border border-white/10 rounded-xl p-6 group hover:bg-white/10 transition-all">
-              <summary className="font-semibold cursor-pointer list-none flex items-center justify-between">
+            <details className="bg-gray-50 border border-gray-100 rounded-xl p-6 group cursor-pointer open:bg-white open:shadow-sm transition-all">
+              <summary className="font-semibold text-gray-900 list-none flex items-center justify-between select-none">
                 <span>How do tracked links work?</span>
-                <span className="text-emerald-400 group-open:rotate-180 transition-transform">▼</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
-              <p className="text-gray-400 mt-4">
+              <p className="text-gray-600 mt-4 leading-relaxed">
                 Create short links that track clicks, locations, devices, and referrers. Perfect for 
                 measuring campaign performance and bio link analytics.
               </p>
             </details>
 
-            <details className="bg-white/5 border border-white/10 rounded-xl p-6 group hover:bg-white/10 transition-all">
-              <summary className="font-semibold cursor-pointer list-none flex items-center justify-between">
+            <details className="bg-gray-50 border border-gray-100 rounded-xl p-6 group cursor-pointer open:bg-white open:shadow-sm transition-all">
+              <summary className="font-semibold text-gray-900 list-none flex items-center justify-between select-none">
                 <span>How do I upgrade my plan?</span>
-                <span className="text-emerald-400 group-open:rotate-180 transition-transform">▼</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
-              <p className="text-gray-400 mt-4">
+              <p className="text-gray-600 mt-4 leading-relaxed">
                 Go to Settings → Subscription and choose the plan that works for you. Upgrades take 
                 effect immediately.
               </p>
@@ -153,25 +130,25 @@ const SupportPage: React.FC = () => {
         </div>
 
         {/* Contact Form */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-          <h2 className="text-3xl font-bold mb-6">Still Need Help?</h2>
-          <p className="text-gray-400 mb-8">
+        <div className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm">
+          <h2 className="text-3xl font-bold mb-6 text-gray-900">Still Need Help?</h2>
+          <p className="text-gray-500 mb-8">
             Send us a message and we'll get back to you as soon as possible.
           </p>
 
           {submitted ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-10 h-10 text-emerald-400" />
+              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-10 h-10 text-green-500" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">Message Sent!</h3>
-              <p className="text-gray-400">We'll get back to you within 24 hours.</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Message Sent!</h3>
+              <p className="text-gray-500">We'll get back to you within 24 hours.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Name *
                   </label>
                   <input
@@ -180,13 +157,13 @@ const SupportPage: React.FC = () => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                     placeholder="John Doe"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Email *
                   </label>
                   <input
@@ -195,14 +172,14 @@ const SupportPage: React.FC = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                     placeholder="john@example.com"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Subject *
                 </label>
                 <select
@@ -210,19 +187,19 @@ const SupportPage: React.FC = () => {
                   value={formData.subject}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all appearance-none"
                 >
-                  <option value="" className="bg-gray-900">Select a topic...</option>
-                  <option value="technical" className="bg-gray-900">Technical Issue</option>
-                  <option value="billing" className="bg-gray-900">Billing Question</option>
-                  <option value="feature" className="bg-gray-900">Feature Request</option>
-                  <option value="account" className="bg-gray-900">Account Help</option>
-                  <option value="other" className="bg-gray-900">Other</option>
+                  <option value="">Select a topic...</option>
+                  <option value="technical">Technical Issue</option>
+                  <option value="billing">Billing Question</option>
+                  <option value="feature">Feature Request</option>
+                  <option value="account">Account Help</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Message *
                 </label>
                 <textarea
@@ -231,14 +208,14 @@ const SupportPage: React.FC = () => {
                   onChange={handleChange}
                   required
                   rows={6}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 resize-none"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all resize-none"
                   placeholder="Describe your issue or question..."
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full py-4 bg-black hover:bg-gray-800 text-white font-bold rounded-xl transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
               >
                 <Send className="w-5 h-5" />
                 Send Message
@@ -246,48 +223,11 @@ const SupportPage: React.FC = () => {
             </form>
           )}
         </div>
-
-        {/* Quick Contact */}
-        <div className="mt-12 grid md:grid-cols-2 gap-6">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <Mail className="w-8 h-8 text-emerald-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Email Us</h3>
-            <p className="text-gray-400 text-sm mb-3">
-              For general inquiries and support
-            </p>
-            <a 
-              href="mailto:support@viewtrack.app" 
-              className="text-emerald-400 hover:text-emerald-300 font-medium"
-            >
-              support@viewtrack.app
-            </a>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <Book className="w-8 h-8 text-emerald-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Documentation</h3>
-            <p className="text-gray-400 text-sm mb-3">
-              Browse our knowledge base
-            </p>
-            <a 
-              href="https://docs.viewtrack.app" 
-              className="text-emerald-400 hover:text-emerald-300 font-medium"
-            >
-              docs.viewtrack.app
-            </a>
-          </div>
-        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-8 mt-12">
-        <div className="max-w-4xl mx-auto px-6 text-center text-gray-500 text-sm">
-          <p>© {new Date().getFullYear()} ViewTrack. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
 
 export default SupportPage;
-

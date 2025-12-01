@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ArrowRight, BookOpen } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import FeaturesTimeline from '../components/FeaturesTimeline';
+import Footer from '../components/Footer';
+import { VideoCarousel3D } from '../components/landing/VideoCarousel3D';
+import { HeroWidget } from '../components/landing/HeroWidget';
 import StripeService from '../services/StripeService';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
@@ -55,65 +59,90 @@ const LandingPage: React.FC = () => {
       <section id="hero" className="pt-28 md:pt-40 pb-12 md:pb-20 px-4 md:px-6 relative overflow-hidden">
         {/* Dotted Background Pattern */}
         <div 
-          className="absolute inset-0 opacity-40"
+          className="absolute inset-0 opacity-60"
           style={{
-            backgroundImage: 'radial-gradient(circle, #D1D5DB 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, #D1D5DB 1.5px, transparent 1.5px)',
             backgroundSize: '24px 24px'
           }}
         />
+        {/* Strong Fade to white at bottom for smooth transition */}
+        <div className="absolute z-20 inset-x-0 bottom-0 h-64 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none" />
         
         <div className="max-w-7xl mx-auto relative">
-          <div className="flex items-center justify-center min-h-[500px] md:min-h-[600px]">
+          <div className="grid lg:grid-cols-12 gap-8 items-center min-h-[500px] md:min-h-[600px]">
             {/* Central Content Column */}
-            <div className="relative max-w-4xl mx-auto text-center">
-              {/* Logo Mark */}
-              <div className="flex items-center justify-center mb-8 md:mb-12">
-                <img src={viewtrackLogo} alt="ViewTrack" className="h-12 md:h-16 w-auto" />
-              </div>
-
-              {/* Main Headline - Two Lines */}
-              <div className="space-y-1 md:space-y-2 mb-6 md:mb-8">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight px-2">
-                  <span className="text-[#2282FF]">Track</span><span className="text-[#2282FF]">,</span> <span className="text-[#2282FF]">Manage</span> and <span className="text-[#2282FF]">Scale</span>
-                </h1>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight px-2">
-                  your UGC and influencer campaigns
-                </h1>
-              </div>
-
-              {/* Supporting Sentence */}
-              <p className="text-base md:text-lg text-[#666666] mb-8 md:mb-10 tracking-wide px-4">
-                ViewTrack handles contracts, performance analytics, creator communication, and campaigns across all platforms—so you can focus on scaling your brand.
-              </p>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 md:mb-12 px-4">
-                <button
-                  onClick={onGetStarted}
-                  className="w-full sm:w-auto px-8 md:px-9 py-3.5 md:py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-sm md:text-base"
-                >
-                  Start tracking now
-                </button>
-                <button
-                  onClick={() => {
-                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="w-full sm:w-auto px-8 md:px-9 py-3.5 md:py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-full border-2 border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 text-sm md:text-base"
-                >
-                  Learn more
-                </button>
-              </div>
-
+            <div className="lg:col-span-7 relative text-left">
               {/* Supported Platforms - Simple Row */}
-              <div className="flex items-center justify-center gap-4 md:gap-6 mb-8 md:mb-12">
+              <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
                 <img src={instagramIcon} alt="Instagram" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={tiktokIcon} alt="TikTok" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={youtubeIcon} alt="YouTube" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={xLogo} alt="X" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
               </div>
-            </div>
-                </div>
+
+              {/* Main Headline - Two Lines */}
+              <div className="space-y-1 md:space-y-2 mb-6 md:mb-8">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
+                  Manage all your marketing
+                </h1>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
+                  across socials in one place
+                </h1>
               </div>
+
+              {/* Supporting Sentence */}
+              <p className="text-base md:text-lg text-[#666666] mb-8 md:mb-10 tracking-wide max-w-2xl">
+                ViewTrack handles contracts, performance analytics, creator communication, and campaigns across all platforms—so you can focus on scaling your brand.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 mb-8 md:mb-12">
+                <button
+                  onClick={onGetStarted}
+                  className="group relative w-full sm:w-auto px-8 md:px-9 py-3.5 md:py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-sm md:text-base overflow-hidden"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    Start tracking now <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12" />
+                </button>
+                <button
+                  onClick={() => {
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="group relative w-full sm:w-auto px-8 md:px-9 py-3.5 md:py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-full border-2 border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 text-sm md:text-base overflow-hidden"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <BookOpen className="w-4 h-4" /> Learn more
+                  </span>
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-black/5 to-transparent skew-x-12" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Interactive Widget */}
+            <div className="hidden lg:block lg:col-span-5 relative">
+              <HeroWidget />
+            </div>
+          </div>
+
+          {/* 3D Video Carousel - Full Width */}
+          <div className="w-screen relative left-1/2 -ml-[50vw] overflow-hidden pb-10 md:pb-20 -mt-16 md:-mt-24">
+            <VideoCarousel3D />
+          </div>
+        </div>
+      </section>
+
+      {/* Founders' Note */}
+      <section className="pt-8 pb-20 px-4 md:px-6 bg-white relative z-30 -mt-12">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-block px-4 py-1.5 bg-black text-white text-xs font-bold rounded-full mb-6 tracking-widest uppercase">
+            By Founders, For Founders
+          </div>
+          <h2 className="text-2xl md:text-4xl font-bold text-[#111] leading-tight tracking-tight">
+            "Viewtrack was built by <a href="https://x.com/ErnestoSOFTWARE" target="_blank" rel="noopener noreferrer" className="text-[#2282FF] hover:underline">@ernestoSOFTWARE</a> who owns 9 apps and has scaled massive campaigns. We built the platform we wished we had consolidating everything you need to stop wasting budget and start scaling profitably."
+          </h2>
+        </div>
       </section>
 
       {/* Features Timeline */}
@@ -162,13 +191,13 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Creator portals</span>
+                  <span>Creator portals <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Contract management</span>
+                  <span>Contract management <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -231,19 +260,19 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Creator campaigns</span>
+                  <span>Creator campaigns <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Creator portals</span>
+                  <span>Creator portals <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Contract management</span>
+                  <span>Contract management <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -303,13 +332,13 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Creator portals</span>
+                  <span>Creator portals <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Contract management</span>
+                  <span>Contract management <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
                 </li>
                 <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -340,26 +369,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Final CTA Section */}
-      <section className="py-12 md:py-20 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl md:rounded-3xl p-8 md:p-12 shadow-2xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 md:mb-4">
-              Ready to track your growth?
-            </h2>
-            <p className="text-lg md:text-xl text-gray-300 mb-6 md:mb-8">
-              Join creators who are scaling their social presence with ViewTrack.
-            </p>
-            <button
-              onClick={onGetStarted}
-              className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-            >
-              Get Started for Free
-            </button>
-            <p className="text-xs md:text-sm text-gray-400 mt-3 md:mt-4">No credit card required • Start in 2 minutes</p>
-          </div>
-        </div>
-      </section>
 
 
       {/* FAQ Section */}
@@ -408,54 +417,10 @@ const LandingPage: React.FC = () => {
             ))}
           </div>
 
-          <div className="mt-8 md:mt-12 text-center">
-            <p className="text-sm md:text-base text-gray-600 mb-3 md:mb-4">Have more questions?</p>
-            <a 
-              href="mailto:support@viewtrack.app"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white text-sm md:text-base font-semibold rounded-xl transition-colors"
-            >
-              Contact Support
-            </a>
-          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 md:py-12 px-4 md:px-6 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
-            <div className="flex items-center space-x-3">
-              <img src={viewtrackLogo} alt="ViewTrack" className="h-7 md:h-8 w-auto" />
-            </div>
-            
-            {/* Footer Links */}
-            <div className="flex items-center gap-4 md:gap-6 text-xs md:text-sm">
-              <a 
-                href="/privacy" 
-                className="text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                Privacy Policy
-              </a>
-              <a 
-                href="/terms" 
-                className="text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                Terms of Service
-              </a>
-              <a 
-                href="/support" 
-                className="text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                Support
-              </a>
-            </div>
-            
-            <p className="text-xs md:text-sm text-gray-500">
-              © 2025 ViewTrack. Track smarter, grow faster.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
     </div>
   );

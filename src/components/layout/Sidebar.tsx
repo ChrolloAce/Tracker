@@ -16,7 +16,8 @@ import {
   UserPlus,
   DollarSign,
   Lock,
-  MessageCircle
+  MessageCircle,
+  FileText
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -48,6 +49,7 @@ interface NavItem {
   isActive?: boolean;
   onClick?: () => void;
   locked?: boolean;
+  comingSoon?: string;
 }
 
 interface NavSection {
@@ -139,6 +141,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Video,
         href: `${baseHref}/creators`,
         locked: true,
+        comingSoon: 'Dec 5'
+      },
+      {
+        id: 'contracts',
+        label: 'Contracts',
+        icon: FileText,
+        href: `${baseHref}/contracts`, // Route might not exist yet but link is needed
+        locked: true,
+        comingSoon: 'Dec 5'
       },
       {
         id: 'campaigns',
@@ -146,6 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Trophy,
         href: `${baseHref}/campaigns`,
         locked: true,
+        comingSoon: 'Dec 5'
           },
           {
             id: 'team',
@@ -186,6 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'extension') return can.accessTab('extension');
           if (item.id === 'creators') return can.accessTab('creators');
           if (item.id === 'campaigns') return can.accessTab('campaigns');
+          if (item.id === 'contracts') return true; // Assuming visible but locked
           if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
           if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
@@ -262,11 +275,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={item.onClick}
           className={clsx(
             'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
-            'text-white/60 hover:bg-white/5 hover:text-white/80'
+            'text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white/80'
           )}
         >
           <Icon 
-            className="flex-shrink-0 w-5 h-5 text-white/60 group-hover:text-white/80 transition-colors duration-200"
+            className="flex-shrink-0 w-5 h-5 text-gray-400 dark:text-white/60 group-hover:text-gray-600 dark:group-hover:text-white/80 transition-colors duration-200"
           />
           {!isCollapsed && (
             <span className="ml-3 truncate">{item.label}</span>
@@ -283,8 +296,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-white/10 text-white border-l-2 border-white': isActive,
-            'text-white/60 hover:bg-white/5 hover:text-white/80': !isActive,
+            'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white border-l-2 border-black dark:border-white': isActive,
+            'text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white/80': !isActive,
           }
         )}
       >
@@ -292,15 +305,21 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={clsx(
             'flex-shrink-0 w-5 h-5 transition-colors duration-200',
             {
-              'text-white': isActive,
-              'text-white/60 group-hover:text-white/80': !isActive,
+              'text-black dark:text-white': isActive,
+              'text-gray-400 dark:text-white/60 group-hover:text-gray-600 dark:group-hover:text-white/80': !isActive,
             }
           )} 
         />
         {!isCollapsed && (
           <>
             <span className="ml-3 truncate">{item.label}</span>
-            {item.locked ? (
+            {item.comingSoon ? (
+              <div className="ml-auto">
+                <span className="text-[10px] font-bold bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-white px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">
+                  {item.comingSoon}
+                </span>
+              </div>
+            ) : item.locked ? (
               <div className="ml-auto flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-blue-400" />
               </div>

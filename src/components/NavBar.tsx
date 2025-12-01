@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 
 interface NavBarProps {
@@ -8,6 +8,15 @@ interface NavBarProps {
 
 const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navLinks = [
     { label: 'Home', href: '#hero' },
@@ -17,16 +26,19 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
   ];
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 pt-6 md:pt-8">
-      <div className="mx-auto max-w-[1100px] px-4 md:px-6">
+    <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${isScrolled ? 'pt-4' : 'pt-8'}`}>
+      <div className={`mx-auto px-4 md:px-6 transition-all duration-500 ease-in-out ${isScrolled ? 'max-w-[1100px]' : 'max-w-[800px]'}`}>
         <nav 
           role="navigation" 
           aria-label="Primary"
-          className="flex items-center justify-between rounded-full bg-white/80 backdrop-blur-xl border border-white/20 px-2.5 py-2.5 md:px-3 md:py-3 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_1px_0_rgba(0,0,0,0.04)]"
-          style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.1) inset' }}
+          className={`flex items-center justify-between rounded-full border transition-all duration-500 ease-in-out
+            ${isScrolled 
+              ? 'bg-white/70 backdrop-blur-3xl border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(255,255,255,0.5)] py-3 px-4' 
+              : 'bg-white/30 backdrop-blur-xl border-white/20 shadow-[0_4px_24px_rgba(0,0,0,0.02),inset_0_0_0_1px_rgba(255,255,255,0.1)] py-2.5 px-3'
+            }`}
         >
           {/* Left: Logo */}
-          <a href="/" className="flex items-center gap-2 pl-2.5 md:pl-3 pr-2">
+          <a href="/" className="flex items-center gap-2 pl-1 pr-2">
             <img src={logo} alt="ViewTrack" className="h-7 w-auto" />
           </a>
 
@@ -51,7 +63,7 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
           </ul>
 
           {/* Right: CTA + Mobile Menu */}
-          <div className="flex items-center gap-2 pr-2 md:pr-3">
+          <div className="flex items-center gap-2 pr-1">
             <button
               onClick={onGetStarted}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#111111] text-white px-4 py-2.5 text-[14.5px] font-medium shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 transition"
@@ -108,4 +120,3 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
 };
 
 export default NavBar;
-

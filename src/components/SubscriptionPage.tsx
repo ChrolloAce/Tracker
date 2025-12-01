@@ -272,7 +272,34 @@ const SubscriptionPage: React.FC = () => {
                       <span className="text-xs text-gray-700 dark:text-gray-300">
                         Priority support
                       </span>
-                </div>
+                    </div>
+                  )}
+
+                  {/* New Features with Coming Soon Badge */}
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center flex-wrap gap-1">
+                      Creator portals
+                      <span className="text-[10px] font-bold text-gray-900 bg-gray-100 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">Coming Dec 5 2025</span>
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center flex-wrap gap-1">
+                      Contract management
+                      <span className="text-[10px] font-bold text-gray-900 bg-gray-100 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">Coming Dec 5 2025</span>
+                    </span>
+                  </div>
+
+                  {(plan.id === 'pro' || plan.id === 'ultra' || plan.id === 'enterprise') && (
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center flex-wrap gap-1">
+                        Creator campaigns
+                        <span className="text-[10px] font-bold text-gray-900 bg-gray-100 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">Coming Dec 5 2025</span>
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
