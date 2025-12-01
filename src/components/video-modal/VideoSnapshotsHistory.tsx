@@ -112,8 +112,8 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
           >
             {/* Date */}
             <div className="col-span-2 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-                <Bookmark className="w-4 h-4 text-purple-400" />
+              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                <Bookmark className="w-4 h-4 text-gray-400" />
               </div>
               <div>
                 <div className="text-sm font-medium text-white">

@@ -36,9 +36,36 @@ export const generateSparklineData = (
     actualStartDate = new Date(dateRangeStart);
     actualEndDate = new Date(dateRangeEnd);
   } else {
-    // For 'all' time filter, use last 30 days as default
-    actualStartDate = new Date();
-    actualStartDate.setDate(actualStartDate.getDate() - 30);
+    // For 'all' time filter, find the earliest date from data
+    // If no data, default to 30 days
+    let minTime = new Date().getTime();
+    let hasData = false;
+    
+    if (submissions && submissions.length > 0) {
+      submissions.forEach(s => {
+        const uploadTime = new Date(s.uploadDate || s.dateSubmitted).getTime();
+        if (!isNaN(uploadTime) && uploadTime < minTime) {
+          minTime = uploadTime;
+          hasData = true;
+        }
+        if (s.snapshots) {
+          s.snapshots.forEach(sn => {
+            const snTime = new Date(sn.capturedAt).getTime();
+            if (!isNaN(snTime) && snTime < minTime) {
+              minTime = snTime;
+              hasData = true;
+            }
+          });
+        }
+      });
+    }
+
+    if (hasData) {
+      actualStartDate = new Date(minTime);
+    } else {
+      actualStartDate = new Date();
+      actualStartDate.setDate(actualStartDate.getDate() - 30);
+    }
   }
   
   // Use the granularity prop
