@@ -25,6 +25,12 @@ interface KPICardTooltipProps {
   setImageErrors: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
+const truncateText = (text: string, maxLength: number = 10): string => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+};
+
 /**
  * KPICardTooltip Component
  * Massive tooltip portal that shows detailed video and metric breakdowns
@@ -56,7 +62,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   }) : [];
   
   // Calculate refreshed videos (videos with growth)
-  const topGainersCheck = videosWithSnapshotsInIntervalCheck
+  const allTopGainers = videosWithSnapshotsInIntervalCheck
     .map((video: VideoSubmission) => {
       const allSnapshots = video.snapshots || [];
       
@@ -82,9 +88,17 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       if (!snapshotAtEnd) return null;
       
       if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+        // Fallback: Use initial snapshot or first available snapshot if no start snapshot exists
+        // This handles videos added DURING the interval
         const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
         if (!initialSnapshot) return null;
         
+        // Always use VIEWS as the primary metric for determining if a video should be shown
+        const viewsStartValue = (initialSnapshot as any)['views'] || 0;
+        const viewsEndValue = (snapshotAtEnd as any)['views'] || 0;
+        const viewsGrowth = viewsEndValue - viewsStartValue;
+        
+        // But calculate the display metric based on the current KPI
         const growthMetricKey = data.id === 'views' ? 'views' 
           : data.id === 'likes' ? 'likes'
           : data.id === 'comments' ? 'comments'
@@ -95,10 +109,18 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
         const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
         const growth = endValue - startValue;
+        const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
         
-        return growth > 0 ? { video, growth, absoluteGain: growth } : null;
+        // Only return if there is actual growth
+        return growth > 0 ? { video, growth, growthPercentage, absoluteGain: growth, viewsGrowth } : null;
       }
       
+      // Always use VIEWS as the primary metric for determining if a video should be shown
+      const viewsStartValue = (snapshotAtStart as any)['views'] || 0;
+      const viewsEndValue = (snapshotAtEnd as any)['views'] || 0;
+      const viewsGrowth = viewsEndValue - viewsStartValue;
+      
+      // But calculate the display metric based on the current KPI
       const growthMetricKey = data.id === 'views' ? 'views' 
         : data.id === 'likes' ? 'likes'
         : data.id === 'comments' ? 'comments'
@@ -108,13 +130,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       
       const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
       const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+      const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
       const absoluteGain = endValue - startValue;
       
-      return absoluteGain > 0 ? { video, growth: absoluteGain, absoluteGain } : null;
+      return absoluteGain > 0 ? { video, growth, metricValue: endValue, absoluteGain, startValue, snapshotCount: allSnapshots.length, viewsGrowth } : null;
     })
     .filter(item => item !== null);
   
-  const hasTopGainers = topGainersCheck.length > 0;
+  const hasTopGainers = allTopGainers.length > 0;
   const hasNewUploads = videosInInterval.length > 0;
   
   // Dynamic width based on columns
@@ -220,80 +243,6 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     .sort((a, b) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
     .slice(0, 5);
   
-  const videosWithSnapshotsInInterval = interval ? submissions.filter((video: VideoSubmission) => {
-    const snapshots = video.snapshots || [];
-    return snapshots.length > 0;
-  }) : [];
-  
-  const allTopGainers = videosWithSnapshotsInInterval
-    .map((video: VideoSubmission) => {
-      const allSnapshots = (video.snapshots || []);
-      const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
-        const snapshotDate = new Date(snapshot.capturedAt);
-        return snapshotDate <= interval.endDate;
-      });
-      
-      if (snapshotsInOrBeforeInterval.length === 0) return null;
-      
-      const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
-        new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-      );
-      
-      const snapshotAtStart = sortedSnapshots.filter(s => 
-        new Date(s.capturedAt) <= interval.startDate
-      ).pop();
-      
-      const snapshotAtEnd = sortedSnapshots.filter(s => 
-        new Date(s.capturedAt) <= interval.endDate
-      ).pop();
-      
-      if (!snapshotAtEnd) return null;
-      
-      if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
-        const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
-        if (!initialSnapshot) return null;
-        
-        // Always use VIEWS as the primary metric for determining if a video should be shown
-        const viewsStartValue = (initialSnapshot as any)['views'] || 0;
-        const viewsEndValue = (snapshotAtEnd as any)['views'] || 0;
-        const viewsGrowth = viewsEndValue - viewsStartValue;
-        
-        // But calculate the display metric based on the current KPI
-        const growthMetricKey = data.id === 'views' ? 'views' 
-          : data.id === 'likes' ? 'likes'
-          : data.id === 'comments' ? 'comments'
-          : data.id === 'shares' ? 'shares'
-          : data.id === 'bookmarks' ? 'bookmarks'
-          : 'views';
-        const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
-        const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
-        const growth = endValue - startValue;
-        const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
-        
-        return { video, growth, growthPercentage, absoluteGain: growth, viewsGrowth };
-      }
-      
-      // Always use VIEWS as the primary metric for determining if a video should be shown
-      const viewsStartValue = (snapshotAtStart as any)['views'] || 0;
-      const viewsEndValue = (snapshotAtEnd as any)['views'] || 0;
-      const viewsGrowth = viewsEndValue - viewsStartValue;
-      
-      // But calculate the display metric based on the current KPI
-      const growthMetricKey = data.id === 'views' ? 'views' 
-        : data.id === 'likes' ? 'likes'
-        : data.id === 'comments' ? 'comments'
-        : data.id === 'shares' ? 'shares'
-        : data.id === 'bookmarks' ? 'bookmarks'
-        : 'views';
-      
-      const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
-      const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
-      const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
-      const absoluteGain = endValue - startValue;
-      
-      return { video, growth, metricValue: endValue, absoluteGain, startValue, snapshotCount: allSnapshots.length, viewsGrowth };
-    })
-    .filter(item => item !== null && item.viewsGrowth !== undefined && item.viewsGrowth > 0);
   
   const totalTopGainers = allTopGainers.length;
   const topGainers = [...allTopGainers]
@@ -489,14 +438,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-white font-medium leading-tight truncate">
-                        {video.title || video.caption || '(No caption)'}
+                        {truncateText(video.title || video.caption || '(No caption)', 10)}
                       </p>
                       <div className="flex items-center gap-1 mt-0.5">
                         <div className="w-3 h-3 flex-shrink-0">
                           <PlatformIcon platform={video.platform} size="sm" />
                         </div>
                         <span className="text-[10px] text-gray-400 truncate">
-                          {video.uploaderHandle || video.platform}
+                          {truncateText(video.uploaderHandle || video.platform, 10)}
                         </span>
                       </div>
                     </div>
@@ -539,14 +488,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white font-medium leading-tight truncate">
-                          {item.video.title || item.video.caption || '(No caption)'}
+                          {truncateText(item.video.title || item.video.caption || '(No caption)', 10)}
                         </p>
                         <div className="flex items-center gap-1 mt-0.5">
                           <div className="w-3 h-3 flex-shrink-0">
                             <PlatformIcon platform={item.video.platform} size="sm" />
                           </div>
                           <span className="text-[10px] text-gray-400 truncate">
-                            {item.video.uploaderHandle || item.video.platform}
+                            {truncateText(item.video.uploaderHandle || item.video.platform, 10)}
                           </span>
                         </div>
                       </div>
@@ -689,10 +638,10 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                 {/* Video Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">
-                    {video.title || video.caption || 'Untitled'}
+                    {truncateText(video.title || video.caption || 'Untitled', 10)}
                   </p>
                   <p className="text-xs text-gray-400 truncate">
-                    @{video.uploaderHandle || 'Unknown'}
+                    @{truncateText(video.uploaderHandle || 'Unknown', 10)}
                   </p>
                 </div>
                 
