@@ -176,6 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             label: 'Revenue',
             icon: DollarSign,
             href: `${baseHref}/revenue`,
+            comingSoon: 'Dec 5'
       },
       {
         id: 'extension',
@@ -183,6 +184,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Puzzle,
         href: `${baseHref}/extension`,
         locked: true,
+            comingSoon: 'Dec 5'
       },
         ]
       },
