@@ -144,14 +144,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         comingSoon: 'Dec 5'
       },
       {
-        id: 'contracts',
-        label: 'Contracts',
-        icon: FileText,
-        href: `${baseHref}/contracts`, // Route might not exist yet but link is needed
-        locked: true,
-        comingSoon: 'Dec 5'
-      },
-      {
         id: 'campaigns',
         label: 'Campaigns',
         icon: Trophy,
@@ -200,7 +192,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'extension') return can.accessTab('extension');
           if (item.id === 'creators') return can.accessTab('creators');
           if (item.id === 'campaigns') return can.accessTab('campaigns');
-          if (item.id === 'contracts') return true; // Assuming visible but locked
           if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
           if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
