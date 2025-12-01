@@ -138,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lastSyncedAt: Timestamp.now()
     });
 
-    console.log(`🎯 Fetching video data from: ${video.url}`);
+    console.log(`🎯 [CALL 1/2 or 1/1] Fetching video data from: ${video.url}`);
 
     // Fetch video data from Apify
     const videoData = await fetchVideoData(video.url, video.platform);
@@ -146,6 +146,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!videoData) {
       throw new Error('Failed to fetch video data');
     }
+    
+    console.log(`✅ [CALL 1] Video data fetched successfully for ${video.platform.toUpperCase()}`);
+    console.log(`   - Username: ${videoData.username}`);
+    console.log(`   - Views: ${videoData.view_count || 0}`);
+    console.log(`   - Likes: ${videoData.like_count || 0}`);
 
     // Parse upload date
     let uploadDate: Date;
@@ -168,14 +173,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // This ensures we get complete profile info (followers, avatar, verified)
     let tiktokProfile: Awaited<ReturnType<typeof fetchTikTokProfile>> = null;
     if (video.platform === 'tiktok') {
+      console.log(`\n🎯 [CALL 2/2] Fetching TikTok profile data for @${videoData.username}...`);
+      console.log(`   Why: Single video scraper doesn't return profile pic/follower count`);
+      console.log(`   Action: Scraping profile URL to get complete account data`);
+      
       tiktokProfile = await fetchTikTokProfile(videoData.username);
       
       // Override videoData with profile data if we got it
       if (tiktokProfile) {
+        console.log(`✅ [CALL 2] Profile data fetched successfully!`);
+        console.log(`   - Avatar: ${tiktokProfile.avatar.substring(0, 80)}...`);
+        console.log(`   - Followers: ${tiktokProfile.followers.toLocaleString()}`);
+        console.log(`   - Verified: ${tiktokProfile.verified}`);
+        
         videoData.profile_pic_url = tiktokProfile.avatar;
         videoData.follower_count = tiktokProfile.followers;
         videoData.display_name = tiktokProfile.name;
-        console.log(`✅ [TIKTOK] Profile data merged - Followers: ${tiktokProfile.followers}, Avatar: ${tiktokProfile.avatar ? 'YES' : 'NO'}`);
+        console.log(`\n📊 [TIKTOK] Complete data merged - Ready to process!`);
+      } else {
+        console.warn(`⚠️ [CALL 2] Profile data fetch returned null - will use video data as fallback`);
       }
     }
 
@@ -1193,7 +1209,9 @@ async function fetchTikTokProfile(username: string): Promise<{
   verified: boolean;
 } | null> {
   try {
-    console.log(`👤 [TIKTOK] Fetching profile data for @${username}...`);
+    console.log(`   🔄 [TIKTOK PROFILE SCRAPER] Calling Apify actor: apidojo/tiktok-scraper`);
+    console.log(`   📝 [TIKTOK PROFILE SCRAPER] Target: https://www.tiktok.com/@${username}`);
+    console.log(`   🎯 [TIKTOK PROFILE SCRAPER] Goal: Get profile pic, followers, verified status`);
     
     const profileData = await runApifyActor({
       actorId: 'apidojo/tiktok-scraper',
@@ -1208,10 +1226,16 @@ async function fetchTikTokProfile(username: string): Promise<{
       }
     });
     
+    console.log(`   📦 [TIKTOK PROFILE SCRAPER] Response received - Items: ${profileData.items?.length || 0}`);
+    
     const profileVideos = profileData.items || [];
     if (profileVideos.length > 0) {
       const channel = profileVideos[0].channel || {};
-      console.log(`✅ [TIKTOK] Profile data fetched - Followers: ${channel.followers || 0}, Avatar: ${channel.avatar ? 'YES' : 'NO'}`);
+      console.log(`   ✅ [TIKTOK PROFILE SCRAPER] Channel data extracted:`);
+      console.log(`      - Avatar URL: ${channel.avatar ? 'EXISTS' : 'MISSING'}`);
+      console.log(`      - Followers: ${channel.followers || 0}`);
+      console.log(`      - Name: ${channel.name || 'N/A'}`);
+      console.log(`      - Verified: ${channel.verified || false}`);
       
       return {
         avatar: channel.avatar || '',
@@ -1222,10 +1246,10 @@ async function fetchTikTokProfile(username: string): Promise<{
       };
     }
     
-    console.warn(`⚠️ [TIKTOK] No profile data returned from scraper`);
+    console.warn(`   ⚠️ [TIKTOK PROFILE SCRAPER] No items returned - profile data unavailable`);
     return null;
   } catch (error) {
-    console.error(`❌ [TIKTOK] Profile fetch failed:`, error);
+    console.error(`   ❌ [TIKTOK PROFILE SCRAPER] Failed:`, error);
     return null;
   }
 }
