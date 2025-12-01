@@ -4,10 +4,9 @@ import { Eye, MousePointerClick, DollarSign } from 'lucide-react';
 interface VideoCardProps {
   id: number;
   views: string;
-  isActive?: boolean;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ id, views, isActive = true }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ id, views }) => {
   const isPositive = id % 2 !== 0;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);

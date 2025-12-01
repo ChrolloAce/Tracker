@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Users, Activity, ArrowUp } from 'lucide-react';
+import { TrendingUp, Users } from 'lucide-react';
 
 // Import Platform Icons
 import instagramIcon from '/Instagram_icon.png';
@@ -105,7 +105,7 @@ export const HeroWidget: React.FC = () => {
               <h3 className="font-bold text-white">Top Performers</h3>
               <Users className="w-4 h-4 text-gray-500" />
             </div>
-            {RACE_DATA.map((creator, index) => (
+            {RACE_DATA.map((creator) => (
               <div key={creator.handle} className="flex items-center gap-3">
                 {/* Avatar with Platform Icon */}
                 <div className="relative flex-shrink-0">
