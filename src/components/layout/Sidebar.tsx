@@ -16,8 +16,7 @@ import {
   UserPlus,
   DollarSign,
   Lock,
-  MessageCircle,
-  FileText
+  MessageCircle
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
