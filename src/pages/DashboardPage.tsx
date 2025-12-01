@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
-  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2, RefreshCw,
+  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2,
   Users, Clock, TrendingUp, BarChart3, X, Pencil, Check
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
@@ -1596,60 +1596,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   }, []);
 
   // Trigger scheduled refresh asynchronously (fire and forget)
-  const handleManualRefresh = useCallback(async () => {
-    if (!user || isRefreshing) return;
-    
-    setIsRefreshing(true);
-    try {
-      console.log('🔄 Triggering scheduled refresh (async)...');
-      
-      // Get Firebase token for authentication
-      const token = await user.getIdToken();
-      
-      // Call orchestrator directly with Firebase token (no need for CRON_SECRET)
-      const response = await fetch('/api/cron-orchestrator', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      let result: any = null;
-      
-      if (contentType && contentType.includes('application/json')) {
-        result = await response.json();
-      } else {
-        // Non-JSON response (likely an error page)
-        const text = await response.text();
-        console.error('❌ Non-JSON response:', text.substring(0, 200));
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
-      }
-      
-      if (response.ok && result.success) {
-        console.log('✅ Refresh job triggered:', result);
-        alert(
-          `✅ Refresh Started!\n\n` +
-          `⚡ All accounts are being refreshed in the background\n` +
-          `⏱️  This may take several minutes to complete\n\n` +
-          `Your dashboard will update automatically as data is refreshed.`
-        );
-        
-        // Reload page to show updated data
-        setTimeout(() => window.location.reload(), 1000);
-      } else {
-        console.error('❌ Scheduled refresh failed:', result);
-        alert(`❌ Refresh failed: ${result.error || 'Unknown error'}`);
-      }
-    } catch (error: any) {
-      console.error('❌ Failed to trigger refresh:', error);
-      alert(`❌ Failed to trigger refresh: ${error.message || 'Please check console for details'}`);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [user, isRefreshing]);
 
   // Helper function to get human-readable date filter label
   const getDateFilterLabel = useCallback((filter: DateFilterType): string => {

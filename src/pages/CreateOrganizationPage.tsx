@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Upload, X, Check, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Upload, X, Check, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut } from 'firebase/auth';
 import OrganizationService from '../services/OrganizationService';
@@ -55,7 +55,6 @@ const OrganizationOnboarding: React.FC = () => {
   });
 
   const [currentEmail, setCurrentEmail] = useState('');
-  const [currentRole, setCurrentRole] = useState('member');
   const [currentAccountUrl, setCurrentAccountUrl] = useState('');
 
   const totalSteps = 3;
@@ -105,24 +104,6 @@ const OrganizationOnboarding: React.FC = () => {
     });
   };
 
-
-  // Team member management
-  const handleAddTeamMember = () => {
-    if (currentEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail)) {
-      setData({
-        ...data,
-        teamEmails: [...data.teamEmails, currentEmail]
-      });
-      setCurrentEmail('');
-    }
-  };
-
-  const handleRemoveTeamMember = (email: string) => {
-    setData({
-      ...data,
-      teamEmails: data.teamEmails.filter(e => e !== email)
-    });
-  };
 
   // Business type options
   const businessTypes = [

@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { Check, Eye, Zap } from 'lucide-react';
+import { Check, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
-import { getAuth } from 'firebase/auth';
 
 interface PaywallOverlayProps {
   isActive: boolean;
 }
 
 const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
-  const { currentOrgId, user } = useAuth();
+  const { currentOrgId } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [testModeLoading, setTestModeLoading] = useState(false);
 
   if (!isActive) return null;
 
@@ -28,54 +26,6 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
       console.error('Failed to create checkout session:', error);
       alert('Failed to start checkout. Please try again.');
       setLoading(false);
-    }
-  };
-
-  const handleTestModeGrant = async () => {
-    if (!currentOrgId || !user) return;
-    
-    setTestModeLoading(true);
-    try {
-      console.log('🧪 [TEST MODE] Granting Basic plan...');
-      
-      const authUser = getAuth().currentUser;
-      if (!authUser) {
-        throw new Error('Not authenticated');
-      }
-      
-      const token = await authUser.getIdToken();
-      
-      const response = await fetch('/api/test-grant-plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          orgId: currentOrgId,
-          planTier: 'basic',
-          userId: user.uid
-        })
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('❌ [TEST MODE] Server error response:', error);
-        throw new Error(error.message || error.error || 'Failed to grant test plan');
-      }
-      
-      const result = await response.json();
-      console.log('✅ [TEST MODE] Success:', result);
-      
-      alert(`✅ Test Mode Activated!\n\nPlan: ${result.planTier}\nExpires: ${new Date(result.expiresAt).toLocaleDateString()}\nPending accounts activated: ${result.pendingAccountsActivated}\n\nReloading dashboard...`);
-      
-      // Reload to update UI
-      window.location.reload();
-      
-    } catch (error: any) {
-      console.error('❌ [TEST MODE] Failed:', error);
-      alert(`Failed to grant test plan: ${error.message}`);
-      setTestModeLoading(false);
     }
   };
 
