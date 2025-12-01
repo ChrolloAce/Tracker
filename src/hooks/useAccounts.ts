@@ -28,78 +28,7 @@ interface UseAccountsProps {
   isDemoMode?: boolean;
 }
 
-// Mock data for demo mode
-const MOCK_ACCOUNTS: TrackedAccount[] = [
-  {
-    id: 'demo-ig-1',
-    orgId: 'demo-org',
-    addedBy: 'demo-user',
-    username: 'SarahCreate',
-    platform: 'instagram',
-    dateAdded: { toDate: () => new Date('2025-11-01'), seconds: 1761955200, nanoseconds: 0 } as any,
-    totalVideos: 150,
-    totalViews: 2500000,
-    totalLikes: 120000,
-    totalComments: 5000,
-    totalShares: 2000,
-    followerCount: 50000,
-    followingCount: 120,
-    profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-    displayName: 'Sarah Creator',
-    status: 'active',
-    syncStatus: 'idle',
-    creatorType: 'automatic',
-    lastRefreshed: { toDate: () => new Date(), seconds: Date.now() / 1000, nanoseconds: 0 } as any,
-    accountType: 'my',
-    isActive: true
-  },
-  {
-    id: 'demo-tt-1',
-    orgId: 'demo-org',
-    addedBy: 'demo-user',
-    username: 'alex_tiktok_star',
-    platform: 'tiktok',
-    dateAdded: { toDate: () => new Date('2025-10-15'), seconds: 1760486400, nanoseconds: 0 } as any,
-    totalVideos: 320,
-    totalViews: 8500000,
-    totalLikes: 2200000,
-    totalComments: 15000,
-    totalShares: 80000,
-    followerCount: 1500000,
-    followingCount: 50,
-    profilePicture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
-    displayName: 'Alex TikTok',
-    status: 'active',
-    syncStatus: 'idle',
-    creatorType: 'automatic',
-    lastRefreshed: { toDate: () => new Date(), seconds: Date.now() / 1000, nanoseconds: 0 } as any,
-    accountType: 'my',
-    isActive: true
-  },
-  {
-    id: 'demo-yt-1',
-    orgId: 'demo-org',
-    addedBy: 'demo-user',
-    username: 'TechReviewsDaily',
-    platform: 'youtube',
-    dateAdded: { toDate: () => new Date('2025-09-20'), seconds: 1758326400, nanoseconds: 0 } as any,
-    totalVideos: 85,
-    totalViews: 1200000,
-    totalLikes: 45000,
-    totalComments: 3200,
-    totalShares: 1500,
-    followerCount: 250000,
-    followingCount: 0,
-    profilePicture: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100',
-    displayName: 'Tech Reviews',
-    status: 'active',
-    syncStatus: 'idle',
-    creatorType: 'automatic',
-    lastRefreshed: { toDate: () => new Date(), seconds: Date.now() / 1000, nanoseconds: 0 } as any,
-    accountType: 'my',
-    isActive: true
-  }
-];
+// Mock data removed - demo mode now uses real Firebase data from demo org/project
 
 export const useAccounts = ({
   organizationId,
@@ -180,19 +109,6 @@ export const useAccounts = ({
   useEffect(() => {
     console.log('🔍 useAccounts - isDemoMode:', isDemoMode, 'currentOrgId:', currentOrgId, 'currentProjectId:', currentProjectId);
     
-    // STRICT: Only use mock data if explicitly in demo mode AND using demo org/project IDs
-    const DEMO_ORG_ID = 'Vx2UpxGCV3uD8Xj2ioX4';
-    const DEMO_PROJECT_ID = 'ayGJEIQc23rJlamuOqp3';
-    const isActuallyDemoMode = isDemoMode && currentOrgId === DEMO_ORG_ID && currentProjectId === DEMO_PROJECT_ID;
-    
-    if (isActuallyDemoMode) {
-      // Use mock data in demo mode
-      console.log('🎭 Using MOCK_ACCOUNTS for demo mode:', MOCK_ACCOUNTS);
-      setAccounts(MOCK_ACCOUNTS);
-      setLoading(false);
-      return;
-    }
-
     if (!currentOrgId || !currentProjectId) {
       console.log('⚠️ No orgId or projectId - not loading accounts');
       setAccounts([]);
