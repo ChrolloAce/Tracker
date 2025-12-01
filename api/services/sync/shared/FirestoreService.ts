@@ -179,7 +179,7 @@ export class FirestoreService {
   
   /**
    * Create snapshot for a video
-   * No deduplication - REFRESH→DISCOVERY architecture prevents duplicates naturally
+   * With deduplication to prevent duplicate snapshots within 1 minute
    * Returns true if snapshot was created, false if skipped
    */
   static async createSnapshot(
@@ -195,10 +195,22 @@ export class FirestoreService {
   ): Promise<boolean> {
     const snapshotsRef = videoRef.collection('snapshots');
     
-    // ✅ REMOVED: Deduplication check (new REFRESH→DISCOVERY architecture prevents duplicates)
-    // The phase separation ensures snapshots are only created once per refresh cycle
+    // Check for recent duplicate snapshots (within 1 minute)
+    const oneMinuteAgo = Timestamp.fromMillis(Date.now() - 60000);
+    const recentSnapshots = await snapshotsRef
+      .where('capturedAt', '>=', oneMinuteAgo)
+      .where('views', '==', metrics.views)
+      .where('likes', '==', metrics.likes)
+      .where('comments', '==', metrics.comments)
+      .limit(1)
+      .get();
     
-    // Always create snapshot
+    if (!recentSnapshots.empty) {
+      console.log(`    ⏭️  Skipping duplicate snapshot (identical metrics within 1 minute)`);
+      return false;
+    }
+    
+    // Create snapshot
     await snapshotsRef.add({
       views: metrics.views,
       likes: metrics.likes,
