@@ -173,11 +173,17 @@ export const generateSparklineData = (
               .filter(s => new Date(s.capturedAt) <= interval.endDate)
               .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
             
-            // Only count growth if we have both start and end snapshots
-            if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
-              // Calculate growth from start to end of THIS interval only
-              const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-              intervalValue += delta;
+            // Only count growth if we have both start and end snapshots (compare by timestamp, not reference)
+            if (snapshotAtStart && snapshotAtEnd) {
+              const startTime = new Date(snapshotAtStart.capturedAt).getTime();
+              const endTime = new Date(snapshotAtEnd.capturedAt).getTime();
+              
+              // Only add delta if they're different snapshots OR if there's actual growth
+              if (startTime !== endTime || (snapshotAtEnd[metric] || 0) > (snapshotAtStart[metric] || 0)) {
+                // Calculate growth from start to end of THIS interval only
+                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                intervalValue += delta;
+              }
             }
           }
         } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
@@ -214,11 +220,17 @@ export const generateSparklineData = (
                 .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
                 .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
               
-              // Only count growth if we have both start and end snapshots
-              if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
-                // Calculate growth from start to end of THIS PP interval only
-                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                ppIntervalValue += delta;
+              // Only count growth if we have both start and end snapshots (compare by timestamp, not reference)
+              if (snapshotAtStart && snapshotAtEnd) {
+                const startTime = new Date(snapshotAtStart.capturedAt).getTime();
+                const endTime = new Date(snapshotAtEnd.capturedAt).getTime();
+                
+                // Only add delta if they're different snapshots OR if there's actual growth
+                if (startTime !== endTime || (snapshotAtEnd[metric] || 0) > (snapshotAtStart[metric] || 0)) {
+                  // Calculate growth from start to end of THIS PP interval only
+                  const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                  ppIntervalValue += delta;
+                }
               }
             }
           } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
