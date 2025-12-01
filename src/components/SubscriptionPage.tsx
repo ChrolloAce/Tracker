@@ -272,7 +272,7 @@ const SubscriptionPage: React.FC = () => {
                       <span className="text-xs text-gray-700 dark:text-gray-300">
                         Priority support
                       </span>
-                    </div>
+                </div>
                   )}
 
                   {/* New Features with Coming Soon Badge */}

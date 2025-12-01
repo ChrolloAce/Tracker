@@ -63,8 +63,8 @@ export const generateSparklineData = (
     if (hasData) {
       actualStartDate = new Date(minTime);
     } else {
-      actualStartDate = new Date();
-      actualStartDate.setDate(actualStartDate.getDate() - 30);
+    actualStartDate = new Date();
+    actualStartDate.setDate(actualStartDate.getDate() - 30);
     }
   }
   

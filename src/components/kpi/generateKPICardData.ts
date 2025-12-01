@@ -121,9 +121,9 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
         .filter(t => !isNaN(t)); // Filter out invalid dates
       
       if (dates.length > 0) {
-        const earliestTime = Math.min(...dates);
-        dateRangeStart = new Date(earliestTime);
-        dateRangeStart.setHours(0, 0, 0, 0);
+      const earliestTime = Math.min(...dates);
+      dateRangeStart = new Date(earliestTime);
+      dateRangeStart.setHours(0, 0, 0, 0);
       } else {
         // No valid dates found, default to 30 days ago
         dateRangeStart = new Date();

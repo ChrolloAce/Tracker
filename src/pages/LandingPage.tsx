@@ -118,13 +118,13 @@ const LandingPage: React.FC = () => {
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-black/5 to-transparent skew-x-12" />
                 </button>
               </div>
-            </div>
+              </div>
 
             {/* Right Column: Interactive Widget */}
             <div className="hidden lg:block lg:col-span-5 relative">
               <HeroWidget />
             </div>
-          </div>
+                </div>
 
           {/* 3D Video Carousel - Full Width */}
           <div className="w-screen relative left-1/2 -ml-[50vw] overflow-hidden pb-10 md:pb-20 -mt-16 md:-mt-24">
@@ -142,7 +142,7 @@ const LandingPage: React.FC = () => {
           <h2 className="text-2xl md:text-4xl font-bold text-[#111] leading-tight tracking-tight">
             "Viewtrack was built by <a href="https://x.com/ErnestoSOFTWARE" target="_blank" rel="noopener noreferrer" className="text-[#2282FF] hover:underline">@ernestoSOFTWARE</a> who owns 9 apps and has scaled massive campaigns. We built the platform we wished we had consolidating everything you need to stop wasting budget and start scaling profitably."
           </h2>
-        </div>
+              </div>
       </section>
 
       {/* Features Timeline */}

@@ -33,6 +33,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
   // Tooltip states
   const [hoveredVideo, setHoveredVideo] = useState<{ video: VideoSubmission; x: number; y: number } | null>(null);
   const [hoveredAccount, setHoveredAccount] = useState<{ handle: string; x: number; y: number } | null>(null);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // Info tooltip states
   const [showVideosInfo, setShowVideosInfo] = useState(false);
@@ -618,7 +619,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
 
   // Get videos for account tooltip
   const getAccountVideos = (handle: string) => {
-    const accountVideos = submissions.filter(v => v.uploaderHandle === handle);
+    // Case-insensitive handle matching (handle is already lowercase from topAccounts)
+    const accountVideos = submissions.filter(v => 
+      (v.uploaderHandle || '').trim().toLowerCase() === handle.toLowerCase()
+    );
     
     // Sort by view growth (if snapshots available) or upload date
     return accountVideos.sort((a, b) => {
@@ -755,16 +759,24 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                 onMouseEnter={(e) => {
                   // Only update if not already hovering this video
                   if (hoveredVideo?.video?.id !== video.id) {
-                    const rect = e.currentTarget.getBoundingClientRect();
                     setHoveredVideo({
                       video,
-                      x: rect.left + rect.width / 2,
-                      y: rect.bottom
+                      x: e.clientX,
+                      y: e.clientY
                     });
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
                     barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (hoveredVideo?.video?.id === video.id) {
+                    setHoveredVideo({
+                      video,
+                      x: e.clientX,
+                      y: e.clientY
+                    });
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -947,16 +959,24 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                 onMouseEnter={(e) => {
                   // Only update if not already hovering this account
                   if (hoveredAccount?.handle !== account.handle) {
-                    const rect = e.currentTarget.getBoundingClientRect();
                     setHoveredAccount({
                       handle: account.handle,
-                      x: rect.left + rect.width / 2,
-                      y: rect.bottom
+                      x: e.clientX,
+                      y: e.clientY
                     });
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
                     barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (hoveredAccount?.handle === account.handle) {
+                    setHoveredAccount({
+                      handle: account.handle,
+                      x: e.clientX,
+                      y: e.clientY
+                    });
                   }
                 }}
                 onMouseLeave={(e) => {
