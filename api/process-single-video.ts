@@ -116,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  console.log(`⚡ Processing video immediately: ${videoId}`);
+    console.log(`⚡ Processing video immediately: ${videoId}`);
 
   try {
     const videoRef = db.doc(`organizations/${orgId}/projects/${projectId}/videos/${videoId}`);
@@ -138,19 +138,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lastSyncedAt: Timestamp.now()
     });
 
-    console.log(`🎯 [CALL 1/2 or 1/1] Fetching video data from: ${video.url}`);
-
-    // Fetch video data from Apify
-    const videoData = await fetchVideoData(video.url, video.platform);
+    // For TikTok, make BOTH API calls in parallel for speed
+    let videoData: VideoData;
+    let tiktokProfile: Awaited<ReturnType<typeof fetchTikTokProfile>> = null;
     
-    if (!videoData) {
-      throw new Error('Failed to fetch video data');
+    if (video.platform === 'tiktok') {
+      console.log(`🎯 [TIKTOK] Starting 2 parallel API calls for @${video.url.split('@')[1]?.split('/')[0] || 'unknown'}...`);
+      console.log(`   CALL 1: Video data (views, likes, etc.)`);
+      console.log(`   CALL 2: Profile data (followers, pfp, verified)`);
+      console.log(`   ⚡ Both calls running simultaneously for speed!`);
+      
+      // Extract username from URL for profile call
+      const urlMatch = video.url.match(/@([^/]+)/);
+      const username = urlMatch ? urlMatch[1] : '';
+      
+      // Run both calls in parallel
+      const [videoDataResult, profileDataResult] = await Promise.all([
+        fetchVideoData(video.url, video.platform),
+        username ? fetchTikTokProfile(username) : Promise.resolve(null)
+      ]);
+      
+      if (!videoDataResult) {
+        throw new Error('Failed to fetch video data');
+      }
+      
+      videoData = videoDataResult;
+      tiktokProfile = profileDataResult;
+      
+      console.log(`✅ [CALL 1] Video data fetched successfully!`);
+      console.log(`   - Username: ${videoData.username}`);
+      console.log(`   - Views: ${videoData.view_count || 0}`);
+      console.log(`   - Likes: ${videoData.like_count || 0}`);
+      
+      // Override videoData with profile data if we got it
+      if (tiktokProfile) {
+        console.log(`✅ [CALL 2] Profile data fetched successfully!`);
+        console.log(`   - Avatar: ${tiktokProfile.avatar.substring(0, 80)}...`);
+        console.log(`   - Followers: ${tiktokProfile.followers.toLocaleString()}`);
+        console.log(`   - Verified: ${tiktokProfile.verified}`);
+        
+        videoData.profile_pic_url = tiktokProfile.avatar;
+        videoData.follower_count = tiktokProfile.followers;
+        videoData.display_name = tiktokProfile.name;
+        console.log(`\n📊 [TIKTOK] Complete data merged - Ready to process!`);
+      } else {
+        console.warn(`⚠️ [CALL 2] Profile data fetch returned null - will use video data as fallback`);
+      }
+    } else {
+      // For non-TikTok platforms, single call is sufficient
+      console.log(`🎯 [CALL 1/1] Fetching video data from: ${video.url}`);
+      const videoDataResult = await fetchVideoData(video.url, video.platform);
+      
+      if (!videoDataResult) {
+        throw new Error('Failed to fetch video data');
+      }
+      
+      videoData = videoDataResult;
+      
+      console.log(`✅ [CALL 1] Video data fetched successfully for ${video.platform.toUpperCase()}`);
+      console.log(`   - Username: ${videoData.username}`);
+      console.log(`   - Views: ${videoData.view_count || 0}`);
+      console.log(`   - Likes: ${videoData.like_count || 0}`);
     }
-    
-    console.log(`✅ [CALL 1] Video data fetched successfully for ${video.platform.toUpperCase()}`);
-    console.log(`   - Username: ${videoData.username}`);
-    console.log(`   - Views: ${videoData.view_count || 0}`);
-    console.log(`   - Likes: ${videoData.like_count || 0}`);
 
     // Parse upload date
     let uploadDate: Date;
@@ -167,32 +216,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Validate we have required data
     if (!videoData.username) {
       throw new Error('Video data missing username');
-    }
-
-    // For TikTok, ALWAYS fetch profile data separately (2 calls total)
-    // This ensures we get complete profile info (followers, avatar, verified)
-    let tiktokProfile: Awaited<ReturnType<typeof fetchTikTokProfile>> = null;
-    if (video.platform === 'tiktok') {
-      console.log(`\n🎯 [CALL 2/2] Fetching TikTok profile data for @${videoData.username}...`);
-      console.log(`   Why: Single video scraper doesn't return profile pic/follower count`);
-      console.log(`   Action: Scraping profile URL to get complete account data`);
-      
-      tiktokProfile = await fetchTikTokProfile(videoData.username);
-      
-      // Override videoData with profile data if we got it
-      if (tiktokProfile) {
-        console.log(`✅ [CALL 2] Profile data fetched successfully!`);
-        console.log(`   - Avatar: ${tiktokProfile.avatar.substring(0, 80)}...`);
-        console.log(`   - Followers: ${tiktokProfile.followers.toLocaleString()}`);
-        console.log(`   - Verified: ${tiktokProfile.verified}`);
-        
-        videoData.profile_pic_url = tiktokProfile.avatar;
-        videoData.follower_count = tiktokProfile.followers;
-        videoData.display_name = tiktokProfile.name;
-        console.log(`\n📊 [TIKTOK] Complete data merged - Ready to process!`);
-      } else {
-        console.warn(`⚠️ [CALL 2] Profile data fetch returned null - will use video data as fallback`);
-      }
     }
 
     // Log Instagram profile data (already extracted from hpix~ig-reels-scraper)
