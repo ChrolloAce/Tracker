@@ -54,7 +54,6 @@ const OrganizationOnboarding: React.FC = () => {
     referralSource: ''
   });
 
-  const [currentEmail, setCurrentEmail] = useState('');
   const [currentAccountUrl, setCurrentAccountUrl] = useState('');
 
   const totalSteps = 3;

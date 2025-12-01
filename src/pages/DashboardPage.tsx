@@ -376,7 +376,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
   const [isOverSectionTrash, setIsOverSectionTrash] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [kpiCardOrder, setKpiCardOrder] = useState<string[]>(() => {
     // Load saved card order from localStorage
