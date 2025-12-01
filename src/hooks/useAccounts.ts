@@ -28,6 +28,79 @@ interface UseAccountsProps {
   isDemoMode?: boolean;
 }
 
+// Mock data for demo mode
+const MOCK_ACCOUNTS: TrackedAccount[] = [
+  {
+    id: 'demo-ig-1',
+    orgId: 'demo-org',
+    addedBy: 'demo-user',
+    username: 'SarahCreate',
+    platform: 'instagram',
+    dateAdded: { toDate: () => new Date('2025-11-01'), seconds: 1761955200, nanoseconds: 0 } as any,
+    totalVideos: 150,
+    totalViews: 2500000,
+    totalLikes: 120000,
+    totalComments: 5000,
+    totalShares: 2000,
+    followerCount: 50000,
+    followingCount: 120,
+    profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
+    displayName: 'Sarah Creator',
+    status: 'active',
+    syncStatus: 'idle',
+    creatorType: 'automatic',
+    lastRefreshed: { toDate: () => new Date(), seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+    accountType: 'my',
+    isActive: true
+  },
+  {
+    id: 'demo-tt-1',
+    orgId: 'demo-org',
+    addedBy: 'demo-user',
+    username: 'alex_tiktok_star',
+    platform: 'tiktok',
+    dateAdded: { toDate: () => new Date('2025-10-15'), seconds: 1760486400, nanoseconds: 0 } as any,
+    totalVideos: 320,
+    totalViews: 8500000,
+    totalLikes: 2200000,
+    totalComments: 15000,
+    totalShares: 80000,
+    followerCount: 1500000,
+    followingCount: 50,
+    profilePicture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
+    displayName: 'Alex TikTok',
+    status: 'active',
+    syncStatus: 'idle',
+    creatorType: 'automatic',
+    lastRefreshed: { toDate: () => new Date(), seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+    accountType: 'my',
+    isActive: true
+  },
+  {
+    id: 'demo-yt-1',
+    orgId: 'demo-org',
+    addedBy: 'demo-user',
+    username: 'TechReviewsDaily',
+    platform: 'youtube',
+    dateAdded: { toDate: () => new Date('2025-09-20'), seconds: 1758326400, nanoseconds: 0 } as any,
+    totalVideos: 85,
+    totalViews: 1200000,
+    totalLikes: 45000,
+    totalComments: 3200,
+    totalShares: 1500,
+    followerCount: 250000,
+    followingCount: 0,
+    profilePicture: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100',
+    displayName: 'Tech Reviews',
+    status: 'active',
+    syncStatus: 'idle',
+    creatorType: 'automatic',
+    lastRefreshed: { toDate: () => new Date(), seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+    accountType: 'my',
+    isActive: true
+  }
+];
+
 export const useAccounts = ({
   organizationId,
   projectId,
@@ -105,8 +178,14 @@ export const useAccounts = ({
 
   // Load Accounts (Realtime)
   useEffect(() => {
-    if (!currentOrgId || !currentProjectId || isDemoMode) {
-      if (isDemoMode) setLoading(false);
+    if (isDemoMode) {
+      // Use mock data in demo mode
+      setAccounts(MOCK_ACCOUNTS);
+      setLoading(false);
+      return;
+    }
+
+    if (!currentOrgId || !currentProjectId) {
       return;
     }
 
@@ -169,6 +248,12 @@ export const useAccounts = ({
   // Load Metadata (Creators, Links, Limits)
   useEffect(() => {
     const loadMetadata = async () => {
+      if (isDemoMode) {
+        // Mock metadata for demo mode
+        setUsageLimits({ accountsLeft: 999, videosLeft: 999, isAtAccountLimit: false, isAtVideoLimit: false });
+        return;
+      }
+
       if (!currentOrgId || !currentProjectId) return;
       try {
         // Creators
@@ -204,18 +289,16 @@ export const useAccounts = ({
       }
     };
     loadMetadata();
-  }, [currentOrgId, currentProjectId, user, accounts.length]); // Reload limits when accounts change
+  }, [currentOrgId, currentProjectId, user, accounts.length, isDemoMode]);
 
   // Load Creator Names for accounts
   useEffect(() => {
     const loadCreatorNames = async () => {
+        if (isDemoMode) return; // Skip for demo
         if (!currentOrgId || !currentProjectId || accounts.length === 0) return;
         const map = new Map<string, string>();
         const linked: string[] = [];
         
-        // Optimization: Fetch all links once instead of per account?
-        // CreatorLinksService doesn't have batch get?
-        // AccountsPage was fetching iteratively in useEffect.
         for (const acc of accounts) {
             try {
                 const name = await CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, acc.id);
@@ -229,10 +312,20 @@ export const useAccounts = ({
         setCreatorLinkedAccountIds(linked);
     };
     loadCreatorNames();
-  }, [currentOrgId, currentProjectId, accounts]);
+  }, [currentOrgId, currentProjectId, accounts, isDemoMode]);
 
   // Load Video Logic (extracted from AccountsPage)
   const loadAccountVideos = useCallback(async (accountId: string) => {
+    if (isDemoMode) {
+        // Mock videos for demo mode
+        setLoadingAccountDetail(true);
+        setTimeout(() => {
+            setAccountVideos([]); // Or mock videos if needed
+            setLoadingAccountDetail(false);
+        }, 500);
+        return;
+    }
+
     if (!currentOrgId || !currentProjectId) return;
     const account = accounts.find(a => a.id === accountId);
     if (!account) return;
@@ -290,12 +383,12 @@ export const useAccounts = ({
     } finally {
         setLoadingAccountDetail(false);
     }
-  }, [currentOrgId, currentProjectId, accounts, selectedRuleIds, dashboardRules, dateFilter]);
+  }, [currentOrgId, currentProjectId, accounts, selectedRuleIds, dashboardRules, dateFilter, isDemoMode]);
 
   // Calculate Stats & Filter Accounts
   useEffect(() => {
     const updateStats = async () => {
-        if (!accounts.length || !currentOrgId || !currentProjectId) { 
+        if (!accounts.length || (!isDemoMode && (!currentOrgId || !currentProjectId))) { 
           setFilteredAccounts([]); 
           return; 
         }
@@ -317,7 +410,10 @@ export const useAccounts = ({
             let highestViewedVideo: { title: string; views: number; videoId: string } | undefined = undefined;
             
             try {
-              const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, account.id);
+              let videos: AccountVideo[] = [];
+              if (!isDemoMode) {
+                videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId!, currentProjectId!, account.id);
+              }
               
               // Find highest viewed video
               if (videos.length > 0) {
@@ -402,7 +498,7 @@ export const useAccounts = ({
         setFilteredAccounts(results);
     };
     updateStats();
-  }, [accounts, dateFilter, selectedRuleIds, currentOrgId, currentProjectId]);
+  }, [accounts, dateFilter, selectedRuleIds, currentOrgId, currentProjectId, isDemoMode]);
 
   // Processed Accounts (Filtering & Sorting)
   const processedAccounts = useMemo(() => {
@@ -447,6 +543,7 @@ export const useAccounts = ({
 
   // Handlers
   const handleSyncAccount = useCallback(async (accountId: string) => {
+    if (isDemoMode) return 0; // Mock success
     if (!currentOrgId || !currentProjectId || !user) return;
     setIsSyncing(accountId);
     try {
@@ -457,9 +554,10 @@ export const useAccounts = ({
         throw error;
     }
     finally { setIsSyncing(null); }
-  }, [currentOrgId, currentProjectId, user]);
+  }, [currentOrgId, currentProjectId, user, isDemoMode]);
 
   const retryFailedAccount = useCallback(async (accountId: string) => {
+    if (isDemoMode) return;
     if (!currentOrgId || !currentProjectId || !user) return;
     try {
       const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', accountId);
@@ -477,32 +575,35 @@ export const useAccounts = ({
         body: JSON.stringify({ orgId: currentOrgId, projectId: currentProjectId, accountId })
       });
     } catch (error) { console.error('Retry failed', error); }
-  }, [currentOrgId, currentProjectId, user]);
+  }, [currentOrgId, currentProjectId, user, isDemoMode]);
 
   const dismissAccountError = useCallback(async (accountId: string) => {
+    if (isDemoMode) return;
     if (!currentOrgId || !currentProjectId) return;
     try {
       const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', accountId);
       await updateDoc(accountRef, { syncStatus: 'idle', hasError: false, lastSyncError: null, syncRetryCount: 0 });
     } catch (error) { console.error('Dismiss failed', error); }
-  }, [currentOrgId, currentProjectId]);
+  }, [currentOrgId, currentProjectId, isDemoMode]);
 
   const toggleAccountType = useCallback(async (account: TrackedAccount) => {
+    if (isDemoMode) return;
     if (!currentOrgId || !currentProjectId) return;
     const newType = (account.creatorType || 'automatic') === 'automatic' ? 'static' : 'automatic';
     try {
       const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', account.id);
       await updateDoc(accountRef, { creatorType: newType });
     } catch (error) { console.error('Toggle failed', error); }
-  }, [currentOrgId, currentProjectId]);
+  }, [currentOrgId, currentProjectId, isDemoMode]);
 
   const cancelSync = useCallback(async (account: TrackedAccount) => {
+    if (isDemoMode) return;
     if (!currentOrgId || !currentProjectId) return;
     try {
       const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', account.id);
       await updateDoc(accountRef, { syncStatus: 'completed', lastSyncedAt: new Date(), syncError: 'Manually cancelled' });
     } catch (error) { console.error('Cancel failed', error); }
-  }, [currentOrgId, currentProjectId]);
+  }, [currentOrgId, currentProjectId, isDemoMode]);
 
   // Exposed API
   return {
