@@ -99,9 +99,7 @@ const SuperAdminPage: React.FC = () => {
 
   // Action: View as user
   const handleViewAsUser = (orgId: string) => {
-    // Store the org ID in sessionStorage and redirect
-    sessionStorage.setItem('superAdminViewAs', orgId);
-    navigate('/dashboard');
+    navigate(`/view-as/${orgId}`);
   };
 
   // Action: Grant plan

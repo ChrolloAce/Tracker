@@ -9,6 +9,7 @@ import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
 import DashboardPage from './pages/DashboardPage';
 import SuperAdminPage from './pages/SuperAdminPage';
+import ViewAsPage from './pages/ViewAsPage';
 import AccountsPage from './pages/AccountsPage';
 import VideosPage from './pages/VideosPage';
 import LinksPage from './pages/LinksPage';
@@ -362,6 +363,18 @@ function App() {
             <Navigate to="/login" replace />
           ) : (
             <SuperAdminPage />
+          )
+        } 
+      />
+
+      {/* View As Page (Super Admin) */}
+      <Route 
+        path="/view-as/:orgId" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <ViewAsPage />
           )
         } 
       />

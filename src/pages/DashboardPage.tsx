@@ -67,6 +67,7 @@ import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemoContext } from './DemoPage';
+import { useViewAsContext } from './ViewAsPage';
 import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../services/firebase';
@@ -161,36 +162,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     demoContext = { isDemoMode: false, demoOrgId: '', demoProjectId: '' };
   }
   
-  const isDemoMode = demoContext.isDemoMode;
+  // Check if we're in "view as" mode (super admin viewing another org)
+  let viewAsContext;
+  try {
+    viewAsContext = useViewAsContext();
+  } catch {
+    viewAsContext = { isViewAsMode: false, viewAsOrgId: '', viewAsProjectId: '', viewAsOrgName: '' };
+  }
   
-  // CRITICAL: Use demo IDs if in demo mode, IGNORE auth IDs completely
-  const currentOrgId = isDemoMode ? demoContext.demoOrgId : authOrgId;
-  const currentProjectId = isDemoMode ? demoContext.demoProjectId : authProjectId;
+  const isDemoMode = demoContext.isDemoMode || viewAsContext.isViewAsMode;
   
-  // Guard: Redirect if no org/project (not in demo mode)
+  // CRITICAL: Use demo/viewAs IDs if in those modes, IGNORE auth IDs completely
+  const currentOrgId = demoContext.isDemoMode 
+    ? demoContext.demoOrgId 
+    : viewAsContext.isViewAsMode 
+      ? viewAsContext.viewAsOrgId 
+      : authOrgId;
+  const currentProjectId = demoContext.isDemoMode 
+    ? demoContext.demoProjectId 
+    : viewAsContext.isViewAsMode 
+      ? viewAsContext.viewAsProjectId 
+      : authProjectId;
+  
+  // Guard: Redirect if no org/project (not in demo/viewAs mode)
   useEffect(() => {
     if (!isDemoMode && (!currentOrgId || !currentProjectId)) {
-      console.log('⚠️ Dashboard loaded without org/project - redirecting to onboarding');
       navigate('/onboarding', { replace: true });
     }
   }, [isDemoMode, currentOrgId, currentProjectId, navigate]);
-  
-  // Force override check
-  if (isDemoMode) {
-    console.log('🎭 DEMO MODE ACTIVE - Using hardcoded demo IDs');
-    console.log('Demo Org ID:', demoContext.demoOrgId);
-    console.log('Demo Project ID:', demoContext.demoProjectId);
-  }
-  
-  console.log('🔍 Dashboard Data Source:', { 
-    isDemoMode, 
-    usingOrgId: currentOrgId, 
-    usingProjectId: currentProjectId,
-    authOrgId, 
-    authProjectId,
-    demoOrgId: demoContext.demoOrgId,
-    demoProjectId: demoContext.demoProjectId
-  });
 
   // Subscription & Paywall State
   const [showPaywall, setShowPaywall] = useState(false);
