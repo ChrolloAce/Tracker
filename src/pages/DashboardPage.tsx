@@ -167,7 +167,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   try {
     viewAsContext = useViewAsContext();
   } catch {
-    viewAsContext = { isViewAsMode: false, viewAsOrgId: '', viewAsProjectId: '', viewAsOrgName: '' };
+    viewAsContext = { isViewAsMode: false, viewAsOrgId: '', viewAsProjectId: '', viewAsOrgName: '', viewAsData: null };
   }
   
   const isDemoMode = demoContext.isDemoMode || viewAsContext.isViewAsMode;
@@ -946,6 +946,75 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setRulesLoadedFromFirebase(false);
       setDataLoadedFromFirebase(false);
       setLoadingDashboard(false);
+      return;
+    }
+
+    // 🔐 SUPER ADMIN VIEW-AS MODE: Use pre-fetched data from API
+    if (viewAsContext.isViewAsMode && viewAsContext.viewAsData) {
+      console.log('🔐 Super Admin View-As Mode: Using pre-fetched data');
+      const { videos, accounts, links } = viewAsContext.viewAsData;
+      
+      // Process accounts
+      const processedAccounts: TrackedAccount[] = (accounts || []).map((acc: any) => ({
+        id: acc.id,
+        ...acc,
+        dateAdded: acc.dateAdded ? new Date(acc.dateAdded) : new Date(),
+        lastUpdated: acc.lastUpdated ? new Date(acc.lastUpdated) : undefined,
+        lastSynced: acc.lastSynced ? new Date(acc.lastSynced) : undefined,
+      }));
+      setTrackedAccounts(processedAccounts);
+      const accountsMap = new Map(processedAccounts.map(acc => [acc.id, acc]));
+      
+      // Process videos
+      const processedVideos: VideoSubmission[] = (videos || []).map((video: any) => {
+        const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+        return {
+          id: video.id,
+          url: video.videoUrl || video.url || '',
+          platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+          thumbnail: video.thumbnail || '',
+          title: video.videoTitle || video.caption || video.title || '',
+          caption: video.caption || video.videoTitle || '',
+          uploader: account?.displayName || account?.username || video.uploaderHandle || '',
+          uploaderHandle: account?.username || video.uploaderHandle || '',
+          uploaderProfilePicture: account?.profilePicture || video.uploaderProfilePicture,
+          followerCount: account?.followerCount,
+          status: video.status === 'archived' ? 'rejected' : 'approved',
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          duration: video.duration || 0,
+          dateSubmitted: video.dateAdded ? new Date(video.dateAdded) : new Date(),
+          uploadDate: video.uploadDate ? new Date(video.uploadDate) : new Date(),
+          lastRefreshed: video.lastRefreshed ? new Date(video.lastRefreshed) : undefined,
+          snapshots: (video.snapshots || []).map((s: any) => ({
+            ...s,
+            timestamp: s.timestamp ? new Date(s.timestamp) : new Date()
+          }))
+        };
+      });
+      setSubmissions(processedVideos);
+      
+      // Process links
+      const processedLinks: TrackedLink[] = (links || []).map((link: any) => ({
+        id: link.id,
+        ...link,
+        createdAt: link.createdAt ? new Date(link.createdAt) : new Date(),
+        updatedAt: link.updatedAt ? new Date(link.updatedAt) : undefined,
+      }));
+      setLinks(processedLinks);
+      
+      // Set totals
+      setTotalAccountsInOrg(processedAccounts.length);
+      setTotalVideosInOrg(processedVideos.length);
+      
+      // Mark as loaded
+      setRulesLoadedFromFirebase(true);
+      setDataLoadedFromFirebase(true);
+      setLoadingDashboard(false);
+      
+      console.log(`✅ View-As loaded: ${processedVideos.length} videos, ${processedAccounts.length} accounts, ${processedLinks.length} links`);
       return;
     }
 

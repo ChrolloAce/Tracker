@@ -107,6 +107,9 @@
     },
     "api/super-admin/view-as.ts": {
       "maxDuration": 30
+    },
+    "api/super-admin/dashboard-data.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
