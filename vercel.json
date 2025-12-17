@@ -92,6 +92,12 @@
     },
     "api/test-grant-plan.ts": {
       "maxDuration": 30
+    },
+    "api/super-admin/organizations.ts": {
+      "maxDuration": 60
+    },
+    "api/super-admin/organizations/[orgId].ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
