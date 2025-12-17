@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import SuperAdminService from '../services/SuperAdminService';
 import DashboardPage from './DashboardPage';
@@ -40,7 +40,17 @@ export const useViewAsContext = () => useContext(ViewAsContext);
 const ViewAsPage: React.FC = () => {
   const { orgId } = useParams<{ orgId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  
+  // Get the tab from the URL path (e.g., /view-as/orgId/accounts -> accounts)
+  const getInitialTab = () => {
+    const path = location.pathname;
+    const afterOrgId = path.split(`/view-as/${orgId}/`)[1];
+    if (!afterOrgId) return 'dashboard';
+    const tab = afterOrgId.split('/')[0];
+    return tab || 'dashboard';
+  };
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,7 +190,7 @@ const ViewAsPage: React.FC = () => {
       
       {/* Add padding for the banner */}
       <div className="pt-11">
-        <DashboardPage />
+        <DashboardPage initialTab={getInitialTab()} />
       </div>
     </ViewAsContext.Provider>
   );

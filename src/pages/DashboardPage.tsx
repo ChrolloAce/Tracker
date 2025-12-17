@@ -170,7 +170,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     viewAsContext = { isViewAsMode: false, viewAsOrgId: '', viewAsProjectId: '', viewAsOrgName: '', viewAsData: null };
   }
   
-  const isDemoMode = demoContext.isDemoMode || viewAsContext.isViewAsMode;
+  // isDemoMode = actual demo page (shows demo banner)
+  // isViewAsMode = super admin viewing another org (no demo banner, full access)
+  const isDemoMode = demoContext.isDemoMode;
+  const isViewAsMode = viewAsContext.isViewAsMode;
+  
+  // Combined check for "not the user's own org" (for skipping certain behaviors)
+  const isOverrideMode = isDemoMode || isViewAsMode;
   
   // CRITICAL: Use demo/viewAs IDs if in those modes, IGNORE auth IDs completely
   const currentOrgId = demoContext.isDemoMode 
@@ -186,14 +192,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   
   // Guard: Redirect if no org/project (not in demo/viewAs mode)
   useEffect(() => {
-    if (!isDemoMode && (!currentOrgId || !currentProjectId)) {
+    if (!isOverrideMode && (!currentOrgId || !currentProjectId)) {
       navigate('/onboarding', { replace: true });
     }
-  }, [isDemoMode, currentOrgId, currentProjectId, navigate]);
+  }, [isOverrideMode, currentOrgId, currentProjectId, navigate]);
 
   // Subscription & Paywall State
   const [showPaywall, setShowPaywall] = useState(false);
-  const [isDemoOrg, setIsDemoOrg] = useState(isDemoMode);
+  const [isDemoOrg, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
@@ -364,14 +370,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // Mark items as read when entering tabs
   useEffect(() => {
-    if (!currentOrgId || !currentProjectId || isDemoMode) return;
+    if (!currentOrgId || !currentProjectId || isOverrideMode) return;
 
     if (activeTab === 'videos') {
       MarkAsReadService.markVideosAsRead(currentOrgId, currentProjectId);
     } else if (activeTab === 'accounts') {
       MarkAsReadService.markAccountsAsRead(currentOrgId, currentProjectId);
     }
-  }, [activeTab, currentOrgId, currentProjectId, isDemoMode]);
+  }, [activeTab, currentOrgId, currentProjectId, isOverrideMode]);
 
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
@@ -1381,8 +1387,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // Only trigger on spacebar
       if (e.code !== 'Space' && e.key !== ' ') return;
       
-      // Block spacebar action in demo mode
-      if (isDemoMode) return;
+      // Block spacebar action in demo/view-as mode
+      if (isOverrideMode) return;
       
       // Don't trigger if user is typing in an input, textarea, or contenteditable element
       const target = e.target as HTMLElement;
@@ -1420,7 +1426,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen, isDemoMode]);
+  }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen, isOverrideMode]);
 
   // Apply platform, account, and rule filters (but NOT date filter) - for PP calculation
   // Create a stable dependency for rules that detects changes to rule properties
@@ -2644,8 +2650,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                   </button>
                   
-                  {/* Edit Layout Button - Icon Only (Hidden in demo mode and on mobile) */}
-                  {!isDemoMode && (
+                  {/* Edit Layout Button - Icon Only (Hidden in demo/view-as mode and on mobile) */}
+                  {!isOverrideMode && (
                   <button
                     onClick={() => setIsEditingLayout(true)}
                     className="hidden sm:block p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
@@ -4148,7 +4154,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {/* Context-Aware Floating Action Button */}
       {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'invitations' && activeTab !== 'creators' && (
         <button
-          onClick={isDemoMode ? undefined : () => {
+          onClick={isOverrideMode ? undefined : () => {
             // ✅ Show AddTypeSelector on dashboard, accounts, and videos tabs
             if (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') {
               setIsTypeSelectorOpen(true);
@@ -4161,9 +4167,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               window.dispatchEvent(event);
             }
           }}
-          disabled={isDemoMode}
+          disabled={isOverrideMode}
           className={`fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all shadow-2xl group ${
-            isDemoMode 
+            isOverrideMode 
               ? 'bg-gray-600 text-gray-400 border border-gray-700 cursor-not-allowed opacity-60' 
               : 'transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30'
           }`}
@@ -4189,7 +4195,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             />
           </svg>
           <span className="absolute -top-12 right-0 bg-gray-900 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {isDemoMode ? "Can't add - not your organization" : (
+            {isOverrideMode ? "Can't add - viewing another organization" : (
               <>
             {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
             {activeTab === 'analytics' && 'Create Link'}

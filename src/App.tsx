@@ -367,9 +367,9 @@ function App() {
         } 
       />
 
-      {/* View As Page (Super Admin) */}
+      {/* View As Page (Super Admin) - supports all tab routes */}
       <Route 
-        path="/view-as/:orgId" 
+        path="/view-as/:orgId/*" 
         element={
           !user ? (
             <Navigate to="/login" replace />

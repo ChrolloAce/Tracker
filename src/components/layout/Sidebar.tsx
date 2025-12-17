@@ -75,8 +75,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const { unreadCounts, loading: loadingCounts } = useUnreadCounts(currentOrgId, currentProjectId);
 
-  // Check if we're in demo mode
+  // Check if we're in demo mode or view-as mode
   const isDemoMode = location.pathname.startsWith('/demo');
+  const isViewAsMode = location.pathname.startsWith('/view-as');
+  const viewAsOrgId = isViewAsMode ? location.pathname.split('/view-as/')[1]?.split('/')[0] : null;
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -85,9 +87,15 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [location.pathname]);
 
+  // Determine base href based on mode
+  const baseHref = useMemo(() => {
+    if (isDemoMode) return '/demo';
+    if (isViewAsMode && viewAsOrgId) return `/view-as/${viewAsOrgId}`;
+    return '';
+  }, [isDemoMode, isViewAsMode, viewAsOrgId]);
+
   // Dashboard item (standalone at top)
   const dashboardItem: NavItem | null = useMemo(() => {
-    const baseHref = isDemoMode ? '/demo' : '';
     if (permissionsLoading || can.accessTab('dashboard')) {
       return {
         id: 'dashboard',
@@ -97,11 +105,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       };
     }
     return null;
-  }, [can, permissionsLoading, isDemoMode]);
+  }, [can, permissionsLoading, baseHref]);
 
   // Navigation sections with dropdown
   const navigationSections: NavSection[] = useMemo(() => {
-    const baseHref = isDemoMode ? '/demo' : '';
     
     const sections: NavSection[] = [
       {
@@ -222,7 +229,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     // Remove empty sections
     return sections.filter(section => section.items.length > 0);
-  }, [can, permissionsLoading, userRole, isDemoMode, unreadCounts, loadingCounts]);
+  }, [can, permissionsLoading, userRole, baseHref, unreadCounts, loadingCounts]);
 
   // Settings item (standalone at bottom)
   const settingsItem: NavItem | null = useMemo(() => {
