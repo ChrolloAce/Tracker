@@ -58,7 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       linksSnapshot,
       orgDoc,
       projectDoc,
-      subscriptionDoc
+      subscriptionDoc,
+      allProjectsSnapshot
     ] = await Promise.all([
       // Videos
       adminDb
@@ -106,6 +107,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .doc(orgIdStr)
         .collection('billing')
         .doc('subscription')
+        .get(),
+      
+      // All Projects in org
+      adminDb
+        .collection('organizations')
+        .doc(orgIdStr)
+        .collection('projects')
         .get()
     ]);
 
@@ -188,7 +196,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentPeriodEnd: subscriptionDoc.data()?.currentPeriodEnd?.toDate?.()?.toISOString() || null
     } : { planTier: 'free', status: 'inactive' };
 
-    console.log(`✅ SuperAdmin: Loaded ${videos.length} videos, ${accounts.length} accounts, ${links.length} links`);
+    // All projects in the organization
+    const allProjects = allProjectsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data()?.name || 'Unnamed Project',
+      ...doc.data(),
+      createdAt: doc.data()?.createdAt?.toDate?.()?.toISOString() || null
+    }));
+
+    console.log(`✅ SuperAdmin: Loaded ${videos.length} videos, ${accounts.length} accounts, ${links.length} links, ${allProjects.length} projects`);
     
     return res.status(200).json({
       success: true,
@@ -198,7 +214,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         links,
         organization,
         project,
-        subscription
+        subscription,
+        allProjects
       }
     });
   } catch (error) {

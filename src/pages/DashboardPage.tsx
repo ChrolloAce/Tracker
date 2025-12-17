@@ -1230,7 +1230,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     
     })(); // End of async IIFE
-  }, [user, currentOrgId, currentProjectId, userRole]); // Reload when project changes or role is loaded!
+  }, [user, currentOrgId, currentProjectId, userRole, viewAsContext.isViewAsMode, viewAsContext.viewAsData]); // Reload when project changes, role is loaded, or view-as data changes!
 
   // Auto-sync revenue data when date filters change
   useEffect(() => {

@@ -20,6 +20,7 @@ interface ViewAsContextType {
     organization: any;
     project: any;
     subscription: any;
+    allProjects: any[];
   } | null;
 }
 
