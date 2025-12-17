@@ -16,8 +16,10 @@ import {
   UserPlus,
   DollarSign,
   Lock,
-  MessageCircle
+  MessageCircle,
+  Shield
 } from 'lucide-react';
+import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -236,6 +238,21 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [can, permissionsLoading, isDemoMode]);
 
+  // Super Admin item (only for super admins)
+  const { user } = useAuth();
+  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
+  const superAdminItem: NavItem | null = useMemo(() => {
+    if (isSuperAdmin && !isDemoMode) {
+      return {
+        id: 'super-admin',
+        label: 'Super Admin',
+        icon: Shield,
+        href: '/super-admin',
+      };
+    }
+    return null;
+  }, [isSuperAdmin, isDemoMode]);
+
   // Support item (standalone at bottom)
   const supportItem: NavItem = useMemo(() => ({
     id: 'support',
@@ -445,6 +462,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
           <NavItemComponent item={supportItem} />
           {settingsItem && <NavItemComponent item={settingsItem} />}
+          {superAdminItem && <NavItemComponent item={superAdminItem} />}
           </>
       </nav>
 

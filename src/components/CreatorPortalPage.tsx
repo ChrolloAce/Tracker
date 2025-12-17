@@ -4,12 +4,13 @@ import { TrackedAccount, VideoDoc } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CampaignService from '../services/CampaignService';
-import { Video, Users as UsersIcon, Trophy, Target, Award, Plus } from 'lucide-react';
+import { Video, Users as UsersIcon, Trophy, Target, Award, Plus, Link as LinkIcon, Eye, DollarSign, TrendingUp, ChevronRight } from 'lucide-react';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
 import { Campaign } from '../types/campaigns';
 import CreatorVideoSubmissionModal from './CreatorVideoSubmissionModal';
+import CreatorAccountLinkingModal from './CreatorAccountLinkingModal';
 
 interface CreatorStats {
   totalAccounts: number;
@@ -34,6 +35,7 @@ const CreatorPortalPage: React.FC = () => {
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showVideoSubmissionModal, setShowVideoSubmissionModal] = useState(false);
+  const [showAccountLinkingModal, setShowAccountLinkingModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -138,33 +140,45 @@ const CreatorPortalPage: React.FC = () => {
 
   return (
     <div className="space-y-6 relative">
-      {/* View Toggle - Simple Tabs */}
-      <div className="inline-flex items-center gap-1 bg-zinc-900/60 backdrop-blur border border-white/10 rounded-xl p-1">
+      {/* Header with Toggle and Actions */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        {/* View Toggle - Simple Tabs */}
+        <div className="inline-flex items-center gap-1 bg-zinc-900/60 backdrop-blur border border-white/10 rounded-xl p-1">
+          <button
+            onClick={() => setView('dashboard')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+              view === 'dashboard'
+                ? 'bg-white/10 text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setView('campaigns')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+              view === 'campaigns'
+                ? 'bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/20'
+                : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            Campaigns
+            {campaigns.filter(c => c.status === 'active').length > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs font-bold bg-emerald-500 text-white rounded-full">
+                {campaigns.filter(c => c.status === 'active').length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Manage Accounts Button */}
         <button
-          onClick={() => setView('dashboard')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-            view === 'dashboard'
-              ? 'bg-white/10 text-white shadow-lg'
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
-          }`}
+          onClick={() => setShowAccountLinkingModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-white/80 hover:text-white transition-all"
         >
-          Dashboard
-        </button>
-        <button
-          onClick={() => setView('campaigns')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-            view === 'campaigns'
-              ? 'bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/20'
-              : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
-          }`}
-        >
-          <Trophy className="w-4 h-4" />
-          Campaigns
-          {campaigns.filter(c => c.status === 'active').length > 0 && (
-            <span className="ml-1 px-2 py-0.5 text-xs font-bold bg-emerald-500 text-white rounded-full">
-              {campaigns.filter(c => c.status === 'active').length}
-            </span>
-          )}
+          <LinkIcon className="w-4 h-4" />
+          <span className="text-sm font-medium">Manage Accounts</span>
         </button>
       </div>
 
@@ -173,7 +187,9 @@ const CreatorPortalPage: React.FC = () => {
         <DashboardTab
           linkedAccounts={linkedAccounts}
           totalVideos={stats.totalVideos}
+          totalViews={stats.totalViews}
           videoSubmissions={videoSubmissions}
+          campaigns={campaigns}
         />
       )}
 
@@ -196,6 +212,15 @@ const CreatorPortalPage: React.FC = () => {
           loadData(); // Reload data after successful submission
         }}
       />
+
+      {/* Account Linking Modal */}
+      <CreatorAccountLinkingModal
+        isOpen={showAccountLinkingModal}
+        onClose={() => setShowAccountLinkingModal(false)}
+        onSuccess={() => {
+          loadData(); // Reload data after linking accounts
+        }}
+      />
     </div>
   );
 };
@@ -204,53 +229,161 @@ const CreatorPortalPage: React.FC = () => {
 const DashboardTab: React.FC<{
   linkedAccounts: TrackedAccount[];
   totalVideos: number;
+  totalViews: number;
   videoSubmissions: VideoSubmission[];
-}> = ({ linkedAccounts, totalVideos, videoSubmissions }) => {
+  campaigns: Campaign[];
+}> = ({ linkedAccounts, totalVideos, totalViews, videoSubmissions, campaigns }) => {
+  const { user } = useAuth();
+  
+  // Calculate total earnings across all campaigns
+  const totalEarnings = campaigns.reduce((sum, campaign) => {
+    const myParticipant = campaign.participants.find(p => p.creatorId === user?.uid);
+    return sum + (myParticipant?.totalEarnings || 0);
+  }, 0);
+
+  // Get active campaigns for the creator
+  const activeCampaigns = campaigns.filter(c => c.status === 'active');
+
+  // Format large numbers
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
   return (
     <div className="space-y-6">
-      {/* Stats Cards with Gradient Backgrounds like Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Linked Accounts */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-transparent rounded-xl border border-gray-300 dark:border-gray-700 p-6 hover:border-purple-500/40 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gray-200 dark:bg-gray-800 rounded-full blur-3xl group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-all duration-300" />
+      {/* Stats Cards Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Earnings */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/20 via-emerald-600/10 to-transparent rounded-xl border border-emerald-500/30 p-5 hover:border-emerald-500/50 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all duration-300" />
           <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">
-                <UsersIcon className="w-6 h-6 text-gray-900 dark:text-white" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-emerald-500/20 rounded-lg p-2.5">
+                <DollarSign className="w-5 h-5 text-emerald-400" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">
-              {linkedAccounts.length}
+            <div className="text-2xl font-bold text-white mb-0.5">
+              ${totalEarnings.toFixed(2)}
             </div>
-            <div className="text-sm text-gray-400">Linked Accounts</div>
+            <div className="text-xs text-gray-400">Total Earnings</div>
+          </div>
+        </div>
+
+        {/* Total Views */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/20 via-blue-600/10 to-transparent rounded-xl border border-blue-500/30 p-5 hover:border-blue-500/50 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-blue-500/20 rounded-lg p-2.5">
+                <Eye className="w-5 h-5 text-blue-400" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-white mb-0.5">
+              {formatNumber(totalViews)}
+            </div>
+            <div className="text-xs text-gray-400">Total Views</div>
           </div>
         </div>
 
         {/* Total Videos */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-transparent rounded-xl border border-gray-300 dark:border-gray-700 p-6 hover:border-blue-500/40 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gray-200 dark:bg-gray-800 rounded-full blur-3xl group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-all duration-300" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/20 via-purple-600/10 to-transparent rounded-xl border border-purple-500/30 p-5 hover:border-purple-500/50 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-300" />
           <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">
-                <Video className="w-6 h-6 text-gray-900 dark:text-white" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-purple-500/20 rounded-lg p-2.5">
+                <Video className="w-5 h-5 text-purple-400" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">
+            <div className="text-2xl font-bold text-white mb-0.5">
               {totalVideos}
             </div>
-            <div className="text-sm text-gray-400">Total Videos</div>
+            <div className="text-xs text-gray-400">Total Videos</div>
+          </div>
+        </div>
+
+        {/* Linked Accounts */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-orange-500/20 via-orange-600/10 to-transparent rounded-xl border border-orange-500/30 p-5 hover:border-orange-500/50 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-orange-500/20 rounded-lg p-2.5">
+                <UsersIcon className="w-5 h-5 text-orange-400" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-white mb-0.5">
+              {linkedAccounts.length}
+            </div>
+            <div className="text-xs text-gray-400">Linked Accounts</div>
           </div>
         </div>
       </div>
 
-      {/* Recent Videos - Using Dashboard Table */}
-      {videoSubmissions.length > 0 && (
-        <VideoSubmissionsTable
-          submissions={videoSubmissions}
-        />
+      {/* Active Campaigns Summary */}
+      {activeCampaigns.length > 0 && (
+        <div className="bg-zinc-900/60 backdrop-blur border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-emerald-400" />
+              Active Campaigns
+            </h3>
+            <span className="text-sm text-gray-400">{activeCampaigns.length} active</span>
+          </div>
+          <div className="divide-y divide-white/5">
+            {activeCampaigns.slice(0, 3).map(campaign => {
+              const myParticipant = campaign.participants.find(p => p.creatorId === user?.uid);
+              return (
+                <div key={campaign.id} className="p-4 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-white truncate">{campaign.name}</h4>
+                      <p className="text-xs text-gray-400">
+                        {myParticipant ? `Rank #${myParticipant.currentRank}` : 'Participating'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {myParticipant && (
+                        <span className="text-emerald-400 font-semibold">
+                          ${myParticipant.totalEarnings.toFixed(0)}
+                        </span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                    </div>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+                        style={{ width: `${Math.min(campaign.progressPercent, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 w-12 text-right">
+                      {campaign.progressPercent.toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {videoSubmissions.length === 0 && (
+      {/* Recent Videos - Using Dashboard Table */}
+      {videoSubmissions.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-blue-400" />
+            Recent Videos
+          </h3>
+          <VideoSubmissionsTable
+            submissions={videoSubmissions}
+          />
+        </div>
+      )}
+
+      {videoSubmissions.length === 0 && activeCampaigns.length === 0 && (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
           <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No videos yet</h3>

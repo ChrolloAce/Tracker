@@ -8,6 +8,7 @@ import DemoPage from './pages/DemoPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
 import DashboardPage from './pages/DashboardPage';
+import SuperAdminPage from './pages/SuperAdminPage';
 import AccountsPage from './pages/AccountsPage';
 import VideosPage from './pages/VideosPage';
 import LinksPage from './pages/LinksPage';
@@ -35,6 +36,31 @@ import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import ApiDocsPage from './pages/ApiDocsPage';
 import { useEffect, useState } from 'react';
 import NotFoundPage from './pages/NotFoundPage';
+
+// SEO Pages
+import {
+  PricingPage,
+  FeaturesPage,
+  SolutionsPage,
+  ResourcesPage,
+  PlatformPage,
+  StartTrackingPage,
+  CampaignAnalyticsPage,
+  LinkTrackingPage,
+  CreatorPortalFeaturePage,
+  UnifiedKPIsPage,
+  AutoRefreshPage,
+  ContractsPage,
+  ChromeExtensionPage,
+  UGCCampaignsPage,
+  AppFoundersPage,
+  DTCBrandsPage,
+  AgenciesPage,
+  MarketingTeamsPage,
+  AnalyticsGuidePage,
+  ReportingTemplatePage,
+  UGCBriefTemplatePage
+} from './pages/seo';
 
 // Loading skeleton component with timeout
 function LoadingSkeleton() {
@@ -133,7 +159,7 @@ function App() {
 
   return (
     <Routes>
-        {/* Public pages - NOT covered by pre-launch */}
+        {/* Public pages - NOT covered by maintenance */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/support" element={<SupportPage />} />
@@ -142,6 +168,35 @@ function App() {
         
         {/* Creator invitation portal - public route */}
         <Route path="/invitations/:invitationId" element={<CreatorInvitationPage />} />
+        
+        {/* SEO Pages - Public */}
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/solutions" element={<SolutionsPage />} />
+        <Route path="/resources" element={<ResourcesPage />} />
+        <Route path="/influencer-marketing-analytics-platform" element={<PlatformPage />} />
+        <Route path="/start-tracking" element={<StartTrackingPage />} />
+        
+        {/* Feature Detail Pages */}
+        <Route path="/features/campaign-analytics" element={<CampaignAnalyticsPage />} />
+        <Route path="/features/link-tracking" element={<LinkTrackingPage />} />
+        <Route path="/features/creator-portal" element={<CreatorPortalFeaturePage />} />
+        <Route path="/features/unified-kpis" element={<UnifiedKPIsPage />} />
+        <Route path="/features/auto-refresh" element={<AutoRefreshPage />} />
+        <Route path="/features/contracts" element={<ContractsPage />} />
+        <Route path="/features/chrome-extension" element={<ChromeExtensionPage />} />
+        <Route path="/features/ugc-campaigns" element={<UGCCampaignsPage />} />
+        
+        {/* Solution Detail Pages */}
+        <Route path="/solutions/app-founders" element={<AppFoundersPage />} />
+        <Route path="/solutions/dtc-brands" element={<DTCBrandsPage />} />
+        <Route path="/solutions/influencer-agencies" element={<AgenciesPage />} />
+        <Route path="/solutions/marketing-teams" element={<MarketingTeamsPage />} />
+        
+        {/* Resource Detail Pages */}
+        <Route path="/resources/influencer-analytics-guide" element={<AnalyticsGuidePage />} />
+        <Route path="/resources/influencer-campaign-reporting-template" element={<ReportingTemplatePage />} />
+        <Route path="/resources/ugc-campaign-brief-template" element={<UGCBriefTemplatePage />} />
         
         {/* Main app routes - COVERED by pre-launch */}
       <Route 
@@ -295,6 +350,18 @@ function App() {
             <Navigate to="/dashboard" replace />
           ) : (
             <CreateOrganizationPage />
+          )
+        } 
+      />
+
+      {/* Super Admin Page */}
+      <Route 
+        path="/super-admin" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <SuperAdminPage />
           )
         } 
       />

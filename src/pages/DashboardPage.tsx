@@ -27,6 +27,7 @@ import HeatmapByHour from '../components/HeatmapByHour';
 import TopTeamCreatorsList from '../components/TopTeamCreatorsList';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import ComparisonGraph from '../components/ComparisonGraph';
+import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
 import { BlurEmptyState } from '../components/ui/BlurEmptyState';
@@ -43,6 +44,8 @@ import DemoBanner from '../components/DemoBanner';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
+import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
+import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
@@ -404,7 +407,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['kpi-cards', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
+    const defaultOrder = ['kpi-cards', 'video-slider', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
     const saved = localStorage.getItem('dashboardSectionOrder');
     
     if (saved) {
@@ -479,7 +482,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       'top-performers': true,
       'posting-activity': false,
       'tracked-accounts': false,
-      'videos-table': true
+      'videos-table': true,
+      'video-slider': false
     };
     
     const saved = localStorage.getItem('dashboardSectionVisibility');
@@ -561,6 +565,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
+  const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
   const [linkFilter, setLinkFilter] = useState<string>('all'); // 'all' or link ID
   const [allLinks, setAllLinks] = useState<any[]>([]); // Store all links for dropdown
 
@@ -867,7 +872,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         trackedLinksPageRef.current?.refreshData?.();
         break;
       case 'creators':
-        // Creators tab now shows ComingSoonLocked - no refresh needed
+        creatorsPageRef.current?.refreshData?.();
         break;
       case 'dashboard':
         // Dashboard data is already handled by real-time listeners above
@@ -1937,7 +1942,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     if (!user || !currentOrgId) return;
     
     // Check if it's a section, a KPI card, or a Top Performers subsection
-    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
     const topPerformersSubsections = ['top-videos', 'top-accounts', 'top-gainers', 'top-creators', 'posting-times', 'top-platforms', 'comparison'];
     
     if (allSections.includes(cardId)) {
@@ -1978,7 +1983,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
-    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionOrder(prev => {
@@ -2148,6 +2153,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     // Dashboard sections come first
     const sections = [
       { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
+      { id: 'video-slider', label: 'Video Slider', description: 'Full-height video carousel sorted by views', icon: Video, category: 'sections' as const },
       { id: 'top-performers', label: 'Top Performers', description: 'Top videos, accounts, creators, posting times, platforms & comparison', icon: Activity, category: 'sections' as const },
       { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
       { id: 'tracked-accounts', label: 'Tracked Accounts', description: 'Full accounts dashboard', icon: AtSign, category: 'sections' as const },
@@ -3032,6 +3038,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onToggleCard={handleToggleCard}
                           />
                         );
+                      case 'video-slider':
+                        console.log('🎬 VideoSlider section rendering with', combinedSubmissions.length, 'filtered videos');
+                        return (
+                          <VideoSliderSection
+                            videos={combinedSubmissions}
+                            maxVideos={20}
+                            onVideoClick={handleVideoClick}
+                          />
+                        );
                       case 'top-performers':
                         {
                           const topPerformersDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
@@ -3091,7 +3106,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           />
                         );
                       case 'videos-table':
-                        return combinedSubmissions.length === 0 ? (
+                        // Only show "Track Your First Video" when org has NO videos at all
+                        // If videos exist but are filtered out, show a different message
+                        return totalVideosInOrg === 0 ? (
                           <BlurEmptyState
                             title="Track Your First Video"
                             description="Add your first video to start monitoring views, engagement, and performance across platforms."
@@ -3106,6 +3123,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                               }
                             ]}
                           />
+                        ) : combinedSubmissions.length === 0 ? (
+                          <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-12 text-center">
+                            <Video className="w-12 h-12 text-white/20 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-white mb-2">No videos match your filters</h3>
+                            <p className="text-white/60 text-sm">Try adjusting the date range or clearing some filters to see your videos.</p>
+                          </div>
                         ) : (
                           <VideoSubmissionsTable
                             submissions={combinedSubmissions}
@@ -3302,7 +3325,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   </div>
                 </div>
               </div>
-            ) : !loadingDashboard && combinedSubmissions.length === 0 ? (
+            ) : !loadingDashboard && totalVideosInOrg === 0 ? (
               <BlurEmptyState
                 title="Track Your First Video"
                 description="Add your first video to start monitoring views, engagement, and performance across platforms."
@@ -3317,6 +3340,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   }
                 ]}
               />
+            ) : combinedSubmissions.length === 0 ? (
+              <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-12 text-center">
+                <Video className="w-12 h-12 text-white/20 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">No videos match your filters</h3>
+                <p className="text-white/60 text-sm">Try adjusting the date range or clearing some filters to see your videos.</p>
+              </div>
             ) : (
               <VideoSubmissionsTable
                 submissions={combinedSubmissions}
@@ -3360,19 +3389,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             />
           )}
 
-          {/* Creators Tab - Locked */}
+          {/* Creators Tab */}
           {activeTab === 'creators' && (
-            <ComingSoonLocked 
-              title="Creators"
-              description="Manage your creator network, track performance, and handle payouts all in one place. This powerful creator management system is coming soon."
+            <CreatorsManagementPage
+              ref={creatorsPageRef}
+              dateFilter={creatorsDateFilter}
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
             />
           )}
 
-          {/* Campaigns Tab - Locked */}
+          {/* Campaigns Tab */}
           {activeTab === 'campaigns' && (
-            <ComingSoonLocked 
-              title="Campaigns"
-              description="Create engaging campaigns, set goals, track submissions, and reward your top performers. Campaign management features are being built for you."
+            <CampaignsManagementPage
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
             />
           )}
 
@@ -3554,6 +3585,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onToggleCard={() => {}}
                 />
               );
+            case 'video-slider':
+              console.log('🎬 VideoSlider PREVIEW rendering with', combinedSubmissions.length, 'filtered videos');
+              return (
+                <VideoSliderSection
+                  videos={combinedSubmissions}
+                  maxVideos={10}
+                  onVideoClick={handleVideoClick}
+                />
+              );
             case 'top-performers':
               {
                 const topPerformersDateRangePreview = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
@@ -3622,7 +3662,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 </div>
               );
             case 'videos-table':
-              return combinedSubmissions.length === 0 ? (
+              return totalVideosInOrg === 0 ? (
                 <BlurEmptyState
                   title="Track Your First Video"
                   description="Add videos to monitor views, likes, comments, and engagement across all platforms."
@@ -3637,6 +3677,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     }
                   ]}
                 />
+              ) : combinedSubmissions.length === 0 ? (
+                <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-8 text-center">
+                  <Video className="w-10 h-10 text-white/20 mx-auto mb-3" />
+                  <h3 className="text-base font-semibold text-white mb-1">No videos match filters</h3>
+                  <p className="text-white/60 text-xs">Adjust filters to see videos.</p>
+                </div>
               ) : (
                 <VideoSubmissionsTable
                   submissions={combinedSubmissions.slice(0, 5)}

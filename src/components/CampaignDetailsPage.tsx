@@ -27,6 +27,7 @@ import CampaignVideoSubmissionsTable from './CampaignVideoSubmissionsTable';
 import CampaignVideoSubmissionModal from './CampaignVideoSubmissionModal';
 import CampaignResourcesManager from './CampaignResourcesManager';
 import FirebaseStorageService from '../services/FirebaseStorageService';
+import CampaignLeaderboard from './CampaignLeaderboard';
 
 const CampaignDetailsPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -582,42 +583,13 @@ const CampaignDetailsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Leaderboard */}
+            {/* Leaderboard - Using Enhanced Component */}
             {campaign.leaderboard && campaign.leaderboard.length > 0 && (
-              <div className="bg-zinc-900/40 rounded-xl p-4 sm:p-6 border border-white/10">
-                <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                  <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                  Leaderboard
-                </h2>
-                <div className="space-y-2">
-                  {campaign.leaderboard.slice(0, 10).map((entry, index) => (
-                    <div 
-                      key={entry.creatorId}
-                      className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg ${
-                        index < 3 ? 'bg-gradient-to-r from-white/10 to-transparent border border-white/20' : 'bg-white/5 border border-white/10'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        index === 0 ? 'bg-white text-black' :
-                        index === 1 ? 'bg-white/70 text-black' :
-                        index === 2 ? 'bg-white/50 text-black' :
-                        'bg-white/10 text-white'
-                      }`}>
-                        {entry.rank}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-white truncate">Creator {entry.creatorId.substring(0, 8)}</div>
-                        <div className="text-xs sm:text-sm text-white/60">{entry.score.toLocaleString()} points</div>
-                      </div>
-                      {entry.delta !== 0 && (
-                        <div className={`text-xs sm:text-sm font-medium ${entry.delta > 0 ? 'text-white' : 'text-white/40'}`}>
-                          {entry.delta > 0 ? '+' : ''}{entry.delta}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <CampaignLeaderboard 
+                campaign={campaign}
+                maxEntries={10}
+                showFullStats={true}
+              />
             )}
           </div>
 
