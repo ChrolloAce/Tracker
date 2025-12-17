@@ -4,10 +4,23 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
+  try {
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ credential: cert(serviceAccount as any) });
+  } catch (error) {
+    console.error('Failed to initialize Firebase Admin:', error);
+  }
 }
 
 const adminDb = getFirestore();

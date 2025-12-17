@@ -51,6 +51,12 @@ class SuperAdminService {
     try {
       const response = await fetch(`/api/super-admin/organizations?email=${encodeURIComponent(userEmail)}`);
       
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Super Admin API not available. Please ensure you are on the production Vercel deployment.');
+      }
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to fetch organizations');
@@ -85,6 +91,12 @@ class SuperAdminService {
     
     try {
       const response = await fetch(`/api/super-admin/organizations/${orgId}?email=${encodeURIComponent(userEmail)}`);
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Super Admin API not available.');
+      }
       
       if (!response.ok) {
         const error = await response.json();

@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    watch: {
+      ignored: ['**/api/**'], // Ignore Vercel serverless functions
+    },
   },
   define: {
     global: 'globalThis',
@@ -13,6 +16,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['apify-client'],
+    exclude: ['api'],
   },
   build: {
     rollupOptions: {
@@ -26,9 +30,9 @@ export default defineConfig({
     },
     minify: 'esbuild',
   },
-  // Remove all console logs in production builds
-  esbuild: {
-    drop: ['console', 'debugger'],
-    pure: ['console.log', 'console.info', 'console.debug'],
-  },
+  // Console logs enabled for debugging
+  // esbuild: {
+  //   drop: ['console', 'debugger'],
+  //   pure: ['console.log', 'console.info', 'console.debug'],
+  // },
 })
