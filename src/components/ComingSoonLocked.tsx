@@ -13,9 +13,9 @@ const ComingSoonLocked: React.FC<ComingSoonLockedProps> = ({
   title, 
   description = "This feature is currently under development and will be available soon."
 }) => {
-  // Set launch date to December 5, 2025 at midnight
+  // Set launch date to December 20, 2025 at midnight
   const [launchDate] = useState(() => {
-    return new Date('2025-12-05T00:00:00');
+    return new Date('2025-12-20T00:00:00');
   });
 
   const [timeRemaining, setTimeRemaining] = useState({

@@ -37,15 +37,14 @@ import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import TeamManagementPage from '../components/TeamManagementPage';
-import RevenueManagementPage from '../components/RevenueManagementPage';
+// Coming Soon: RevenueManagementPage (Dec 20)
 import SelectCreatorModal from '../components/SelectCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
 import DemoBanner from '../components/DemoBanner';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
-import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
-import CampaignsManagementPage from '../components/CampaignsManagementPage';
+// Coming Soon: CreatorsManagementPage and CampaignsManagementPage (Dec 20)
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
@@ -565,7 +564,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
-  const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
+  // const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null); // Coming Soon
   const [linkFilter, setLinkFilter] = useState<string>('all'); // 'all' or link ID
   const [allLinks, setAllLinks] = useState<any[]>([]); // Store all links for dropdown
 
@@ -872,7 +871,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         trackedLinksPageRef.current?.refreshData?.();
         break;
       case 'creators':
-        creatorsPageRef.current?.refreshData?.();
+        // Coming Soon - Dec 20
         break;
       case 'dashboard':
         // Dashboard data is already handled by real-time listeners above
@@ -3391,19 +3390,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Creators Tab */}
           {activeTab === 'creators' && (
-            <CreatorsManagementPage
-              ref={creatorsPageRef}
-              dateFilter={creatorsDateFilter}
-              organizationId={currentOrgId || undefined}
-              projectId={currentProjectId || undefined}
+            <ComingSoonLocked 
+              title="Creators" 
+              description="Manage your creator network, track performance, and handle payouts all in one place. This powerful creator management system is coming soon."
             />
           )}
 
           {/* Campaigns Tab */}
           {activeTab === 'campaigns' && (
-            <CampaignsManagementPage
-              organizationId={currentOrgId || undefined}
-              projectId={currentProjectId || undefined}
+            <ComingSoonLocked 
+              title="Campaigns" 
+              description="Create campaigns with goals, assign creators to compete, and track performance with detailed leaderboards. Coming soon."
             />
           )}
 
@@ -3411,7 +3408,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {activeTab === 'team' && <TeamManagementPage />}
 
           {/* Revenue Tab */}
-          {activeTab === 'revenue' && <RevenueManagementPage />}
+          {activeTab === 'revenue' && (
+            <ComingSoonLocked 
+              title="Revenue" 
+              description="Track your revenue from app stores, monitor subscription metrics, and analyze your earnings across all platforms. Coming soon."
+            />
+          )}
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension'].includes(activeTab) && (
