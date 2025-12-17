@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import SuperAdminService from '../services/SuperAdminService';
 import DashboardPage from './DashboardPage';
@@ -53,39 +51,26 @@ const ViewAsPage: React.FC = () => {
     }
 
     loadOrgData();
-  }, [orgId, isSuperAdmin, navigate]);
+  }, [orgId, isSuperAdmin, navigate, user?.email]);
 
   const loadOrgData = async () => {
-    if (!orgId) return;
+    if (!orgId || !user?.email) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Get org name
-      const orgDoc = await getDoc(doc(db, 'organizations', orgId));
-      if (!orgDoc.exists()) {
-        setError('Organization not found');
-        setLoading(false);
-        return;
-      }
-      setOrgName(orgDoc.data()?.name || 'Unknown Organization');
-
-      // Get first project
-      const projectsQuery = query(
-        collection(db, 'organizations', orgId, 'projects'),
-        limit(1)
-      );
-      const projectsSnapshot = await getDocs(projectsQuery);
+      // Use API endpoint to get org data (bypasses Firebase security rules)
+      const response = await fetch(`/api/super-admin/view-as?orgId=${encodeURIComponent(orgId)}&email=${encodeURIComponent(user.email)}`);
       
-      if (projectsSnapshot.empty) {
-        setError('Organization has no projects');
-        setLoading(false);
-        return;
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to load organization');
       }
 
-      const firstProject = projectsSnapshot.docs[0];
-      setProjectId(firstProject.id);
+      const data = await response.json();
+      setOrgName(data.orgName);
+      setProjectId(data.projectId);
       setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Failed to load organization');
@@ -165,4 +150,3 @@ const ViewAsPage: React.FC = () => {
 
 export default ViewAsPage;
 export { ViewAsContext };
-

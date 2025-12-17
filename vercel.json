@@ -104,6 +104,9 @@
     },
     "api/super-admin/trigger-refresh.ts": {
       "maxDuration": 60
+    },
+    "api/super-admin/view-as.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [

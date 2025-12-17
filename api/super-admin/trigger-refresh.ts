@@ -55,63 +55,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    // Get all projects for this organization
-    const projectsSnapshot = await adminDb
-      .collection('organizations')
-      .doc(orgId)
-      .collection('projects')
-      .get();
+    const orgName = orgDoc.data()?.name || 'Unknown';
+    console.log(`📋 Organization: ${orgName}`);
 
-    let totalAccountsQueued = 0;
-
-    // For each project, queue all tracked accounts for refresh
-    for (const projectDoc of projectsSnapshot.docs) {
-      const projectId = projectDoc.id;
-      
-      // Get all tracked accounts
-      const accountsSnapshot = await adminDb
-        .collection('organizations')
-        .doc(orgId)
-        .collection('projects')
-        .doc(projectId)
-        .collection('trackedAccounts')
-        .get();
-
-      // Queue each account for refresh
-      for (const accountDoc of accountsSnapshot.docs) {
-        const accountData = accountDoc.data();
-        
-        // Add to processing queue
-        await adminDb.collection('processingQueue').add({
-          type: 'refresh_account',
-          organizationId: orgId,
-          projectId: projectId,
-          accountId: accountDoc.id,
-          platform: accountData.platform,
-          username: accountData.username,
-          status: 'pending',
-          priority: 1, // High priority for manual refresh
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          attempts: 0,
-          triggeredBy: 'super-admin',
-          triggeredByEmail: email,
-        });
-        
-        totalAccountsQueued++;
-      }
+    // Get CRON_SECRET for authorization
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      console.error('❌ CRON_SECRET not configured');
+      return res.status(500).json({ error: 'Server configuration error - CRON_SECRET missing' });
     }
 
-    console.log(`✅ SuperAdmin: Queued ${totalAccountsQueued} accounts for refresh in org ${orgId}`);
+    // Call process-organization directly - same as scheduled refresh
+    const baseUrl = 'https://www.viewtrack.app';
+    
+    console.log(`🚀 Dispatching to process-organization...`);
+    
+    const response = await fetch(`${baseUrl}/api/process-organization`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        orgId,
+        manual: true // Mark as manual trigger from super admin
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ process-organization failed: ${response.status} - ${errorText}`);
+      return res.status(500).json({ 
+        error: 'Failed to trigger refresh', 
+        details: `HTTP ${response.status}` 
+      });
+    }
+
+    const result = await response.json();
+    console.log(`✅ SuperAdmin: Refresh triggered for ${orgName}`, result);
     
     return res.status(200).json({ 
       success: true, 
-      message: `Queued ${totalAccountsQueued} accounts for refresh`,
-      accountsQueued: totalAccountsQueued
+      message: `Refresh triggered for ${orgName}`,
+      sessionId: result.sessionId,
+      stats: result.stats
     });
   } catch (error) {
     console.error('❌ SuperAdmin trigger-refresh error:', error);
     return res.status(500).json({ error: 'Failed to trigger refresh', details: String(error) });
   }
 }
-
