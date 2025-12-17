@@ -98,6 +98,12 @@
     },
     "api/super-admin/organizations/[orgId].ts": {
       "maxDuration": 60
+    },
+    "api/super-admin/grant-plan.ts": {
+      "maxDuration": 30
+    },
+    "api/super-admin/trigger-refresh.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
