@@ -118,12 +118,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         if (subDoc.exists) {
           const subData = subDoc.data();
-          planTier = subData?.tier || 'free';
+          // Check both planTier and tier fields for compatibility
+          planTier = subData?.planTier || subData?.tier || 'free';
           plan = planTier.charAt(0).toUpperCase() + planTier.slice(1);
           if (subData?.status === 'active' && planTier !== 'free') {
             plan += ' (Active)';
           } else if (subData?.status === 'canceled') {
             plan += ' (Canceled)';
+          } else if (subData?.status === 'trialing') {
+            plan += ' (Trial)';
           }
         }
       } catch (e) {
