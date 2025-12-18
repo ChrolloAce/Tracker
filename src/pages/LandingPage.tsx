@@ -5,7 +5,6 @@ import { ArrowRight, BookOpen } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import FeaturesTimeline from '../components/FeaturesTimeline';
 import Footer from '../components/Footer';
-import { VideoCarousel3D } from '../components/landing/VideoCarousel3D';
 import { HeroWidget } from '../components/landing/HeroWidget';
 import StripeService from '../services/StripeService';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
@@ -92,7 +91,7 @@ const LandingPage: React.FC = () => {
 
               {/* Supporting Sentence */}
               <p className="text-base md:text-lg text-[#666666] mb-8 md:mb-10 tracking-wide max-w-2xl">
-                ViewTrack is the social media analytics platform that handles contracts, performance tracking, creator communication, and campaigns across all platforms—the complete analytics software to scale your brand.
+                Our analytics dashboard shows which creators and content drive actual sales, helping you invest only in what works.
               </p>
 
               {/* CTA Buttons */}
@@ -124,11 +123,6 @@ const LandingPage: React.FC = () => {
             <div className="hidden lg:block lg:col-span-5 relative">
               <HeroWidget />
             </div>
-                </div>
-
-          {/* 3D Video Carousel - Full Width */}
-          <div className="w-screen relative left-1/2 -ml-[50vw] overflow-hidden pb-10 md:pb-20 -mt-16 md:-mt-24">
-            <VideoCarousel3D />
           </div>
         </div>
       </section>
