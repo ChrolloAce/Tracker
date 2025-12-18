@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 // Import Platform Icons
 import instagramIcon from '/Instagram_icon.png';
@@ -74,8 +74,23 @@ export const HeroWidget: React.FC = () => {
                 <p className="text-sm text-gray-400">Total Views</p>
                 <h3 className="text-2xl font-bold text-white">2.4M <span className="text-emerald-400 text-sm font-medium ml-1">+12.5%</span></h3>
               </div>
-              <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
+              {/* Creator Avatars Stack */}
+              <div className="flex -space-x-2">
+                <img 
+                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60" 
+                  alt="Creator" 
+                  className="w-8 h-8 rounded-full border-2 border-[#09090B] object-cover"
+                />
+                <img 
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=60" 
+                  alt="Creator" 
+                  className="w-8 h-8 rounded-full border-2 border-[#09090B] object-cover"
+                />
+                <img 
+                  src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&auto=format&fit=crop&q=60" 
+                  alt="Creator" 
+                  className="w-8 h-8 rounded-full border-2 border-[#09090B] object-cover"
+                />
               </div>
             </div>
             <div className="flex-grow -ml-4">

@@ -64,8 +64,8 @@ const LandingPage: React.FC = () => {
             backgroundSize: '24px 24px'
           }}
         />
-        {/* Strong Fade to white at bottom for smooth transition */}
-        <div className="absolute z-20 inset-x-0 bottom-0 h-64 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none" />
+        {/* Strong Fade to white at bottom for smooth transition - smaller on mobile */}
+        <div className="absolute z-20 inset-x-0 bottom-0 h-16 md:h-64 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="grid lg:grid-cols-12 gap-8 items-center min-h-[500px] md:min-h-[600px]">
