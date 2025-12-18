@@ -37,20 +37,6 @@ const DropdownMenu: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const [showSingleDeleteConfirm, setShowSingleDeleteConfirm] = useState(false);
-
-  const handleDeleteClick = () => {
-    setIsOpen(false);
-    setShowSingleDeleteConfirm(true);
-  };
-
-  const confirmSingleDelete = () => {
-    if (onDelete) {
-      onDelete(submission.id);
-    }
-    setShowSingleDeleteConfirm(false);
-  };
-
   return (
     <>
       <button
@@ -124,23 +110,14 @@ const DropdownMenu: React.FC<{
           variant="danger"
               onClick={(e) => {
                 e.stopPropagation();
-                handleDeleteClick();
+                setIsOpen(false);
+                // Call onDelete directly - DashboardPage will show its own confirmation modal
+                if (onDelete) {
+                  onDelete(submission.id);
+                }
               }}
         />
       </FloatingDropdown>
-
-      {/* Single Video Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={showSingleDeleteConfirm}
-        title="Delete Video"
-        message={`⚠️ You are about to delete this video\n\nThis will permanently delete:\n• The video\n• All associated snapshots and data\n\nThis action CANNOT be undone!`}
-        confirmText="Delete Video"
-        cancelText="Cancel"
-        requireTyping={false}
-        onConfirm={confirmSingleDelete}
-        onCancel={() => setShowSingleDeleteConfirm(false)}
-        isDanger={true}
-      />
     </>
   );
 };
@@ -203,11 +180,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  // Debug: Watch showDeleteConfirm state changes
-  useEffect(() => {
-    console.log('🟡 [VideoTable] showDeleteConfirm state changed to:', showDeleteConfirm);
-  }, [showDeleteConfirm]);
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -370,26 +342,15 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     navigator.clipboard.writeText(links);
     setShowActionsMenu(false);
     setShowToast({ message: `Copied ${selectedSubmissions.length} video link${selectedSubmissions.length !== 1 ? 's' : ''} to clipboard`, type: 'success' });
-    console.log(`✅ Copied ${selectedSubmissions.length} video links to clipboard`);
   };
 
   const handleBulkDelete = () => {
-    console.log('🔴🔴🔴 [BULK DELETE] Button clicked!');
-    console.log('  onDelete exists:', !!onDelete);
-    console.log('  onBulkDelete exists:', !!onBulkDelete);
-    console.log('  Selected videos count:', selectedVideos.size);
-    console.log('  Filtered videos count:', filteredAndSortedSubmissions.length);
-    console.log('  Current showDeleteConfirm:', showDeleteConfirm);
-    console.log('  Current showActionsMenu:', showActionsMenu);
-    
     if (!onDelete && !onBulkDelete) {
-      console.error('❌ No delete function provided');
       setShowToast({ message: 'Delete function not available. Please refresh the page.', type: 'error' });
       return;
     }
     
     if (selectedVideos.size === 0) {
-      console.warn('⚠️ No videos selected');
       setShowToast({ message: 'Please select videos to delete first.', type: 'info' });
       return;
     }
@@ -397,22 +358,15 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
     const count = selectedSubmissions.length;
     
-    console.log('  Videos to delete:', count);
-    
     if (count === 0) {
-      console.error('❌ No matching videos found');
       setShowToast({ message: 'No videos found to delete. Please try again.', type: 'error' });
       return;
     }
     
     // Close menu first, then show dialog after a tiny delay
-    console.log('🔴 Setting showActionsMenu to FALSE');
     setShowActionsMenu(false);
     
-    // Delay opening the dialog to ensure menu is fully closed
-    console.log('🔴 Setting timeout to show delete confirm');
     setTimeout(() => {
-      console.log('🔴 Opening delete confirmation dialog NOW');
       setShowDeleteConfirm(true);
     }, 10);
   };
@@ -421,8 +375,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     const selectedSubmissions = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
     const videoIds = selectedSubmissions.map(v => v.id);
     const count = videoIds.length;
-    
-    console.log(`🗑️ [BULK DELETE] Starting deletion of ${count} videos`);
     
     // Close dialog and clear selection
     setShowDeleteConfirm(false);
@@ -435,21 +387,17 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       if (onBulkDelete) {
         // Use the bulk delete handler if provided
         await onBulkDelete(videoIds);
-        console.log(`✅ [BULK DELETE] Successfully deleted ${count} videos`);
         setShowToast({ message: `Successfully deleted ${count} video${count !== 1 ? 's' : ''}`, type: 'success' });
       } else if (onDelete) {
         // Fallback: Use single delete handler for each video
-        console.log('⚠️ [BULK DELETE] No bulk delete handler provided, using single delete for each video');
         for (let i = 0; i < videoIds.length; i++) {
-          console.log(`  Deleting ${i + 1}/${count}: ${selectedSubmissions[i].title || selectedSubmissions[i].caption}`);
           onDelete(videoIds[i]);
         }
         setShowToast({ message: `Deleted ${count} video${count !== 1 ? 's' : ''}`, type: 'success' });
       }
-      } catch (error) {
-      console.error('❌ [BULK DELETE] Failed:', error);
+    } catch (error) {
       setShowToast({ message: `Failed to delete videos. Please try again.`, type: 'error' });
-      }
+    }
   };
 
   const handleExport = (filename: string) => {
@@ -739,13 +687,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     {onDelete && (
                       <button
                         onClick={(e) => {
-                          console.log('🔴 BUTTON CLICK EVENT FIRED');
                           e.stopPropagation();
                           e.preventDefault();
                           handleBulkDelete();
                         }}
-                        onMouseDown={() => console.log('🔴 MOUSE DOWN on delete button')}
-                        onMouseUp={() => console.log('🔴 MOUSE UP on delete button')}
                         className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
                         type="button"
                       >
@@ -1064,16 +1009,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           
-                          console.log('Opening video player:', {
-                            videoId: submission.id,
-                            url: submission.url,
-                            platform: submission.platform,
-                            hasUrl: !!submission.url
-                          });
-                          
                           // Validate URL before opening player
                           if (!submission.url || submission.url.trim() === '') {
-                            console.error('❌ Video URL is empty, cannot open player');
                             alert('This video has no URL. Please try refreshing the page.');
                             return;
                           }
@@ -1379,10 +1316,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         requireTyping={true}
         typingConfirmation="DELETE"
         onConfirm={confirmBulkDelete}
-        onCancel={() => {
-          console.log('🔴 Cancel clicked - closing dialog');
-          setShowDeleteConfirm(false);
-        }}
+        onCancel={() => setShowDeleteConfirm(false)}
         isDanger={true}
       />
 
