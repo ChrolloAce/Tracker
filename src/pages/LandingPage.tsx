@@ -117,9 +117,14 @@ const LandingPage: React.FC = () => {
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-black/5 to-transparent skew-x-12" />
                 </button>
               </div>
-              </div>
 
-            {/* Right Column: Interactive Widget */}
+              {/* Mobile Widget - Shows below CTA on mobile */}
+              <div className="lg:hidden mt-8">
+                <HeroWidget />
+              </div>
+            </div>
+
+            {/* Right Column: Interactive Widget - Desktop only */}
             <div className="hidden lg:block lg:col-span-5 relative">
               <HeroWidget />
             </div>
