@@ -132,17 +132,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Founders' Note */}
-      <section className="pt-8 pb-20 px-4 md:px-6 bg-white relative z-30 -mt-12">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-block px-4 py-1.5 bg-black text-white text-xs font-bold rounded-full mb-6 tracking-widest uppercase">
-            Social Media Analytics Software
-          </div>
-          <h2 className="text-2xl md:text-4xl font-bold text-[#111] leading-tight tracking-tight">
-            "This social media analytics platform was built by <a href="https://x.com/ErnestoSOFTWARE" target="_blank" rel="noopener noreferrer" className="text-[#2282FF] hover:underline">@ernestoSOFTWARE</a> who owns 9 apps and has scaled massive campaigns. We built the analytics tool we wished we had—consolidating everything you need to stop wasting budget and start scaling profitably."
-          </h2>
-              </div>
-      </section>
 
       {/* Features Timeline */}
       <div id="features">
