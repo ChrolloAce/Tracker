@@ -99,10 +99,10 @@ const FeaturesTimeline: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-24">
           <h2 className="text-4xl md:text-5xl font-bold text-[#111] mb-6 tracking-tight leading-tight">
-            Everything you need to scale
+            Social Media Analytics Software Features
           </h2>
           <p className="text-xl text-gray-500 max-w-2xl mx-auto font-medium">
-            Powerful features for modern creators and brands, consolidated into one intuitive platform.
+            Powerful analytics platform features for modern creators and brands, consolidated into one intuitive tool.
           </p>
         </div>
 

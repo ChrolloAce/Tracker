@@ -83,16 +83,16 @@ const LandingPage: React.FC = () => {
               {/* Main Headline - Two Lines */}
               <div className="space-y-1 md:space-y-2 mb-6 md:mb-8">
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
-                  Manage all your marketing
+                  Social Media Analytics Tool
                 </h1>
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
-                  across socials in one place
+                  for Creators & Brands
                 </h1>
               </div>
 
               {/* Supporting Sentence */}
               <p className="text-base md:text-lg text-[#666666] mb-8 md:mb-10 tracking-wide max-w-2xl">
-                ViewTrack handles contracts, performance analytics, creator communication, and campaigns across all platforms—so you can focus on scaling your brand.
+                ViewTrack is the social media analytics platform that handles contracts, performance tracking, creator communication, and campaigns across all platforms—the complete analytics software to scale your brand.
               </p>
 
               {/* CTA Buttons */}
@@ -137,10 +137,10 @@ const LandingPage: React.FC = () => {
       <section className="pt-8 pb-20 px-4 md:px-6 bg-white relative z-30 -mt-12">
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-block px-4 py-1.5 bg-black text-white text-xs font-bold rounded-full mb-6 tracking-widest uppercase">
-            By Founders, For Founders
+            Social Media Analytics Software
           </div>
           <h2 className="text-2xl md:text-4xl font-bold text-[#111] leading-tight tracking-tight">
-            "Viewtrack was built by <a href="https://x.com/ErnestoSOFTWARE" target="_blank" rel="noopener noreferrer" className="text-[#2282FF] hover:underline">@ernestoSOFTWARE</a> who owns 9 apps and has scaled massive campaigns. We built the platform we wished we had consolidating everything you need to stop wasting budget and start scaling profitably."
+            "This social media analytics platform was built by <a href="https://x.com/ErnestoSOFTWARE" target="_blank" rel="noopener noreferrer" className="text-[#2282FF] hover:underline">@ernestoSOFTWARE</a> who owns 9 apps and has scaled massive campaigns. We built the analytics tool we wished we had—consolidating everything you need to stop wasting budget and start scaling profitably."
           </h2>
               </div>
       </section>
@@ -154,8 +154,8 @@ const LandingPage: React.FC = () => {
       <section id="pricing" className="py-12 md:py-20 px-4 md:px-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10 md:mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4 px-4">Pay as you go</h2>
-            <p className="text-lg md:text-xl text-gray-600 px-4">Start small and scale your account limits as you scale your brand</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4 px-4">Social Media Analytics Platform Pricing</h2>
+            <p className="text-lg md:text-xl text-gray-600 px-4">Start small and scale your analytics software as you scale your brand</p>
           </div>
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto">
@@ -375,8 +375,8 @@ const LandingPage: React.FC = () => {
       <section id="faq" className="py-12 md:py-20 px-4 md:px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
-            <p className="text-lg md:text-xl text-gray-600">Common Questions</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Social Media Analytics Tool FAQ</h2>
+            <p className="text-lg md:text-xl text-gray-600">Common Questions About Our Analytics Platform</p>
             <p className="text-sm md:text-base text-gray-500 mt-1 md:mt-2">We're here to help you get the most out of ViewTrack</p>
           </div>
 
