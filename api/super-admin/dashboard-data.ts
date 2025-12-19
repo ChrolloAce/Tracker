@@ -118,6 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ]);
 
     // Process videos with their snapshots
+    let totalSnapshotsLoaded = 0;
     const videos = await Promise.all(
       videosSnapshot.docs.map(async (doc) => {
         const data = doc.data();
@@ -141,16 +142,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           timestamp: s.data().timestamp?.toDate?.()?.toISOString() || null
         }));
         
+        totalSnapshotsLoaded += snapshots.length;
+        
+        // Debug: Log first video's snapshots
+        if (snapshots.length > 0 && totalSnapshotsLoaded === snapshots.length) {
+          console.log(`📸 Sample video "${data.caption?.substring(0, 30) || doc.id}" has ${snapshots.length} snapshots`);
+          console.log(`   Latest snapshot: views=${snapshots[0]?.views}, likes=${snapshots[0]?.likes}, timestamp=${snapshots[0]?.timestamp}`);
+        }
+        
         return {
           id: doc.id,
           ...data,
           dateAdded: data.dateAdded?.toDate?.()?.toISOString() || null,
           lastUpdated: data.lastUpdated?.toDate?.()?.toISOString() || null,
           uploadDate: data.uploadDate?.toDate?.()?.toISOString() || data.uploadDate || null,
+          lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString() || null,
           snapshots
         };
       })
     );
+    
+    console.log(`📊 Total snapshots loaded across all videos: ${totalSnapshotsLoaded}`);
 
     // Process accounts
     const accounts = accountsSnapshot.docs.map(doc => {
@@ -160,9 +172,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...data,
         dateAdded: data.dateAdded?.toDate?.()?.toISOString() || null,
         lastUpdated: data.lastUpdated?.toDate?.()?.toISOString() || null,
-        lastSynced: data.lastSynced?.toDate?.()?.toISOString() || null
+        lastSynced: data.lastSynced?.toDate?.()?.toISOString() || null,
+        lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString() || null
       };
     });
+    
+    console.log(`👥 Accounts loaded: ${accounts.length}, sample lastRefreshed: ${accounts[0]?.lastRefreshed || 'never'}`);
 
     // Process links
     const links = linksSnapshot.docs.map(doc => {

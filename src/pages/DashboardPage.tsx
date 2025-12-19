@@ -1020,7 +1020,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setDataLoadedFromFirebase(true);
       setLoadingDashboard(false);
       
+      // Debug: Count total snapshots
+      const totalSnapshots = processedVideos.reduce((sum, v) => sum + (v.snapshots?.length || 0), 0);
       console.log(`✅ View-As loaded: ${processedVideos.length} videos, ${processedAccounts.length} accounts, ${processedLinks.length} links`);
+      console.log(`📸 View-As snapshots: ${totalSnapshots} total snapshots loaded`);
+      if (processedVideos.length > 0 && processedVideos[0].snapshots?.length > 0) {
+        console.log(`   Sample: First video has ${processedVideos[0].snapshots.length} snapshots`);
+        console.log(`   Latest: views=${processedVideos[0].snapshots[0]?.views}, timestamp=${processedVideos[0].snapshots[0]?.timestamp}`);
+      }
       return;
     }
 
