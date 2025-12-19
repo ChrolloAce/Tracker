@@ -6,6 +6,17 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 function initializeFirebase() {
   if (!getApps().length) {
     try {
+      // Debug: Check which env vars are present
+      const hasProjectId = !!process.env.FIREBASE_PROJECT_ID;
+      const hasClientEmail = !!process.env.FIREBASE_CLIENT_EMAIL;
+      const hasPrivateKey = !!process.env.FIREBASE_PRIVATE_KEY;
+      
+      console.log(`🔧 Firebase env check: PROJECT_ID=${hasProjectId}, CLIENT_EMAIL=${hasClientEmail}, PRIVATE_KEY=${hasPrivateKey}`);
+      
+      if (!hasProjectId || !hasClientEmail || !hasPrivateKey) {
+        throw new Error(`Missing Firebase env vars: PROJECT_ID=${hasProjectId}, CLIENT_EMAIL=${hasClientEmail}, PRIVATE_KEY=${hasPrivateKey}`);
+      }
+      
       let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
       if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
         privateKey = privateKey.slice(1, -1);
