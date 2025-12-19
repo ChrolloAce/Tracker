@@ -1024,9 +1024,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       const totalSnapshots = processedVideos.reduce((sum, v) => sum + (v.snapshots?.length || 0), 0);
       console.log(`✅ View-As loaded: ${processedVideos.length} videos, ${processedAccounts.length} accounts, ${processedLinks.length} links`);
       console.log(`📸 View-As snapshots: ${totalSnapshots} total snapshots loaded`);
-      if (processedVideos.length > 0 && processedVideos[0].snapshots?.length > 0) {
-        console.log(`   Sample: First video has ${processedVideos[0].snapshots.length} snapshots`);
-        console.log(`   Latest: views=${processedVideos[0].snapshots[0]?.views}, timestamp=${processedVideos[0].snapshots[0]?.timestamp}`);
+      const firstVideo = processedVideos[0];
+      const firstSnapshot = firstVideo?.snapshots?.[0];
+      if (firstVideo && firstSnapshot) {
+        console.log(`   Sample: First video has ${firstVideo.snapshots?.length || 0} snapshots`);
+        console.log(`   Latest: views=${firstSnapshot.views}, timestamp=${firstSnapshot.timestamp}`);
       }
       return;
     }
