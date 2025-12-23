@@ -1,6 +1,23 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { ImageUploadService } from './ImageUploadService.js';
 
+// Helper: Timeout wrapper for thumbnail downloads (5 second max)
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs);
+  });
+  
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutId!);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId!);
+    return fallback;
+  }
+}
+
 /**
  * VideoStorageService
  * 
@@ -30,7 +47,12 @@ export class VideoStorageService {
   ): Promise<number> {
     let batch = db.batch();
     let savedCount = 0;
+    let batchOperations = 0; // Track operations in current batch
     const accountId = account.id;
+    const BATCH_COMMIT_THRESHOLD = 20; // Commit every 20 videos (more frequent = safer)
+    const THUMBNAIL_TIMEOUT_MS = 8000; // 8 second timeout for thumbnail downloads
+
+    console.log(`    📦 [SAVE] Starting to save ${videos.length} videos for @${account.username}...`);
 
     for (const video of videos) {
       // Download and upload thumbnail to Firebase Storage (REQUIRED - no fallback to direct URLs)
@@ -45,17 +67,23 @@ export class VideoStorageService {
       if (video.thumbnail && video.thumbnail.startsWith('http')) {
         if (!isFirebaseUrl) {
           try {
-            console.log(`    📸 [${account.platform.toUpperCase()}] Downloading thumbnail for video ${video.videoId}...`);
-            firebaseThumbnailUrl = await ImageUploadService.downloadAndUpload(
-              video.thumbnail,
-              orgId,
-              `${account.platform}_${video.videoId}_thumb.jpg`,
-              'thumbnails'
+            // Use timeout wrapper to prevent hanging on slow downloads
+            firebaseThumbnailUrl = await withTimeout(
+              ImageUploadService.downloadAndUpload(
+                video.thumbnail,
+                orgId,
+                `${account.platform}_${video.videoId}_thumb.jpg`,
+                'thumbnails'
+              ),
+              THUMBNAIL_TIMEOUT_MS,
+              video.thumbnail // Fallback to original URL on timeout
             );
-            console.log(`    ✅ [${account.platform.toUpperCase()}] Thumbnail uploaded: ${firebaseThumbnailUrl}`);
+            
+            if (firebaseThumbnailUrl === video.thumbnail) {
+              console.log(`    ⚠️ [${account.platform.toUpperCase()}] Thumbnail timeout for ${video.videoId}, using original URL`);
+            }
           } catch (thumbError) {
-            console.error(`    ❌ [${account.platform.toUpperCase()}] Thumbnail upload failed for ${video.videoId}:`, thumbError);
-            console.warn(`    ⚠️ [${account.platform.toUpperCase()}] Using original URL as fallback`);
+            console.error(`    ❌ [${account.platform.toUpperCase()}] Thumbnail failed for ${video.videoId}:`, (thumbError as Error).message);
             firebaseThumbnailUrl = video.thumbnail; // Fallback to original URL
           }
         } else {
@@ -63,7 +91,6 @@ export class VideoStorageService {
           firebaseThumbnailUrl = video.thumbnail;
         }
       } else {
-        console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No valid thumbnail URL for video ${video.videoId}`);
         firebaseThumbnailUrl = video.thumbnail || ''; // Use whatever we have
       }
 
@@ -185,20 +212,36 @@ export class VideoStorageService {
       }
 
       savedCount++;
+      batchOperations += 2; // Each video = 1 update/set + 1 snapshot
 
-      // Commit in batches of 500 (Firestore limit)
-      if (savedCount % 500 === 0) {
-        await batch.commit();
-        console.log(`    💾 Committed batch of 500 videos`);
-        batch = db.batch();
+      // Commit more frequently to avoid losing work on timeout
+      // Firestore batch limit is 500, but we commit every 20 videos (40 operations) for safety
+      if (batchOperations >= BATCH_COMMIT_THRESHOLD * 2) {
+        try {
+          await batch.commit();
+          console.log(`    💾 Committed batch (${savedCount} videos saved so far)`);
+          batch = db.batch();
+          batchOperations = 0;
+        } catch (commitError) {
+          console.error(`    ❌ Batch commit failed:`, (commitError as Error).message);
+          // Continue with new batch - don't lose remaining videos
+          batch = db.batch();
+          batchOperations = 0;
+        }
       }
     }
 
     // Commit remaining
-    if (savedCount % 500 !== 0) {
-      console.log(`    💾 Committing final batch of ${savedCount % 500} videos...`);
-      await batch.commit();
-      console.log(`    ✅ Final batch committed`);
+    if (batchOperations > 0) {
+      try {
+        console.log(`    💾 Committing final batch (${batchOperations / 2} videos)...`);
+        await batch.commit();
+        console.log(`    ✅ Final batch committed - Total: ${savedCount} videos saved`);
+      } catch (commitError) {
+        console.error(`    ❌ Final batch commit failed:`, (commitError as Error).message);
+      }
+    } else {
+      console.log(`    ✅ All videos saved - Total: ${savedCount}`);
     }
 
     return savedCount;
