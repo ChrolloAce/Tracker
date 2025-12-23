@@ -222,8 +222,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Determine sync strategy based on account type
       // automatic accounts: progressive discovery (single 20-video fetch)
-      // static accounts: refresh_only (no new video discovery)
-      const syncStrategy = accountData.creatorType === 'static' ? 'refresh_only' : 'progressive';
+      // static/manual accounts: refresh_only (no new video discovery)
+      // Note: 'manual' is used when creating accounts from single video URLs
+      const isStaticAccount = accountData.creatorType === 'static' || accountData.creatorType === 'manual';
+      const syncStrategy = isStaticAccount ? 'refresh_only' : 'progressive';
       
       batch.set(jobRef, {
         type: 'account_sync',
