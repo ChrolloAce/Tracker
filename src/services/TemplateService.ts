@@ -44,28 +44,55 @@ export class TemplateService {
     contractStartDate?: string,
     contractEndDate?: string
   ): Promise<ContractTemplate> {
+    if (!organizationId) {
+      throw new Error('Organization ID is required');
+    }
+    if (!createdBy) {
+      throw new Error('Created by user ID is required');
+    }
+    if (!name || !name.trim()) {
+      throw new Error('Template name is required');
+    }
+
     const templateId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = Timestamp.now();
 
     const template: ContractTemplate = {
       id: templateId,
-      name,
-      description,
-      terms,
+      name: name.trim(),
+      description: description || '',
+      terms: terms || '',
       source: 'saved',
       organizationId,
       createdBy,
       createdAt: now,
       updatedAt: now,
-      companyName,
-      contractStartDate,
-      contractEndDate,
+      companyName: companyName || undefined,
+      contractStartDate: contractStartDate || undefined,
+      contractEndDate: contractEndDate || undefined,
     };
 
-    const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);
-    await setDoc(templateRef, template);
+    // Remove undefined values to avoid Firestore errors
+    const cleanTemplate = Object.fromEntries(
+      Object.entries(template).filter(([_, v]) => v !== undefined)
+    ) as ContractTemplate;
 
-    return template;
+    console.log('[TemplateService] Saving template:', {
+      id: templateId,
+      name: cleanTemplate.name,
+      orgId: organizationId,
+      createdBy,
+    });
+
+    try {
+      const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);
+      await setDoc(templateRef, cleanTemplate);
+      console.log('[TemplateService] Template saved successfully:', templateId);
+      return cleanTemplate;
+    } catch (error) {
+      console.error('[TemplateService] Failed to save template:', error);
+      throw error;
+    }
   }
 
   /**

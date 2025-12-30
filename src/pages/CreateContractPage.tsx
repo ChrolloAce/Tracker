@@ -136,22 +136,38 @@ const CreateContractPage: React.FC = () => {
   };
 
   const handleSaveTemplate = async () => {
-    if (!currentOrgId || !user || !templateName.trim()) {
+    if (!templateName.trim()) {
       alert('Please provide a template name');
+      return;
+    }
+    
+    if (!currentOrgId) {
+      alert('No organization selected. Please refresh and try again.');
+      return;
+    }
+    
+    if (!user) {
+      alert('You must be signed in to save templates.');
       return;
     }
 
     setSavingTemplate(true);
     try {
+      console.log('[CreateContractPage] Saving template...', {
+        orgId: currentOrgId,
+        userId: user.uid,
+        templateName: templateName.trim(),
+      });
+      
       await TemplateService.saveTemplate(
         currentOrgId,
         templateName.trim(),
         templateDescription.trim() || '',
-        contractNotes,
+        contractNotes || '',
         user.uid,
-        undefined, // companyName
-        contractStartDate,
-        contractEndDate
+        companyName || undefined,
+        contractStartDate || undefined,
+        contractEndDate || undefined
       );
 
       setShowSaveTemplateModal(false);
@@ -159,9 +175,10 @@ const CreateContractPage: React.FC = () => {
       setTemplateDescription('');
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving template:', error);
-      alert('Failed to save template');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      alert(`Failed to save template: ${errorMessage}`);
     } finally {
       setSavingTemplate(false);
     }
