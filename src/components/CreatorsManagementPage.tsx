@@ -19,6 +19,7 @@ import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import ContractsManagementPage from './ContractsManagementPage';
+import CreatorPayoutsPage from './CreatorPayoutsPage';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
 import { ProxiedImage } from './ProxiedImage';
 
@@ -39,7 +40,7 @@ interface CreatorsManagementPageProps {
  */
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
   const { dateFilter = 'all', organizationId, projectId } = props;
-  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, userRole } = useAuth();
   const navigate = useNavigate();
   
   // Use props if provided (for demo mode), otherwise use auth
@@ -52,6 +53,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [videoCounts, setVideoCounts] = useState<Map<string, number>>(new Map());
   const [pendingInvitations, setPendingInvitations] = useState<TeamInvitation[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
@@ -63,9 +65,22 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // Check if user is a creator
   useEffect(() => {
-    loadData();
-  }, [currentOrgId, currentProjectId, user, dateFilter]);
+    const checkRole = async () => {
+      if (!currentOrgId || !user) return;
+      const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
+      setIsCreator(role === 'creator');
+    };
+    checkRole();
+  }, [currentOrgId, user]);
+
+  useEffect(() => {
+    // Only load admin data if not a creator
+    if (!isCreator) {
+      loadData();
+    }
+  }, [currentOrgId, currentProjectId, user, dateFilter, isCreator]);
 
   // Keyboard shortcut - Press Space to add creator
   useEffect(() => {
@@ -348,6 +363,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       setActionLoading(null);
     }
   };
+
+  // If user is a creator, show their personal payouts page
+  if (isCreator) {
+    return <CreatorPayoutsPage />;
+  }
 
   if (loading) {
     return <PageLoadingSkeleton type="creators" />;
