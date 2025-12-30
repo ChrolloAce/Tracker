@@ -534,14 +534,6 @@ const ContractSigningPage: React.FC = () => {
                       ) : null;
                     })()
                   )}
-                  {contract.expiresAt && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Link Expires</span>
-                      <span className="text-gray-900 font-medium">
-                        {contract.expiresAt.toDate().toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
