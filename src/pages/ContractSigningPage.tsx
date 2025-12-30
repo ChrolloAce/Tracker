@@ -523,15 +523,17 @@ const ContractSigningPage: React.FC = () => {
                     <span className="text-gray-500">Company</span>
                     <span className="text-gray-900 font-medium">{contract.companyName || '—'}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Duration</span>
-                    <span className="text-gray-900 font-medium">
-                      {contract.contractEndDate === 'Indefinite' 
-                        ? 'Ongoing' 
-                        : `${Math.round((new Date(contract.contractEndDate).getTime() - new Date(contract.contractStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30))} months`
-                      }
-                    </span>
-                  </div>
+                  {contract.contractEndDate && contract.contractEndDate !== 'Indefinite' && contract.contractStartDate && (
+                    (() => {
+                      const months = Math.round((new Date(contract.contractEndDate).getTime() - new Date(contract.contractStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
+                      return !isNaN(months) && months > 0 ? (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Duration</span>
+                          <span className="text-gray-900 font-medium">{months} month{months !== 1 ? 's' : ''}</span>
+                        </div>
+                      ) : null;
+                    })()
+                  )}
                   {contract.expiresAt && (
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">Link Expires</span>

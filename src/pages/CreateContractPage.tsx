@@ -26,6 +26,8 @@ const CreateContractPage: React.FC = () => {
   const [initialContractNotes, setInitialContractNotes] = useState('');
   const [paymentStructureName, setPaymentStructureName] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCreators, setLoadingCreators] = useState(true);
   const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
@@ -55,6 +57,8 @@ const CreateContractPage: React.FC = () => {
         }
         if (draft.paymentStructureName) setPaymentStructureName(draft.paymentStructureName);
         if (draft.companyName) setCompanyName(draft.companyName);
+        if (draft.companyEmail) setCompanyEmail(draft.companyEmail);
+        if (draft.companyPhone) setCompanyPhone(draft.companyPhone);
       } catch (error) {
         console.error('Error loading contract draft:', error);
       }
@@ -63,7 +67,7 @@ const CreateContractPage: React.FC = () => {
 
   // Save draft to localStorage whenever fields change
   useEffect(() => {
-    if (selectedCreatorId || contractStartDate || contractEndDate || contractNotes || paymentStructureName || companyName) {
+    if (selectedCreatorId || contractStartDate || contractEndDate || contractNotes || paymentStructureName || companyName || companyEmail || companyPhone) {
       const draft = {
         selectedCreatorId,
         contractStartDate,
@@ -71,11 +75,13 @@ const CreateContractPage: React.FC = () => {
         contractNotes,
         paymentStructureName,
         companyName,
+        companyEmail,
+        companyPhone,
         timestamp: Date.now(),
       };
       localStorage.setItem(getDraftKey(), JSON.stringify(draft));
     }
-  }, [selectedCreatorId, contractStartDate, contractEndDate, contractNotes, paymentStructureName, companyName]);
+  }, [selectedCreatorId, contractStartDate, contractEndDate, contractNotes, paymentStructureName, companyName, companyEmail, companyPhone]);
 
   useEffect(() => {
     loadCreators();
@@ -274,20 +280,45 @@ const CreateContractPage: React.FC = () => {
               
               <div className="space-y-4">
                 {/* Company Section */}
-                <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50">
-                  <div className="flex items-center gap-2 mb-3">
+                <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50 space-y-3">
+                  <div className="flex items-center gap-2">
                     <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-blue-600 text-xs font-bold">B</span>
                     </div>
                     <span className="text-sm font-medium text-gray-700">Company</span>
                   </div>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Your company name"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Company Name *</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="Your company name"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={companyEmail}
+                        onChange={(e) => setCompanyEmail(e.target.value)}
+                        placeholder="company@example.com"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={companyPhone}
+                        onChange={(e) => setCompanyPhone(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -471,6 +502,8 @@ const CreateContractPage: React.FC = () => {
                     <div className="border-l-2 border-gray-800 pl-3">
                       <div className="text-[9px] text-gray-500 uppercase mb-1">Section 1.1 — Company</div>
                       <div className="font-bold text-gray-900">{companyName || '[COMPANY NAME]'}</div>
+                      {companyEmail && <div className="text-[9px] text-gray-600">{companyEmail}</div>}
+                      {companyPhone && <div className="text-[9px] text-gray-600">{companyPhone}</div>}
                       <div className="text-[9px] text-gray-500 italic mt-1">("Client")</div>
                     </div>
                     <div className="border-l-2 border-gray-800 pl-3">
