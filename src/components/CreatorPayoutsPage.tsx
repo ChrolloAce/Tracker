@@ -340,7 +340,7 @@ const CreatorPayoutsPage: React.FC = () => {
                     <div className="text-xs text-gray-500">Followers</div>
                   </div>
                   <a
-                    href={account.profileUrl || `https://${account.platform}.com/${account.username}`}
+                    href={`https://${account.platform === 'tiktok' ? 'tiktok.com/@' : account.platform === 'instagram' ? 'instagram.com/' : account.platform === 'youtube' ? 'youtube.com/@' : 'x.com/'}${account.username}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"

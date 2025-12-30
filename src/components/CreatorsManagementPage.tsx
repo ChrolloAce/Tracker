@@ -40,7 +40,7 @@ interface CreatorsManagementPageProps {
  */
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
   const { dateFilter = 'all', organizationId, projectId } = props;
-  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, userRole } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
   
   // Use props if provided (for demo mode), otherwise use auth
