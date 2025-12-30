@@ -768,9 +768,48 @@ const ContractEditorPage: React.FC = () => {
           </div>
 
           {/* Preview Column */}
-          <div className="lg:sticky lg:top-24 h-fit">
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-              <h2 className="text-lg font-semibold text-white mb-6">Preview</h2>
+          <div className="lg:sticky lg:top-24 h-fit space-y-4">
+            {/* Template Variables Helper */}
+            <div className="bg-[#161616] rounded-xl border border-gray-800 p-4">
+              <h3 className="text-sm font-semibold text-white mb-3">Auto-Fill Variables</h3>
+              <p className="text-xs text-gray-400 mb-3">
+                Use these placeholders in your contract terms - they'll auto-fill with the values above:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  '{{CREATOR_NAME}}',
+                  '{{COMPANY_NAME}}',
+                  '{{START_DATE}}',
+                  '{{END_DATE}}',
+                  '{{CREATOR_EMAIL}}',
+                  '{{CREATOR_PHONE}}',
+                  '{{CREATOR_ADDRESS}}',
+                  '{{COMPANY_EMAIL}}',
+                  '{{COMPANY_PHONE}}',
+                  '{{COMPANY_ADDRESS}}',
+                  '{{PAYMENT_STRUCTURE}}',
+                  '{{TODAY_DATE}}',
+                ].map((variable) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    onClick={() => {
+                      setContractNotes(prev => prev + ' ' + variable);
+                    }}
+                    className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors font-mono"
+                    title={`Click to insert ${variable}`}
+                  >
+                    {variable}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Contract Preview */}
+            <div className="rounded-xl border border-gray-800 overflow-hidden">
+              <div className="bg-[#161616] px-4 py-3 border-b border-gray-800">
+                <h2 className="text-sm font-semibold text-white">Preview</h2>
+              </div>
               <ContractPreview
                 creatorName={clientName}
                 companyName={companyName}
@@ -778,6 +817,18 @@ const ContractEditorPage: React.FC = () => {
                 contractEndDate={contractEndDate || 'Indefinite'}
                 contractNotes={contractNotes}
                 paymentStructureName={creatorPaymentStructure?.name}
+                creatorInfo={{
+                  name: clientName,
+                  email: creatorEmail || undefined,
+                  phone: creatorPhone || undefined,
+                  address: creatorAddress || undefined,
+                }}
+                companyInfo={{
+                  name: companyName,
+                  email: companyEmail || undefined,
+                  phone: companyPhone || undefined,
+                  address: companyAddress || undefined,
+                }}
               />
             </div>
           </div>
