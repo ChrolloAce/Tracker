@@ -44,7 +44,8 @@ import DemoBanner from '../components/DemoBanner';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
-// Coming Soon: CreatorsManagementPage and CampaignsManagementPage (Dec 20)
+import CreatorsManagementPage from '../components/CreatorsManagementPage';
+import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
@@ -3473,18 +3474,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Creators Tab */}
           {activeTab === 'creators' && (
-            <ComingSoonLocked 
-              title="Creators" 
-              description="Manage your creator network, track performance, and handle payouts all in one place. This powerful creator management system is coming soon."
-            />
+            <CreatorsManagementPage />
           )}
 
           {/* Campaigns Tab */}
           {activeTab === 'campaigns' && (
-            <ComingSoonLocked 
-              title="Campaigns" 
-              description="Create campaigns with goals, assign creators to compete, and track performance with detailed leaderboards. Coming soon."
-            />
+            <CampaignsManagementPage />
           )}
 
           {/* Team Members Tab */}
