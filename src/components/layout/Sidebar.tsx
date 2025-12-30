@@ -148,16 +148,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         label: userRole === 'creator' ? 'Payouts' : 'Creators',
         icon: Video,
         href: `${baseHref}/creators`,
-        locked: true,
-        comingSoon: 'Dec 5'
       },
       {
         id: 'campaigns',
         label: 'Campaigns',
         icon: Trophy,
         href: `${baseHref}/campaigns`,
-        locked: true,
-        comingSoon: 'Dec 5'
           },
           {
             id: 'team',
