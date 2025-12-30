@@ -4,10 +4,7 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import UsageTrackingService from '../services/UsageTrackingService';
-import { db } from '../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { X, Check, Mail, User as UserIcon, Link as LinkIcon, Search, UserPlus, AlertCircle, Crown } from 'lucide-react';
+import { X, Check, Mail, User as UserIcon, Link as LinkIcon, Search, UserPlus, AlertCircle } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import clsx from 'clsx';
 
@@ -29,69 +26,13 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   
-  // Team limit check
-  const [isAtLimit, setIsAtLimit] = useState(false);
-  const [limitInfo, setLimitInfo] = useState<{ current: number; limit: number; active: number; pending: number } | null>(null);
-  const [checkingLimit, setCheckingLimit] = useState(true);
+  // Note: Creators do NOT count against team seats - they are separate from team members
 
   useEffect(() => {
     if (isOpen && currentOrgId && currentProjectId) {
       loadAvailableAccounts();
     }
   }, [isOpen, currentOrgId, currentProjectId]);
-
-  // Check team seat limit when modal opens
-  useEffect(() => {
-    const checkLimit = async () => {
-      if (!currentOrgId || !user || !isOpen) {
-        console.log('❌ [Creator Modal] Missing orgId, user, or modal closed');
-        return;
-      }
-
-      try {
-        setCheckingLimit(true);
-        console.log('🔍 [CLIENT] [Creator Modal] Checking team seat limit for org:', currentOrgId);
-        
-        // Get organization's plan limits
-        const limits = await UsageTrackingService.getLimits(currentOrgId);
-        const seatLimit = limits.teamSeats;
-        
-        // Count active members
-        const membersRef = collection(db, 'organizations', currentOrgId, 'members');
-        const activeMembersQuery = query(membersRef, where('status', '==', 'active'));
-        const activeMembersSnap = await getDocs(activeMembersQuery);
-        const activeMembersCount = activeMembersSnap.size;
-        
-        // Count pending invitations
-        const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
-        const pendingInvitesQuery = query(invitationsRef, where('status', '==', 'pending'));
-        const pendingInvitesSnap = await getDocs(pendingInvitesQuery);
-        const pendingInvitesCount = pendingInvitesSnap.size;
-        
-        const currentSeatsUsed = activeMembersCount + pendingInvitesCount;
-        const isAtLimitValue = seatLimit !== -1 && currentSeatsUsed >= seatLimit;
-        
-        setLimitInfo({
-          current: currentSeatsUsed,
-          limit: seatLimit,
-          active: activeMembersCount,
-          pending: pendingInvitesCount
-        });
-        
-        console.log(`👥 [CLIENT] [Creator Modal] Team seats: ${currentSeatsUsed}/${seatLimit} (${activeMembersCount} active + ${pendingInvitesCount} pending)`);
-        console.log(`🚦 [CLIENT] [Creator Modal] At limit? ${isAtLimitValue}`);
-        
-        setIsAtLimit(isAtLimitValue);
-      } catch (error) {
-        console.error('❌ [CLIENT] [Creator Modal] Failed to check team limit:', error);
-      } finally {
-        setCheckingLimit(false);
-        console.log('✅ [CLIENT] [Creator Modal] Limit check complete');
-      }
-    };
-
-    checkLimit();
-  }, [currentOrgId, user, isOpen]);
 
   const loadAvailableAccounts = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -136,13 +77,6 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         throw new Error('Please enter a valid email address');
-      }
-
-      // Check if at limit (should be disabled, but as a fallback)
-      if (isAtLimit && limitInfo) {
-        throw new Error(
-          `You've reached your team member limit (${limitInfo.limit} seats). You currently have ${limitInfo.active} active members and ${limitInfo.pending} pending invitations. Upgrade your plan to invite more creators.`
-        );
       }
 
       // Get organization details
@@ -213,31 +147,6 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
         {/* Content - Scrollable */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Team Limit Warning */}
-          {!checkingLimit && isAtLimit && limitInfo && (
-            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
-              <div className="flex items-start gap-3 mb-3">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">
-                    Team Member Limit Reached
-                  </div>
-                  <div className="text-xs text-red-600/80 dark:text-red-400/80">
-                    You're using {limitInfo.current}/{limitInfo.limit} seats 
-                    ({limitInfo.active} active {limitInfo.active === 1 ? 'member' : 'members'} + {limitInfo.pending} pending {limitInfo.pending === 1 ? 'invitation' : 'invitations'})
-                  </div>
-                </div>
-              </div>
-              <a
-                href="/settings?tab=billing"
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-white text-black hover:bg-gray-100 dark:hover:bg-gray-100 text-sm font-semibold rounded-lg transition-all"
-              >
-                <Crown className="w-4 h-4" />
-                Upgrade Plan
-              </a>
-            </div>
-          )}
-
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
@@ -384,14 +293,10 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
           <button
             type="submit"
             onClick={handleSubmit}
-            disabled={loading || !email.trim() || isAtLimit || checkingLimit}
-            className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
-              isAtLimit 
-                ? 'bg-red-500 dark:bg-red-500 text-white opacity-75 cursor-not-allowed' 
-                : 'bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black disabled:opacity-50'
-            }`}
+            disabled={loading || !email.trim()}
+            className="flex-1 px-4 py-3 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black disabled:opacity-50"
           >
-            {checkingLimit ? 'Checking...' : loading ? 'Sending...' : isAtLimit ? 'Limit Reached' : 'Send Invitation'}
+            {loading ? 'Sending...' : 'Send Invitation'}
           </button>
         </div>
       </div>
