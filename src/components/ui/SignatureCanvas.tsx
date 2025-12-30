@@ -22,11 +22,15 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureChange, cl
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    // Set drawing styles
-    ctx.strokeStyle = '#ffffff';
+    // Set drawing styles - black ink for professional look
+    ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }, []);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -104,7 +108,9 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureChange, cl
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Clear and redraw white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
     onSignatureChange(null);
   };
@@ -120,14 +126,14 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureChange, cl
         onTouchStart={startDrawing}
         onTouchMove={draw}
         onTouchEnd={stopDrawing}
-        className="w-full h-40 bg-black/50 border border-gray-700 rounded-lg cursor-crosshair touch-none"
+        className="w-full h-40 bg-white border-2 border-gray-300 rounded-lg cursor-crosshair touch-none"
         style={{ touchAction: 'none' }}
       />
       
       {/* Placeholder text */}
       {!hasSignature && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <p className="text-gray-500 text-sm">Draw your signature here</p>
+          <p className="text-gray-400 text-sm">Sign here</p>
         </div>
       )}
 
@@ -135,10 +141,10 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSignatureChange, cl
       {hasSignature && (
         <button
           onClick={clearSignature}
-          className="absolute top-2 right-2 p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+          className="absolute top-2 right-2 p-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors"
           title="Clear signature"
         >
-          <RotateCcw className="w-4 h-4 text-gray-400" />
+          <RotateCcw className="w-4 h-4 text-gray-600" />
         </button>
       )}
     </div>

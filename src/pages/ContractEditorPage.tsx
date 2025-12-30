@@ -428,8 +428,8 @@ const ContractEditorPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
       </div>
     );
   }
@@ -438,24 +438,24 @@ const ContractEditorPage: React.FC = () => {
   // The user can type a custom creator name in the form
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="border-b border-gray-800 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
                 onClick={() => creatorId ? navigate(`/creators/${creatorId}?tab=contract`) : navigate('/creators')}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-400" />
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
               <div>
-                <h1 className="text-xl font-semibold text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
+                <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-700" />
                   New Contract
               </h1>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <p className="text-sm text-gray-500 mt-0.5">
                   {clientName ? `For ${clientName}` : (creator?.displayName || creator?.email || 'Select or enter client details below')}
                 </p>
               </div>
@@ -498,22 +498,22 @@ const ContractEditorPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Editor Column */}
           <div className="space-y-6">
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-              <h2 className="text-lg font-semibold text-white mb-6">Contract Details</h2>
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Contract Details</h2>
               
               <div className="space-y-5">
                 {/* Company Section */}
-                <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50 space-y-4">
-                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
-                      <span className="text-blue-400 text-xs">Co</span>
+                <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 text-xs font-bold">B</span>
                     </div>
                     Company Details
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Company Name *
                       </label>
                       <input
@@ -521,11 +521,11 @@ const ContractEditorPage: React.FC = () => {
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         placeholder="Your Company Name"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Email
                       </label>
                       <input
@@ -533,11 +533,11 @@ const ContractEditorPage: React.FC = () => {
                         value={companyEmail}
                         onChange={(e) => setCompanyEmail(e.target.value)}
                         placeholder="company@example.com"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Phone
                       </label>
                       <input
@@ -545,11 +545,11 @@ const ContractEditorPage: React.FC = () => {
                         value={companyPhone}
                         onChange={(e) => setCompanyPhone(e.target.value)}
                         placeholder="+1 (555) 123-4567"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Address
                       </label>
                       <input
@@ -557,17 +557,17 @@ const ContractEditorPage: React.FC = () => {
                         value={companyAddress}
                         onChange={(e) => setCompanyAddress(e.target.value)}
                         placeholder="123 Business St, City, State 12345"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Creator/Client Section */}
-                <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50 space-y-4">
-                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center">
-                      <User className="w-3 h-3 text-purple-400" />
+                <div className="p-4 bg-emerald-50/50 rounded-lg border border-emerald-200/50 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <User className="w-3 h-3 text-emerald-600" />
                     </div>
                     Creator/Client Details
                   </h3>
@@ -575,7 +575,7 @@ const ContractEditorPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Creator Name with Dropdown */}
                     <div className="md:col-span-2 relative">
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Name * (Select or type)
                       </label>
                       <div className="relative">
@@ -590,20 +590,20 @@ const ContractEditorPage: React.FC = () => {
                           }}
                           onFocus={() => setShowCreatorDropdown(true)}
                           placeholder="Select or type a name"
-                          className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm pr-10"
+                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm pr-10"
                         />
                         <button
                           type="button"
                           onClick={() => setShowCreatorDropdown(!showCreatorDropdown)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
                         >
-                          <ChevronDown className="w-4 h-4 text-gray-400" />
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
                         </button>
                       </div>
                       
                       {/* Creator Dropdown */}
                       {showCreatorDropdown && filteredCreators.length > 0 && (
-                        <div className="absolute z-20 w-full mt-1 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                           {filteredCreators.map((c) => (
                             <button
                               key={c.id}
@@ -614,19 +614,19 @@ const ContractEditorPage: React.FC = () => {
                                 setSelectedCreatorId(c.id);
                                 setShowCreatorDropdown(false);
                               }}
-                              className="w-full px-3 py-2 text-left hover:bg-white/10 flex items-center gap-3 transition-colors"
+                              className="w-full px-3 py-2 text-left hover:bg-emerald-50 flex items-center gap-3 transition-colors"
                             >
                               {c.photoURL ? (
                                 <img src={c.photoURL} alt="" className="w-6 h-6 rounded-full" />
                               ) : (
-                                <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">
-                                  <User className="w-3 h-3 text-gray-400" />
+                                <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
+                                  <User className="w-3 h-3 text-emerald-600" />
                                 </div>
                               )}
                               <div>
-                                <div className="text-sm text-white">{c.displayName || 'Unnamed'}</div>
+                                <div className="text-sm text-gray-900">{c.displayName || 'Unnamed'}</div>
                                 {c.email && (
-                                  <div className="text-xs text-gray-400">{c.email}</div>
+                                  <div className="text-xs text-gray-500">{c.email}</div>
                                 )}
                               </div>
                             </button>
@@ -636,7 +636,7 @@ const ContractEditorPage: React.FC = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Email
                       </label>
                       <input
@@ -644,11 +644,11 @@ const ContractEditorPage: React.FC = () => {
                         value={creatorEmail}
                         onChange={(e) => setCreatorEmail(e.target.value)}
                         placeholder="creator@example.com"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Phone
                       </label>
                       <input
@@ -656,11 +656,11 @@ const ContractEditorPage: React.FC = () => {
                         value={creatorPhone}
                         onChange={(e) => setCreatorPhone(e.target.value)}
                         placeholder="+1 (555) 123-4567"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         Address
                       </label>
                       <input
@@ -668,55 +668,71 @@ const ContractEditorPage: React.FC = () => {
                         value={creatorAddress}
                         onChange={(e) => setCreatorAddress(e.target.value)}
                         placeholder="123 Creator Ave, City, State 12345"
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Start Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={contractStartDate}
-                      onChange={(e) => setContractStartDate(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                    />
-                  </div>
+                {/* Contract Dates Section */}
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                      <span className="text-gray-600 text-xs font-bold">📅</span>
+                    </div>
+                    Contract Period
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Start Date */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Start Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={contractStartDate}
+                        onChange={(e) => setContractStartDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                      />
+                    </div>
 
-                {/* End Date (Optional) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                    End Date (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={contractEndDate}
-                      onChange={(e) => setContractEndDate(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                    />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leave blank for an indefinite contract
-                  </p>
+                    {/* End Date (Optional) */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        End Date <span className="text-gray-400">(Optional)</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={contractEndDate}
+                        onChange={(e) => setContractEndDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Leave blank for indefinite
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Payment Terms */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                <div className="p-4 bg-amber-50/50 rounded-lg border border-amber-200/50 space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
+                      <span className="text-amber-600 text-xs font-bold">$</span>
+                    </div>
                     Payment Structure
-                  </label>
+                  </h3>
+                  
                   {creatorPaymentStructure ? (
                     <div className="space-y-2">
-                      <div className="p-4 bg-gray-700/30 border border-gray-600/50 rounded-lg">
+                      <div className="p-3 bg-white border border-amber-200 rounded-lg">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="text-white font-medium text-sm">
+                            <h4 className="text-gray-900 font-medium text-sm">
                               {creatorPaymentStructure.name}
                             </h4>
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-500 mt-1">
                               {creatorPaymentStructure.tiers?.length || 0} tier{creatorPaymentStructure.tiers?.length !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -731,7 +747,7 @@ const ContractEditorPage: React.FC = () => {
                       </div>
                       <button
                         onClick={() => setShowPaymentModal(true)}
-                        className="text-sm text-gray-400 hover:text-white transition-colors"
+                        className="text-sm text-amber-600 hover:text-amber-700 transition-colors"
                       >
                         Edit payment structure
                       </button>
@@ -739,20 +755,20 @@ const ContractEditorPage: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => setShowPaymentModal(true)}
-                      className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white transition-all flex items-center justify-center gap-2"
+                      className="w-full px-4 py-3 bg-white hover:bg-amber-50 border border-amber-200 hover:border-amber-300 rounded-lg text-gray-700 transition-all flex items-center justify-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
                       Create Payment Structure
                     </button>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Create or edit the payment structure for this creator. You can insert it into the contract terms.
+                  <p className="text-xs text-gray-500">
+                    Create or edit the payment structure. You can insert it into the contract terms.
                   </p>
                 </div>
 
                 {/* Terms */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Contract Terms & Conditions *
                   </label>
                   <textarea
@@ -760,7 +776,7 @@ const ContractEditorPage: React.FC = () => {
                     onChange={(e) => setContractNotes(e.target.value)}
                     rows={15}
                     placeholder="Enter contract terms or use a template..."
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none font-mono text-sm"
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none font-mono text-sm"
                   />
                 </div>
               </div>
@@ -770,45 +786,101 @@ const ContractEditorPage: React.FC = () => {
           {/* Preview Column */}
           <div className="lg:sticky lg:top-24 h-fit space-y-4">
             {/* Template Variables Helper */}
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">Auto-Fill Variables</h3>
-              <p className="text-xs text-gray-400 mb-3">
-                Use these placeholders in your contract terms - they'll auto-fill with the values above:
+            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Insert Variables</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Click to insert placeholders that auto-fill with values:
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  '{{CREATOR_NAME}}',
-                  '{{COMPANY_NAME}}',
-                  '{{START_DATE}}',
-                  '{{END_DATE}}',
-                  '{{CREATOR_EMAIL}}',
-                  '{{CREATOR_PHONE}}',
-                  '{{CREATOR_ADDRESS}}',
-                  '{{COMPANY_EMAIL}}',
-                  '{{COMPANY_PHONE}}',
-                  '{{COMPANY_ADDRESS}}',
-                  '{{PAYMENT_STRUCTURE}}',
-                  '{{TODAY_DATE}}',
-                ].map((variable) => (
-                  <button
-                    key={variable}
-                    type="button"
-                    onClick={() => {
-                      setContractNotes(prev => prev + ' ' + variable);
-                    }}
-                    className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors font-mono"
-                    title={`Click to insert ${variable}`}
-                  >
-                    {variable}
-                  </button>
-                ))}
+              
+              {/* Creator Variables */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs font-semibold">C</span>
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">Creator</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { var: '{{CREATOR_NAME}}', label: 'Name' },
+                    { var: '{{CREATOR_EMAIL}}', label: 'Email' },
+                    { var: '{{CREATOR_PHONE}}', label: 'Phone' },
+                    { var: '{{CREATOR_ADDRESS}}', label: 'Address' },
+                  ].map(({ var: variable, label }) => (
+                    <button
+                      key={variable}
+                      type="button"
+                      onClick={() => setContractNotes(prev => prev + ' ' + variable)}
+                      className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                      title={`Insert ${variable}`}
+                    >
+                      + {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Company Variables */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 text-xs font-semibold">B</span>
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">Company</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { var: '{{COMPANY_NAME}}', label: 'Name' },
+                    { var: '{{COMPANY_EMAIL}}', label: 'Email' },
+                    { var: '{{COMPANY_PHONE}}', label: 'Phone' },
+                    { var: '{{COMPANY_ADDRESS}}', label: 'Address' },
+                  ].map(({ var: variable, label }) => (
+                    <button
+                      key={variable}
+                      type="button"
+                      onClick={() => setContractNotes(prev => prev + ' ' + variable)}
+                      className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
+                      title={`Insert ${variable}`}
+                    >
+                      + {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Contract Variables */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center">
+                    <span className="text-gray-600 text-xs font-semibold">$</span>
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">Contract</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { var: '{{START_DATE}}', label: 'Start Date' },
+                    { var: '{{END_DATE}}', label: 'End Date' },
+                    { var: '{{TODAY_DATE}}', label: 'Today' },
+                    { var: '{{PAYMENT_STRUCTURE}}', label: 'Payment Terms' },
+                  ].map(({ var: variable, label }) => (
+                    <button
+                      key={variable}
+                      type="button"
+                      onClick={() => setContractNotes(prev => prev + ' ' + variable)}
+                      className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded border border-gray-200 hover:bg-gray-200 transition-colors"
+                      title={`Insert ${variable}`}
+                    >
+                      + {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Contract Preview */}
-            <div className="rounded-xl border border-gray-800 overflow-hidden">
-              <div className="bg-[#161616] px-4 py-3 border-b border-gray-800">
-                <h2 className="text-sm font-semibold text-white">Preview</h2>
+            <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-900">Preview</h2>
               </div>
               <ContractPreview
                 creatorName={clientName}
