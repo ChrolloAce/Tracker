@@ -1,0 +1,335 @@
+PART 2A — FULL HUMAN-READABLE SITEMAP (SECTION A)
+
+This is the complete H1/H2/H3 tree + metadata for every page:
+
+Keywords
+
+Entities
+
+Intent
+
+Schema
+
+Title / Meta Description
+
+H1
+
+URL slug
+
+Content brief
+
+CTA
+
+E-E-A-T hooks
+
+Your site will have 6 silos.
+Each silo includes a Pillar Page + Support Pages.
+
+================================
+SILO 1 — Influencer Analytics
+================================
+1.0 Pillar Page — Influencer Marketing Analytics
+
+URL: /influencer-marketing-analytics/
+Intent: Informational / Commercial
+Primary Keyword: influencer marketing analytics
+Secondary Keywords: creator analytics tools, influencer KPIs, social media KPI dashboard, multi-platform analytics
+Primary Entity: Influencer analytics
+Related Entities: Instagram, TikTok, YouTube, KPIs, engagement rate, average views
+Schema: Article + FAQ
+Title: Influencer Marketing Analytics Software for Creators & Brands
+Meta: Track KPIs across Instagram, TikTok, and YouTube with real-time analytics designed for founders, creators, and agencies.
+H1: Influencer Marketing Analytics Software
+Content Brief:
+
+Define influencer analytics & its purpose
+
+Why multi-platform analytics matters
+
+Key metrics: ER, avg views, CTR, conversions
+
+Screenshots of dashboards
+
+Platform-specific differences
+
+How ViewTrack consolidates KPIs
+
+Case study of improved ROI
+CTA: “Start Tracking Now” (sticky)
+E-E-A-T hooks: Founder story (built by active app founder), platform screenshots, data freshness system
+
+1.1 Support — Influencer KPIs Explained
+
+/influencer-marketing-analytics/influencer-kpis/
+Intent: Informational
+Primary KW: influencer KPIs
+Brief topics:
+
+ER, avg views, reach, CTR, watch time
+
+Benchmarks by niche
+CTA: “See Live KPI Dashboards”
+
+1.2 Support — Engagement Rate Calculator
+
+/influencer-marketing-analytics/engagement-rate-calculator/
+Intent: Informational
+Primary KW: engagement rate calculator
+Schema: SoftwareApplication
+Brief: Free tool, formula, examples
+
+1.3 Support — How to Measure Influencer Performance
+
+/influencer-marketing-analytics/performance-measurement/
+Primary KW: measure influencer performance
+Topics: qualitative vs quantitative, platform differences, tools
+
+1.4 Support — Multi-Platform Analytics Guide
+
+/influencer-marketing-analytics/multi-platform/
+Primary KW: cross-platform analytics
+Topics: IG+TT+YT consolidation, accuracy, normalization
+
+1.5 Support — TikTok Analytics for Creators & Brands
+
+/influencer-marketing-analytics/tiktok/
+Primary KW: TikTok analytics
+Entity: TikTok Creator Marketplace
+
+1.6 Support — Instagram Analytics for Creators & Brands
+
+/influencer-marketing-analytics/instagram/
+Primary KW: Instagram analytics
+Entity: Meta Business Suite
+
+1.7 Support — YouTube Analytics for Creators & Brands
+
+/influencer-marketing-analytics/youtube/
+
+1.8 Support — KPI Benchmarks by Industry
+
+/influencer-marketing-analytics/benchmarks/
+Primary KW: influencer benchmarks
+
+1.9 Support — Link Tracking Metrics Explained
+
+/influencer-marketing-analytics/link-tracking-metrics/
+Primary KW: link tracking metrics
+Entity: attribution modeling
+
+===================================
+SILO 2 — Influencer Campaign Management
+===================================
+2.0 Pillar Page — Influencer Campaign Management Software
+
+/influencer-campaign-management/
+Intent: Commercial
+Primary KW: influencer campaign management software
+Schema: SoftwareApplication
+Brief:
+
+What campaign mgmt includes
+
+Workflow overview
+
+Deliverables tracking
+
+Approvals
+
+Communication
+
+ROI dashboards
+
+2.1 Support — UGC Campaign Workflow (End-to-End)
+
+/influencer-campaign-management/ugc-workflow/
+
+2.2 Support — Creator Communication Tools
+
+/influencer-campaign-management/creator-communication/
+
+2.3 Support — Campaign Brief Templates
+
+/influencer-campaign-management/brief-templates/
+Schema: ItemList
+
+2.4 Support — Tracking Deliverables & Revisions
+
+/influencer-campaign-management/deliverables/
+
+2.5 Support — Approval Workflows
+
+/influencer-campaign-management/approvals/
+
+2.6 Support — Multi-Creator Campaign Management
+
+/influencer-campaign-management/multi-creator/
+
+2.7 Support — UGC Content Types & Examples
+
+/influencer-campaign-management/ugc-content-types/
+
+2.8 Support — ROI Measurement Guide
+
+/influencer-campaign-management/roi/
+
+2.9 Support — Campaign Reporting Templates
+
+/influencer-campaign-management/reporting-templates/
+
+=================================================
+SILO 3 — Creator & UGC Operations
+=================================================
+3.0 Pillar Page — Creator & UGC Operations Management
+
+/creator-operations/
+Primary KW: creator operations
+Audience: Creator managers, agencies, brands
+
+3.1 Support — Creator Portal Overview
+
+/creator-operations/creator-portal/
+This links heavily to the money page (Creator Portal Onboarding).
+
+3.2 Support — Creator Onboarding Guide
+
+/creator-operations/onboarding/
+
+3.3 Support — UGC Team Management
+
+/creator-operations/ugc-teams/
+
+3.4 Support — UGC Content Delivery System
+
+/creator-operations/content-delivery/
+
+3.5 Support — Contract Management Overview
+
+/creator-operations/contracts/
+
+3.6 Support — Secure Data Sharing for Creators
+
+/creator-operations/secure-sharing/
+
+=================================================
+SILO 4 — Platform Analytics & Integrations
+=================================================
+4.0 Pillar Page — Social Platform Analytics & Integrations
+
+/platform-analytics/
+Primary KW: social media analytics integrations
+
+4.1 Support — TikTok Integration Guide
+
+/platform-analytics/tiktok/
+
+4.2 Support — Instagram Integration Guide
+
+/platform-analytics/instagram/
+
+4.3 Support — YouTube Integration Guide
+
+/platform-analytics/youtube/
+
+4.4 Support — Shopify Collabs Integration
+
+/platform-analytics/shopify-collabs/
+
+4.5 Support — Link Tracking Setup (Money Page)
+
+/platform-analytics/link-tracking/
+
+4.6 Support — Chrome Extension Features
+
+/platform-analytics/chrome-extension/
+
+4.7 Support — API Access Overview (Money Page)
+
+/platform-analytics/api/
+
+======================================
+SILO 5 — Comparisons & Alternatives
+======================================
+5.0 Pillar Page — Influencer Marketing Software Comparisons
+
+/comparisons/
+
+5.1 Support — Best Influencer Marketing Platforms
+
+/comparisons/best-influencer-platforms/
+
+5.2 Support — Aspire Alternatives
+
+/comparisons/aspire-alternatives/
+
+5.3 Support — Grin Alternatives
+
+/comparisons/grin-alternatives/
+
+5.4 Support — HypeAuditor Alternatives
+
+/comparisons/hypeauditor-alternatives/
+
+5.5 Support — CreatorIQ Alternatives
+
+/comparisons/creatoriq-alternatives/
+
+5.6 Support — Tagger Alternatives
+
+/comparisons/tagger-alternatives/
+
+5.7 Support — Upfluence Alternatives
+
+/comparisons/upfluence-alternatives/
+
+5.8 Support — Influencer Analytics Tools Compared
+
+/comparisons/influencer-analytics-tools/
+
+5.9 Support — UGC Campaign Platforms Compared
+
+/comparisons/ugc-platforms/
+
+==========================================
+SILO 6 — Pricing, Features & Money Pages
+==========================================
+6.0 Product Pillar — ViewTrack Features Overview
+
+/features/
+
+6.1 Money Page — Pricing (Starter / Pro / Enterprise)
+
+/pricing/
+Primary KW: influencer marketing software pricing
+Schema: Product
+
+6.2 Money Page — “Start Tracking Now”
+
+/start-tracking/
+Intent: Transactional
+
+6.3 Money Page — Link Tracking Feature
+
+/features/link-tracking/
+
+6.4 Money Page — Campaign Analytics Feature
+
+/features/campaign-analytics/
+
+6.5 Money Page — Contract Management Feature
+
+/features/contracts/
+
+6.6 Money Page — Chrome Extension Install
+
+/chrome-extension/
+
+6.7 Money Page — Creator Portal Onboarding
+
+/creator-portal/onboarding/
+
+6.8 Money Page — API Access
+
+/api/
+
+🎉 Part 2A is complete.

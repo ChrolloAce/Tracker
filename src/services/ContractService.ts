@@ -11,7 +11,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { ShareableContract } from '../types/contract';
+import { ShareableContract, CreatorContactInfo, CompanyContactInfo } from '../types/contract';
 
 export class ContractService {
   private static CONTRACTS_COLLECTION = 'shareableContracts';
@@ -43,7 +43,9 @@ export class ContractService {
     paymentStructureName: string | undefined,
     createdBy: string,
     contractTitle?: string,
-    companyName?: string
+    companyName?: string,
+    creatorInfo?: CreatorContactInfo,
+    companyInfo?: CompanyContactInfo
   ): Promise<ShareableContract> {
     const contractId = this.generateContractId();
     const now = Timestamp.now();
@@ -84,6 +86,12 @@ export class ContractService {
     }
     if (companyName) {
       contract.companyName = companyName;
+    }
+    if (creatorInfo) {
+      contract.creatorInfo = creatorInfo;
+    }
+    if (companyInfo) {
+      contract.companyInfo = companyInfo;
     }
 
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);

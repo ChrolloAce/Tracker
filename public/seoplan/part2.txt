@@ -1,0 +1,514 @@
+============================
+SECTION B — INTERNAL LINKING PLAN
+============================
+
+We follow 3 rules:
+
+Rule 1 — Pillar → ALL Support Pages
+
+Each support page gets 3 anchor variants from the pillar.
+
+Rule 2 — Support → Pillar
+
+Each support page links back with 1 branded-intent anchor.
+
+Rule 3 — Lateral Links (Support ↔ Support)
+
+3–4 relevant cross-links per cluster that strengthen semantic authority.
+
+Rule 4 — Silo Bridges Only When Logical
+
+For example, analytics ⇄ campaign management is a valid entity pair (KPIs ↔ campaign ROI).
+
+============================
+SILO 1: Influencer Analytics Internal Links
+============================
+Pillar → Support Links
+1.1 Influencer KPIs Explained
+
+Anchor variants from pillar:
+
+“influencer KPI definitions”
+
+“key metrics creators should track”
+
+“social media performance indicators”
+Rationale: Reinforces KPI entity grouping.
+
+Support → Pillar anchor:
+
+“influencer marketing analytics”
+
+1.2 Engagement Rate Calculator
+
+Pillar → page anchors:
+
+“engagement rate calculator tool”
+
+“calculate creator ER”
+
+“measure engagement accurately”
+Support → pillar anchor:
+
+“ViewTrack’s analytics dashboard”
+
+1.3 How to Measure Influencer Performance
+
+Pillar → page anchors:
+
+“how to measure influencer performance”
+
+“evaluate creator effectiveness”
+
+“creator performance workflow”
+Support → pillar:
+
+“influencer analytics platform”
+
+1.4 Multi-Platform Analytics Guide
+
+Pillar → page anchors:
+
+“cross-platform analytics guide”
+
+“compare IG, TikTok, YouTube KPIs”
+
+“multi-platform dashboards”
+Support → pillar:
+
+“consolidated creator analytics”
+
+1.5 TikTok Analytics
+
+Pillar → page anchors:
+
+“TikTok analytics overview”
+
+“analyze TikTok creators”
+
+“TikTok performance metrics”
+Support → pillar:
+
+“influencer analytics software”
+
+1.6 Instagram Analytics
+
+Pillar → page anchors:
+
+“Instagram analytics guide”
+
+“track Instagram creators”
+
+“IG performance KPIs”
+Support → pillar:
+
+“ViewTrack analytics hub”
+
+1.7 YouTube Analytics
+
+Anchor variants:
+
+“YouTube creator analytics”
+
+“YT performance tracking”
+
+“video metrics explained”
+
+1.8 KPI Benchmarks
+
+Anchor variants:
+
+“creator benchmarks by niche”
+
+“industry-specific performance ranges”
+
+“example KPI targets”
+
+1.9 Link Tracking Metrics Explained
+
+Anchor variants:
+
+“link tracking metrics”
+
+“conversion attribution insights”
+
+“revenue contribution analysis”
+
+Analytics Lateral Links (Support ↔ Support)
+
+Examples:
+
+FROM	TO	Anchor Text	Rationale
+KPI page	Benchmarks	“benchmark your KPIs”	Metrics → industry standards
+Multi-platform	TikTok	“TikTok-specific analytics”	Deep-dive link
+Multi-platform	Instagram	“Instagram KPIs”	Platform pathways
+Performance measurement	Link tracking metrics	“measure performance beyond views”	Qual → quant
+Benchmarks	Engagement calculator	“calculate ER”	Traffic booster
+============================
+SILO 2: Campaign Management Internal Links
+============================
+Pillar → ALL Support Pages
+
+2.1 UGC Workflow
+
+“UGC campaign workflow”
+
+“end-to-end UGC process”
+
+“how to run UGC campaigns”
+
+2.2 Creator Communication Tools
+
+“creator messaging tools”
+
+“manage creator communications”
+
+“centralized creator inbox”
+
+2.3 Brief Templates
+
+“influencer campaign briefs”
+
+“brief templates for creators”
+
+“campaign instruction templates”
+
+2.4 Deliverables & Revisions
+
+“track UGC deliverables”
+
+“content approval workflows”
+
+“revision tracking tools”
+
+2.5 Approval Workflows
+
+“approve creator content”
+
+“content approval dashboard”
+
+“review UGC submissions”
+
+2.6 Multi-Creator Campaigns
+
+“manage multiple creators”
+
+“multi-creator campaign tools”
+
+“scale influencer operations”
+
+2.7 UGC Content Types
+
+“UGC content types explained”
+
+“examples of creator content”
+
+“high-performing UGC formats”
+
+2.8 ROI Measurement
+
+“measure campaign ROI”
+
+“ROI analytics dashboard”
+
+“creator revenue attribution”
+
+2.9 Reporting Templates
+
+“campaign reporting templates”
+
+“performance report downloads”
+
+“visual influencer reports”
+
+Support → Pillar anchor examples:
+
+“influencer campaign management software”
+
+“campaign tracking dashboard”
+
+Campaign Management Lateral Links
+FROM	TO	Anchor	Rationale
+Workflow	Deliverables	“track deliverables”	Process step
+Workflow	Approvals	“approval stage”	Sequential
+Communication	Brief Templates	“send briefs to creators”	Operational
+Approvals	Revisions	“request revisions”	Natural
+ROI	Reporting Templates	“include ROI in reports”	Reporting chain
+Multi-creator	Workflow	“organize creator assignments”	Scaling ops
+============================
+SILO 3: Creator & UGC Operations
+============================
+Pillar → Support Links
+
+3.1 Creator Portal Overview
+
+“creator portal overview”
+
+“creator login system”
+
+“UGC collaboration hub”
+
+3.2 Creator Onboarding
+
+“how to onboard creators”
+
+“creator onboarding system”
+
+“setup creators quickly”
+
+3.3 UGC Teams
+
+“manage UGC teams”
+
+“UGC team tools”
+
+“creator team dashboards”
+
+3.4 Content Delivery System
+
+“UGC delivery system”
+
+“submit content securely”
+
+“content delivery workflow”
+
+3.5 Contracts Overview
+
+“creator contracts overview”
+
+“e-sign agreements for creators”
+
+“manage creator contracts”
+
+3.6 Secure Sharing
+
+“secure data sharing”
+
+“privacy-focused creator sharing”
+
+Lateral Links (UGC Ops)
+FROM	TO	Anchor	Rationale
+Creator Portal	Contracts	“sign agreements”	Portal workflow
+Onboarding	Teams	“assign to teams”	Setup → team ops
+Content delivery	Approvals	“submit for approval”	UGC chain
+Teams	Communication tools	“communicate with creators”	Ops link
+============================
+SILO 4: Platform Analytics & Integrations
+============================
+Pillar → Support Anchors
+
+TikTok Integration
+
+“TikTok integration setup”
+
+“connect TikTok accounts”
+
+“TikTok creator analytics”
+
+Instagram Integration
+
+“Instagram analytics connection”
+
+“connect IG accounts”
+
+“Meta integration setup”
+
+YouTube Integration
+
+“YouTube analytics integration”
+
+“YT channel metrics”
+
+“connect YouTube creators”
+
+Shopify Collabs Integration
+
+“Shopify Collabs integration”
+
+“connect Shopify creators”
+
+“Collabs tracking setup”
+
+Link Tracking (Money Page)
+
+“link tracking feature”
+
+“track creator conversions”
+
+“performance attribution links”
+
+Chrome Extension
+
+“ViewTrack Chrome extension”
+
+“analyze creators instantly”
+
+“one-click creator insights”
+
+API Access
+
+“ViewTrack API access”
+
+“analytics API”
+
+“programmatic campaign data”
+
+Lateral Links
+
+TikTok ↔ Instagram ↔ YouTube (entity relationships)
+
+Shopify Collabs ↔ Link Tracking (commerce entities)
+
+Chrome Extension ↔ All Analytics Pages (discovery tool)
+
+============================
+SILO 5: Comparisons & Alternatives
+============================
+Pillar → Support Anchors
+
+Examples for each alternatives page:
+
+Aspire Alternatives
+
+“Aspire alternatives”
+
+“tools similar to Aspire”
+
+“Aspire competitors”
+
+Grin Alternatives
+
+“Grin alternatives”
+
+“best replacements for Grin”
+
+“Grin competitor tools”
+
+HypeAuditor Alternatives
+
+“HypeAuditor alternatives”
+
+“alternatives to HypeAuditor”
+
+“compared to HypeAuditor tools”
+
+…and so on for all comparison pages.
+
+Support → Pillar
+
+“influencer software comparisons”
+
+Lateral Links
+FROM	TO	Anchor	Rationale
+Aspire Alternatives	Grin Alternatives	“compare Aspire vs Grin”	High demand
+Grin Alternatives	CreatorIQ Alternatives	“CreatorIQ comparison”	Competitor graph
+Best Platforms	Analytics Tools Compared	“see analytics comparison”	Evaluation flow
+UGC Platforms Compared	Campaign Software	“UGC campaign software”	Functional jump
+============================
+SILO 6: Money Pages (High Internal PR)
+============================
+
+These pages receive maximum internal links.
+
+Pages:
+
+/pricing/
+
+/start-tracking/
+
+/features/link-tracking/
+
+/features/campaign-analytics/
+
+/features/contracts/
+
+/chrome-extension/
+
+/creator-portal/onboarding/
+
+/api/
+
+Required anchors to money pages:
+
+To /pricing/
+
+“ViewTrack pricing”
+
+“plans & tiers”
+
+“choose your plan”
+
+To /start-tracking/
+
+“start tracking now”
+
+“launch your analytics”
+
+“try ViewTrack”
+
+To /link-tracking/
+
+“track creator conversions”
+
+“advanced link tracking”
+
+To /api/
+
+“ViewTrack API”
+
+“analytics API access”
+
+…and so on.
+
+============================
+SECTION C — CRAWL DEPTH, QUOTAS & BREADCRUMBS
+============================
+⭐ Crawl Depth Requirements (max 3 clicks)
+Page Type	Max Depth	Notes
+Homepage	0	—
+Pillar Pages	1	Linked in header nav
+Support Pages	2	Via pillar
+Money Pages	1–2	Featured in header, footer, CTA
+Comparison Pages	1–2	Shallow depth for commercial intent
+Tools (e.g., calculator)	2	Linked from analytics pillar
+⭐ Internal Link Quotas (per page)
+Page Type	Outbound Links	Inbound Links
+Pillars	10–18	20–40
+Support Pages	6–10	10–20
+Comparisons	8–12	10–25
+Money Pages	12–20	30–60* (priority)
+
+*Money pages receive links from EVERY silo.
+
+⭐ Breadcrumb Rules
+
+Format:
+Home → [Silo] → [Page]
+
+Examples:
+
+Influencer KPIs Page:
+/influencer-marketing-analytics/influencer-kpis/
+Breadcrumb:
+
+/
+
+/influencer-marketing-analytics/
+
+/influencer-marketing-analytics/influencer-kpis/
+
+Pricing Page:
+
+/
+
+/features/
+
+/pricing/
+
+Creator Portal Onboarding:
+
+/
+
+/creator-operations/
+
+/creator-portal/onboarding/

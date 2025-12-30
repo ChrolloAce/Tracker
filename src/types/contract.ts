@@ -7,6 +7,20 @@ export interface ContractSignature {
   ipAddress?: string;
 }
 
+export interface CreatorContactInfo {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface CompanyContactInfo {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
 export interface ShareableContract {
   id: string;
   organizationId: string;
@@ -22,6 +36,10 @@ export interface ShareableContract {
   contractEndDate: string;
   contractNotes: string;
   paymentStructureName?: string;
+  
+  // Extended contact info
+  creatorInfo?: CreatorContactInfo;
+  companyInfo?: CompanyContactInfo;
   
   // Signatures
   companySignature?: ContractSignature;

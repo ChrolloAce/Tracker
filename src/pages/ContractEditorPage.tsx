@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
@@ -6,6 +6,8 @@ import { TemplateService } from '../services/TemplateService';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { OrgMember } from '../types/firestore';
+import { Creator } from '../types/creator';
+import { CreatorContactInfo, CompanyContactInfo } from '../types/contract';
 import { TieredPaymentStructure } from '../types/payments';
 import TieredPaymentService from '../services/TieredPaymentService';
 import { Timestamp } from 'firebase/firestore';
@@ -18,7 +20,9 @@ import {
   Plus,
   X,
   Copy,
-  Check
+  Check,
+  ChevronDown,
+  User
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';
@@ -34,12 +38,28 @@ const ContractEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   
+  // Available creators for dropdown
+  const [availableCreators, setAvailableCreators] = useState<Creator[]>([]);
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
+  const [showCreatorDropdown, setShowCreatorDropdown] = useState(false);
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
+  
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [clientName, setClientName] = useState('');
+  
+  // Creator contact info
+  const [creatorEmail, setCreatorEmail] = useState('');
+  const [creatorPhone, setCreatorPhone] = useState('');
+  const [creatorAddress, setCreatorAddress] = useState('');
+  
+  // Company contact info
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
   
   const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
@@ -94,10 +114,39 @@ const ContractEditorPage: React.FC = () => {
     }
   }, [creatorId]);
 
-  // Pre-fill client name when creator is loaded
+  // Load available creators for the dropdown
+  useEffect(() => {
+    const loadAvailableCreators = async () => {
+      if (!currentOrgId || !currentProjectId) return;
+      
+      try {
+        const creators = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+        setAvailableCreators(creators);
+      } catch (error) {
+        console.error('Error loading creators:', error);
+      }
+    };
+    
+    loadAvailableCreators();
+  }, [currentOrgId, currentProjectId]);
+  
+  // Filter creators based on search query
+  const filteredCreators = useMemo(() => {
+    if (!creatorSearchQuery.trim()) return availableCreators;
+    const query = creatorSearchQuery.toLowerCase();
+    return availableCreators.filter(c => 
+      c.displayName?.toLowerCase().includes(query) ||
+      c.email?.toLowerCase().includes(query)
+    );
+  }, [availableCreators, creatorSearchQuery]);
+
+  // Pre-fill client name and email when creator is loaded
   useEffect(() => {
     if (creator && !clientName) {
       setClientName(creator.displayName || creator.email || '');
+      if (creator.email && !creatorEmail) {
+        setCreatorEmail(creator.email);
+      }
     }
   }, [creator]);
 
@@ -303,7 +352,7 @@ const ContractEditorPage: React.FC = () => {
   };
 
   const handleShareContract = async () => {
-    if (!creator || !user || !currentOrgId || !currentProjectId) return;
+    if (!user || !currentOrgId || !currentProjectId) return;
 
     // Validation
     if (!contractNotes.trim()) {
@@ -318,20 +367,47 @@ const ContractEditorPage: React.FC = () => {
       alert('Please enter a client name');
       return;
     }
+    if (!companyName.trim()) {
+      alert('Please enter a company name');
+      return;
+    }
 
     setSharing(true);
     try {
+      // Build creator contact info
+      const creatorContactInfo: CreatorContactInfo = {
+        name: clientName,
+        email: creatorEmail || undefined,
+        phone: creatorPhone || undefined,
+        address: creatorAddress || undefined,
+      };
+      
+      // Build company contact info
+      const companyContactInfo: CompanyContactInfo = {
+        name: companyName,
+        email: companyEmail || undefined,
+        phone: companyPhone || undefined,
+        address: companyAddress || undefined,
+      };
+      
+      // Use selected creator ID or generate a custom one for typed names
+      const effectiveCreatorId = selectedCreatorId || creator?.userId || `custom_${Date.now()}`;
+      
       const contract = await ContractService.createShareableContract(
         currentOrgId,
         currentProjectId,
-        creator.userId,
+        effectiveCreatorId,
         clientName,
-        creator.email || '',
+        creatorEmail || creator?.email || '',
         contractStartDate,
         contractEndDate || 'Indefinite',
         contractNotes,
         creatorPaymentStructure?.name || undefined,
-        user.uid
+        user.uid,
+        undefined, // contractTitle
+        companyName,
+        creatorContactInfo,
+        companyContactInfo
       );
 
       // Clear the draft on success
@@ -359,16 +435,8 @@ const ContractEditorPage: React.FC = () => {
     );
   }
 
-  if (!creator) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-white mb-4">Creator Not Found</h2>
-          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
-        </div>
-      </div>
-    );
-  }
+  // Note: We allow the page to load even without a pre-selected creator
+  // The user can type a custom creator name in the form
 
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
@@ -378,7 +446,7 @@ const ContractEditorPage: React.FC = () => {
           <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-                onClick={() => navigate(`/creators/${creatorId}?tab=contract`)}
+                onClick={() => creatorId ? navigate(`/creators/${creatorId}?tab=contract`) : navigate('/creators')}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-gray-400" />
@@ -389,7 +457,7 @@ const ContractEditorPage: React.FC = () => {
                   New Contract
               </h1>
                 <p className="text-sm text-gray-400 mt-0.5">
-                  For {creator.displayName || creator.email}
+                  {clientName ? `For ${clientName}` : (creator?.displayName || creator?.email || 'Select or enter client details below')}
                 </p>
               </div>
             </div>
@@ -435,32 +503,176 @@ const ContractEditorPage: React.FC = () => {
               <h2 className="text-lg font-semibold text-white mb-6">Contract Details</h2>
               
               <div className="space-y-5">
-                {/* Company Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Your Company Name"
-                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
-              </div>
+                {/* Company Section */}
+                <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50 space-y-4">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
+                      <span className="text-blue-400 text-xs">Co</span>
+                    </div>
+                    Company Details
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Company Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        placeholder="Your Company Name"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={companyEmail}
+                        onChange={(e) => setCompanyEmail(e.target.value)}
+                        placeholder="company@example.com"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={companyPhone}
+                        onChange={(e) => setCompanyPhone(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Address
+                      </label>
+                      <input
+                        type="text"
+                        value={companyAddress}
+                        onChange={(e) => setCompanyAddress(e.target.value)}
+                        placeholder="123 Business St, City, State 12345"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                {/* Client Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Client Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Client Name"
-                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
+                {/* Creator/Client Section */}
+                <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50 space-y-4">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center">
+                      <User className="w-3 h-3 text-purple-400" />
+                    </div>
+                    Creator/Client Details
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Creator Name with Dropdown */}
+                    <div className="md:col-span-2 relative">
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Name * (Select or type)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={clientName}
+                          onChange={(e) => {
+                            setClientName(e.target.value);
+                            setSelectedCreatorId(null);
+                            setShowCreatorDropdown(true);
+                            setCreatorSearchQuery(e.target.value);
+                          }}
+                          onFocus={() => setShowCreatorDropdown(true)}
+                          placeholder="Select or type a name"
+                          className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCreatorDropdown(!showCreatorDropdown)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded"
+                        >
+                          <ChevronDown className="w-4 h-4 text-gray-400" />
+                        </button>
+                      </div>
+                      
+                      {/* Creator Dropdown */}
+                      {showCreatorDropdown && filteredCreators.length > 0 && (
+                        <div className="absolute z-20 w-full mt-1 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                          {filteredCreators.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setClientName(c.displayName || c.email || '');
+                                setCreatorEmail(c.email || '');
+                                setSelectedCreatorId(c.id);
+                                setShowCreatorDropdown(false);
+                              }}
+                              className="w-full px-3 py-2 text-left hover:bg-white/10 flex items-center gap-3 transition-colors"
+                            >
+                              {c.photoURL ? (
+                                <img src={c.photoURL} alt="" className="w-6 h-6 rounded-full" />
+                              ) : (
+                                <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">
+                                  <User className="w-3 h-3 text-gray-400" />
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-sm text-white">{c.displayName || 'Unnamed'}</div>
+                                {c.email && (
+                                  <div className="text-xs text-gray-400">{c.email}</div>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={creatorEmail}
+                        onChange={(e) => setCreatorEmail(e.target.value)}
+                        placeholder="creator@example.com"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={creatorPhone}
+                        onChange={(e) => setCreatorPhone(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        Address
+                      </label>
+                      <input
+                        type="text"
+                        value={creatorAddress}
+                        onChange={(e) => setCreatorAddress(e.target.value)}
+                        placeholder="123 Creator Ave, City, State 12345"
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Start Date */}
