@@ -104,165 +104,250 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-xl border border-gray-200 min-h-full flex flex-col" style={{ fontFamily: 'Georgia, Times New Roman, serif' }}>
-      {/* Paper texture effect */}
-      <div className="p-10 flex-1 flex flex-col">
-        {/* Header with decorative line */}
-        <div className="text-center mb-8">
-          <div className="w-24 h-1 bg-gray-800 mx-auto mb-6"></div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-wide mb-2">
-            CREATOR AGREEMENT
-          </h1>
-          <p className="text-sm text-gray-500 italic">Content Creation Contract</p>
-          <div className="w-24 h-1 bg-gray-800 mx-auto mt-6"></div>
+    <div 
+      className="bg-white min-h-full flex flex-col relative"
+      style={{ 
+        fontFamily: '"Times New Roman", Times, Georgia, serif',
+        boxShadow: '0 0 20px rgba(0,0,0,0.1), inset 0 0 80px rgba(0,0,0,0.02)'
+      }}
+    >
+      {/* Legal document border */}
+      <div className="absolute inset-4 border-2 border-gray-300 pointer-events-none"></div>
+      <div className="absolute inset-5 border border-gray-200 pointer-events-none"></div>
+      
+      {/* Document content */}
+      <div className="p-12 flex-1 flex flex-col relative z-10">
+        {/* Confidential watermark */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-100 text-6xl font-bold rotate-[-30deg] pointer-events-none select-none tracking-[0.3em] opacity-30">
+          AGREEMENT
         </div>
 
-        {/* Contract intro paragraph */}
-        <p className="text-gray-700 leading-relaxed mb-8 text-center text-sm">
-          This Agreement ("Agreement") is entered into as of <span className="font-semibold">{formatDate(contractStartDate)}</span>,
-          by and between the parties identified below.
-        </p>
+        {/* Document Header */}
+        <div className="text-center mb-10 relative">
+          <div className="flex justify-center items-center gap-4 mb-4">
+            <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-gray-400 to-gray-600"></div>
+            <div className="text-gray-400 text-sm tracking-[0.2em]">LEGAL DOCUMENT</div>
+            <div className="flex-1 h-[2px] bg-gradient-to-l from-transparent via-gray-400 to-gray-600"></div>
+          </div>
+          
+          <h1 className="text-2xl font-bold text-gray-900 tracking-[0.15em] uppercase mb-2">
+            CONTENT CREATOR AGREEMENT
+          </h1>
+          <div className="text-sm text-gray-600 tracking-wide">
+            Independent Contractor Services Contract
+          </div>
+          
+          <div className="flex justify-center items-center gap-4 mt-4">
+            <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-gray-400 to-gray-600"></div>
+            <div className="w-3 h-3 border-2 border-gray-400 rotate-45"></div>
+            <div className="flex-1 h-[2px] bg-gradient-to-l from-transparent via-gray-400 to-gray-600"></div>
+          </div>
+        </div>
 
-        {/* Parties Section */}
-        <div className="grid grid-cols-2 gap-8 mb-8 border-t border-b border-gray-200 py-6">
-          {/* Company */}
-          <div>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Company ("Client")</h3>
-            <div className="space-y-1">
-              <p className="text-gray-900 font-semibold text-lg">{companyName || '[Company Name]'}</p>
+        {/* Preamble */}
+        <div className="mb-8 text-justify leading-relaxed text-gray-800">
+          <p className="text-sm">
+            <strong>THIS AGREEMENT</strong> (the "Agreement") is made and entered into as of{' '}
+            <span className="underline font-semibold">{formatDate(contractStartDate)}</span>{' '}
+            (the "Effective Date"), by and between the parties identified herein, each referred to individually 
+            as a "Party" and collectively as the "Parties."
+          </p>
+        </div>
+
+        {/* Recitals */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4 border-b border-gray-300 pb-2">
+            RECITALS
+          </h2>
+          <p className="text-sm text-gray-700 leading-relaxed text-justify">
+            <strong>WHEREAS</strong>, the Company desires to engage the Creator to provide content creation services; and{' '}
+            <strong>WHEREAS</strong>, the Creator desires to provide such services to the Company subject to the terms and 
+            conditions set forth herein; <strong>NOW, THEREFORE</strong>, in consideration of the mutual covenants and 
+            agreements hereinafter set forth and for other good and valuable consideration, the receipt and sufficiency 
+            of which are hereby acknowledged, the Parties agree as follows:
+          </p>
+        </div>
+
+        {/* Article I: Parties */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4 border-b border-gray-300 pb-2">
+            ARTICLE I — PARTIES TO THE AGREEMENT
+          </h2>
+          
+          <div className="grid grid-cols-2 gap-8">
+            {/* Company */}
+            <div className="border-l-4 border-gray-800 pl-4">
+              <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Section 1.1 — The Company</div>
+              <div className="text-gray-900 font-bold">{companyName || '[COMPANY NAME]'}</div>
               {companyInfo?.address && (
-                <p className="text-gray-600 text-sm">{companyInfo.address}</p>
+                <div className="text-sm text-gray-600 mt-1">{companyInfo.address}</div>
               )}
               {companyInfo?.email && (
-                <p className="text-gray-600 text-sm">{companyInfo.email}</p>
+                <div className="text-sm text-gray-600">Email: {companyInfo.email}</div>
               )}
               {companyInfo?.phone && (
-                <p className="text-gray-600 text-sm">{companyInfo.phone}</p>
+                <div className="text-sm text-gray-600">Tel: {companyInfo.phone}</div>
               )}
+              <div className="text-xs text-gray-500 mt-2 italic">(hereinafter referred to as "Company" or "Client")</div>
             </div>
-          </div>
 
-          {/* Creator */}
-          <div>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Creator ("Contractor")</h3>
-            <div className="space-y-1">
-              <p className="text-gray-900 font-semibold text-lg">{creatorName || '[Creator Name]'}</p>
+            {/* Creator */}
+            <div className="border-l-4 border-gray-800 pl-4">
+              <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Section 1.2 — The Creator</div>
+              <div className="text-gray-900 font-bold">{creatorName || '[CREATOR NAME]'}</div>
               {creatorInfo?.address && (
-                <p className="text-gray-600 text-sm">{creatorInfo.address}</p>
+                <div className="text-sm text-gray-600 mt-1">{creatorInfo.address}</div>
               )}
               {creatorInfo?.email && (
-                <p className="text-gray-600 text-sm">{creatorInfo.email}</p>
+                <div className="text-sm text-gray-600">Email: {creatorInfo.email}</div>
               )}
               {creatorInfo?.phone && (
-                <p className="text-gray-600 text-sm">{creatorInfo.phone}</p>
+                <div className="text-sm text-gray-600">Tel: {creatorInfo.phone}</div>
               )}
+              <div className="text-xs text-gray-500 mt-2 italic">(hereinafter referred to as "Creator" or "Contractor")</div>
             </div>
           </div>
         </div>
 
-        {/* Contract Period */}
-        <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-100">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Contract Period</h3>
-          <div className="flex gap-8">
-            <div>
-              <span className="text-sm text-gray-500">Effective Date: </span>
-              <span className="text-gray-900 font-medium">{formatDate(contractStartDate)}</span>
-            </div>
-            <div>
-              <span className="text-sm text-gray-500">End Date: </span>
-              <span className="text-gray-900 font-medium">
-                {contractEndDate === 'Indefinite' ? 'Ongoing (No fixed end date)' : formatDate(contractEndDate)}
-              </span>
-            </div>
+        {/* Article II: Term */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4 border-b border-gray-300 pb-2">
+            ARTICLE II — TERM OF AGREEMENT
+          </h2>
+          
+          <div className="space-y-3 text-sm text-gray-700">
+            <p>
+              <strong>2.1 Effective Date.</strong> This Agreement shall become effective on{' '}
+              <span className="underline">{formatDate(contractStartDate)}</span>.
+            </p>
+            <p>
+              <strong>2.2 Term.</strong> This Agreement shall remain in effect{' '}
+              {contractEndDate === 'Indefinite' ? (
+                <span>indefinitely until terminated by either Party in accordance with the provisions herein.</span>
+              ) : (
+                <span>until <span className="underline">{formatDate(contractEndDate)}</span>, unless earlier terminated in accordance with the provisions herein.</span>
+              )}
+            </p>
           </div>
         </div>
 
-        {/* Payment Structure */}
+        {/* Article III: Compensation */}
         {paymentStructureName && (
-          <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-100">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Compensation</h3>
-            <p className="text-gray-900 font-medium">{paymentStructureName}</p>
+          <div className="mb-8">
+            <h2 className="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4 border-b border-gray-300 pb-2">
+              ARTICLE III — COMPENSATION
+            </h2>
+            
+            <p className="text-sm text-gray-700">
+              <strong>3.1 Payment Structure.</strong> The Creator shall be compensated in accordance with the 
+              following payment structure: <span className="font-semibold underline">{paymentStructureName}</span>.
+              Specific payment terms, rates, and schedules are as detailed in Schedule A attached hereto.
+            </p>
           </div>
         )}
 
-        {/* Terms & Conditions */}
+        {/* Article IV: Terms & Conditions */}
         {processedNotes && (
           <div className="flex-1 mb-8">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 pb-2 border-b border-gray-200">
-              Terms & Conditions
-            </h3>
-            <div className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm">
+            <h2 className="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4 border-b border-gray-300 pb-2">
+              ARTICLE {paymentStructureName ? 'IV' : 'III'} — TERMS AND CONDITIONS
+            </h2>
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap text-justify">
               {processedNotes}
             </div>
           </div>
         )}
 
-        {/* Signature Section */}
-        <div className="mt-auto pt-8 border-t-2 border-gray-800">
-          <p className="text-center text-sm text-gray-500 mb-8 italic">
-            IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
-          </p>
+        {/* Signature Block */}
+        <div className="mt-auto pt-10 border-t-2 border-gray-800">
+          <div className="text-center mb-8">
+            <p className="text-sm text-gray-700 italic">
+              <strong>IN WITNESS WHEREOF</strong>, the Parties have executed this Agreement as of the Effective Date 
+              first written above, each by their duly authorized representative.
+            </p>
+          </div>
           
-          <div className="grid grid-cols-2 gap-12">
+          <div className="grid grid-cols-2 gap-16">
             {/* Company Signature */}
             <div>
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">For the Company</h4>
-              {companySignature?.signatureData ? (
-                <div>
-                  <div className="mb-3 border-b-2 border-gray-800 pb-2">
-                    <img 
-                      src={companySignature.signatureData} 
-                      alt="Company Signature" 
-                      className="max-w-full h-auto max-h-16"
-                    />
-                  </div>
-                  <p className="text-gray-900 font-medium">{companySignature.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Date: {companySignature.signedAt.toDate().toLocaleDateString()}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <div className="h-16 border-b-2 border-gray-400 mb-2"></div>
-                  <p className="text-gray-500 text-sm">Authorized Signatory</p>
-                  <p className="text-gray-400 text-sm mt-1">Date: _______________</p>
-                </div>
-              )}
+              <div className="text-xs text-gray-500 uppercase tracking-wider mb-6 font-bold">
+                THE COMPANY:
+              </div>
+              <div className="space-y-4">
+                {companySignature?.signatureData ? (
+                  <>
+                    <div className="border-b-2 border-gray-900 pb-1">
+                      <img 
+                        src={companySignature.signatureData} 
+                        alt="Company Signature" 
+                        className="max-w-full h-auto max-h-12"
+                      />
+                    </div>
+                    <div className="text-sm">
+                      <div className="font-bold text-gray-900">{companySignature.name}</div>
+                      <div className="text-gray-600">Authorized Representative</div>
+                      <div className="text-gray-500 text-xs mt-1">
+                        Signed: {companySignature.signedAt.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-12 border-b-2 border-gray-400"></div>
+                    <div className="text-sm text-gray-500">
+                      <div>Signature</div>
+                      <div className="mt-4 pt-2 border-t border-gray-300">Name: _______________________</div>
+                      <div className="mt-2">Title: ________________________</div>
+                      <div className="mt-2">Date: ________________________</div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Creator Signature */}
             <div>
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">For the Creator</h4>
-              {creatorSignature?.signatureData ? (
-                <div>
-                  <div className="mb-3 border-b-2 border-gray-800 pb-2">
-                    <img 
-                      src={creatorSignature.signatureData} 
-                      alt="Creator Signature" 
-                      className="max-w-full h-auto max-h-16"
-                    />
-                  </div>
-                  <p className="text-gray-900 font-medium">{creatorSignature.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Date: {creatorSignature.signedAt.toDate().toLocaleDateString()}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <div className="h-16 border-b-2 border-gray-400 mb-2"></div>
-                  <p className="text-gray-500 text-sm">{creatorName || 'Creator'}</p>
-                  <p className="text-gray-400 text-sm mt-1">Date: _______________</p>
-                </div>
-              )}
+              <div className="text-xs text-gray-500 uppercase tracking-wider mb-6 font-bold">
+                THE CREATOR:
+              </div>
+              <div className="space-y-4">
+                {creatorSignature?.signatureData ? (
+                  <>
+                    <div className="border-b-2 border-gray-900 pb-1">
+                      <img 
+                        src={creatorSignature.signatureData} 
+                        alt="Creator Signature" 
+                        className="max-w-full h-auto max-h-12"
+                      />
+                    </div>
+                    <div className="text-sm">
+                      <div className="font-bold text-gray-900">{creatorSignature.name}</div>
+                      <div className="text-gray-600">Creator / Independent Contractor</div>
+                      <div className="text-gray-500 text-xs mt-1">
+                        Signed: {creatorSignature.signedAt.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-12 border-b-2 border-gray-400"></div>
+                    <div className="text-sm text-gray-500">
+                      <div>Signature</div>
+                      <div className="mt-4 pt-2 border-t border-gray-300">Name: {creatorName || '_______________________'}</div>
+                      <div className="mt-2">Date: ________________________</div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 pt-4 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-400">
-            Page 1 of 1 • Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
+        {/* Document Footer */}
+        <div className="mt-10 pt-4 border-t border-gray-300 flex justify-between items-center text-xs text-gray-400">
+          <div>Document ID: {Math.random().toString(36).substring(2, 10).toUpperCase()}</div>
+          <div>Page 1 of 1</div>
+          <div>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
       </div>
     </div>
