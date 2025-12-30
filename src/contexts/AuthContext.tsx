@@ -115,19 +115,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('ℹ️ No redirect result (normal page load)');
         }
       } catch (error: any) {
-        console.error('❌ Google sign-in redirect failed:', error);
+        console.error('❌ Google sign-in redirect check error:', error);
         console.error('Error code:', error.code);
         console.error('Error message:', error.message);
         
-        // Show user-friendly error
+        // Handle specific errors gracefully
         if (error.code === 'auth/popup-blocked') {
           alert('Popup was blocked. Please allow popups for this site.');
         } else if (error.code === 'auth/unauthorized-domain') {
           alert('This domain is not authorized for Google sign-in. Please contact support.');
         } else if (error.code === 'auth/cancelled-popup-request') {
           console.log('User cancelled the sign-in');
+        } else if (
+          error.message?.includes('missing initial state') ||
+          error.message?.includes('sessionStorage is inaccessible') ||
+          error.code === 'auth/missing-or-invalid-nonce'
+        ) {
+          // This happens in storage-partitioned environments (Safari, Firefox strict mode)
+          // or when sessionStorage was cleared. Just treat it as a normal page load.
+          console.log('ℹ️ Redirect state lost (storage partitioned or cleared) - treating as normal page load');
+          // Don't show an error to the user - they can just sign in again with popup mode
         } else {
-          alert(`Sign-in failed: ${error.message}. Please try again.`);
+          // For other errors, log but don't alert on page load - it's disruptive
+          console.warn('⚠️ Redirect result check failed, user can sign in again:', error.message);
         }
       } finally {
         // Clear the lock after a short delay
