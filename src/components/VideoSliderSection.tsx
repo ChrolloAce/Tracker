@@ -161,7 +161,7 @@ const VideoCard: React.FC<{
             src={video.thumbnail}
             alt={video.title || 'Video'}
             className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => {
+            onError={() => {
               console.error('❌ Failed to load thumbnail:', video.thumbnail?.substring(0, 100));
               setImageError(true);
             }}
