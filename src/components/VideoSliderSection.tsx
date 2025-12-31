@@ -37,6 +37,11 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
   console.log('🎬 VideoSlider received:', videos.length, 'videos, showing top', sortedVideos.length);
   if (sortedVideos.length > 0) {
     console.log('🎬 Top video:', sortedVideos[0]?.title || sortedVideos[0]?.caption, '-', sortedVideos[0]?.views, 'views');
+    console.log('🖼️ Top video thumbnail URL:', sortedVideos[0]?.thumbnail);
+    // Log first 3 thumbnail URLs for debugging
+    sortedVideos.slice(0, 3).forEach((v, i) => {
+      console.log(`🖼️ Video ${i + 1} thumbnail:`, v.thumbnail ? v.thumbnail.substring(0, 100) + '...' : 'MISSING');
+    });
   }
 
   const getPlatformIcon = (platform: string) => {
@@ -156,7 +161,11 @@ const VideoCard: React.FC<{
             src={video.thumbnail}
             alt={video.title || 'Video'}
             className="absolute inset-0 w-full h-full object-cover"
-            onError={() => setImageError(true)}
+            onError={(e) => {
+              console.error('❌ Failed to load thumbnail:', video.thumbnail?.substring(0, 100));
+              setImageError(true);
+            }}
+            onLoad={() => console.log('✅ Loaded thumbnail for:', video.title?.substring(0, 30))}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
