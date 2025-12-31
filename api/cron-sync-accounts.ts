@@ -506,7 +506,8 @@ export default async function handler(
               );
               console.log(`🖼️ Uploaded thumbnail for ${video.videoId}`);
             } catch (error) {
-              console.warn(`⚠️ Failed to upload thumbnail for ${video.videoId}, using original URL`);
+              console.warn(`⚠️ Failed to upload thumbnail for ${video.videoId}, leaving empty (CDN URLs expire)`);
+              uploadedThumbnail = ''; // NEVER use CDN URL - they expire!
             }
           }
           
@@ -821,16 +822,16 @@ async function downloadAndUploadThumbnail(
     const response = await fetch(thumbnailUrl, fetchOptions);
     
     if (!response.ok) {
-      console.warn(`⚠️ Failed to download thumbnail (${response.status}), using original URL`);
-      return thumbnailUrl;
+      console.warn(`⚠️ Failed to download thumbnail (${response.status}), returning empty (CDN URLs expire)`);
+      return ''; // NEVER return CDN URL - they expire!
     }
     
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
     if (buffer.length < 100) {
-      console.warn(`⚠️ Thumbnail too small (${buffer.length} bytes), using original URL`);
-      return thumbnailUrl;
+      console.warn(`⚠️ Thumbnail too small (${buffer.length} bytes), returning empty`);
+      return ''; // NEVER return CDN URL - they expire!
     }
     
     const contentType = response.headers.get('content-type') || 'image/jpeg';
@@ -859,7 +860,7 @@ async function downloadAndUploadThumbnail(
     return publicUrl;
   } catch (error) {
     console.error(`❌ Failed to upload thumbnail:`, error);
-    return thumbnailUrl; // Fallback to original URL
+    return ''; // NEVER return CDN URL - they expire! Will retry on next sync.
   }
 }
 

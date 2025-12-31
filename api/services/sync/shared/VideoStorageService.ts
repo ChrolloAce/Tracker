@@ -68,6 +68,7 @@ export class VideoStorageService {
         if (!isFirebaseUrl) {
           try {
             // Use timeout wrapper to prevent hanging on slow downloads
+            // IMPORTANT: On timeout/failure, use empty string - NEVER use CDN URLs (they expire!)
             firebaseThumbnailUrl = await withTimeout(
               ImageUploadService.downloadAndUpload(
                 video.thumbnail,
@@ -76,22 +77,23 @@ export class VideoStorageService {
                 'thumbnails'
               ),
               THUMBNAIL_TIMEOUT_MS,
-              video.thumbnail // Fallback to original URL on timeout
+              '' // EMPTY on timeout - CDN URLs expire, don't save them!
             );
             
-            if (firebaseThumbnailUrl === video.thumbnail) {
-              console.log(`    ⚠️ [${account.platform.toUpperCase()}] Thumbnail timeout for ${video.videoId}, using original URL`);
+            if (!firebaseThumbnailUrl) {
+              console.log(`    ⚠️ [${account.platform.toUpperCase()}] Thumbnail timeout for ${video.videoId}, leaving empty (CDN URLs expire)`);
             }
           } catch (thumbError) {
             console.error(`    ❌ [${account.platform.toUpperCase()}] Thumbnail failed for ${video.videoId}:`, (thumbError as Error).message);
-            firebaseThumbnailUrl = video.thumbnail; // Fallback to original URL
+            firebaseThumbnailUrl = ''; // EMPTY on error - CDN URLs expire, don't save them!
           }
         } else {
           // Already a Firebase URL (e.g. from platform service)
           firebaseThumbnailUrl = video.thumbnail;
         }
       } else {
-        firebaseThumbnailUrl = video.thumbnail || ''; // Use whatever we have
+        // No valid URL provided
+        firebaseThumbnailUrl = '';
       }
 
       // ==================== DETERMINISTIC IDs + NO DUPLICATES ====================

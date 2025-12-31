@@ -129,17 +129,9 @@ export class ImageUploadService {
     } catch (error) {
       console.error('❌ Failed to download/upload image:', error);
       
-      // For Instagram and TikTok, throw error (URLs expire quickly)
-      if (imageUrl.includes('cdninstagram') || 
-          imageUrl.includes('fbcdn') || 
-          imageUrl.includes('tiktokcdn')) {
-        console.log(`🚫 Instagram/TikTok CDN URL detected, throwing error (URLs expire quickly)`);
-        throw error;
-      }
-      
-      // For other platforms, return original URL as fallback
-      console.log(`📷 Using original URL as fallback for non-CDN platform`);
-      return imageUrl;
+      // ALL CDN URLs expire (Instagram, TikTok, YouTube, Twitter) - NEVER use as fallback
+      console.log(`🚫 Image download failed - returning empty (CDN URLs expire, will retry later)`);
+      throw error;
     }
   }
 }
