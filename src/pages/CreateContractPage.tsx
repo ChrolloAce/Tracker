@@ -1,12 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Save, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
+
+// Template variables that can be inserted into contracts
+const TEMPLATE_VARIABLES = [
+  { key: '{{COMPANY_NAME}}', label: 'Company Name', description: 'Auto-filled from Company section' },
+  { key: '{{COMPANY_EMAIL}}', label: 'Company Email', description: 'Auto-filled from Company section' },
+  { key: '{{COMPANY_PHONE}}', label: 'Company Phone', description: 'Auto-filled from Company section' },
+  { key: '{{CREATOR_NAME}}', label: 'Creator Name', description: 'Auto-filled from selected creator' },
+  { key: '{{START_DATE}}', label: 'Start Date', description: 'Contract start date' },
+  { key: '{{END_DATE}}', label: 'End Date', description: 'Contract end date (if set)' },
+  { key: '{{PAYMENT_STRUCTURE}}', label: 'Payment Structure', description: 'Payment structure name' },
+  { key: '{{TODAY_DATE}}', label: 'Today\'s Date', description: 'Current date when viewed' },
+  { key: '{{SIGNATURE_DATE}}', label: 'Signature Date', description: 'Date to be filled when signing', fillableBy: 'both' },
+  { key: '{{CUSTOM_DATE}}', label: 'Custom Date', description: 'Date field to be filled in', fillableBy: 'both' },
+  { key: '{{CUSTOM_TEXT}}', label: 'Custom Text', description: 'Text field to be filled in', fillableBy: 'both' },
+  { key: '{{CUSTOM_AMOUNT}}', label: 'Custom Amount', description: 'Amount field to be filled in', fillableBy: 'both' },
+];
 
 interface CreatorOption {
   userId: string;
@@ -36,6 +52,45 @@ const CreateContractPage: React.FC = () => {
   const [templateDescription, setTemplateDescription] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [showVariablesDropdown, setShowVariablesDropdown] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowVariablesDropdown(false);
+      }
+    };
+
+    if (showVariablesDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showVariablesDropdown]);
+
+  // Insert a variable at the current cursor position
+  const insertVariable = (variable: string) => {
+    if (textareaRef.current) {
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      const newText = contractNotes.substring(0, start) + variable + contractNotes.substring(end);
+      setContractNotes(newText);
+      // Reset cursor position after the inserted variable
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(start + variable.length, start + variable.length);
+        }
+      }, 0);
+    } else {
+      setContractNotes(contractNotes + variable);
+    }
+    setShowVariablesDropdown(false);
+  };
 
   // Generate storage key for the draft
   const getDraftKey = () => {
@@ -297,12 +352,12 @@ const CreateContractPage: React.FC = () => {
               
               <div className="space-y-4">
                 {/* Company Section */}
-                <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 text-xs font-bold">B</span>
+                <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">1</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Company</span>
+                    <span className="text-sm font-semibold text-gray-900">Company Details</span>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Company Name *</label>
@@ -311,7 +366,7 @@ const CreateContractPage: React.FC = () => {
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       placeholder="Your company name"
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -322,7 +377,7 @@ const CreateContractPage: React.FC = () => {
                         value={companyEmail}
                         onChange={(e) => setCompanyEmail(e.target.value)}
                         placeholder="company@example.com"
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                       />
                     </div>
                     <div>
@@ -332,14 +387,15 @@ const CreateContractPage: React.FC = () => {
                         value={companyPhone}
                         onChange={(e) => setCompanyPhone(e.target.value)}
                         placeholder="+1 (555) 123-4567"
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                {/* Contract Title */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Contract Title *
                   </label>
                   <input
@@ -347,17 +403,17 @@ const CreateContractPage: React.FC = () => {
                     value={contractTitle}
                     onChange={(e) => setContractTitle(e.target.value)}
                     placeholder="e.g., Content Creation Agreement"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                   />
                 </div>
 
                 {/* Creator Section */}
-                <div className="p-4 bg-emerald-50/50 rounded-lg border border-emerald-200/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
-                      <span className="text-emerald-600 text-xs font-bold">C</span>
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
+                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">2</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Creator</span>
+                    <span className="text-sm font-semibold text-gray-900">Creator</span>
                   </div>
                   {loadingCreators ? (
                     <div className="text-sm text-gray-500">Loading creators...</div>
@@ -367,7 +423,7 @@ const CreateContractPage: React.FC = () => {
                     <select
                       value={selectedCreatorId}
                       onChange={(e) => setSelectedCreatorId(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                     >
                       <option value="">Choose a creator...</option>
                       {creators.map((creator) => (
@@ -380,29 +436,29 @@ const CreateContractPage: React.FC = () => {
                 </div>
 
                 {/* Payment Structure */}
-                <div className="p-4 bg-amber-50/50 rounded-lg border border-amber-200/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
-                      <span className="text-amber-600 text-xs font-bold">$</span>
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
+                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">3</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Payment Structure <span className="text-gray-400">(Optional)</span></span>
+                    <span className="text-sm font-semibold text-gray-900">Payment Structure <span className="text-gray-400 font-normal">(Optional)</span></span>
                   </div>
                   <input
                     type="text"
                     value={paymentStructureName}
                     onChange={(e) => setPaymentStructureName(e.target.value)}
                     placeholder="e.g., 'Standard Rate', 'Premium Package'"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                   />
                 </div>
 
                 {/* Contract Period */}
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-gray-600 text-xs font-bold">📅</span>
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
+                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">4</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Contract Period</span>
+                    <span className="text-sm font-semibold text-gray-900">Contract Period</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -413,7 +469,7 @@ const CreateContractPage: React.FC = () => {
                         type="date"
                         value={contractStartDate}
                         onChange={(e) => setContractStartDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                       />
                     </div>
                     <div>
@@ -424,7 +480,7 @@ const CreateContractPage: React.FC = () => {
                         type="date"
                         value={contractEndDate}
                         onChange={(e) => setContractEndDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
                       />
                     </div>
                   </div>
@@ -439,26 +495,88 @@ const CreateContractPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowChangeTemplateModal(true)}
-                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     Change Template
                   </button>
                   <button
                     onClick={() => setShowSaveTemplateModal(true)}
                     disabled={!contractNotes.trim()}
-                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Save as Template
                   </button>
                 </div>
               </div>
               
+              {/* Template Variables Toolbar */}
+              <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-600">Insert Variable:</span>
+                    <div className="relative" ref={dropdownRef}>
+                      <button
+                        onClick={() => setShowVariablesDropdown(!showVariablesDropdown)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add Variable
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                      
+                      {showVariablesDropdown && (
+                        <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-80 overflow-y-auto">
+                          <div className="p-2 border-b border-gray-100">
+                            <p className="text-[10px] text-gray-500">Click a variable to insert it at cursor position</p>
+                          </div>
+                          <div className="p-1">
+                            {TEMPLATE_VARIABLES.map((variable) => (
+                              <button
+                                key={variable.key}
+                                onClick={() => insertVariable(variable.key)}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors group"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-mono text-gray-900">{variable.key}</span>
+                                  {variable.fillableBy && (
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">Fillable</span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-0.5">{variable.description}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-gray-400">
+                    Variables will be auto-filled or available for signing parties
+                  </div>
+                </div>
+              </div>
+              
               <textarea
+                ref={textareaRef}
                 value={contractNotes}
                 onChange={(e) => setContractNotes(e.target.value)}
-                placeholder="Enter contract terms and conditions..."
-                className="w-full h-96 px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none font-mono text-sm"
+                placeholder="Enter contract terms and conditions...&#10;&#10;Example: This agreement is entered into on {{TODAY_DATE}} between {{COMPANY_NAME}} and {{CREATOR_NAME}}..."
+                className="w-full h-96 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white resize-none font-mono text-sm"
               />
+              
+              {/* Variable Legend */}
+              {contractNotes.includes('{{') && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-[10px] font-medium text-gray-600 mb-2">Variables detected in your contract:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {TEMPLATE_VARIABLES.filter(v => contractNotes.includes(v.key)).map(v => (
+                      <span key={v.key} className="text-[10px] px-2 py-1 bg-white border border-gray-200 rounded font-mono text-gray-700">
+                        {v.key}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

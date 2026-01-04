@@ -44,54 +44,80 @@ export class TemplateService {
     contractStartDate?: string,
     contractEndDate?: string
   ): Promise<ContractTemplate> {
-    if (!organizationId) {
-      throw new Error('Organization ID is required');
+    // Validation
+    if (!organizationId || typeof organizationId !== 'string') {
+      console.error('[TemplateService] Invalid organizationId:', organizationId);
+      throw new Error('Organization ID is required and must be a string');
     }
-    if (!createdBy) {
-      throw new Error('Created by user ID is required');
+    if (!createdBy || typeof createdBy !== 'string') {
+      console.error('[TemplateService] Invalid createdBy:', createdBy);
+      throw new Error('Created by user ID is required and must be a string');
     }
-    if (!name || !name.trim()) {
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      console.error('[TemplateService] Invalid name:', name);
       throw new Error('Template name is required');
     }
 
     const templateId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = Timestamp.now();
 
-    const template: ContractTemplate = {
+    // Build the template object with only defined values
+    const template: Record<string, any> = {
       id: templateId,
       name: name.trim(),
       description: description || '',
       terms: terms || '',
       source: 'saved',
-      organizationId,
-      createdBy,
+      organizationId: organizationId,
+      createdBy: createdBy,
       createdAt: now,
       updatedAt: now,
-      companyName: companyName || undefined,
-      contractStartDate: contractStartDate || undefined,
-      contractEndDate: contractEndDate || undefined,
     };
 
-    // Remove undefined values to avoid Firestore errors
-    const cleanTemplate = Object.fromEntries(
-      Object.entries(template).filter(([_, v]) => v !== undefined)
-    ) as ContractTemplate;
+    // Only add optional fields if they have values
+    if (companyName && companyName.trim()) {
+      template.companyName = companyName.trim();
+    }
+    if (contractStartDate && contractStartDate.trim()) {
+      template.contractStartDate = contractStartDate.trim();
+    }
+    if (contractEndDate && contractEndDate.trim()) {
+      template.contractEndDate = contractEndDate.trim();
+    }
 
-    console.log('[TemplateService] Saving template:', {
+    console.log('[TemplateService] Preparing to save template:', {
       id: templateId,
-      name: cleanTemplate.name,
+      name: template.name,
       orgId: organizationId,
-      createdBy,
+      createdBy: createdBy,
+      fieldCount: Object.keys(template).length,
+      fields: Object.keys(template),
     });
 
     try {
       const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);
-      await setDoc(templateRef, cleanTemplate);
+      console.log('[TemplateService] Writing to Firestore collection:', this.TEMPLATES_COLLECTION);
+      await setDoc(templateRef, template);
       console.log('[TemplateService] Template saved successfully:', templateId);
-      return cleanTemplate;
-    } catch (error) {
-      console.error('[TemplateService] Failed to save template:', error);
-      throw error;
+      return template as ContractTemplate;
+    } catch (error: any) {
+      console.error('[TemplateService] Failed to save template:', {
+        error: error,
+        message: error?.message,
+        code: error?.code,
+        templateId,
+        organizationId,
+        createdBy,
+      });
+      
+      // Provide more helpful error messages
+      if (error?.code === 'permission-denied') {
+        throw new Error('Permission denied. Please check that you are signed in and have access to this organization.');
+      } else if (error?.code === 'unavailable') {
+        throw new Error('Firestore is temporarily unavailable. Please try again.');
+      } else {
+        throw new Error(error?.message || 'Failed to save template to database');
+      }
     }
   }
 

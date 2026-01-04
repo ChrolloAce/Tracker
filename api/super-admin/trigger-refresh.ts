@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`   Org: ${orgId}`);
       console.log(`   Project: ${projectId}`);
       console.log(`   Account: ${accountId}`);
-      
+
       // Verify account exists
       const accountDoc = await adminDb
         .collection('organizations').doc(orgId)
@@ -93,8 +93,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Check if account is active
       if (accountData?.isActive === false) {
         console.warn(`   ⚠️ Account is INACTIVE - will still process but this may be why it wasn't refreshing`);
-      }
-      
+    }
+
       // Create a job directly in syncQueue for this single account
       const jobRef = adminDb.collection('syncQueue').doc();
       const isStaticAccount = accountData?.creatorType === 'static' || accountData?.creatorType === 'manual';
