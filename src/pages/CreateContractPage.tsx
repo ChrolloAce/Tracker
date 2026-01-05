@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
 import CreatorLinksService from '../services/CreatorLinksService';
+import OrganizationService from '../services/OrganizationService';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
 
 // Template variables that can be inserted into contracts
@@ -148,18 +149,61 @@ const CreateContractPage: React.FC = () => {
 
     setLoadingCreators(true);
     try {
-      // Get ALL creators from this project directly
-      const projectCreators = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+      // Fetch BOTH project creators AND organization members with role 'creator' in parallel
+      const [projectCreators, allMembers] = await Promise.all([
+        CreatorLinksService.getAllCreators(currentOrgId, currentProjectId),
+        OrganizationService.getOrgMembers(currentOrgId)
+      ]);
       
-      // Map to the format expected by the dropdown (same as OrgMember structure)
-      const creatorMembers = projectCreators.map(creator => ({
-        userId: creator.id,
-        displayName: creator.displayName,
-        email: creator.email,
-        role: 'creator' as const,
-      }));
+      // 1. Get creators from project profiles (linked to accounts)
+      const projectCreatorMap = new Map(
+        projectCreators.map(creator => [creator.id, {
+          userId: creator.id,
+          displayName: creator.displayName,
+          email: creator.email,
+        }])
+      );
       
-      setCreators(creatorMembers);
+      // 2. Get creators from org members with role='creator' (may not have project profile yet)
+      const memberCreators = allMembers
+        .filter(member => member.role === 'creator')
+        .map(member => ({
+          userId: member.userId,
+          displayName: member.displayName || member.email || 'Unknown',
+          email: member.email,
+        }));
+      
+      // 3. Merge both lists (members take precedence for display name if both exist)
+      const mergedCreators = new Map<string, CreatorOption>();
+      
+      // First add all project creators
+      projectCreatorMap.forEach((creator, id) => {
+        mergedCreators.set(id, creator);
+      });
+      
+      // Then add/update with member creators (these have more up-to-date info)
+      memberCreators.forEach(creator => {
+        const existing = mergedCreators.get(creator.userId);
+        if (existing) {
+          // Update with member data if available
+          mergedCreators.set(creator.userId, {
+            ...existing,
+            displayName: creator.displayName || existing.displayName,
+            email: creator.email || existing.email,
+          });
+        } else {
+          // Add new creator
+          mergedCreators.set(creator.userId, creator);
+        }
+      });
+      
+      // Convert to array and sort by display name
+      const allCreators = Array.from(mergedCreators.values())
+        .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+      
+      console.log(`[CreateContractPage] Loaded ${allCreators.length} creators (${projectCreators.length} from project, ${memberCreators.length} from org members)`);
+      
+      setCreators(allCreators);
     } catch (error) {
       console.error('Error loading creators:', error);
     } finally {
