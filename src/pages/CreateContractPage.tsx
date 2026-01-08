@@ -7,7 +7,7 @@ import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import OrganizationService from '../services/OrganizationService';
-import { FirestoreDataService } from '../services/FirestoreDataService';
+import FirestoreDataService from '../services/FirestoreDataService';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
 import { TrackedAccount } from '../types/firestore';
 
@@ -177,7 +177,7 @@ const CreateContractPage: React.FC = () => {
         const accounts = await Promise.all(accountPromises);
         
         // Filter out null values
-        setCreatorAccounts(accounts.filter((acc): acc is TrackedAccount => acc !== null));
+        setCreatorAccounts(accounts.filter((acc: TrackedAccount | null): acc is TrackedAccount => acc !== null));
       } catch (error) {
         console.error('Error fetching creator accounts:', error);
         setCreatorAccounts([]);
