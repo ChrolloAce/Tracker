@@ -5,7 +5,7 @@ import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
   Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2,
-  Users, Clock, TrendingUp, BarChart3, X, Pencil, Check
+  Users, Clock, TrendingUp, BarChart3, X, Pencil, Check, ExternalLink
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
@@ -146,6 +146,41 @@ const getTrendPeriodDays = (dateFilter: DateFilterType): number => {
       return 30; // Default to 30 days for custom range
     default:
       return 7;
+  }
+};
+
+// Get the social profile URL for a given platform and username
+const getPlatformProfileUrl = (platform: string, username: string): string => {
+  const cleanUsername = username.replace('@', '');
+  switch (platform.toLowerCase()) {
+    case 'tiktok':
+      return `https://www.tiktok.com/@${cleanUsername}`;
+    case 'instagram':
+      return `https://www.instagram.com/${cleanUsername}`;
+    case 'youtube':
+      return `https://www.youtube.com/@${cleanUsername}`;
+    case 'x':
+    case 'twitter':
+      return `https://x.com/${cleanUsername}`;
+    default:
+      return '#';
+  }
+};
+
+// Get display name for platform (for button text)
+const getPlatformDisplayName = (platform: string): string => {
+  switch (platform.toLowerCase()) {
+    case 'tiktok':
+      return 'TikTok';
+    case 'instagram':
+      return 'Instagram';
+    case 'youtube':
+      return 'YouTube';
+    case 'x':
+    case 'twitter':
+      return 'X';
+    default:
+      return platform;
   }
 };
 
@@ -2425,6 +2460,20 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     </div>
                   </div>
                 </div>
+                
+                {/* View on Platform Button */}
+                <a
+                  href={getPlatformProfileUrl(filteredAccount.platform, filteredAccount.username)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-white/80 hover:text-white transition-all group"
+                >
+                  <PlatformIcon platform={filteredAccount.platform} className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">
+                    View on {getPlatformDisplayName(filteredAccount.platform)}
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                </a>
                 
                 {/* Close Button */}
                 <button

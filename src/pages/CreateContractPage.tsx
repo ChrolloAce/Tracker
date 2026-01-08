@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown, ExternalLink } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import OrganizationService from '../services/OrganizationService';
-import FirestoreDataService from '../services/FirestoreDataService';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
-import { TrackedAccount } from '../types/firestore';
 
 // Template variables that can be inserted into contracts
 const TEMPLATE_VARIABLES = [
@@ -38,8 +36,6 @@ const CreateContractPage: React.FC = () => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [creators, setCreators] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
-  const [creatorAccounts, setCreatorAccounts] = useState<TrackedAccount[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [contractTitle, setContractTitle] = useState('Content Creation Agreement');
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
@@ -147,47 +143,6 @@ const CreateContractPage: React.FC = () => {
     loadCreators();
     loadDefaultTemplate();
   }, [currentOrgId, currentProjectId]);
-
-  // Fetch creator's linked accounts when a creator is selected
-  useEffect(() => {
-    const fetchCreatorAccounts = async () => {
-      if (!currentOrgId || !currentProjectId || !selectedCreatorId) {
-        setCreatorAccounts([]);
-        return;
-      }
-
-      setLoadingAccounts(true);
-      try {
-        // Get linked account IDs for this creator
-        const links = await CreatorLinksService.getCreatorLinkedAccounts(
-          currentOrgId,
-          currentProjectId,
-          selectedCreatorId
-        );
-
-        if (links.length === 0) {
-          setCreatorAccounts([]);
-          return;
-        }
-
-        // Fetch full account details for each linked account
-        const accountPromises = links.map(link =>
-          FirestoreDataService.getTrackedAccount(currentOrgId, currentProjectId, link.accountId)
-        );
-        const accounts = await Promise.all(accountPromises);
-        
-        // Filter out null values
-        setCreatorAccounts(accounts.filter((acc: TrackedAccount | null): acc is TrackedAccount => acc !== null));
-      } catch (error) {
-        console.error('Error fetching creator accounts:', error);
-        setCreatorAccounts([]);
-      } finally {
-        setLoadingAccounts(false);
-      }
-    };
-
-    fetchCreatorAccounts();
-  }, [currentOrgId, currentProjectId, selectedCreatorId]);
 
   const loadCreators = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -329,47 +284,6 @@ const CreateContractPage: React.FC = () => {
   };
 
   const hasUnsavedChanges = contractNotes !== initialContractNotes && contractNotes.trim().length > 0;
-
-  // Helper to build profile URL for different platforms
-  const getProfileUrl = (account: TrackedAccount): string => {
-    const username = account.username.replace('@', '');
-    switch (account.platform) {
-      case 'tiktok':
-        return `https://www.tiktok.com/@${username}`;
-      case 'instagram':
-        return `https://www.instagram.com/${username}`;
-      case 'youtube':
-        return account.youtubeChannelId 
-          ? `https://www.youtube.com/channel/${account.youtubeChannelId}`
-          : `https://www.youtube.com/@${username}`;
-      case 'twitter':
-        return `https://x.com/${username}`;
-      default:
-        return '#';
-    }
-  };
-
-  // Get platform display name
-  const getPlatformName = (platform: string): string => {
-    switch (platform) {
-      case 'tiktok': return 'TikTok';
-      case 'instagram': return 'Instagram';
-      case 'youtube': return 'YouTube';
-      case 'twitter': return 'X';
-      default: return platform;
-    }
-  };
-
-  // Get platform icon/emoji
-  const getPlatformIcon = (platform: string): string => {
-    switch (platform) {
-      case 'tiktok': return '♪';
-      case 'instagram': return '📷';
-      case 'youtube': return '▶';
-      case 'twitter': return '𝕏';
-      default: return '🔗';
-    }
-  };
 
   const handleCreate = async () => {
     if (!currentOrgId || !currentProjectId || !user || !selectedCreatorId) {
@@ -562,46 +476,6 @@ const CreateContractPage: React.FC = () => {
                         </option>
                       ))}
                     </select>
-                  )}
-                  
-                  {/* View on Platform Button(s) */}
-                  {selectedCreatorId && (
-                    <div className="mt-3">
-                      {loadingAccounts ? (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Loading accounts...
-                        </div>
-                      ) : creatorAccounts.length > 0 ? (
-                        <div className="space-y-2">
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Linked Accounts</span>
-                          <div className="flex flex-wrap gap-2">
-                            {creatorAccounts.map((account) => (
-                              <a
-                                key={account.id}
-                                href={getProfileUrl(account)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group flex items-center gap-2 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
-                              >
-                                <span className="text-sm">{getPlatformIcon(account.platform)}</span>
-                                <span className="text-xs font-medium">
-                                  View on {getPlatformName(account.platform)}
-                                </span>
-                                <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
-                              </a>
-                            ))}
-                          </div>
-                          <div className="text-[10px] text-gray-400 mt-1">
-                            @{creatorAccounts.map(a => a.username.replace('@', '')).join(', @')}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400 italic">
-                          No linked social accounts for this creator
-                        </div>
-                      )}
-                    </div>
                   )}
                 </div>
 
