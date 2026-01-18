@@ -177,7 +177,10 @@ export default async function handler(
       console.log(`🔒 Acquired sync lock: ${lockKey}`);
     // ==================== END FIX #1 ====================
 
-    const account = accountDoc.data() as any;
+    const account = {
+      ...accountDoc.data(),
+      id: accountDoc.id  // CRITICAL: Include document ID (not included by Firestore's data())
+    } as any;
     
     console.log(`📊 Account info: @${account.username} (${account.platform})`);
     console.log(`   🔹 Creator Type: ${account.creatorType || 'automatic'}`);
