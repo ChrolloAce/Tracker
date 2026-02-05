@@ -75,17 +75,23 @@ const CreatorPortalPage: React.FC = () => {
 
       setLinkedAccounts(accounts);
 
-      // Load videos from linked accounts
+      // Load all videos for this project
       const allVideos = await FirestoreDataService.getVideos(
         currentOrgId,
         currentProjectId,
         { limitCount: 1000 }
       );
 
-      // Filter videos to only those from linked accounts
-      const filteredVideos = allVideos.filter((video) =>
-        video.trackedAccountId && linkedAccountIds.includes(video.trackedAccountId)
-      );
+      // Filter videos to show:
+      // 1. Videos from linked accounts
+      // 2. Videos directly submitted by this creator (addedBy === user.uid)
+      const filteredVideos = allVideos.filter((video) => {
+        // Video submitted directly by this creator
+        if (video.addedBy === user.uid) return true;
+        // Video from a linked account
+        if (video.trackedAccountId && linkedAccountIds.includes(video.trackedAccountId)) return true;
+        return false;
+      });
 
       setVideos(filteredVideos);
 
@@ -115,25 +121,30 @@ const CreatorPortalPage: React.FC = () => {
     return videos.map(video => {
       const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
       
+      // For directly submitted videos, use video metadata or "You" as uploader
+      const uploaderName = account?.displayName || account?.username || (video as any).uploaderName || 'You';
+      const uploaderHandle = account?.username || (video as any).uploaderHandle || '';
+      
       return {
         id: video.id,
-        url: video.url || '',
-        platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+        url: video.url || video.videoUrl || '',
+        platform: video.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
         thumbnail: video.thumbnail || '',
-        title: video.title || '',
-        caption: video.description || '',
-        uploader: account?.displayName || account?.username || '',
-        uploaderHandle: account?.username || '',
-        uploaderProfilePicture: account?.profilePicture,
+        title: video.title || video.videoTitle || '',
+        caption: video.description || video.caption || '',
+        uploader: uploaderName,
+        uploaderHandle: uploaderHandle,
+        uploaderProfilePicture: account?.profilePicture || (video as any).uploaderProfilePicture,
         followerCount: account?.followerCount,
-        status: video.status === 'archived' ? 'rejected' : 'approved',
+        status: video.status === 'archived' ? 'rejected' : video.status === 'processing' ? 'pending' : 'approved',
+        syncStatus: video.syncStatus,
         views: video.views || 0,
         likes: video.likes || 0,
         comments: video.comments || 0,
         shares: video.shares || 0,
         duration: video.duration || 0,
-        dateSubmitted: video.dateAdded.toDate(),
-        uploadDate: video.uploadDate.toDate(),
+        dateSubmitted: video.dateAdded?.toDate() || new Date(),
+        uploadDate: video.uploadDate?.toDate() || new Date(),
         lastRefreshed: video.lastRefreshed?.toDate(),
         snapshots: []
       };
@@ -170,99 +181,84 @@ const CreatorPortalPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Stats Cards Grid */}
+      {/* Stats Cards Grid - Monotone */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Earnings */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/20 via-emerald-600/10 to-transparent rounded-xl border border-emerald-500/30 p-5 hover:border-emerald-500/50 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all duration-300" />
-          <div className="relative">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-emerald-500/20 rounded-lg p-2.5">
-                <DollarSign className="w-5 h-5 text-emerald-400" />
-              </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <DollarSign className="w-5 h-5 text-gray-300" />
+            </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
-              ${(creatorProfile?.totalEarnings || 0).toFixed(2)}
-            </div>
-            <div className="text-xs text-gray-400">Total Earnings</div>
+            ${(creatorProfile?.totalEarnings || 0).toFixed(2)}
           </div>
+          <div className="text-xs text-gray-500">Total Earnings</div>
         </div>
 
         {/* Total Views */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/20 via-blue-600/10 to-transparent rounded-xl border border-blue-500/30 p-5 hover:border-blue-500/50 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-300" />
-          <div className="relative">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-blue-500/20 rounded-lg p-2.5">
-                <Eye className="w-5 h-5 text-blue-400" />
-              </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <Eye className="w-5 h-5 text-gray-300" />
+            </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
-              {formatNumber(stats.totalViews)}
-            </div>
-            <div className="text-xs text-gray-400">Total Views</div>
+            {formatNumber(stats.totalViews)}
           </div>
+          <div className="text-xs text-gray-500">Total Views</div>
         </div>
 
         {/* Total Likes */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-pink-500/20 via-pink-600/10 to-transparent rounded-xl border border-pink-500/30 p-5 hover:border-pink-500/50 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl group-hover:bg-pink-500/20 transition-all duration-300" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-pink-500/20 rounded-lg p-2.5">
-                <Heart className="w-5 h-5 text-pink-400" />
-              </div>
+        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <Heart className="w-5 h-5 text-gray-300" />
             </div>
-            <div className="text-2xl font-bold text-white mb-0.5">
-              {formatNumber(stats.totalLikes)}
-            </div>
-            <div className="text-xs text-gray-400">Total Likes</div>
           </div>
+          <div className="text-2xl font-bold text-white mb-0.5">
+            {formatNumber(stats.totalLikes)}
+          </div>
+          <div className="text-xs text-gray-500">Total Likes</div>
         </div>
 
         {/* Total Videos */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/20 via-purple-600/10 to-transparent rounded-xl border border-purple-500/30 p-5 hover:border-purple-500/50 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-300" />
-          <div className="relative">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-purple-500/20 rounded-lg p-2.5">
-                <Video className="w-5 h-5 text-purple-400" />
-              </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <Video className="w-5 h-5 text-gray-300" />
+            </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
-              {stats.totalVideos}
-            </div>
-            <div className="text-xs text-gray-400">Total Videos</div>
+            {stats.totalVideos}
           </div>
+          <div className="text-xs text-gray-500">Total Videos</div>
         </div>
 
         {/* Linked Accounts */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-orange-500/20 via-orange-600/10 to-transparent rounded-xl border border-orange-500/30 p-5 hover:border-orange-500/50 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all duration-300" />
-          <div className="relative">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-orange-500/20 rounded-lg p-2.5">
-                <UsersIcon className="w-5 h-5 text-orange-400" />
-              </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <UsersIcon className="w-5 h-5 text-gray-300" />
+            </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
               {linkedAccounts.length}
-            </div>
-            <div className="text-xs text-gray-400">Linked Accounts</div>
           </div>
+          <div className="text-xs text-gray-500">Linked Accounts</div>
         </div>
       </div>
 
-      {/* Payment Info Card */}
+      {/* Payment Info Card - Monotone */}
       {creatorProfile?.paymentInfo && (
-        <div className="bg-zinc-900/60 backdrop-blur border border-white/10 rounded-xl p-5">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-emerald-400" />
+              <DollarSign className="w-5 h-5 text-gray-400" />
               Payment Info
             </h3>
             {creatorProfile.paymentInfo.isPaid && (
-              <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-xs font-medium text-emerald-400">
+              <span className="px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-medium text-gray-300">
                 Paid
               </span>
             )}
@@ -270,31 +266,31 @@ const CreatorPortalPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {creatorProfile.paymentInfo.structure && (
               <div>
-                <p className="text-xs text-gray-400 mb-1">Payment Structure</p>
-                <p className="text-sm text-white">{creatorProfile.paymentInfo.structure}</p>
-              </div>
-            )}
+                <p className="text-xs text-gray-500 mb-1">Payment Structure</p>
+                <p className="text-sm text-gray-200">{creatorProfile.paymentInfo.structure}</p>
+                    </div>
+                      )}
             {creatorProfile.paymentInfo.schedule && (
               <div>
-                <p className="text-xs text-gray-400 mb-1">Payment Schedule</p>
-                <p className="text-sm text-white capitalize">{creatorProfile.paymentInfo.schedule}</p>
-              </div>
+                <p className="text-xs text-gray-500 mb-1">Payment Schedule</p>
+                <p className="text-sm text-gray-200 capitalize">{creatorProfile.paymentInfo.schedule}</p>
+                    </div>
             )}
             {creatorProfile.paymentInfo.notes && (
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Notes</p>
-                <p className="text-sm text-white">{creatorProfile.paymentInfo.notes}</p>
-              </div>
+                <p className="text-xs text-gray-500 mb-1">Notes</p>
+                <p className="text-sm text-gray-200">{creatorProfile.paymentInfo.notes}</p>
+                  </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Recent Videos */}
+      {/* Recent Videos - Monotone */}
       {videoSubmissions.length > 0 ? (
         <div>
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
+            <TrendingUp className="w-5 h-5 text-gray-400" />
             Your Videos
           </h3>
           <VideoSubmissionsTable
@@ -302,26 +298,26 @@ const CreatorPortalPage: React.FC = () => {
           />
         </div>
       ) : (
-        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
           <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No videos yet</h3>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-500 mb-6">
             Submit your first video to start tracking performance
           </p>
           <button
             onClick={() => setShowDirectSubmission(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-emerald-500/25"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl transition-all font-medium"
           >
             <Plus className="w-5 h-5" />
             Submit Videos
           </button>
         </div>
       )}
-
-      {/* Floating Action Button */}
+      
+      {/* Floating Action Button - Monotone */}
       <button
         onClick={() => setShowDirectSubmission(true)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full shadow-2xl shadow-emerald-500/40 flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
+        className="fixed bottom-8 right-8 w-14 h-14 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
         title="Submit Videos"
       >
         <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
