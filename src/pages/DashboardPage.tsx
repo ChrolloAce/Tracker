@@ -46,6 +46,7 @@ import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
+import CreatorPortalPage from '../components/CreatorPortalPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
@@ -929,12 +930,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
         setUserRole(role || 'member');
         
-        // 🎯 AUTO-REDIRECT CREATORS TO CAMPAIGNS TAB (they don't see dashboard)
-        if (role === 'creator' && activeTab === 'dashboard') {
-          console.log('🎯 Creator detected! Redirecting to campaigns tab...');
-          navigate('/campaigns');
-          localStorage.setItem('activeTab', 'campaigns');
-        }
+        // Creators stay on dashboard - they see CreatorPortalPage
+        // No redirect needed anymore - campaigns have been removed
       } catch (error) {
         console.error('Failed to load user role:', error);
         setUserRole('member');
@@ -3049,6 +3046,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
           {activeTab === 'dashboard' && (
+            <>
+              {/* Creator Portal - Show for creator role */}
+              {userRole === 'creator' ? (
+                <CreatorPortalPage />
+              ) : (
             <div>
               {/* Empty State - Show ONLY when absolutely NO accounts AND NO videos exist in org (not just filtered) */}
               {!loadingDashboard && totalAccountsInOrg === 0 && totalVideosInOrg === 0 && (
@@ -3487,7 +3489,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
-            )
+            )}
+            </div>
+              )}
+            </>
           )}
 
           {/* Subscription Tab */}
