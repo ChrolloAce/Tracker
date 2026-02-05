@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Trash2, Check, Loader2, Video, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UrlParserService } from '../services/UrlParserService';
-import AuthenticatedApiService from '../services/AuthenticatedApiService';
+import authenticatedApiService from '../services/AuthenticatedApiService';
 
 // Platform configuration
 const PLATFORMS = [
@@ -174,12 +174,10 @@ export const CreatorDirectVideoSubmission: React.FC<CreatorDirectVideoSubmission
     let successCount = 0;
 
     try {
-      const apiService = new AuthenticatedApiService();
-
       // Submit each video for processing
       for (const video of validVideos) {
         try {
-          await apiService.processVideo(video.url, currentOrgId, currentProjectId);
+          await authenticatedApiService.processVideo(video.url, currentOrgId, currentProjectId);
           successCount++;
         } catch (err: any) {
           console.error(`Failed to submit video: ${video.url}`, err);
@@ -372,7 +370,7 @@ const PlatformSection: React.FC<PlatformSectionProps> = ({
 
       {/* Video Inputs */}
       <div className="space-y-3">
-        {videos.map((video, index) => (
+        {videos.map((video) => (
           <div key={video.id} className="group">
             <div className="flex gap-2">
               <div className="flex-1">

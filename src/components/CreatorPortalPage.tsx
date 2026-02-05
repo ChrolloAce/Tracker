@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Video, Users as UsersIcon, Plus, Link as LinkIcon, Eye, DollarSign, TrendingUp, Heart, MessageCircle } from 'lucide-react';
+import { Video, Users as UsersIcon, Plus, Link as LinkIcon, Eye, DollarSign, TrendingUp, Heart } from 'lucide-react';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
