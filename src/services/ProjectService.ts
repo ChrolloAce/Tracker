@@ -426,6 +426,113 @@ class ProjectService {
       icon: '📁',
     });
   }
+
+  /**
+   * Get projects for a creator (filtered by their assigned projects)
+   */
+  static async getProjectsForCreator(orgId: string, userId: string): Promise<Project[]> {
+    // Get the member document to check assigned projects
+    const memberDoc = await getDoc(doc(db, 'organizations', orgId, 'members', userId));
+    
+    if (!memberDoc.exists()) {
+      console.warn(`⚠️ Member document does not exist for creator ${userId}`);
+      return [];
+    }
+
+    const memberData = memberDoc.data();
+    const creatorProjectIds = memberData?.creatorProjectIds as string[] | undefined;
+
+    // If no specific projects assigned, return empty (creator has no access)
+    if (!creatorProjectIds || creatorProjectIds.length === 0) {
+      console.log(`ℹ️ Creator ${userId} has no assigned projects`);
+      return [];
+    }
+
+    // Get all projects and filter by assigned IDs
+    const allProjects = await this.getProjects(orgId, false);
+    const filteredProjects = allProjects.filter(project => creatorProjectIds.includes(project.id));
+    
+    console.log(`✅ Creator ${userId} has access to ${filteredProjects.length} projects`);
+    return filteredProjects;
+  }
+
+  /**
+   * Assign a creator to specific projects
+   */
+  static async assignCreatorToProjects(
+    orgId: string, 
+    creatorUserId: string, 
+    projectIds: string[]
+  ): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', creatorUserId);
+    
+    await updateDoc(memberRef, {
+      creatorProjectIds: projectIds,
+    });
+    
+    console.log(`✅ Assigned creator ${creatorUserId} to ${projectIds.length} projects`);
+  }
+
+  /**
+   * Add a creator to a single project (append to existing)
+   */
+  static async addCreatorToProject(
+    orgId: string, 
+    creatorUserId: string, 
+    projectId: string
+  ): Promise<void> {
+    const memberDoc = await getDoc(doc(db, 'organizations', orgId, 'members', creatorUserId));
+    
+    if (!memberDoc.exists()) {
+      throw new Error('Creator member document not found');
+    }
+
+    const currentProjectIds = memberDoc.data()?.creatorProjectIds || [];
+    
+    if (!currentProjectIds.includes(projectId)) {
+      await updateDoc(doc(db, 'organizations', orgId, 'members', creatorUserId), {
+        creatorProjectIds: [...currentProjectIds, projectId],
+      });
+      console.log(`✅ Added creator ${creatorUserId} to project ${projectId}`);
+    }
+  }
+
+  /**
+   * Remove a creator from a single project
+   */
+  static async removeCreatorFromProject(
+    orgId: string, 
+    creatorUserId: string, 
+    projectId: string
+  ): Promise<void> {
+    const memberDoc = await getDoc(doc(db, 'organizations', orgId, 'members', creatorUserId));
+    
+    if (!memberDoc.exists()) {
+      throw new Error('Creator member document not found');
+    }
+
+    const currentProjectIds = memberDoc.data()?.creatorProjectIds || [];
+    const updatedProjectIds = currentProjectIds.filter((id: string) => id !== projectId);
+    
+    await updateDoc(doc(db, 'organizations', orgId, 'members', creatorUserId), {
+      creatorProjectIds: updatedProjectIds,
+    });
+    
+    console.log(`✅ Removed creator ${creatorUserId} from project ${projectId}`);
+  }
+
+  /**
+   * Get creator's assigned project IDs
+   */
+  static async getCreatorProjectIds(orgId: string, creatorUserId: string): Promise<string[]> {
+    const memberDoc = await getDoc(doc(db, 'organizations', orgId, 'members', creatorUserId));
+    
+    if (!memberDoc.exists()) {
+      return [];
+    }
+
+    return memberDoc.data()?.creatorProjectIds || [];
+  }
 }
 
 export default ProjectService;

@@ -245,15 +245,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('✅ Final org ID to use:', orgId);
         setCurrentOrgId(orgId);
-
-        // Get or create default project
-        const projectId = await loadOrCreateProject(orgId, user.uid);
-        setCurrentProjectId(projectId);
         
-        // Load user role
+        // Load user role FIRST (needed for project filtering)
         const members = await OrganizationService.getOrgMembers(orgId);
         const member = members.find(m => m.userId === user.uid);
-        setUserRole(member?.role || null);
+        const role = member?.role || null;
+        setUserRole(role);
+
+        // Get or create default project (role-aware)
+        const projectId = await loadOrCreateProject(orgId, user.uid, role);
+        setCurrentProjectId(projectId);
       } else {
         setCurrentOrgId(null);
         setCurrentProjectId(null);
@@ -265,32 +266,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const loadOrCreateProject = async (orgId: string, userId: string): Promise<string> => {
+  const loadOrCreateProject = async (orgId: string, userId: string, role: string | null): Promise<string> => {
     const maxRetries = 3;
     let lastError;
+    const isCreator = role === 'creator';
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Check if user has a last active project
         const lastProjectId = await ProjectService.getActiveProjectId(orgId, userId);
         if (lastProjectId) {
-          const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
-          if (project && !project.isArchived) {
-            return lastProjectId;
+          // For creators, verify they have access to this project
+          if (isCreator) {
+            const creatorProjectIds = await ProjectService.getCreatorProjectIds(orgId, userId);
+            if (creatorProjectIds.includes(lastProjectId)) {
+              const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
+              if (project && !project.isArchived) {
+                return lastProjectId;
+              }
+            }
+          } else {
+            const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
+            if (project && !project.isArchived) {
+              return lastProjectId;
+            }
           }
         }
 
-        // Get all projects
-        const projects = await ProjectService.getProjects(orgId, false);
+        // Get projects (filtered for creators)
+        let projects;
+        if (isCreator) {
+          projects = await ProjectService.getProjectsForCreator(orgId, userId);
+        } else {
+          projects = await ProjectService.getProjects(orgId, false);
+        }
         
         if (projects.length > 0) {
-          // Use first non-archived project
+          // Use first available project
           const projectId = projects[0].id;
           await ProjectService.setActiveProject(orgId, userId, projectId);
           return projectId;
         }
+        
+        // For creators with no assigned projects, return empty string
+        if (isCreator) {
+          console.log('⚠️ Creator has no assigned projects');
+          return '';
+        }
 
-        // No projects exist, create default project
+        // No projects exist, create default project (admins/members only)
         const projectId = await ProjectService.createDefaultProject(orgId, userId);
         await ProjectService.setActiveProject(orgId, userId, projectId);
         return projectId;

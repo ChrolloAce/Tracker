@@ -12,7 +12,7 @@ interface ProjectSwitcherProps {
 }
 
 const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }) => {
-  const { currentOrgId, currentProjectId, switchProject } = useAuth();
+  const { currentOrgId, currentProjectId, switchProject, userRole, user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -20,15 +20,23 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
   const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load projects
+  // Load projects (filtered for creators)
   useEffect(() => {
     const loadProjects = async () => {
       if (!currentOrgId) return;
       
       try {
         setLoading(true);
-        const projectsList = await ProjectService.getProjects(currentOrgId, false);
-        setProjects(projectsList);
+        
+        // Creators only see their assigned projects
+        if (userRole === 'creator' && user?.uid) {
+          const creatorProjects = await ProjectService.getProjectsForCreator(currentOrgId, user.uid);
+          setProjects(creatorProjects);
+        } else {
+          // Admins/members see all projects
+          const projectsList = await ProjectService.getProjects(currentOrgId, false);
+          setProjects(projectsList);
+        }
       } catch (error) {
         console.error('Failed to load projects:', error);
       } finally {
@@ -37,7 +45,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
     };
 
       loadProjects();
-  }, [currentOrgId]);
+  }, [currentOrgId, userRole, user?.uid]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -193,33 +201,39 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                   {project.id === currentProjectId && (
                     <Check className="w-4 h-4 flex-shrink-0 text-green-500" />
                   )}
-                  <button
-                    onClick={(e) => handleEditProject(project, e)}
-                    className="p-1.5 rounded hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
-                    title="Edit project"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-white/60 hover:text-white" />
-                  </button>
+                  {/* Hide edit button for creators */}
+                  {userRole !== 'creator' && (
+                    <button
+                      onClick={(e) => handleEditProject(project, e)}
+                      className="p-1.5 rounded hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Edit project"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-white/60 hover:text-white" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
 
-          {/* Divider */}
-          {projects.length > 0 && (
-            <div className="border-t border-white/10 my-1" />
+          {/* Divider & Create New Project Button - Hidden for creators */}
+          {userRole !== 'creator' && (
+            <>
+              {projects.length > 0 && (
+                <div className="border-t border-white/10 my-1" />
+              )}
+              
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowCreateModal(true);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
+              >
+                <Plus className="w-4 h-4 flex-shrink-0" />
+                <span>Create New Project</span>
+              </button>
+            </>
           )}
-          
-          {/* Create New Project Button */}
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setShowCreateModal(true);
-                  }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
-                >
-            <Plus className="w-4 h-4 flex-shrink-0" />
-            <span>Create New Project</span>
-                </button>
           </div>
         )}
 
