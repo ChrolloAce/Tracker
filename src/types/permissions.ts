@@ -288,7 +288,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       revenue: true, // Can see their own revenue/earnings
     },
     tabs: {
-      dashboard: false, // Creators have their own specific views
+      dashboard: true, // Creators see their own dashboard (CreatorPortalPage)
       trackedAccounts: false,
       videos: false,
       trackedLinks: false,
@@ -296,7 +296,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: false,
       team: false,
       creators: true, // Access to creator portal (Payouts)
-      campaigns: true, // Creators can view their assigned campaigns
+      campaigns: false, // Campaigns removed - creators submit videos directly
       extension: false, // Creators don't need extension
       settings: true,
     },

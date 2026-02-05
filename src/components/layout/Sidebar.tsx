@@ -216,10 +216,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // For creators, hide Team Members and Revenue
+    // For creators, hide Team Members, Revenue, and Campaigns
+    // Creators only need: Dashboard (their portal), Payouts/Creators, and Settings
     if (userRole === 'creator') {
       sections.forEach(section => {
-        section.items = section.items.filter(item => item.id !== 'team' && item.id !== 'revenue');
+        section.items = section.items.filter(item => 
+          item.id !== 'team' && 
+          item.id !== 'revenue' && 
+          item.id !== 'campaigns' &&
+          item.id !== 'accounts' &&
+          item.id !== 'videos' &&
+          item.id !== 'analytics' &&
+          item.id !== 'extension'
+        );
       });
     }
 
