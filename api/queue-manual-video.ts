@@ -75,6 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       orgId,
       projectId,
       videoUrl: url,
+      addedBy: user.userId, // Track who submitted the video
       createdAt: Timestamp.now(),
       startedAt: null,
       completedAt: null,
@@ -115,7 +116,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             videoId: url,
             orgId,
             projectId,
-            jobId: jobRef.id
+            jobId: jobRef.id,
+            addedBy: user.userId // Pass creator's user ID
           })
         });
         

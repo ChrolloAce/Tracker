@@ -238,7 +238,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               videoId: job.videoUrl, // process-single-video expects videoId (which is the URL)
               orgId: job.orgId,
               projectId: job.projectId,
-              jobId: jobId
+              jobId: jobId,
+              addedBy: job.addedBy // Pass through the user who submitted the video
             })
           }).then(response => {
             if (response.ok) {
