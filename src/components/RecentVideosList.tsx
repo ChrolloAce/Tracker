@@ -6,7 +6,7 @@
 
 import React, { useMemo } from 'react';
 import { Play, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
-import { VideoSubmission, VideoSnapshot } from '../types';
+import { VideoSubmission } from '../types';
 import { ProxiedImage } from './ProxiedImage';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
