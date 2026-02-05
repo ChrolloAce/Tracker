@@ -119,14 +119,90 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`⚡ Processing video immediately: ${videoId}`);
 
   try {
-    const videoRef = db.doc(`organizations/${orgId}/projects/${projectId}/videos/${videoId}`);
-    const videoDoc = await videoRef.get();
+    // Check if videoId is actually a URL (new video) or a document ID (existing video)
+    const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
+    
+    let videoRef: FirebaseFirestore.DocumentReference;
+    let video: FirebaseFirestore.DocumentData | undefined;
+    let isNewVideo = false;
+    
+    if (isUrl) {
+      // videoId is a URL - check if video exists or create new one
+      console.log(`🔍 Video URL detected, checking if exists or creating new...`);
+      
+      // Detect platform from URL
+      let platform: string | null = null;
+      const url = videoId;
+      if (url.includes('tiktok.com')) platform = 'tiktok';
+      else if (url.includes('instagram.com')) platform = 'instagram';
+      else if (url.includes('youtube.com') || url.includes('youtu.be')) platform = 'youtube';
+      else if (url.includes('twitter.com') || url.includes('x.com')) platform = 'twitter';
+      
+      if (!platform) {
+        return res.status(400).json({ error: 'Unsupported platform URL' });
+      }
+      
+      // Check if video already exists by URL
+      const existingQuery = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .where('url', '==', url)
+        .limit(1)
+        .get();
+      
+      if (!existingQuery.empty) {
+        // Video exists, use it
+        const existingDoc = existingQuery.docs[0];
+        videoRef = existingDoc.ref;
+        video = existingDoc.data();
+        console.log(`📹 Found existing video document: ${existingDoc.id}`);
+      } else {
+        // Create new video document
+        isNewVideo = true;
+        videoRef = db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .doc(); // Auto-generate ID
+        
+        video = {
+          url: url,
+          platform: platform,
+          status: 'processing',
+          syncStatus: 'pending',
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          saves: 0,
+          orgId: orgId,
+          projectId: projectId,
+          dateAdded: Timestamp.now(),
+          addedBy: 'creator_submission',
+          lastRefreshed: null,
+          isSingular: true,
+          isRead: false
+        };
+        
+        await videoRef.set(video);
+        console.log(`✨ Created new video document: ${videoRef.id}`);
+      }
+    } else {
+      // videoId is a document ID - look it up directly
+      videoRef = db.doc(`organizations/${orgId}/projects/${projectId}/videos/${videoId}`);
+      const videoDoc = await videoRef.get();
 
-    if (!videoDoc.exists) {
-      return res.status(404).json({ error: 'Video not found' });
+      if (!videoDoc.exists) {
+        return res.status(404).json({ error: 'Video not found' });
+      }
+
+      video = videoDoc.data();
     }
-
-    const video = videoDoc.data();
 
     if (!video) {
       return res.status(404).json({ error: 'Video data not found' });

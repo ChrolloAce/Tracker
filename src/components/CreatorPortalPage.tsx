@@ -3,11 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Video, Users as UsersIcon, Plus, Link as LinkIcon, Eye, DollarSign, TrendingUp, Heart } from 'lucide-react';
+import { Video, Users as UsersIcon, Plus, Eye, DollarSign, TrendingUp, Heart } from 'lucide-react';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
-import CreatorAccountLinkingModal from './CreatorAccountLinkingModal';
 import CreatorDirectVideoSubmission from './CreatorDirectVideoSubmission';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -38,7 +37,6 @@ const CreatorPortalPage: React.FC = () => {
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
-  const [showAccountLinkingModal, setShowAccountLinkingModal] = useState(false);
   const [showDirectSubmission, setShowDirectSubmission] = useState(false);
 
   useEffect(() => {
@@ -170,15 +168,6 @@ const CreatorPortalPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-white">My Dashboard</h1>
           <p className="text-sm text-gray-400 mt-1">Track your video performance and earnings</p>
         </div>
-
-        {/* Manage Accounts Button */}
-        <button
-          onClick={() => setShowAccountLinkingModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-white/80 hover:text-white transition-all"
-        >
-          <LinkIcon className="w-4 h-4" />
-          <span className="text-sm font-medium">Manage Accounts</span>
-        </button>
       </div>
 
       {/* Stats Cards Grid - Monotone */}
@@ -322,15 +311,6 @@ const CreatorPortalPage: React.FC = () => {
       >
         <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
       </button>
-
-      {/* Account Linking Modal */}
-      <CreatorAccountLinkingModal
-        isOpen={showAccountLinkingModal}
-        onClose={() => setShowAccountLinkingModal(false)}
-        onSuccess={() => {
-          loadData();
-        }}
-      />
 
       {/* Direct Video Submission Modal */}
       <CreatorDirectVideoSubmission

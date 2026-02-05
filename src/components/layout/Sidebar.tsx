@@ -216,8 +216,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // For creators, hide Team Members, Revenue, and Campaigns
-    // Creators only need: Dashboard (their portal), Payouts/Creators, and Settings
+    // For creators, hide everything except Dashboard and Settings
+    // Dashboard shows their portal with videos, earnings, and submission
     if (userRole === 'creator') {
       sections.forEach(section => {
         section.items = section.items.filter(item => 
@@ -227,7 +227,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           item.id !== 'accounts' &&
           item.id !== 'videos' &&
           item.id !== 'analytics' &&
-          item.id !== 'extension'
+          item.id !== 'extension' &&
+          item.id !== 'creators' // No separate Payouts tab - it's in the dashboard
         );
       });
     }
