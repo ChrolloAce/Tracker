@@ -11,6 +11,7 @@ import { VideoSubmission } from '../types';
 import { Campaign } from '../types/campaigns';
 import CreatorVideoSubmissionModal from './CreatorVideoSubmissionModal';
 import CreatorAccountLinkingModal from './CreatorAccountLinkingModal';
+import CreatorDirectVideoSubmission from './CreatorDirectVideoSubmission';
 
 interface CreatorStats {
   totalAccounts: number;
@@ -36,6 +37,7 @@ const CreatorPortalPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showVideoSubmissionModal, setShowVideoSubmissionModal] = useState(false);
   const [showAccountLinkingModal, setShowAccountLinkingModal] = useState(false);
+  const [showDirectSubmission, setShowDirectSubmission] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -197,7 +199,7 @@ const CreatorPortalPage: React.FC = () => {
 
       {/* Floating Action Button */}
       <button
-        onClick={() => setShowVideoSubmissionModal(true)}
+        onClick={() => setShowDirectSubmission(true)}
         className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full shadow-2xl shadow-emerald-500/40 flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
         title="Submit Videos"
       >
@@ -219,6 +221,15 @@ const CreatorPortalPage: React.FC = () => {
         onClose={() => setShowAccountLinkingModal(false)}
         onSuccess={() => {
           loadData(); // Reload data after linking accounts
+        }}
+      />
+
+      {/* Direct Video Submission Modal - New Beautiful UI */}
+      <CreatorDirectVideoSubmission
+        isOpen={showDirectSubmission}
+        onClose={() => setShowDirectSubmission(false)}
+        onSuccess={() => {
+          loadData(); // Reload data after successful submission
         }}
       />
     </div>
