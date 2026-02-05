@@ -137,7 +137,7 @@ const CreatorPortalPage: React.FC = () => {
         uploaderProfilePicture: account?.profilePicture || (video as any).uploaderProfilePicture,
         followerCount: account?.followerCount,
         status: video.status === 'archived' ? 'rejected' : video.status === 'processing' ? 'pending' : 'approved',
-        syncStatus: video.syncStatus,
+        syncStatus: video.syncStatus === 'processing' ? 'syncing' : video.syncStatus as 'pending' | 'failed' | 'idle' | 'syncing' | 'completed' | undefined,
         views: video.views || 0,
         likes: video.likes || 0,
         comments: video.comments || 0,
