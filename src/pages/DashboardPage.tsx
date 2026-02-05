@@ -3335,62 +3335,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               )}
             </div>
           )}
-
-          {/* Accounts Tab and Videos Tab are now separate routes (/accounts, /videos)
-              This code is legacy and not used since activeTab is always 'dashboard' in this component */}
-          {false && (
-            <div className="space-y-6">
-              {isInitialLoading ? (
-                <DashboardSkeleton height="h-96" />
-              ) : (
-                <>
-                  {/* Top Performers Section */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Top Videos */}
-                    <div className="group relative">
-                      <TopPerformersRaceChart
-                        submissions={filteredSubmissions}
-                        onVideoClick={handleVideoClick}
-                        onAccountClick={(username) => {
-                          // Handle account click - could navigate to account details
-                          console.log('Account clicked:', username);
-                        }}
-                        type="videos"
-                        dateFilter={dateFilter}
-                        customRange={customDateRange}
-                      />
-                    </div>
-
-                    {/* Refreshed Videos */}
-                    <div className="group relative">
-                      <TopPerformersRaceChart
-                        submissions={filteredSubmissions}
-                        onVideoClick={handleVideoClick}
-                        onAccountClick={(username) => {
-                          console.log('Account clicked:', username);
-                        }}
-                        type="gainers"
-                        dateFilter={dateFilter}
-                        customRange={customDateRange}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Videos Table */}
-                  <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <VideoSubmissionsTable 
-                  submissions={filteredSubmissions}
-                  onBulkDelete={handleBulkDelete}
-                  onVideoClick={handleVideoClick}
-                  headerTitle="All Videos"
-                  trendPeriodDays={getTrendPeriodDays(dateFilter)}
-                />
-                  </div>
-                </>
-              )}
-              </div>
-              )}
             </div>
+              )}
+            </>
           )}
 
           {/* Accounts Tab */}
@@ -3489,10 +3436,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
-            )}
-            </div>
-              )}
-            </>
+            )
           )}
 
           {/* Subscription Tab */}
