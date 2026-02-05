@@ -838,7 +838,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
  */
 function transformVideoData(rawData: any, platform: string): VideoData {
   if (platform === 'tiktok') {
-    // TikTok uses apidojo/tiktok-scraper-api format (channel + video objects)
+    // TikTok uses apidojo/tiktok-scraper-api format (channel + video objects or flat keys)
     const channel = rawData.channel || {};
     const video = rawData.video || {};
     
@@ -1543,7 +1543,7 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     console.log(`📝 [${platform.toUpperCase()}] Input:`, JSON.stringify(input, null, 2));
     
     // ✅ Use runApifyActor helper (same as sync-single-account.ts)
-    // This automatically converts apidojo/tiktok-scraper-api → apidojo~tiktok-scraper-api
+    // This automatically converts apidojo/tiktok-scraper-api → apidojo~tiktok-scraper
     const result = await runApifyActor({
       actorId: actorId,
       input: input,

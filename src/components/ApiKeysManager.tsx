@@ -10,9 +10,12 @@ import {
   Trash2, 
   Copy, 
   Check, 
+  Eye, 
+  EyeOff,
   AlertTriangle,
   Clock,
   Activity,
+  Shield,
   Loader2,
   X
 } from 'lucide-react';
@@ -35,7 +38,7 @@ const AVAILABLE_SCOPES: { value: ApiKeyScope; label: string; description: string
 ];
 
 export const ApiKeysManager: React.FC<ApiKeysManagerProps> = ({ organizationId }) => {
-  const { user } = useAuth();
+  const { getIdToken } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export const ApiKeysManager: React.FC<ApiKeysManagerProps> = ({ organizationId }
       setLoading(true);
       setError(null);
       
-      const token = await user?.getIdToken();
+      const token = await getIdToken();
       const response = await fetch(`/api/api-keys?orgId=${organizationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -93,7 +96,7 @@ export const ApiKeysManager: React.FC<ApiKeysManagerProps> = ({ organizationId }
       setCreating(true);
       setError(null);
       
-      const token = await user?.getIdToken();
+      const token = await getIdToken();
       const response = await fetch(`/api/api-keys?orgId=${organizationId}`, {
         method: 'POST',
         headers: {
@@ -132,7 +135,7 @@ export const ApiKeysManager: React.FC<ApiKeysManagerProps> = ({ organizationId }
     try {
       setRevoking(true);
       
-      const token = await user?.getIdToken();
+      const token = await getIdToken();
       const response = await fetch(`/api/api-keys?orgId=${organizationId}&keyId=${keyId}`, {
         method: 'DELETE',
         headers: {

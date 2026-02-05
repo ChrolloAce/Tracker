@@ -426,7 +426,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Call the same API we use for single videos
           if (account.platform === 'tiktok') {
             const singleVideoResponse = await runApifyActor({
-              actorId: 'apidojo~tiktok-scraper-api',
+              actorId: 'apidojo~tiktok-scraper',
               input: {
                 startUrls: [videoUrl],
                 maxItems: 1,

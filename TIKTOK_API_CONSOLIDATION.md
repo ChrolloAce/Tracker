@@ -2,7 +2,7 @@
 
 ## Overview
 
-We've consolidated all TikTok integrations to use a **single scraper**: `apidojo/tiktok-scraper`.
+We've consolidated all TikTok integrations to use a **single scraper**: `apidojo/tiktok-scraper-api`.
 
 This replaces the previous `clockworks~tiktok-scraper` and provides a cleaner, more robust data structure.
 
@@ -15,7 +15,7 @@ This replaces the previous `clockworks~tiktok-scraper` and provides a cleaner, m
 - ❌ Mixed nested/flat objects
 - ❌ Inconsistent field names
 
-### New System (apidojo/tiktok-scraper)
+### New System (apidojo/tiktok-scraper-api)
 - ✅ Clean nested objects (`channel`, `video`, `music`)
 - ✅ Consistent field names
 - ✅ Robust thumbnail extraction with fallbacks
@@ -54,7 +54,7 @@ This replaces the previous `clockworks~tiktok-scraper` and provides a cleaner, m
 
 **⚠️ IMPORTANT: Flat Keys**
 
-The `apidojo/tiktok-scraper` returns data in **TWO FORMATS**:
+The `apidojo/tiktok-scraper-api` returns data in **TWO FORMATS**:
 1. **Nested objects**: `item.channel.name`, `item.video.cover`
 2. **Flat keys (string keys)**: `item['channel.name']`, `item.cover`
 
@@ -94,7 +94,7 @@ This ensures we **always** get the best available thumbnail, handling both **nes
 ### For Profile/Account Sync
 ```typescript
 {
-  actorId: 'apidojo/tiktok-scraper',
+  actorId: 'apidojo/tiktok-scraper-api',
   input: {
     profiles: [`@${username.replace('@', '')}`], // Ensure @ prefix
     resultsPerPage: 50,
@@ -113,7 +113,7 @@ This ensures we **always** get the best available thumbnail, handling both **nes
 ### For Individual Video/Post
 ```typescript
 {
-  actorId: 'apidojo/tiktok-scraper',
+  actorId: 'apidojo/tiktok-scraper-api',
   input: {
     postURLs: ['https://www.tiktok.com/@user/video/1234567890'],
     resultsPerPage: 1,
@@ -132,7 +132,7 @@ This ensures we **always** get the best available thumbnail, handling both **nes
 ### For Bulk Video Refresh
 ```typescript
 {
-  actorId: 'apidojo/tiktok-scraper',
+  actorId: 'apidojo/tiktok-scraper-api',
   input: {
     postURLs: [
       'https://www.tiktok.com/@user/video/1234567890',
@@ -156,24 +156,24 @@ This ensures we **always** get the best available thumbnail, handling both **nes
 ## Updated Files
 
 ### 1. `api/sync-single-account.ts`
-- ✅ Updated profile sync to use `apidojo/tiktok-scraper`
+- ✅ Updated profile sync to use `apidojo/tiktok-scraper-api`
 - ✅ Extracts profile data from `channel` object
 - ✅ Uses robust thumbnail extraction
 - ✅ Downloads profile pictures to Firebase Storage
 
 ### 2. `api/process-single-video.ts`
 - ✅ Updated individual video processing
-- ✅ Uses `transformVideoData` for `apidojo/tiktok-scraper` format
+- ✅ Uses `transformVideoData` for `apidojo/tiktok-scraper-api` format
 - ✅ Extracts all profile data from `channel` object
 
 ### 3. `api/cron-process-videos.ts`
 - ✅ Updated video queue processing
-- ✅ Uses `apidojo/tiktok-scraper` for individual posts
+- ✅ Uses `apidojo/tiktok-scraper-api` for individual posts
 - ✅ Robust thumbnail and profile extraction
 
 ### 4. `api/cron-refresh-videos.ts`
 - ✅ Updated bulk refresh logic
-- ✅ Uses `apidojo/tiktok-scraper` for fetching and refreshing
+- ✅ Uses `apidojo/tiktok-scraper-api` for fetching and refreshing
 - ✅ Updated `extractVideoId` to use direct `id` field
 - ✅ Updated verified status extraction (`channel.verified`)
 - ✅ Updated metrics extraction (`views`, `likes`, `comments`, `shares`, `bookmarks`)
@@ -295,7 +295,7 @@ This ensures we **always** get the best available thumbnail, handling both **nes
 ## System Prompt Reference
 
 Your system prompt for TikTok normalization is stored in your task description. It ensures:
-- Single source of truth (`apidojo/tiktok-scraper` replaces all other TikTok APIs)
+- Single source of truth (`apidojo/tiktok-scraper-api` replaces all other TikTok APIs)
 - Profile and video data in every response
 - Stable field names for cron jobs and integrations
 - Robust fallback logic for thumbnails and media

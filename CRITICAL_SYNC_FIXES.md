@@ -109,7 +109,7 @@ if (existingVideoIds.size > 0) {
   
   // Bulk refresh using video URLs
   const refreshData = await runApifyActor({
-    actorId: 'apidojo/tiktok-scraper',
+    actorId: 'apidojo/tiktok-scraper-api',
     input: {
       startUrls: videoUrls,
       maxItems: videoUrls.length

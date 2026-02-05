@@ -28,7 +28,6 @@ import TopTeamCreatorsList from '../components/TopTeamCreatorsList';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import ComparisonGraph from '../components/ComparisonGraph';
 import VideoSliderSection from '../components/VideoSliderSection';
-import RecentVideosList from '../components/RecentVideosList';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
 import { BlurEmptyState } from '../components/ui/BlurEmptyState';
@@ -448,7 +447,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['kpi-cards', 'recent-videos', 'video-slider', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
+    const defaultOrder = ['kpi-cards', 'video-slider', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
     const saved = localStorage.getItem('dashboardSectionOrder');
     
     if (saved) {
@@ -520,7 +519,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
     const defaults = {
       'kpi-cards': true,
-      'recent-videos': true,
       'top-performers': true,
       'posting-activity': false,
       'tracked-accounts': false,
@@ -593,7 +591,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     return {
       'kpi-cards': 'KPI Cards',
-      'recent-videos': 'Recent Videos',
       'top-performers': 'Top Performers',
       'videos-table': 'Videos Table'
     };
@@ -2063,7 +2060,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     if (!user || !currentOrgId) return;
     
     // Check if it's a section, a KPI card, or a Top Performers subsection
-    const allSections = ['kpi-cards', 'recent-videos', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
+    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
     const topPerformersSubsections = ['top-videos', 'top-accounts', 'top-gainers', 'top-creators', 'posting-times', 'top-platforms', 'comparison'];
     
     if (allSections.includes(cardId)) {
@@ -2104,7 +2101,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
-    const allSections = ['kpi-cards', 'recent-videos', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
+    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionOrder(prev => {
@@ -2274,7 +2271,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     // Dashboard sections come first
     const sections = [
       { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
-      { id: 'recent-videos', label: 'Recent Videos', description: 'List of recent videos with sparkline graphs', icon: Clock, category: 'sections' as const },
       { id: 'video-slider', label: 'Video Slider', description: 'Full-height video carousel sorted by views', icon: Video, category: 'sections' as const },
       { id: 'top-performers', label: 'Top Performers', description: 'Top videos, accounts, creators, posting times, platforms & comparison', icon: Activity, category: 'sections' as const },
       { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
@@ -3174,15 +3170,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onToggleCard={handleToggleCard}
                           />
                         );
-                      case 'recent-videos':
-                        return (
-                          <RecentVideosList
-                            videos={combinedSubmissions}
-                            maxVideos={10}
-                            onVideoClick={handleVideoClick}
-                            showSparkline={true}
-                          />
-                        );
                       case 'video-slider':
                         console.log('🎬 VideoSlider section rendering with', combinedSubmissions.length, 'filtered videos');
                         return (
@@ -3725,15 +3712,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   cardVisibility={kpiCardVisibility}
                   onReorder={() => {}}
                   onToggleCard={() => {}}
-                />
-              );
-            case 'recent-videos':
-              return (
-                <RecentVideosList
-                  videos={combinedSubmissions}
-                  maxVideos={5}
-                  onVideoClick={handleVideoClick}
-                  showSparkline={true}
                 />
               );
             case 'video-slider':
