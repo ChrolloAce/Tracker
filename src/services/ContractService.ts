@@ -42,6 +42,7 @@ export class ContractService {
     contractNotes: string,
     paymentStructureName: string | undefined,
     createdBy: string,
+    isPendingInvitation?: boolean, // For creators who haven't accepted their invitation yet
     contractTitle?: string,
     companyName?: string,
     creatorInfo?: CreatorContactInfo,
@@ -61,7 +62,7 @@ export class ContractService {
       id: contractId,
       organizationId,
       projectId,
-      creatorId,
+      creatorId, // For pending invitations, this is the invitation ID
       creatorName,
       creatorEmail,
       contractStartDate,
@@ -92,6 +93,10 @@ export class ContractService {
     }
     if (companyInfo) {
       contract.companyInfo = companyInfo;
+    }
+    if (isPendingInvitation) {
+      contract.isPendingInvitation = true;
+      contract.invitationId = creatorId; // Store invitation ID for later linking
     }
 
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);

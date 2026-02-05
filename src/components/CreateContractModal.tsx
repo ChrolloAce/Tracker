@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Loader2, Save, CheckCircle } from 'lucide-react';
+import { X, FileText, Loader2, Save, CheckCircle, Clock } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
+import TeamInvitationService from '../services/TeamInvitationService';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
-import { OrgMember } from '../types/firestore';
+import { OrgMember, TeamInvitation } from '../types/firestore';
 import ChangeTemplateModal from './ChangeTemplateModal';
 
 interface CreateContractModalProps {
@@ -13,9 +14,17 @@ interface CreateContractModalProps {
   onSuccess: () => void;
 }
 
+// Combined type for creators (active members + pending invitations)
+interface CreatorOption {
+  id: string;
+  displayName: string;
+  email?: string;
+  isPending: boolean;
+}
+
 const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSuccess }) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
-  const [creators, setCreators] = useState<OrgMember[]>([]);
+  const [creatorOptions, setCreatorOptions] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
@@ -91,10 +100,33 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
 
     setLoadingCreators(true);
     try {
+      // Load active creator members
       const members = await OrganizationService.getOrgMembers(currentOrgId);
-      // Filter to only show creators
       const creatorMembers = members.filter((m: OrgMember) => m.role === 'creator');
-      setCreators(creatorMembers);
+      
+      // Load pending creator invitations
+      const invitations = await TeamInvitationService.getOrgInvitations(currentOrgId);
+      const creatorInvitations = invitations.filter((inv: TeamInvitation) => inv.role === 'creator');
+      
+      // Combine into options list
+      const options: CreatorOption[] = [
+        // Active creators first
+        ...creatorMembers.map(m => ({
+          id: m.userId,
+          displayName: m.displayName || m.email || 'Unknown',
+          email: m.email,
+          isPending: false
+        })),
+        // Pending invitations
+        ...creatorInvitations.map(inv => ({
+          id: `pending_${inv.id}`, // Prefix to distinguish from active members
+          displayName: inv.email,
+          email: inv.email,
+          isPending: true
+        }))
+      ];
+      
+      setCreatorOptions(options);
     } catch (error) {
       console.error('Error loading creators:', error);
     } finally {
@@ -159,25 +191,32 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
       return;
     }
 
-    const selectedCreator = creators.find(c => c.userId === selectedCreatorId);
-    if (!selectedCreator) {
+    const selectedOption = creatorOptions.find(c => c.id === selectedCreatorId);
+    if (!selectedOption) {
       alert('Invalid creator selection');
       return;
     }
+    
+    // For pending invitations, use the invitation ID (without prefix) as creator ID
+    // The contract will be associated when they accept the invitation
+    const creatorId = selectedOption.isPending 
+      ? selectedCreatorId.replace('pending_', '') // Use invitation ID
+      : selectedCreatorId;
 
     setLoading(true);
     try {
       const contract = await ContractService.createShareableContract(
         currentOrgId,
         currentProjectId,
-        selectedCreator.userId,
-        selectedCreator.displayName || 'Creator',
-        selectedCreator.email || '',
+        creatorId,
+        selectedOption.displayName || 'Creator',
+        selectedOption.email || '',
         contractStartDate,
         contractEndDate,
         contractNotes,
         paymentStructureName || undefined,
-        user.uid
+        user.uid,
+        selectedOption.isPending // Pass flag to indicate this is for a pending invitation
       );
 
       // Clear the draft on success
@@ -227,8 +266,8 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                 </label>
                 {loadingCreators ? (
                   <div className="text-sm text-gray-400">Loading creators...</div>
-                ) : creators.length === 0 ? (
-                  <div className="text-sm text-gray-400">No creators found in this project</div>
+                ) : creatorOptions.length === 0 ? (
+                  <div className="text-sm text-gray-400">No creators found. Invite a creator first.</div>
                 ) : (
                   <select
                     value={selectedCreatorId}
@@ -236,12 +275,18 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                     className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
                   >
                     <option value="">Choose a creator...</option>
-                    {creators.map((creator) => (
-                      <option key={creator.userId} value={creator.userId}>
-                        {creator.displayName || creator.email}
+                    {creatorOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.displayName}{option.isPending ? ' (Pending Invitation)' : ''}
                       </option>
                     ))}
                   </select>
+                )}
+                {selectedCreatorId?.startsWith('pending_') && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-amber-400">
+                    <Clock className="w-4 h-4" />
+                    <span>This creator hasn't accepted their invitation yet. Contract will be ready when they join.</span>
+                  </div>
                 )}
               </div>
 
