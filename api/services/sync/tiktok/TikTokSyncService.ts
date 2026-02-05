@@ -42,7 +42,7 @@ export class TikTokSyncService {
       // Omit if not needed
       
       const data = await runApifyActor({
-        actorId: 'apidojo/tiktok-scraper',
+        actorId: 'apidojo/tiktok-scraper-api',
         input: scraperInput
       });
 
@@ -147,7 +147,7 @@ export class TikTokSyncService {
       // Omit if not needed
       
       const data = await runApifyActor({
-        actorId: 'apidojo/tiktok-scraper',
+        actorId: 'apidojo/tiktok-scraper-api',
         input: refreshInput
       });
       

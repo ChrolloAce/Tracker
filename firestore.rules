@@ -244,6 +244,23 @@ service cloud.firestore {
         allow write: if canManageOrg(orgId);
       }
       
+      // ==================== API KEYS ====================
+      
+      match /apiKeys/{keyId} {
+        // Only admins can view API keys
+        allow read: if canManageOrg(orgId);
+        
+        // Only admins can create/update/delete API keys
+        // Note: Actual key creation/validation done via server (Admin SDK)
+        allow create: if canManageOrg(orgId)
+          && request.resource.data.organizationId == orgId
+          && request.resource.data.createdBy == request.auth.uid;
+        
+        allow update: if canManageOrg(orgId);
+        
+        allow delete: if canManageOrg(orgId);
+      }
+      
       // ==================== PROJECTS ====================
       
       match /projects/{projectId} {

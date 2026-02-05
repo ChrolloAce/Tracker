@@ -838,7 +838,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
  */
 function transformVideoData(rawData: any, platform: string): VideoData {
   if (platform === 'tiktok') {
-    // TikTok uses apidojo/tiktok-scraper format (channel + video objects or flat keys)
+    // TikTok uses apidojo/tiktok-scraper-api format (channel + video objects)
     const channel = rawData.channel || {};
     const video = rawData.video || {};
     
@@ -1298,12 +1298,12 @@ async function fetchTikTokProfile(username: string): Promise<{
   verified: boolean;
 } | null> {
   try {
-    console.log(`   🔄 [TIKTOK PROFILE SCRAPER] Calling Apify actor: apidojo/tiktok-scraper`);
+    console.log(`   🔄 [TIKTOK PROFILE SCRAPER] Calling Apify actor: apidojo/tiktok-scraper-api`);
     console.log(`   📝 [TIKTOK PROFILE SCRAPER] Target: https://www.tiktok.com/@${username}`);
     console.log(`   🎯 [TIKTOK PROFILE SCRAPER] Goal: Get profile pic, followers, verified status`);
     
     const profileData = await runApifyActor({
-      actorId: 'apidojo/tiktok-scraper',
+      actorId: 'apidojo/tiktok-scraper-api',
       input: {
         startUrls: [`https://www.tiktok.com/@${username}`],
         maxItems: 1, // Only need 1 video to get channel/profile data
@@ -1361,7 +1361,7 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       const validatedUrl = validateTikTokUrl(url);
       console.log(`✅ [TIKTOK] Using validated URL: ${validatedUrl}`);
       
-      actorId = 'apidojo/tiktok-scraper';
+      actorId = 'apidojo/tiktok-scraper-api';
       input = {
         customMapFunction: "(object) => { return { ...object } } \n",
         dateRange: "DEFAULT",
@@ -1543,7 +1543,7 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     console.log(`📝 [${platform.toUpperCase()}] Input:`, JSON.stringify(input, null, 2));
     
     // ✅ Use runApifyActor helper (same as sync-single-account.ts)
-    // This automatically converts apidojo/tiktok-scraper → apidojo~tiktok-scraper
+    // This automatically converts apidojo/tiktok-scraper-api → apidojo~tiktok-scraper-api
     const result = await runApifyActor({
       actorId: actorId,
       input: input,

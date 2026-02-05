@@ -18,88 +18,38 @@ const ApiDocsPage: React.FC = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('shell');
   const [sections, setSections] = useState<ApiSection[]>([
     {
-      title: 'Tracked Accounts',
+      title: 'Accounts',
       isOpen: true,
       endpoints: [
-        { name: 'List all tracked accounts', method: 'GET', path: '/accounts/tracked' },
-        { name: 'Add tracked accounts', method: 'POST', path: '/accounts/tracked' },
-        { name: 'Get total count of tracked accounts', method: 'GET', path: '/accounts/tracked/count' },
-        { name: 'Refresh tracked accounts data', method: 'POST', path: '/accounts/tracked/refresh' },
-        { name: 'Update account max videos limit', method: 'PUT', path: '/accounts/tracked/{id}/max-videos' },
-        { name: 'Bulk update account max videos limits', method: 'PUT', path: '/accounts/tracked/bulk/max-videos' },
-        { name: 'Update account hashtags filter', method: 'PUT', path: '/accounts/tracked/{id}/hashtags' },
-        { name: 'Update account project hashtags filter', method: 'PUT', path: '/accounts/tracked/{id}/project-hashtags' },
-        { name: 'List recent tracked runs', method: 'GET', path: '/accounts/tracked/runs' },
+        { name: 'List all tracked accounts', method: 'GET', path: '/v1/accounts' },
+        { name: 'Add tracked account', method: 'POST', path: '/v1/accounts' },
+        { name: 'Get account details', method: 'GET', path: '/v1/accounts/{id}' },
+        { name: 'Delete tracked account', method: 'DELETE', path: '/v1/accounts/{id}' },
       ]
     },
     {
-      title: 'Tracked Individual Videos',
+      title: 'Videos',
       isOpen: false,
       endpoints: [
-        { name: 'List all tracked videos', method: 'GET', path: '/videos/tracked' },
-        { name: 'Add tracked videos', method: 'POST', path: '/videos/tracked' },
-        { name: 'Refresh individually tracked videos data', method: 'POST', path: '/videos/tracked/refresh' },
-        { name: 'List recent tracked runs', method: 'GET', path: '/videos/tracked/runs' },
+        { name: 'List all tracked videos', method: 'GET', path: '/v1/videos' },
+        { name: 'Add video to track', method: 'POST', path: '/v1/videos' },
+        { name: 'Get video details', method: 'GET', path: '/v1/videos/{id}' },
+        { name: 'Delete tracked video', method: 'DELETE', path: '/v1/videos/{id}' },
       ]
     },
     {
-      title: 'Account Analytics',
+      title: 'Analytics',
       isOpen: false,
       endpoints: [
-        { name: 'List all accounts with analytics', method: 'GET', path: '/analytics/accounts' },
-        { name: 'Get analytics for specific account', method: 'GET', path: '/analytics/accounts/{id}' },
-        { name: 'Get account performance over time', method: 'GET', path: '/analytics/accounts/{id}/performance' },
-        { name: 'Get account top videos', method: 'GET', path: '/analytics/accounts/{id}/top-videos' },
-      ]
-    },
-    {
-      title: 'Video Analytics',
-      isOpen: false,
-      endpoints: [
-        { name: 'List all videos with analytics', method: 'GET', path: '/analytics/videos' },
-        { name: 'Get analytics for specific video', method: 'GET', path: '/analytics/videos/{id}' },
-        { name: 'Get video performance over time', method: 'GET', path: '/analytics/videos/{id}/performance' },
-        { name: 'Get video snapshots history', method: 'GET', path: '/analytics/videos/{id}/snapshots' },
-      ]
-    },
-    {
-      title: 'General Analytics',
-      isOpen: false,
-      endpoints: [
-        { name: 'Get overall statistics', method: 'GET', path: '/analytics/overview' },
-        { name: 'Get trending content', method: 'GET', path: '/analytics/trending' },
-        { name: 'Get performance comparisons', method: 'GET', path: '/analytics/compare' },
+        { name: 'Get analytics overview', method: 'GET', path: '/v1/analytics/overview' },
       ]
     },
     {
       title: 'Projects',
       isOpen: false,
       endpoints: [
-        { name: 'List all projects', method: 'GET', path: '/projects' },
-        { name: 'Create new project', method: 'POST', path: '/projects' },
-        { name: 'Get project details', method: 'GET', path: '/projects/{id}' },
-        { name: 'Update project', method: 'PUT', path: '/projects/{id}' },
-        { name: 'Delete project', method: 'DELETE', path: '/projects/{id}' },
-      ]
-    },
-    {
-      title: 'Integrations',
-      isOpen: false,
-      endpoints: [
-        { name: 'List available integrations', method: 'GET', path: '/integrations' },
-        { name: 'Connect integration', method: 'POST', path: '/integrations/connect' },
-        { name: 'Get integration status', method: 'GET', path: '/integrations/{id}/status' },
-        { name: 'Disconnect integration', method: 'DELETE', path: '/integrations/{id}' },
-      ]
-    },
-    {
-      title: 'Organizations',
-      isOpen: false,
-      endpoints: [
-        { name: 'Get organization details', method: 'GET', path: '/organizations/{id}' },
-        { name: 'Update organization', method: 'PUT', path: '/organizations/{id}' },
-        { name: 'List organization members', method: 'GET', path: '/organizations/{id}/members' },
-        { name: 'Invite member', method: 'POST', path: '/organizations/{id}/members' },
+        { name: 'List all projects', method: 'GET', path: '/v1/projects' },
+        { name: 'Create new project', method: 'POST', path: '/v1/projects' },
       ]
     },
   ]);
@@ -127,11 +77,11 @@ const ApiDocsPage: React.FC = () => {
   };
 
   const codeExamples = {
-    shell: `curl -X GET "https://viral.app/api/v1/accounts/tracked" \\
+    shell: `curl -X GET "https://viewtrack.app/api/v1/accounts" \\
   -H "x-api-key: YOUR_API_KEY" \\
   -H "Content-Type: application/json"`,
     
-    javascript: `const response = await fetch('https://viral.app/api/v1/accounts/tracked', {
+    javascript: `const response = await fetch('https://viewtrack.app/api/v1/accounts', {
   method: 'GET',
   headers: {
     'x-api-key': 'YOUR_API_KEY',
@@ -149,7 +99,7 @@ headers = {
 }
 
 response = requests.get(
-    'https://viral.app/api/v1/accounts/tracked',
+    'https://viewtrack.app/api/v1/accounts',
     headers=headers
 )
 
@@ -158,7 +108,7 @@ data = response.json()`,
     ruby: `require 'net/http'
 require 'json'
 
-uri = URI('https://viral.app/api/v1/accounts/tracked')
+uri = URI('https://viewtrack.app/api/v1/accounts')
 request = Net::HTTP::Get.new(uri)
 request['x-api-key'] = 'YOUR_API_KEY'
 request['Content-Type'] = 'application/json'
@@ -371,7 +321,7 @@ data = JSON.parse(response.body)`
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Server</h3>
             <div className="bg-[#1F1F1F] rounded-lg p-3 border border-white/5">
-              <p className="text-sm text-white font-mono">https://viral.app/api/v1</p>
+              <p className="text-sm text-white font-mono">https://viewtrack.app/api/v1</p>
             </div>
             <p className="text-xs text-gray-500 mt-2">API Server</p>
           </div>

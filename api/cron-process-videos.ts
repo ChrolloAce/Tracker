@@ -297,7 +297,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
  */
 function transformVideoData(rawData: any, platform: string): VideoData {
   if (platform === 'tiktok') {
-    // TikTok uses apidojo/tiktok-scraper format (channel + video objects or flat keys)
+    // TikTok uses apidojo/tiktok-scraper-api format (channel + video objects)
     const channel = rawData.channel || {};
     const video = rawData.video || {};
     
@@ -476,7 +476,7 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     let input: any;
 
     if (platform === 'tiktok') {
-      actorId = 'apidojo/tiktok-scraper';
+      actorId = 'apidojo/tiktok-scraper-api';
       input = {
         startUrls: [url],
         maxItems: 1,

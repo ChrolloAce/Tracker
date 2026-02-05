@@ -716,7 +716,7 @@ async function fetchVideosFromPlatform(
       debugLog: false
     };
   } else if (platformLower === 'tiktok') {
-    actorId = 'apidojo/tiktok-scraper';
+    actorId = 'apidojo/tiktok-scraper-api';
     const usernameClean = username.replace('@', '');
     input = {
       startUrls: [`https://www.tiktok.com/@${usernameClean}`],
@@ -873,7 +873,7 @@ function extractVideoId(video: any, platform: string): string | null {
     // hpix~ig-reels-scraper format
     return video.code || video.id || null;
     } else if (platformLower === 'tiktok') {
-    // apidojo/tiktok-scraper format: direct id field or extract from postPage URL
+    // apidojo/tiktok-scraper-api format: direct id field or extract from postPage URL
     if (video.id || video.post_id) {
       return video.id || video.post_id;
     }
@@ -1024,7 +1024,7 @@ async function refreshTikTokVideosBulk(
   
   try {
     const result = await runApifyActor({
-      actorId: 'apidojo/tiktok-scraper',
+      actorId: 'apidojo/tiktok-scraper-api',
       input: {
         startUrls: videoUrls,
         maxItems: videoUrls.length,
@@ -1045,7 +1045,7 @@ async function refreshTikTokVideosBulk(
 
     console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${validVideos.length} DB videos...`);
 
-    // Update each video with fresh metrics (apidojo/tiktok-scraper format)
+    // Update each video with fresh metrics (apidojo/tiktok-scraper-api format)
     const unmatchedVideos: string[] = [];
     const matchedVideoIds = new Set<string>();
     
@@ -1611,7 +1611,7 @@ async function saveVideosToFirestore(
       
       platformVideoId = video.code || video.id;
     } else if (platformLower === 'tiktok') {
-      // apidojo/tiktok-scraper: direct id field
+      // apidojo/tiktok-scraper-api: direct id field
       platformVideoId = video.id || video.post_id || '';
     } else if (platformLower === 'twitter') {
       platformVideoId = video.id;
@@ -1699,7 +1699,7 @@ async function saveVideosToFirestore(
       caption = video.caption || '';
       uploadDate = video.taken_at ? new Date(video.taken_at * 1000) : new Date();
     } else if (platformLower === 'tiktok') {
-      // apidojo/tiktok-scraper format
+      // apidojo/tiktok-scraper-api format
       const videoObj = video.video || {};
       const channel = video.channel || {};
       views = video.views || 0;

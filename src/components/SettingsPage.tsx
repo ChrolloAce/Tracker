@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield, Key } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -15,8 +15,9 @@ import UsageTrackingService from '../services/UsageTrackingService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
+import ApiKeysManager from './ApiKeysManager';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue' | 'api-keys';
 
 /**
  * BillingTabContent Component
@@ -376,7 +377,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Use initialTab from URL if provided
-    if (initialTabProp && ['profile', 'organization', 'billing', 'notifications'].includes(initialTabProp)) {
+    if (initialTabProp && ['profile', 'organization', 'billing', 'notifications', 'api-keys'].includes(initialTabProp)) {
       return initialTabProp as TabType;
     }
     return 'profile';
@@ -574,10 +575,11 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'notifications', label: 'Notifications', icon: Bell },
+              { id: 'api-keys', label: 'API Keys', icon: Key },
             ]
             .filter(tab => {
-              // Hide billing tab for creators
-              if (userRole === 'creator' && tab.id === 'billing') {
+              // Hide billing and API keys tabs for creators
+              if (userRole === 'creator' && (tab.id === 'billing' || tab.id === 'api-keys')) {
                 return false;
               }
               return true;
@@ -1008,6 +1010,25 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               © 2025 All rights reserved
             </p>
           </div>
+            </div>
+          )}
+
+          {/* API Keys Tab */}
+          {activeTab === 'api-keys' && currentOrgId && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">API Keys</h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Create and manage API keys for programmatic access to ViewTrack.
+                  <a href="/api-docs" className="text-purple-400 hover:text-purple-300 ml-2">
+                    View API Documentation →
+                  </a>
+                </p>
+              </div>
+
+              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                <ApiKeysManager organizationId={currentOrgId} />
+              </div>
             </div>
           )}
 
