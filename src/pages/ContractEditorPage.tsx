@@ -403,6 +403,7 @@ const ContractEditorPage: React.FC = () => {
         contractNotes,
         creatorPaymentStructure?.name || undefined,
         user.uid,
+        false, // isPendingInvitation
         undefined, // contractTitle
         companyName,
         creatorContactInfo,

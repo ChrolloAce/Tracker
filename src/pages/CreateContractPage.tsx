@@ -315,6 +315,7 @@ const CreateContractPage: React.FC = () => {
         contractNotes,
         paymentStructureName || undefined,
         user.uid,
+        false, // isPendingInvitation
         contractTitle,
         companyName
       );
