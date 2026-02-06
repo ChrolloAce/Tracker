@@ -35,6 +35,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import SupportPage from './pages/SupportPage';
 import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import ApiDocsPage from './pages/ApiDocsPage';
+import ViralPage from './pages/ViralPage';
 import { useEffect, useState } from 'react';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -467,6 +468,19 @@ function App() {
             <Navigate to="/" replace />
           ) : (
             <ExtensionPage />
+          )
+        } 
+      />
+
+      <Route 
+        path="/viral" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/" replace />
+          ) : (
+            <ViralPage />
           )
         } 
       />

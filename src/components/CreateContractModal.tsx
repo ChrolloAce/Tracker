@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Loader2, Save, CheckCircle, Clock } from 'lucide-react';
+import { X, FileText, Loader2, Save, CheckCircle, Clock, Copy, ExternalLink, Link2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -26,8 +26,14 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [creatorOptions, setCreatorOptions] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
-  const [contractStartDate, setContractStartDate] = useState('');
+  const [contractStartDate, setContractStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   const [contractEndDate, setContractEndDate] = useState('');
+  const [createdContract, setCreatedContract] = useState<{ creatorLink: string; companyLink: string } | null>(null);
+  const [copiedCreator, setCopiedCreator] = useState(false);
+  const [copiedCompany, setCopiedCompany] = useState(false);
   const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
   const [paymentStructureName, setPaymentStructureName] = useState('');
@@ -186,7 +192,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
       return;
     }
 
-    if (!contractStartDate || !contractEndDate || !contractNotes) {
+    if (!contractStartDate) {
       alert('Please fill in all contract details');
       return;
     }
@@ -222,10 +228,11 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
       // Clear the draft on success
       localStorage.removeItem(getDraftKey());
       
-      // Show success with links
-      alert(`Contract created successfully!\n\n🎨 Creator Link:\n${contract.creatorLink}\n\n🏢 Company Link:\n${contract.companyLink}`);
-      
-      onSuccess();
+      // Show success popup with links
+      setCreatedContract({
+        creatorLink: contract.creatorLink,
+        companyLink: contract.companyLink,
+      });
     } catch (error) {
       console.error('Error creating contract:', error);
       alert('Failed to create contract');
@@ -290,25 +297,11 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                 )}
               </div>
 
-              {/* Payment Structure Name (Optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Payment Structure Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={paymentStructureName}
-                  onChange={(e) => setPaymentStructureName(e.target.value)}
-                  placeholder="e.g., Standard Creator Payment"
-                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
-                />
-              </div>
-
               {/* Contract Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Contract Start Date *
+                    Start Date *
                   </label>
                   <input
                     type="date"
@@ -319,7 +312,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Contract End Date *
+                    End Date <span className="text-gray-500">(Optional)</span>
                   </label>
                   <input
                     type="date"
@@ -375,7 +368,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={loading || !selectedCreatorId || !contractStartDate || !contractEndDate || !contractNotes}
+                disabled={loading || !selectedCreatorId || !contractStartDate}
                 className="flex items-center gap-2"
               >
                 {loading ? (
@@ -474,6 +467,100 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
             <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium">Template saved successfully!</span>
+            </div>
+          </div>
+        )}
+
+        {/* Contract Created Success Modal */}
+        {createdContract && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+            <div className="bg-[#161616] border border-gray-800 rounded-2xl max-w-md w-full p-6">
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle className="w-7 h-7 text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Contract Created!</h3>
+                <p className="text-sm text-gray-400 mt-1">Share these links with the relevant parties</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase mb-2">
+                    <Link2 className="w-3.5 h-3.5" />
+                    Creator Link
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={createdContract.creatorLink}
+                      readOnly
+                      className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-gray-300 text-sm truncate"
+                    />
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(createdContract.creatorLink);
+                        setCopiedCreator(true);
+                        setTimeout(() => setCopiedCreator(false), 2000);
+                      }}
+                      className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        copiedCreator ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 hover:bg-white/10 text-white'
+                      }`}
+                    >
+                      {copiedCreator ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    <a
+                      href={createdContract.creatorLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase mb-2">
+                    <Link2 className="w-3.5 h-3.5" />
+                    Company Link
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={createdContract.companyLink}
+                      readOnly
+                      className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-gray-300 text-sm truncate"
+                    />
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(createdContract.companyLink);
+                        setCopiedCompany(true);
+                        setTimeout(() => setCopiedCompany(false), 2000);
+                      }}
+                      className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        copiedCompany ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 hover:bg-white/10 text-white'
+                      }`}
+                    >
+                      {copiedCompany ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    <a
+                      href={createdContract.companyLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={onSuccess}
+                className="w-full mt-6 px-4 py-3 bg-white/10 hover:bg-white/15 text-white rounded-xl font-medium transition-colors"
+              >
+                Done
+              </button>
             </div>
           </div>
         )}

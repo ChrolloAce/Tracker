@@ -47,6 +47,7 @@ import ComingSoonLocked from '../components/ComingSoonLocked';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
+import ViralContentPage from '../components/ViralContentPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
@@ -2532,6 +2533,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'campaigns' && 'Campaigns'}
+                {activeTab === 'viral' && 'Viral Content'}
                 {activeTab === 'extension' && 'Extension'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
@@ -2544,6 +2546,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'campaigns' && 'Create and manage creator campaigns with rewards'}
+                  {activeTab === 'viral' && 'Discover trending content across platforms'}
                   {activeTab === 'extension' && 'Supercharge your workflow with our browser extension'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
                   {activeTab === 'settings' && 'Configure your preferences'}
@@ -3480,6 +3483,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             <CampaignsManagementPage />
           )}
 
+          {/* Viral Content Tab */}
+          {activeTab === 'viral' && (
+            <ComingSoonLocked 
+              title="Viral Content" 
+              description="Discover and curate trending viral content across Instagram, TikTok, YouTube, and X. Browse a library of top-performing videos to inspire your next campaign."
+            />
+          )}
+
           {/* Team Members Tab */}
           {activeTab === 'team' && <TeamManagementPage />}
 
@@ -3492,7 +3503,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

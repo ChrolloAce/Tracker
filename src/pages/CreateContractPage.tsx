@@ -1,34 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown, Copy, ExternalLink, Link2, X, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import OrganizationService from '../services/OrganizationService';
+import TeamInvitationService from '../services/TeamInvitationService';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
 
 // Template variables that can be inserted into contracts
-const TEMPLATE_VARIABLES = [
-  { key: '{{COMPANY_NAME}}', label: 'Company Name', description: 'Auto-filled from Company section' },
-  { key: '{{COMPANY_EMAIL}}', label: 'Company Email', description: 'Auto-filled from Company section' },
-  { key: '{{COMPANY_PHONE}}', label: 'Company Phone', description: 'Auto-filled from Company section' },
-  { key: '{{CREATOR_NAME}}', label: 'Creator Name', description: 'Auto-filled from selected creator' },
-  { key: '{{START_DATE}}', label: 'Start Date', description: 'Contract start date' },
-  { key: '{{END_DATE}}', label: 'End Date', description: 'Contract end date (if set)' },
-  { key: '{{PAYMENT_STRUCTURE}}', label: 'Payment Structure', description: 'Payment structure name' },
-  { key: '{{TODAY_DATE}}', label: 'Today\'s Date', description: 'Current date when viewed' },
-  { key: '{{SIGNATURE_DATE}}', label: 'Signature Date', description: 'Date to be filled when signing', fillableBy: 'both' },
-  { key: '{{CUSTOM_DATE}}', label: 'Custom Date', description: 'Date field to be filled in', fillableBy: 'both' },
-  { key: '{{CUSTOM_TEXT}}', label: 'Custom Text', description: 'Text field to be filled in', fillableBy: 'both' },
-  { key: '{{CUSTOM_AMOUNT}}', label: 'Custom Amount', description: 'Amount field to be filled in', fillableBy: 'both' },
+const TEMPLATE_VARIABLES: Array<{
+  key: string;
+  label: string;
+  description: string;
+  fillableBy?: string;
+  type?: 'auto' | 'fillable';
+}> = [
+  { key: '{{COMPANY_NAME}}', label: 'Company Name', description: 'Auto-filled from Company section', type: 'auto' },
+  { key: '{{COMPANY_EMAIL}}', label: 'Company Email', description: 'Auto-filled from Company section', type: 'auto' },
+  { key: '{{COMPANY_PHONE}}', label: 'Company Phone', description: 'Auto-filled from Company section', type: 'auto' },
+  { key: '{{CREATOR_NAME}}', label: 'Creator Name', description: 'Auto-filled from selected creator', type: 'auto' },
+  { key: '{{CREATOR_EMAIL}}', label: 'Creator Email', description: 'Auto-filled from selected creator', type: 'auto' },
+  { key: '{{CONTRACT_TITLE}}', label: 'Contract Title', description: 'Auto-filled from title field', type: 'auto' },
+  { key: '{{START_DATE}}', label: 'Start Date', description: 'Contract start date', type: 'auto' },
+  { key: '{{END_DATE}}', label: 'End Date', description: 'Contract end date (if set)', type: 'auto' },
+  { key: '{{TODAY_DATE}}', label: 'Today\'s Date', description: 'Current date when viewed', type: 'auto' },
+  { key: '{{SIGNATURE_DATE}}', label: 'Signature Date', description: 'Blank line — to be filled when signing', type: 'fillable', fillableBy: 'both' },
+  { key: '{{CUSTOM_TEXT}}', label: 'Custom Text', description: 'Blank line — to be filled in by a party', type: 'fillable', fillableBy: 'both' },
+  { key: '{{CUSTOM_AMOUNT}}', label: 'Custom Amount', description: 'Blank amount — to be filled in', type: 'fillable', fillableBy: 'both' },
+  { key: '{{CUSTOM_DATE}}', label: 'Custom Date', description: 'Blank date — to be filled in', type: 'fillable', fillableBy: 'both' },
 ];
 
 interface CreatorOption {
   userId: string;
   displayName: string;
   email?: string;
+  isPending?: boolean;
 }
 
 const CreateContractPage: React.FC = () => {
@@ -37,11 +46,16 @@ const CreateContractPage: React.FC = () => {
   const [creators, setCreators] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
   const [contractTitle, setContractTitle] = useState('Content Creation Agreement');
-  const [contractStartDate, setContractStartDate] = useState('');
+  const [contractStartDate, setContractStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // YYYY-MM-DD
+  });
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
   const [paymentStructureName, setPaymentStructureName] = useState('');
+  const [createdContract, setCreatedContract] = useState<{ creatorLink: string; companyLink: string } | null>(null);
+  const [customFields, setCustomFields] = useState<Array<{ label: string; value: string }>>([]);
   const [companyName, setCompanyName] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
@@ -149,10 +163,11 @@ const CreateContractPage: React.FC = () => {
 
     setLoadingCreators(true);
     try {
-      // Fetch BOTH project creators AND organization members with role 'creator' in parallel
-      const [projectCreators, allMembers] = await Promise.all([
+      // Fetch project creators, org members, AND pending invitations in parallel
+      const [projectCreators, allMembers, pendingInvitations] = await Promise.all([
         CreatorLinksService.getAllCreators(currentOrgId, currentProjectId),
-        OrganizationService.getOrgMembers(currentOrgId)
+        OrganizationService.getOrgMembers(currentOrgId),
+        TeamInvitationService.getOrgInvitations(currentOrgId)
       ]);
       
       // 1. Get creators from project profiles (linked to accounts)
@@ -161,6 +176,7 @@ const CreateContractPage: React.FC = () => {
           userId: creator.id,
           displayName: creator.displayName,
           email: creator.email,
+          isPending: false,
         }])
       );
       
@@ -171,37 +187,46 @@ const CreateContractPage: React.FC = () => {
           userId: member.userId,
           displayName: member.displayName || member.email || 'Unknown',
           email: member.email,
+          isPending: false,
         }));
       
-      // 3. Merge both lists (members take precedence for display name if both exist)
+      // 3. Merge active creators (members take precedence for display name)
       const mergedCreators = new Map<string, CreatorOption>();
       
-      // First add all project creators
       projectCreatorMap.forEach((creator, id) => {
         mergedCreators.set(id, creator);
       });
       
-      // Then add/update with member creators (these have more up-to-date info)
       memberCreators.forEach(creator => {
         const existing = mergedCreators.get(creator.userId);
         if (existing) {
-          // Update with member data if available
           mergedCreators.set(creator.userId, {
             ...existing,
             displayName: creator.displayName || existing.displayName,
             email: creator.email || existing.email,
           });
         } else {
-          // Add new creator
           mergedCreators.set(creator.userId, creator);
         }
       });
       
+      // 4. Add pending creator invitations
+      const pendingCreators = pendingInvitations
+        .filter(inv => inv.role === 'creator' && inv.status === 'pending')
+        .map(inv => ({
+          userId: `pending_${inv.id}`,
+          displayName: inv.email,
+          email: inv.email,
+          isPending: true,
+        }));
+      
       // Convert to array and sort by display name
-      const allCreators = Array.from(mergedCreators.values())
+      const activeCreators = Array.from(mergedCreators.values())
         .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
       
-      console.log(`[CreateContractPage] Loaded ${allCreators.length} creators (${projectCreators.length} from project, ${memberCreators.length} from org members)`);
+      const allCreators = [...activeCreators, ...pendingCreators];
+      
+      console.log(`[CreateContractPage] Loaded ${allCreators.length} creators (${activeCreators.length} active, ${pendingCreators.length} pending)`);
       
       setCreators(allCreators);
     } catch (error) {
@@ -285,13 +310,34 @@ const CreateContractPage: React.FC = () => {
 
   const hasUnsavedChanges = contractNotes !== initialContractNotes && contractNotes.trim().length > 0;
 
+  // Build variable resolution map from current form values
+  const selectedCreator = creators.find(c => c.userId === selectedCreatorId);
+  const variableValues = useMemo(() => {
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    };
+
+    return new Map<string, string>([
+      ['{{COMPANY_NAME}}', companyName || ''],
+      ['{{COMPANY_EMAIL}}', companyEmail || ''],
+      ['{{COMPANY_PHONE}}', companyPhone || ''],
+      ['{{CREATOR_NAME}}', selectedCreator?.displayName || ''],
+      ['{{CREATOR_EMAIL}}', selectedCreator?.email || ''],
+      ['{{CONTRACT_TITLE}}', contractTitle || ''],
+      ['{{START_DATE}}', formatDate(contractStartDate)],
+      ['{{END_DATE}}', contractEndDate ? formatDate(contractEndDate) : ''],
+      ['{{TODAY_DATE}}', new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
+    ]);
+  }, [companyName, companyEmail, companyPhone, selectedCreator, contractTitle, contractStartDate, contractEndDate]);
+
   const handleCreate = async () => {
     if (!currentOrgId || !currentProjectId || !user || !selectedCreatorId) {
       alert('Please fill in all required fields');
       return;
     }
 
-    if (!companyName || !contractTitle || !contractStartDate || !contractNotes) {
+    if (!companyName || !contractTitle || !contractStartDate) {
       alert('Please fill in all contract details');
       return;
     }
@@ -302,12 +348,17 @@ const CreateContractPage: React.FC = () => {
       return;
     }
 
+    // For pending invitations, strip the prefix to get the actual invitation ID
+    const creatorId = selectedCreator.isPending 
+      ? selectedCreatorId.replace('pending_', '') 
+      : selectedCreatorId;
+
     setLoading(true);
     try {
-      await ContractService.createShareableContract(
+      const contract = await ContractService.createShareableContract(
         currentOrgId,
         currentProjectId,
-        selectedCreator.userId,
+        creatorId,
         selectedCreator.displayName || 'Creator',
         selectedCreator.email || '',
         contractStartDate,
@@ -315,7 +366,7 @@ const CreateContractPage: React.FC = () => {
         contractNotes,
         paymentStructureName || undefined,
         user.uid,
-        false, // isPendingInvitation
+        selectedCreator.isPending || false,
         contractTitle,
         companyName
       );
@@ -323,8 +374,11 @@ const CreateContractPage: React.FC = () => {
       // Clear the draft on success
       localStorage.removeItem(getDraftKey());
       
-      // Navigate back to contracts page
-      navigate('/dashboard?tab=creators&subtab=contracts');
+      // Show success popup with links instead of redirecting
+      setCreatedContract({
+        creatorLink: contract.creatorLink,
+        companyLink: contract.companyLink,
+      });
     } catch (error) {
       console.error('Error creating contract:', error);
       alert('Failed to create contract');
@@ -367,7 +421,7 @@ const CreateContractPage: React.FC = () => {
             </div>
             <Button
               onClick={handleCreate}
-              disabled={loading || !selectedCreatorId || !contractStartDate || !contractNotes || !companyName}
+              disabled={loading || !selectedCreatorId || !contractStartDate || !companyName}
               className="flex items-center gap-2"
             >
               {loading ? (
@@ -465,43 +519,47 @@ const CreateContractPage: React.FC = () => {
                   ) : creators.length === 0 ? (
                     <div className="text-sm text-gray-500">No creators found in this project</div>
                   ) : (
-                    <select
-                      value={selectedCreatorId}
-                      onChange={(e) => setSelectedCreatorId(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                    >
-                      <option value="">Choose a creator...</option>
-                      {creators.map((creator) => (
-                        <option key={creator.userId} value={creator.userId}>
-                          {creator.displayName || creator.email}
-                        </option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={selectedCreatorId}
+                        onChange={(e) => setSelectedCreatorId(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
+                      >
+                        <option value="">Choose a creator...</option>
+                        {creators.filter(c => !c.isPending).length > 0 && (
+                          <optgroup label="Active Creators">
+                            {creators.filter(c => !c.isPending).map((creator) => (
+                              <option key={creator.userId} value={creator.userId}>
+                                {creator.displayName || creator.email}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {creators.filter(c => c.isPending).length > 0 && (
+                          <optgroup label="Pending — Not Active Yet">
+                            {creators.filter(c => c.isPending).map((creator) => (
+                              <option key={creator.userId} value={creator.userId}>
+                                {creator.email || creator.displayName} — not active yet
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                      {selectedCreatorId?.startsWith('pending_') && (
+                        <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                          <span className="w-2 h-2 bg-amber-400 rounded-full flex-shrink-0" />
+                          <span className="text-xs text-amber-700">This creator hasn't accepted their invitation yet. The contract will be ready when they join.</span>
+                        </div>
+                      )}
+                    </>
                   )}
-                </div>
-
-                {/* Payment Structure */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
-                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">3</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">Payment Structure <span className="text-gray-400 font-normal">(Optional)</span></span>
-                  </div>
-                  <input
-                    type="text"
-                    value={paymentStructureName}
-                    onChange={(e) => setPaymentStructureName(e.target.value)}
-                    placeholder="e.g., 'Standard Rate', 'Premium Package'"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                  />
                 </div>
 
                 {/* Contract Period */}
                 <div className="p-4 bg-white rounded-lg border border-gray-200">
                   <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
                     <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">4</span>
+                      <span className="text-white text-xs font-bold">3</span>
                     </div>
                     <span className="text-sm font-semibold text-gray-900">Contract Period</span>
                   </div>
@@ -529,6 +587,68 @@ const CreateContractPage: React.FC = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Dynamic Custom Fields */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">4</span>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900">Custom Fields <span className="text-gray-400 font-normal">(Optional)</span></span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCustomFields(prev => [...prev, { label: '', value: '' }])}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add Field
+                    </button>
+                  </div>
+                  {customFields.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">
+                      Add custom fields like "Deliverables", "Payment Amount", etc.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {customFields.map((field, index) => (
+                        <div key={index} className="flex gap-2 items-start">
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={field.label}
+                              onChange={(e) => {
+                                const updated = [...customFields];
+                                updated[index].label = e.target.value;
+                                setCustomFields(updated);
+                              }}
+                              placeholder="Field name"
+                              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={field.value}
+                              onChange={(e) => {
+                                const updated = [...customFields];
+                                updated[index].value = e.target.value;
+                                setCustomFields(updated);
+                              }}
+                              placeholder="Value"
+                              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
+                            />
+                          </div>
+                          <button
+                            onClick={() => setCustomFields(prev => prev.filter((_, i) => i !== index))}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -570,24 +690,61 @@ const CreateContractPage: React.FC = () => {
                       </button>
                       
                       {showVariablesDropdown && (
-                        <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-80 overflow-y-auto">
-                          <div className="p-2 border-b border-gray-100">
-                            <p className="text-[10px] text-gray-500">Click a variable to insert it at cursor position</p>
+                        <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-96 overflow-y-auto">
+                          <div className="p-2.5 border-b border-gray-100">
+                            <p className="text-[10px] text-gray-500">Click to insert at cursor. Auto-fill variables resolve in the preview.</p>
                           </div>
-                          <div className="p-1">
-                            {TEMPLATE_VARIABLES.map((variable) => (
+                          
+                          {/* Auto-fill variables */}
+                          <div className="p-1.5">
+                            <div className="px-2 py-1">
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Auto-filled</span>
+                            </div>
+                            {TEMPLATE_VARIABLES.filter(v => v.type === 'auto').map((variable) => {
+                              const resolvedValue = variableValues.get(variable.key);
+                              const hasValue = !!resolvedValue;
+                              return (
+                                <button
+                                  key={variable.key}
+                                  onClick={() => insertVariable(variable.key)}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hasValue ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                      <span className="text-xs font-medium text-gray-900 truncate">{variable.label}</span>
+                                    </div>
+                                    {hasValue ? (
+                                      <span className="text-[10px] text-emerald-600 font-medium truncate max-w-[140px]">{resolvedValue}</span>
+                                    ) : (
+                                      <span className="text-[10px] text-gray-400 italic">empty</span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-gray-400 mt-0.5 pl-3.5 font-mono">{variable.key}</p>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Fillable variables */}
+                          <div className="p-1.5 border-t border-gray-100">
+                            <div className="px-2 py-1">
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Fillable by Signer</span>
+                            </div>
+                            {TEMPLATE_VARIABLES.filter(v => v.type === 'fillable').map((variable) => (
                               <button
                                 key={variable.key}
                                 onClick={() => insertVariable(variable.key)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors group"
+                                className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors"
                               >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-mono text-gray-900">{variable.key}</span>
-                                  {variable.fillableBy && (
-                                    <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">Fillable</span>
-                                  )}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                                    <span className="text-xs font-medium text-gray-900">{variable.label}</span>
+                                  </div>
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded font-medium">blank</span>
                                 </div>
-                                <p className="text-[10px] text-gray-500 mt-0.5">{variable.description}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5 pl-3.5">{variable.description}</p>
                               </button>
                             ))}
                           </div>
@@ -596,7 +753,9 @@ const CreateContractPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-[10px] text-gray-400">
-                    Variables will be auto-filled or available for signing parties
+                    <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Auto-filled</span>
+                    <span className="mx-2">·</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Fillable by signer</span>
                   </div>
                 </div>
               </div>
@@ -609,16 +768,30 @@ const CreateContractPage: React.FC = () => {
                 className="w-full h-96 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white resize-none font-mono text-sm"
               />
               
-              {/* Variable Legend */}
+              {/* Variable Legend — shows resolved values */}
               {contractNotes.includes('{{') && (
                 <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-[10px] font-medium text-gray-600 mb-2">Variables detected in your contract:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TEMPLATE_VARIABLES.filter(v => contractNotes.includes(v.key)).map(v => (
-                      <span key={v.key} className="text-[10px] px-2 py-1 bg-white border border-gray-200 rounded font-mono text-gray-700">
-                        {v.key}
-                      </span>
-                    ))}
+                  <p className="text-[10px] font-medium text-gray-600 mb-2">Variables in your contract:</p>
+                  <div className="space-y-1.5">
+                    {TEMPLATE_VARIABLES.filter(v => contractNotes.includes(v.key)).map(v => {
+                      const resolved = variableValues.get(v.key);
+                      const isFillable = v.type === 'fillable';
+                      return (
+                        <div key={v.key} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${isFillable ? 'bg-amber-400' : resolved ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                            <span className="text-[10px] font-mono text-gray-600">{v.key}</span>
+                          </div>
+                          {isFillable ? (
+                            <span className="text-[10px] text-amber-600 italic">filled by signer</span>
+                          ) : resolved ? (
+                            <span className="text-[10px] text-emerald-600 font-medium truncate max-w-[200px]">→ {resolved}</span>
+                          ) : (
+                            <span className="text-[10px] text-red-400 italic">not set — fill in the form</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -714,26 +887,30 @@ const CreateContractPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Payment Section */}
-                {paymentStructureName && (
+                {/* Custom Fields Section */}
+                {customFields.filter(f => f.label && f.value).length > 0 && (
                   <div className="mb-4">
                     <div className="text-[10px] font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">
-                      ARTICLE III — COMPENSATION
+                      ARTICLE III — ADDITIONAL TERMS
                     </div>
-                    <p className="text-[11px] text-gray-700">
-                      Payment Structure: <span className="font-semibold underline">{paymentStructureName}</span>
-                    </p>
+                    <div className="space-y-1.5">
+                      {customFields.filter(f => f.label && f.value).map((field, idx) => (
+                        <p key={idx} className="text-[11px] text-gray-700">
+                          <strong>3.{idx + 1}</strong> {field.label}: <span className="font-semibold underline">{field.value}</span>
+                        </p>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* Terms Section */}
                 <div className="mb-6">
                   <div className="text-[10px] font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">
-                    ARTICLE {paymentStructureName ? 'IV' : 'III'} — TERMS AND CONDITIONS
+                    ARTICLE {customFields.filter(f => f.label && f.value).length > 0 ? 'IV' : 'III'} — TERMS AND CONDITIONS
                   </div>
                   {contractNotes ? (
                     <div className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap text-justify max-h-48 overflow-y-auto pr-2">
-                      {contractNotes}
+                      <ResolvedContractText text={contractNotes} variableValues={variableValues} />
                     </div>
                   ) : (
                     <div className="text-[11px] text-gray-400 italic">
@@ -851,6 +1028,202 @@ const CreateContractPage: React.FC = () => {
           <span className="font-medium">Template saved successfully!</span>
         </div>
       )}
+
+      {/* Contract Created Success Modal */}
+      {createdContract && (
+        <ContractCreatedModal
+          creatorLink={createdContract.creatorLink}
+          companyLink={createdContract.companyLink}
+          onClose={() => navigate('/dashboard?tab=creators&subtab=contracts')}
+        />
+      )}
+    </div>
+  );
+};
+
+// Contract Created Success Modal
+interface ContractCreatedModalProps {
+  creatorLink: string;
+  companyLink: string;
+  onClose: () => void;
+}
+
+// Renders contract text with variables resolved to their values
+const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string, string> }> = ({ text, variableValues }) => {
+  // Split text by variable patterns, keeping the delimiters
+  const parts = text.split(/(\{\{[A-Z_]+\}\})/g);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        // Check if this part is a variable
+        const variableDef = TEMPLATE_VARIABLES.find(v => v.key === part);
+        if (!variableDef) {
+          return <span key={index}>{part}</span>;
+        }
+
+        const resolvedValue = variableValues.get(part);
+        const isFillable = variableDef.type === 'fillable';
+
+        if (isFillable) {
+          // Fillable: show as a styled blank line
+          return (
+            <span
+              key={index}
+              className="inline-block min-w-[100px] border-b border-dashed border-amber-400 text-amber-500 text-[10px] italic px-1 mx-0.5"
+              title={variableDef.description}
+            >
+              [{variableDef.label}]
+            </span>
+          );
+        }
+
+        if (resolvedValue) {
+          // Auto-fill with value: show as highlighted resolved text
+          return (
+            <span
+              key={index}
+              className="font-semibold text-gray-900 underline decoration-emerald-400 decoration-1 underline-offset-2"
+              title={`${variableDef.key} → ${resolvedValue}`}
+            >
+              {resolvedValue}
+            </span>
+          );
+        }
+
+        // Auto-fill but empty: show as a red placeholder
+        return (
+          <span
+            key={index}
+            className="inline-block min-w-[80px] border-b border-dashed border-red-300 text-red-400 text-[10px] italic px-1 mx-0.5"
+            title={`${variableDef.key} — not set yet`}
+          >
+            [{variableDef.label}]
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
+const ContractCreatedModal: React.FC<ContractCreatedModalProps> = ({ creatorLink, companyLink, onClose }) => {
+  const [copiedCreator, setCopiedCreator] = useState(false);
+  const [copiedCompany, setCopiedCompany] = useState(false);
+
+  const copyToClipboard = async (text: string, type: 'creator' | 'company') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === 'creator') {
+        setCopiedCreator(true);
+        setTimeout(() => setCopiedCreator(false), 2000);
+      } else {
+        setCopiedCompany(true);
+        setTimeout(() => setCopiedCompany(false), 2000);
+      }
+    } catch {
+      // Fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="w-8 h-8 text-emerald-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900">Contract Created!</h3>
+          <p className="text-sm text-gray-500 mt-1">Share these links with the relevant parties</p>
+        </div>
+
+        {/* Links */}
+        <div className="space-y-4">
+          {/* Creator Link */}
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase mb-2">
+              <Link2 className="w-3.5 h-3.5" />
+              Creator Link
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={creatorLink}
+                readOnly
+                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm truncate"
+              />
+              <button
+                onClick={() => copyToClipboard(creatorLink, 'creator')}
+                className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  copiedCreator 
+                    ? 'bg-emerald-100 text-emerald-700' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {copiedCreator ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedCreator ? 'Copied' : 'Copy'}
+              </button>
+              <a
+                href={creatorLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+
+          {/* Company Link */}
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase mb-2">
+              <Link2 className="w-3.5 h-3.5" />
+              Company Link
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={companyLink}
+                readOnly
+                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm truncate"
+              />
+              <button
+                onClick={() => copyToClipboard(companyLink, 'company')}
+                className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  copiedCompany 
+                    ? 'bg-emerald-100 text-emerald-700' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {copiedCompany ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedCompany ? 'Copied' : 'Copy'}
+              </button>
+              <a
+                href={companyLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Done Button */}
+        <button
+          onClick={onClose}
+          className="w-full mt-6 px-4 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-colors"
+        >
+          Done
+        </button>
+      </div>
     </div>
   );
 };

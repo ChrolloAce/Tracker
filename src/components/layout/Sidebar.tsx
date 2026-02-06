@@ -17,7 +17,8 @@ import {
   DollarSign,
   Lock,
   MessageCircle,
-  Shield
+  Shield,
+  Flame
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -160,6 +161,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             label: 'Team Members',
             icon: UserPlus,
             href: `${baseHref}/team`,
+          },
+        ]
+      },
+      {
+        id: 'discover-section',
+        label: 'Discover',
+        items: [
+          {
+            id: 'viral',
+            label: 'Viral Content',
+            icon: Flame,
+            href: `${baseHref}/viral`,
           },
         ]
       },
