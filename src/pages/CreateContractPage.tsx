@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown, Copy, ExternalLink, Link2, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown, Copy, ExternalLink, Link2, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';

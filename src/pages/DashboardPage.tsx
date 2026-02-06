@@ -47,7 +47,7 @@ import ComingSoonLocked from '../components/ComingSoonLocked';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
-import ViralContentPage from '../components/ViralContentPage';
+// ViralContentPage import removed — using ComingSoonLocked for now
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
