@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, AlertCircle, Link as LinkIcon, X, ChevronDown, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { AlertCircle, X, RefreshCw, Trash2 } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import UsageTrackingService from '../services/UsageTrackingService';
@@ -13,16 +13,16 @@ interface AddVideoModalProps {
   onAddVideo: (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[]) => Promise<void>;
 }
 
-interface VideoInput {
+interface ParsedVideo {
   id: string;
   url: string;
-  detectedPlatform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null;
+  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null;
 }
 
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
   const { user, currentOrgId } = useAuth();
   const navigate = useNavigate();
-  const [videoInputs, setVideoInputs] = useState<VideoInput[]>([{ id: '1', url: '', detectedPlatform: null }]);
+  const [rawText, setRawText] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [videosLeft, setVideosLeft] = useState(999999);
   const [isAtVideoLimit, setIsAtVideoLimit] = useState(false);
@@ -32,25 +32,19 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
     if (isOpen) {
       const checkClipboard = async () => {
         const parsed = await UrlParserService.autoDetectFromClipboard();
-        
         if (parsed && parsed.isValid && parsed.platform) {
-          setVideoInputs([{ id: '1', url: parsed.url, detectedPlatform: parsed.platform }]);
+          setRawText(parsed.url);
         }
       };
-      
       checkClipboard();
-      
-      // Load usage limits (admins with bypass enabled skip limits)
+
       if (currentOrgId && user) {
         const checkLimits = async () => {
           const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
-          
           if (shouldBypass) {
-            // Admin users with bypass enabled have unlimited videos
             setVideosLeft(999999);
             setIsAtVideoLimit(false);
           } else {
-            // Normal users or admins viewing as normal user - check limits
             const usage = await UsageTrackingService.getUsage(currentOrgId);
             const limits = await UsageTrackingService.getLimits(currentOrgId);
             const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
@@ -58,67 +52,88 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
             setIsAtVideoLimit(left === 0);
           }
         };
-        
         checkLimits();
       }
     } else {
-      // Reset when modal closes
-      setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
+      setRawText('');
       setUrlError(null);
     }
   }, [isOpen, currentOrgId, user]);
 
-  const handleAddVideoInput = () => {
-    setVideoInputs([...videoInputs, { id: Date.now().toString(), url: '', detectedPlatform: null }]);
-  };
+  // Parse URLs from the raw text
+  const parsedVideos: ParsedVideo[] = useMemo(() => {
+    if (!rawText.trim()) return [];
 
-  const handleRemoveVideoInput = (id: string) => {
-    if (videoInputs.length > 1) {
-      setVideoInputs(videoInputs.filter(input => input.id !== id));
+    // Split by newlines, commas, or spaces — then filter to actual URLs
+    const lines = rawText
+      .split(/[\n,]+/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    const videos: ParsedVideo[] = [];
+    const seen = new Set<string>();
+
+    for (const line of lines) {
+      // Extract URLs from the line (handles lines with extra text)
+      const urlMatch = line.match(/https?:\/\/[^\s]+/);
+      const url = urlMatch ? urlMatch[0] : line;
+
+      if (!url || seen.has(url.toLowerCase())) continue;
+      seen.add(url.toLowerCase());
+
+      const parsed = UrlParserService.parseUrl(url);
+      videos.push({
+        id: `${Date.now()}-${videos.length}`,
+        url,
+        platform: parsed.platform,
+      });
     }
-  };
 
-  const handleVideoUrlChange = (id: string, url: string) => {
-    setUrlError(null);
-    
-    // Detect platform from URL
-    const parsed = UrlParserService.parseUrl(url);
-    const detectedPlatform = parsed.platform;
-    
-    setVideoInputs(videoInputs.map(input => 
-      input.id === id ? { ...input, url, detectedPlatform } : input
-    ));
-  };
+    return videos;
+  }, [rawText]);
+
+  const validVideos = useMemo(() => parsedVideos.filter(v => v.platform !== null), [parsedVideos]);
+  const invalidVideos = useMemo(() => parsedVideos.filter(v => v.platform === null), [parsedVideos]);
+
+  // Platform summary
+  const platformCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const v of validVideos) {
+      if (v.platform) {
+        counts[v.platform] = (counts[v.platform] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [validVideos]);
+
+  const removeUrl = useCallback((urlToRemove: string) => {
+    // Remove the URL line from the raw text
+    const lines = rawText.split('\n');
+    const filtered = lines.filter(line => {
+      const match = line.trim().match(/https?:\/\/[^\s]+/);
+      return match ? match[0] !== urlToRemove : line.trim() !== urlToRemove;
+    });
+    setRawText(filtered.join('\n'));
+  }, [rawText]);
 
   const handleSubmit = async () => {
-    const validInputs = videoInputs.filter(input => input.url.trim() && input.detectedPlatform);
-    
-    if (validInputs.length === 0) {
-      setUrlError('Please enter at least one valid video URL');
+    if (validVideos.length === 0) {
+      setUrlError('Please paste at least one valid video URL');
       return;
     }
 
-    // Check if there are URLs without detected platforms
-    const invalidUrls = videoInputs.filter(input => input.url.trim() && !input.detectedPlatform);
-    if (invalidUrls.length > 0) {
-      setUrlError('Some URLs are invalid. Please check and enter valid social media video URLs.');
-      return;
-    }
-
-    // Group by platform and process each platform separately
-    const platformGroups = validInputs.reduce((acc, input) => {
-      const platform = input.detectedPlatform!;
-      if (!acc[platform]) {
-        acc[platform] = [];
-      }
-      acc[platform].push(input.url.trim());
+    // Group by platform
+    const platformGroups = validVideos.reduce((acc, v) => {
+      const platform = v.platform!;
+      if (!acc[platform]) acc[platform] = [];
+      acc[platform].push(v.url);
       return acc;
     }, {} as Record<string, string[]>);
 
-    // Close modal immediately and reset form
-    setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
+    // Reset and close
+    setRawText('');
     onClose();
-    
+
     // Process videos for each platform in background
     for (const [platform, urls] of Object.entries(platformGroups)) {
       onAddVideo(platform as any, urls).catch(error => {
@@ -131,133 +146,155 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#151515] rounded-[14px] w-full max-w-[580px] shadow-2xl" style={{ padding: '24px' }}>
+      <div className="bg-[#151515] rounded-[14px] w-full max-w-[620px] shadow-2xl" style={{ padding: '24px' }}>
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-lg font-bold text-white mb-1">Add Videos</h2>
-            <p className="text-sm text-[#A1A1AA]">Enter video URLs you want to track & analyze.</p>
+            <p className="text-sm text-[#A1A1AA]">
+              Paste video URLs — one per line or a block of links.
+            </p>
           </div>
           <button
-            onClick={() => {
-              onClose();
-              setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
-              setUrlError(null);
-            }}
+            onClick={() => { onClose(); setRawText(''); setUrlError(null); }}
             className="text-white/80 hover:text-white transition-colors p-1"
           >
             <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
-        
-        {/* Input Fields */}
-        <div className="space-y-3 mb-6">
-          {videoInputs.map((input) => (
-            <div key={input.id} className="flex gap-2 items-start">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={input.url}
-                  onChange={(e) => handleVideoUrlChange(input.id, e.target.value)}
-                  placeholder="Enter TikTok, YouTube, or Instagram video URL"
-                  className="w-full pl-4 pr-10 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm"
-                />
-                {input.detectedPlatform ? (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <PlatformIcon platform={input.detectedPlatform} size="sm" />
-                  </div>
-                ) : (
-                  <LinkIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
-                )}
-              </div>
-              
-              <div className="relative opacity-0 pointer-events-none">
-                <select
-                  disabled
-                  className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
-                >
-                  <option>10 videos</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-              </div>
 
-              <button
-                onClick={() => handleRemoveVideoInput(input.id)}
-                disabled={videoInputs.length === 1}
-                className={`p-2.5 rounded-lg transition-colors ${
-                  videoInputs.length === 1
-                    ? 'text-gray-500 opacity-30 cursor-not-allowed'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-                }`}
-              >
-                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-              </button>
-            </div>
-          ))}
-
-          {/* Show validation error */}
-          {urlError && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-xs text-red-300">
-                {urlError}
-              </span>
-            </div>
-          )}
-
-          {/* Usage Limit Warnings */}
-          {(() => {
-            const validVideosCount = videoInputs.filter(input => input.url.trim() && input.detectedPlatform).length;
-            const videosOverLimit = validVideosCount > videosLeft;
-            const videosToAdd = Math.min(validVideosCount, videosLeft);
-
-            if (isAtVideoLimit) {
-              return (
-                <div className="flex items-start gap-3 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-red-300 mb-1">
-                      Video limit reached!
-                    </p>
-                    <p className="text-xs text-red-300/80 mb-2">
-                      You've reached your maximum of tracked videos. Upgrade to add more.
-                    </p>
-                    <button
-                      onClick={() => navigate('/subscription')}
-                      className="text-xs font-medium text-white bg-red-500/20 hover:bg-red-500/30 px-3 py-1.5 rounded-md transition-colors"
-                    >
-                      Upgrade Plan →
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            if (videosOverLimit) {
-              return (
-                <div className="flex items-start gap-3 px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-300 mb-1">
-                      Limit warning
-                    </p>
-                    <p className="text-xs text-yellow-300/80 mb-2">
-                      Only <span className="font-semibold">{videosToAdd} of {validVideosCount} videos</span> will be added. You have {videosLeft} video slots remaining.
-                    </p>
-                    <button
-                      onClick={() => navigate('/subscription')}
-                      className="text-xs font-medium text-white bg-yellow-500/20 hover:bg-yellow-500/30 px-3 py-1.5 rounded-md transition-colors"
-                    >
-                      Upgrade for More →
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            return null;
-          })()}
+        {/* Bulk Textarea */}
+        <div className="relative mb-4">
+          <textarea
+            value={rawText}
+            onChange={(e) => { setRawText(e.target.value); setUrlError(null); }}
+            placeholder={`Paste video URLs here — one per line:\n\nhttps://www.tiktok.com/t/example1/\nhttps://www.instagram.com/reel/example2/\nhttps://youtube.com/shorts/example3`}
+            rows={7}
+            className="w-full px-4 py-3 bg-[#1E1E20] border border-gray-700/50 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm font-mono leading-relaxed resize-none"
+            autoFocus
+          />
         </div>
+
+        {/* Parsed URLs Preview */}
+        {parsedVideos.length > 0 && (
+          <div className="mb-4">
+            {/* Summary bar */}
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-gray-400">
+                  {validVideos.length} video{validVideos.length !== 1 ? 's' : ''} detected
+                </span>
+                <div className="flex items-center gap-2">
+                  {Object.entries(platformCounts).map(([platform, count]) => (
+                    <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full">
+                      <PlatformIcon platform={platform as any} size="sm" />
+                      <span className="text-[11px] text-gray-300 font-medium">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {invalidVideos.length > 0 && (
+                <span className="text-[11px] text-red-400">
+                  {invalidVideos.length} invalid
+                </span>
+              )}
+            </div>
+
+            {/* URL list */}
+            <div className="max-h-[200px] overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+              {parsedVideos.map((video) => (
+                <div
+                  key={video.url}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    video.platform
+                      ? 'bg-white/[0.03] border border-white/[0.06]'
+                      : 'bg-red-500/5 border border-red-500/10'
+                  }`}
+                >
+                  {/* Platform icon */}
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                    {video.platform ? (
+                      <PlatformIcon platform={video.platform} size="sm" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-400" />
+                    )}
+                  </div>
+
+                  {/* URL */}
+                  <span className={`flex-1 truncate font-mono text-xs ${
+                    video.platform ? 'text-gray-300' : 'text-red-300'
+                  }`}>
+                    {video.url}
+                  </span>
+
+                  {/* Remove button */}
+                  <button
+                    onClick={() => removeUrl(video.url)}
+                    className="flex-shrink-0 p-1 rounded hover:bg-white/10 transition-colors group"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-300" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Validation error */}
+        {urlError && (
+          <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-red-400" />
+            <span className="text-xs text-red-300">{urlError}</span>
+          </div>
+        )}
+
+        {/* Usage limit warnings */}
+        {(() => {
+          const videosOverLimit = validVideos.length > videosLeft;
+          const videosToAdd = Math.min(validVideos.length, videosLeft);
+
+          if (isAtVideoLimit) {
+            return (
+              <div className="flex items-start gap-3 px-4 py-3 mb-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-300 mb-1">Video limit reached!</p>
+                  <p className="text-xs text-red-300/80 mb-2">
+                    You've reached your maximum of tracked videos. Upgrade to add more.
+                  </p>
+                  <button
+                    onClick={() => navigate('/subscription')}
+                    className="text-xs font-medium text-white bg-red-500/20 hover:bg-red-500/30 px-3 py-1.5 rounded-md transition-colors"
+                  >
+                    Upgrade Plan →
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (videosOverLimit) {
+            return (
+              <div className="flex items-start gap-3 px-4 py-3 mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-300 mb-1">Limit warning</p>
+                  <p className="text-xs text-yellow-300/80 mb-2">
+                    Only <span className="font-semibold">{videosToAdd} of {validVideos.length} videos</span> will be added. You have {videosLeft} video slots remaining.
+                  </p>
+                  <button
+                    onClick={() => navigate('/subscription')}
+                    className="text-xs font-medium text-white bg-yellow-500/20 hover:bg-yellow-500/30 px-3 py-1.5 rounded-md transition-colors"
+                  >
+                    Upgrade for More →
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
@@ -265,24 +302,19 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Processing takes up to 5 minutes.</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleAddVideoInput}
-              className="px-4 py-2 text-sm font-medium text-gray-400 border border-gray-700 rounded-full hover:border-gray-600 hover:text-gray-300 transition-colors"
-            >
-              Add More
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isAtVideoLimit || videoInputs.every(input => !input.url.trim())}
-              className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-            >
-              {isAtVideoLimit ? 'Limit Reached' : 'Add Videos'}
-            </button>
-          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isAtVideoLimit || validVideos.length === 0}
+            className="px-5 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+          >
+            {isAtVideoLimit
+              ? 'Limit Reached'
+              : validVideos.length > 0
+                ? `Add ${validVideos.length} Video${validVideos.length !== 1 ? 's' : ''}`
+                : 'Add Videos'}
+          </button>
         </div>
       </div>
     </div>
   );
 };
-
