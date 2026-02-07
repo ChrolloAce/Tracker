@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AlertCircle, X, RefreshCw, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { AlertCircle, X, RefreshCw } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import UsageTrackingService from '../services/UsageTrackingService';
@@ -14,26 +14,49 @@ interface AddVideoModalProps {
 }
 
 interface ParsedVideo {
-  id: string;
   url: string;
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null;
+}
+
+/** Parse a block of text into individual video entries */
+function parseUrlsFromText(text: string): ParsedVideo[] {
+  if (!text.trim()) return [];
+  const lines = text.split(/[\n,]+/).map(l => l.trim()).filter(Boolean);
+  const videos: ParsedVideo[] = [];
+  const seen = new Set<string>();
+
+  for (const line of lines) {
+    const urlMatch = line.match(/https?:\/\/[^\s]+/);
+    const url = urlMatch ? urlMatch[0] : line;
+    if (!url || seen.has(url.toLowerCase())) continue;
+    seen.add(url.toLowerCase());
+    videos.push({ url, platform: UrlParserService.parseUrl(url).platform });
+  }
+  return videos;
 }
 
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
   const { user, currentOrgId } = useAuth();
   const navigate = useNavigate();
-  const [rawText, setRawText] = useState('');
+  const [videos, setVideos] = useState<ParsedVideo[]>([]);
+  const [inputValue, setInputValue] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [videosLeft, setVideosLeft] = useState(999999);
   const [isAtVideoLimit, setIsAtVideoLimit] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-detect URL from clipboard when modal opens
+  // Reset + clipboard check on open
   useEffect(() => {
     if (isOpen) {
+      setVideos([]);
+      setInputValue('');
+      setUrlError(null);
+
       const checkClipboard = async () => {
         const parsed = await UrlParserService.autoDetectFromClipboard();
         if (parsed && parsed.isValid && parsed.platform) {
-          setRawText(parsed.url);
+          setVideos([{ url: parsed.url, platform: parsed.platform }]);
         }
       };
       checkClipboard();
@@ -54,95 +77,126 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         };
         checkLimits();
       }
-    } else {
-      setRawText('');
-      setUrlError(null);
+
+      // Focus the input after a tick
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, currentOrgId, user]);
 
-  // Parse URLs from the raw text
-  const parsedVideos: ParsedVideo[] = useMemo(() => {
-    if (!rawText.trim()) return [];
+  // Process input — detect if user pasted multiple lines
+  const processInput = useCallback((text: string) => {
+    setUrlError(null);
+    const hasNewlines = text.includes('\n');
 
-    // Split by newlines, commas, or spaces — then filter to actual URLs
-    const lines = rawText
-      .split(/[\n,]+/)
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-
-    const videos: ParsedVideo[] = [];
-    const seen = new Set<string>();
-
-    for (const line of lines) {
-      // Extract URLs from the line (handles lines with extra text)
-      const urlMatch = line.match(/https?:\/\/[^\s]+/);
-      const url = urlMatch ? urlMatch[0] : line;
-
-      if (!url || seen.has(url.toLowerCase())) continue;
-      seen.add(url.toLowerCase());
-
-      const parsed = UrlParserService.parseUrl(url);
-      videos.push({
-        id: `${Date.now()}-${videos.length}`,
-        url,
-        platform: parsed.platform,
-      });
+    if (hasNewlines) {
+      // Bulk paste — parse all URLs and add them
+      const newVideos = parseUrlsFromText(text);
+      if (newVideos.length > 0) {
+        setVideos(prev => {
+          const existing = new Set(prev.map(v => v.url.toLowerCase()));
+          const unique = newVideos.filter(v => !existing.has(v.url.toLowerCase()));
+          return [...prev, ...unique];
+        });
+        setInputValue('');
+      } else {
+        setInputValue(text);
+      }
+    } else {
+      setInputValue(text);
     }
+  }, []);
 
-    return videos;
-  }, [rawText]);
+  // Handle Enter key — add current single URL
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const trimmed = inputValue.trim();
+      if (!trimmed) return;
 
-  const validVideos = useMemo(() => parsedVideos.filter(v => v.platform !== null), [parsedVideos]);
-  const invalidVideos = useMemo(() => parsedVideos.filter(v => v.platform === null), [parsedVideos]);
+      const parsed = parseUrlsFromText(trimmed);
+      if (parsed.length > 0) {
+        setVideos(prev => {
+          const existing = new Set(prev.map(v => v.url.toLowerCase()));
+          const unique = parsed.filter(v => !existing.has(v.url.toLowerCase()));
+          return [...prev, ...unique];
+        });
+        setInputValue('');
+      }
+    }
+  }, [inputValue]);
 
-  // Platform summary
+  const removeVideo = useCallback((urlToRemove: string) => {
+    setVideos(prev => prev.filter(v => v.url !== urlToRemove));
+  }, []);
+
+  const validVideos = useMemo(() => videos.filter(v => v.platform !== null), [videos]);
+  const invalidVideos = useMemo(() => videos.filter(v => v.platform === null), [videos]);
+
   const platformCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const v of validVideos) {
-      if (v.platform) {
-        counts[v.platform] = (counts[v.platform] || 0) + 1;
-      }
+      if (v.platform) counts[v.platform] = (counts[v.platform] || 0) + 1;
     }
     return counts;
   }, [validVideos]);
 
-  const removeUrl = useCallback((urlToRemove: string) => {
-    // Remove the URL line from the raw text
-    const lines = rawText.split('\n');
-    const filtered = lines.filter(line => {
-      const match = line.trim().match(/https?:\/\/[^\s]+/);
-      return match ? match[0] !== urlToRemove : line.trim() !== urlToRemove;
-    });
-    setRawText(filtered.join('\n'));
-  }, [rawText]);
-
   const handleSubmit = async () => {
+    // Also process any remaining text in the input
+    if (inputValue.trim()) {
+      const remaining = parseUrlsFromText(inputValue.trim());
+      if (remaining.length > 0) {
+        const existing = new Set(videos.map(v => v.url.toLowerCase()));
+        const unique = remaining.filter(v => !existing.has(v.url.toLowerCase()));
+        const allVideos = [...videos, ...unique];
+        const allValid = allVideos.filter(v => v.platform !== null);
+
+        if (allValid.length === 0) {
+          setUrlError('Please paste at least one valid video URL');
+          return;
+        }
+
+        const groups = allValid.reduce((acc, v) => {
+          const p = v.platform!;
+          if (!acc[p]) acc[p] = [];
+          acc[p].push(v.url);
+          return acc;
+        }, {} as Record<string, string[]>);
+
+        setVideos([]);
+        setInputValue('');
+        onClose();
+
+        for (const [platform, urls] of Object.entries(groups)) {
+          onAddVideo(platform as any, urls).catch(err => console.error(`Failed to add ${platform} videos:`, err));
+        }
+        return;
+      }
+    }
+
     if (validVideos.length === 0) {
       setUrlError('Please paste at least one valid video URL');
       return;
     }
 
-    // Group by platform
-    const platformGroups = validVideos.reduce((acc, v) => {
-      const platform = v.platform!;
-      if (!acc[platform]) acc[platform] = [];
-      acc[platform].push(v.url);
+    const groups = validVideos.reduce((acc, v) => {
+      const p = v.platform!;
+      if (!acc[p]) acc[p] = [];
+      acc[p].push(v.url);
       return acc;
     }, {} as Record<string, string[]>);
 
-    // Reset and close
-    setRawText('');
+    setVideos([]);
+    setInputValue('');
     onClose();
 
-    // Process videos for each platform in background
-    for (const [platform, urls] of Object.entries(platformGroups)) {
-      onAddVideo(platform as any, urls).catch(error => {
-        console.error(`Failed to add ${platform} videos:`, error);
-      });
+    for (const [platform, urls] of Object.entries(groups)) {
+      onAddVideo(platform as any, urls).catch(err => console.error(`Failed to add ${platform} videos:`, err));
     }
   };
 
   if (!isOpen) return null;
+
+  const totalCount = validVideos.length;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -156,87 +210,88 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
             </p>
           </div>
           <button
-            onClick={() => { onClose(); setRawText(''); setUrlError(null); }}
+            onClick={() => { onClose(); setVideos([]); setInputValue(''); setUrlError(null); }}
             className="text-white/80 hover:text-white transition-colors p-1"
           >
             <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
 
-        {/* Bulk Textarea */}
-        <div className="relative mb-4">
-          <textarea
-            value={rawText}
-            onChange={(e) => { setRawText(e.target.value); setUrlError(null); }}
-            placeholder={`Paste video URLs here — one per line:\n\nhttps://www.tiktok.com/t/example1/\nhttps://www.instagram.com/reel/example2/\nhttps://youtube.com/shorts/example3`}
-            rows={7}
-            className="w-full px-4 py-3 bg-[#1E1E20] border border-gray-700/50 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm font-mono leading-relaxed resize-none"
-            autoFocus
-          />
+        {/* Combined input field with inline icons */}
+        <div
+          ref={containerRef}
+          onClick={() => inputRef.current?.focus()}
+          className="bg-[#1E1E20] border border-gray-700/50 rounded-xl overflow-hidden cursor-text mb-4 focus-within:ring-1 focus-within:ring-white/20 focus-within:border-white/20 transition-all"
+        >
+          <div className="max-h-[280px] overflow-y-auto p-1">
+            {/* Rendered URL lines with icons */}
+            {videos.map((video) => (
+              <div
+                key={video.url}
+                className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg mx-0.5 my-0.5 transition-colors ${
+                  video.platform
+                    ? 'hover:bg-white/[0.04]'
+                    : 'bg-red-500/5'
+                }`}
+              >
+                <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                  {video.platform ? (
+                    <PlatformIcon platform={video.platform} size="sm" />
+                  ) : (
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                  )}
+                </div>
+                <span className={`flex-1 truncate text-[13px] font-mono ${
+                  video.platform ? 'text-gray-300' : 'text-red-300'
+                }`}>
+                  {video.url}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeVideo(video.url); }}
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-all"
+                >
+                  <X className="w-3 h-3 text-gray-500 hover:text-gray-300" />
+                </button>
+              </div>
+            ))}
+
+            {/* Inline textarea for new input */}
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => processInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={videos.length === 0
+                ? "Paste video URLs here — one per line...\n\nhttps://www.tiktok.com/t/example/\nhttps://www.instagram.com/reel/example/\nhttps://youtube.com/shorts/example"
+                : "Paste more URLs..."
+              }
+              rows={videos.length === 0 ? 6 : 2}
+              className="w-full px-3 py-2 bg-transparent text-white placeholder-gray-600 focus:outline-none text-[13px] font-mono leading-relaxed resize-none"
+            />
+          </div>
         </div>
 
-        {/* Parsed URLs Preview */}
-        {parsedVideos.length > 0 && (
-          <div className="mb-4">
-            {/* Summary bar */}
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-gray-400">
-                  {validVideos.length} video{validVideos.length !== 1 ? 's' : ''} detected
-                </span>
-                <div className="flex items-center gap-2">
-                  {Object.entries(platformCounts).map(([platform, count]) => (
-                    <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full">
-                      <PlatformIcon platform={platform as any} size="sm" />
-                      <span className="text-[11px] text-gray-300 font-medium">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {invalidVideos.length > 0 && (
-                <span className="text-[11px] text-red-400">
-                  {invalidVideos.length} invalid
-                </span>
-              )}
-            </div>
-
-            {/* URL list */}
-            <div className="max-h-[200px] overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
-              {parsedVideos.map((video) => (
-                <div
-                  key={video.url}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    video.platform
-                      ? 'bg-white/[0.03] border border-white/[0.06]'
-                      : 'bg-red-500/5 border border-red-500/10'
-                  }`}
-                >
-                  {/* Platform icon */}
-                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                    {video.platform ? (
-                      <PlatformIcon platform={video.platform} size="sm" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-red-400" />
-                    )}
+        {/* Summary bar */}
+        {videos.length > 0 && (
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-gray-400">
+                {totalCount} video{totalCount !== 1 ? 's' : ''} detected
+              </span>
+              <div className="flex items-center gap-2">
+                {Object.entries(platformCounts).map(([platform, count]) => (
+                  <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full">
+                    <PlatformIcon platform={platform as any} size="sm" />
+                    <span className="text-[11px] text-gray-300 font-medium">{count}</span>
                   </div>
-
-                  {/* URL */}
-                  <span className={`flex-1 truncate font-mono text-xs ${
-                    video.platform ? 'text-gray-300' : 'text-red-300'
-                  }`}>
-                    {video.url}
-                  </span>
-
-                  {/* Remove button */}
-                  <button
-                    onClick={() => removeUrl(video.url)}
-                    className="flex-shrink-0 p-1 rounded hover:bg-white/10 transition-colors group"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-300" />
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+            {invalidVideos.length > 0 && (
+              <span className="text-[11px] text-red-400">
+                {invalidVideos.length} invalid
+              </span>
+            )}
           </div>
         )}
 
@@ -250,8 +305,8 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
 
         {/* Usage limit warnings */}
         {(() => {
-          const videosOverLimit = validVideos.length > videosLeft;
-          const videosToAdd = Math.min(validVideos.length, videosLeft);
+          const videosOverLimit = totalCount > videosLeft;
+          const videosToAdd = Math.min(totalCount, videosLeft);
 
           if (isAtVideoLimit) {
             return (
@@ -280,7 +335,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
                 <div className="flex-1">
                   <p className="text-sm font-medium text-yellow-300 mb-1">Limit warning</p>
                   <p className="text-xs text-yellow-300/80 mb-2">
-                    Only <span className="font-semibold">{videosToAdd} of {validVideos.length} videos</span> will be added. You have {videosLeft} video slots remaining.
+                    Only <span className="font-semibold">{videosToAdd} of {totalCount} videos</span> will be added. You have {videosLeft} video slots remaining.
                   </p>
                   <button
                     onClick={() => navigate('/subscription')}
@@ -304,13 +359,13 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
           </div>
           <button
             onClick={handleSubmit}
-            disabled={isAtVideoLimit || validVideos.length === 0}
+            disabled={isAtVideoLimit || (validVideos.length === 0 && !inputValue.trim())}
             className="px-5 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
           >
             {isAtVideoLimit
               ? 'Limit Reached'
-              : validVideos.length > 0
-                ? `Add ${validVideos.length} Video${validVideos.length !== 1 ? 's' : ''}`
+              : totalCount > 0
+                ? `Add ${totalCount} Video${totalCount !== 1 ? 's' : ''}`
                 : 'Add Videos'}
           </button>
         </div>
