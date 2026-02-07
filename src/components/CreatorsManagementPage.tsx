@@ -20,6 +20,7 @@ import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import ContractsManagementPage from './ContractsManagementPage';
 import CreatorPayoutsPage from './CreatorPayoutsPage';
+import CreatorDetailModal from './CreatorDetailModal';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
 import { ProxiedImage } from './ProxiedImage';
 
@@ -68,6 +69,9 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   // Multi-select state
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  
+  // Creator detail modal
+  const [detailCreator, setDetailCreator] = useState<OrgMember | null>(null);
 
   // Check if user is a creator
   useEffect(() => {
@@ -591,14 +595,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                       </td>
                       <td 
                         className="px-4 py-4 cursor-pointer"
-                        onClick={() => {
-                          const linkedAccounts = (creator as any).linkedAccounts || [];
-                          if (linkedAccounts.length > 0) {
-                            navigate(`/dashboard?creator=${creator.userId}`);
-                          } else {
-                            navigate('/dashboard');
-                          }
-                        }}
+                        onClick={() => setDetailCreator(creator)}
                       >
                         <div className="flex items-center gap-3">
                           <div className="relative w-10 h-10 flex-shrink-0">
@@ -633,14 +630,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                       </td>
                       <td 
                         className="px-6 py-4 cursor-pointer"
-                        onClick={() => {
-                          const linkedAccounts = (creator as any).linkedAccounts || [];
-                          if (linkedAccounts.length > 0) {
-                            navigate(`/dashboard?creator=${creator.userId}`);
-                          } else {
-                            navigate('/dashboard');
-                          }
-                        }}
+                        onClick={() => setDetailCreator(creator)}
                       >
                         <div className="flex items-center gap-2">
                           <div className="text-sm text-white font-medium">
@@ -667,14 +657,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                       </td>
                       <td 
                         className="px-6 py-4 cursor-pointer"
-                        onClick={() => {
-                          const linkedAccounts = (creator as any).linkedAccounts || [];
-                          if (linkedAccounts.length > 0) {
-                            navigate(`/dashboard?creator=${creator.userId}`);
-                          } else {
-                            navigate('/dashboard');
-                          }
-                        }}
+                        onClick={() => setDetailCreator(creator)}
                       >
                         <div className="text-sm text-white font-medium">
                           {videoCounts.get(creator.userId) || 0} {videoCounts.get(creator.userId) === 1 ? 'video' : 'videos'}
@@ -682,14 +665,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                       </td>
                       <td 
                         className="px-6 py-4 cursor-pointer"
-                        onClick={() => {
-                          const linkedAccounts = (creator as any).linkedAccounts || [];
-                          if (linkedAccounts.length > 0) {
-                            navigate(`/dashboard?creator=${creator.userId}`);
-                          } else {
-                            navigate('/dashboard');
-                          }
-                        }}
+                        onClick={() => setDetailCreator(creator)}
                       >
                         <div className="flex items-center gap-2">
                           <div className="text-sm font-semibold text-white">
@@ -707,14 +683,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                       </td>
                       <td 
                         className="px-6 py-4 cursor-pointer"
-                        onClick={() => {
-                          const linkedAccounts = (creator as any).linkedAccounts || [];
-                          if (linkedAccounts.length > 0) {
-                            navigate(`/dashboard?creator=${creator.userId}`);
-                          } else {
-                            navigate('/dashboard');
-                          }
-                        }}
+                        onClick={() => setDetailCreator(creator)}
                       >
                         <div className="text-sm text-gray-400">
                           {formatDate(creator.joinedAt)}
@@ -933,6 +902,18 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
             setEditingPaymentCreator(null);
             loadData();
           }}
+        />
+      )}
+
+      {/* Creator Detail Modal */}
+      {detailCreator && (
+        <CreatorDetailModal
+          isOpen={!!detailCreator}
+          onClose={() => setDetailCreator(null)}
+          creator={detailCreator}
+          profile={creatorProfiles.get(detailCreator.userId)}
+          earnings={calculatedEarnings.get(detailCreator.userId) || 0}
+          videoCount={videoCounts.get(detailCreator.userId) || 0}
         />
       )}
 
