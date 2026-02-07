@@ -39,6 +39,7 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import TeamManagementPage from '../components/TeamManagementPage';
 // Coming Soon: RevenueManagementPage (Dec 20)
 import SelectCreatorModal from '../components/SelectCreatorModal';
+import BulkAssignCreatorModal from '../components/BulkAssignCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
 import DemoBanner from '../components/DemoBanner';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
@@ -263,6 +264,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+  const [bulkAssignCreatorState, setBulkAssignCreatorState] = useState<{ isOpen: boolean; accountIds: string[]; label: string }>({ isOpen: false, accountIds: [], label: '' });
   const [usageLimits, setUsageLimits] = useState<{
     accountsLeft: number;
     videosLeft: number;
@@ -3272,6 +3274,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onDelete={handleDelete}
                             onBulkDelete={handleBulkDelete}
                             onVideoClick={handleVideoClick}
+                            onAssignCreator={(accountIds, label) => setBulkAssignCreatorState({ isOpen: true, accountIds, label })}
                             headerTitle={getVideoTableHeader(dateFilter)}
                             trendPeriodDays={getTrendPeriodDays(dateFilter)}
                           />
@@ -3436,6 +3439,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 onDelete={handleDelete}
                 onBulkDelete={handleBulkDelete}
                 onVideoClick={handleVideoClick}
+                onAssignCreator={(accountIds, label) => setBulkAssignCreatorState({ isOpen: true, accountIds, label })}
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
@@ -4464,6 +4468,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           }}
         />
       )}
+
+      {/* Bulk Assign Creator Modal (from Videos table) */}
+      <BulkAssignCreatorModal
+        isOpen={bulkAssignCreatorState.isOpen}
+        accountIds={bulkAssignCreatorState.accountIds}
+        selectionLabel={bulkAssignCreatorState.label}
+        onClose={() => setBulkAssignCreatorState({ isOpen: false, accountIds: [], label: '' })}
+        onSuccess={() => {
+          setBulkAssignCreatorState({ isOpen: false, accountIds: [], label: '' });
+        }}
+      />
     </div>
   );
 }

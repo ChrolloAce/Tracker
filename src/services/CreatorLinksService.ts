@@ -340,6 +340,37 @@ class CreatorLinksService {
       return null;
     }
   }
+
+  /**
+   * Get creator info (name + photo) for an account
+   */
+  static async getCreatorInfoForAccount(
+    orgId: string,
+    projectId: string,
+    accountId: string
+  ): Promise<{ name: string; photoURL?: string } | null> {
+    try {
+      const links = await this.getAccountLinkedCreators(orgId, projectId, accountId);
+      if (links.length === 0) return null;
+
+      const creatorId = links[0].creatorId;
+      const creator = await this.getCreatorProfile(orgId, projectId, creatorId);
+      if (!creator) return null;
+
+      // Also try to get photoURL from the org member record
+      const memberRef = doc(db, 'organizations', orgId, 'members', creatorId);
+      const memberDoc = await getDoc(memberRef);
+      const memberPhoto = memberDoc.exists() ? memberDoc.data()?.photoURL : undefined;
+
+      return {
+        name: creator.displayName || 'Unknown',
+        photoURL: creator.photoURL || memberPhoto || undefined,
+      };
+    } catch (error) {
+      console.error('Error getting creator info for account:', error);
+      return null;
+    }
+  }
 }
 
 export default CreatorLinksService;

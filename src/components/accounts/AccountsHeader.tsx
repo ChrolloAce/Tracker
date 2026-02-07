@@ -6,7 +6,8 @@ import {
   ChevronDown, 
   Link as LinkIcon, 
   Download, 
-  Trash2 
+  Trash2,
+  Users 
 } from 'lucide-react';
 import { DateFilterType } from '../DateRangeFilter';
 
@@ -21,6 +22,7 @@ interface AccountsHeaderProps {
   onCopyLinks: () => void;
   onExport: () => void;
   onDelete: () => void;
+  onAssignCreator?: () => void;
 }
 
 export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
@@ -31,7 +33,8 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
   actionsMenuRef,
   onCopyLinks,
   onExport,
-  onDelete
+  onDelete,
+  onAssignCreator
 }) => {
   return (
     <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
@@ -122,6 +125,19 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                     <Download className="w-4 h-4" />
                     <span>Export to CSV</span>
                   </button>
+                  {onAssignCreator && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowActionsMenu(false);
+                        onAssignCreator();
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Assign to Creator</span>
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       console.log('🔴 ACCOUNTS DELETE BUTTON CLICK EVENT FIRED');

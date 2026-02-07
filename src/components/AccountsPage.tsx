@@ -24,6 +24,7 @@ import profileAnimation from '../../public/lottie/Target Audience.json';
 import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
 import CreateLinkModal from './CreateLinkModal';
+import BulkAssignCreatorModal from './BulkAssignCreatorModal';
 import Pagination from './ui/Pagination';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
@@ -107,6 +108,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       // Metadata
       accountCreatorNames,
       setAccountCreatorNames,
+      accountCreatorPhotos,
       trackedLinks,
       linkClicks,
       usageLimits,
@@ -144,6 +146,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
+  const [showBulkAssignCreator, setShowBulkAssignCreator] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
@@ -423,6 +426,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 onCopyLinks={handleCopyAccountLinks}
                                 onExport={() => setShowExportModal(true)}
                                 onDelete={handleBulkDeleteAccounts}
+                                onAssignCreator={() => {
+                                    setShowActionsMenu(false);
+                                    setShowBulkAssignCreator(true);
+                                }}
                             />
                             <AccountsTable 
                                 realAccounts={processedAccounts.slice((accountsCurrentPage - 1) * accountsItemsPerPage, (accountsCurrentPage - 1) * accountsItemsPerPage + accountsItemsPerPage)} 
@@ -432,7 +439,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 syncingAccounts={syncingAccounts} 
                                 sortBy={sortBy} 
                       sortOrder={sortOrder}
-                                accountCreatorNames={accountCreatorNames} 
+                                accountCreatorNames={accountCreatorNames}
+                                accountCreatorPhotos={accountCreatorPhotos}
                                 imageErrors={imageErrors} 
                                 onSort={(key) => {
                                     if (sortBy === key) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -588,6 +596,32 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         onConfirm={confirmBulkDeleteAccounts}
                 onCancel={() => setShowDeleteConfirm(false)}
         isDanger={true}
+      />
+
+      <BulkAssignCreatorModal
+        isOpen={showBulkAssignCreator}
+        accountIds={Array.from(selectedAccounts)}
+        selectionLabel={`${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}`}
+        onClose={() => setShowBulkAssignCreator(false)}
+        onSuccess={() => {
+          setShowBulkAssignCreator(false);
+          setSelectedAccounts(new Set());
+          setShowToast({ message: `Assigned ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''} to creator`, type: 'success' });
+          // Refresh creator names
+          const refreshCreatorNames = async () => {
+            if (!currentOrgId || !currentProjectId) return;
+            const CreatorLinksService = (await import('../services/CreatorLinksService')).default;
+            const map = new Map<string, string>();
+            for (const acc of accounts) {
+              try {
+                const name = await CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, acc.id);
+                if (name) map.set(acc.id, name);
+              } catch {}
+            }
+            setAccountCreatorNames(map);
+          };
+          refreshCreatorNames();
+        }}
       />
 
       {showToast && (

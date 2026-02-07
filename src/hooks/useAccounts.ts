@@ -77,6 +77,7 @@ export const useAccounts = ({
   // Metadata State
   const [creators, setCreators] = useState<Creator[]>([]);
   const [accountCreatorNames, setAccountCreatorNames] = useState<Map<string, string>>(new Map());
+  const [accountCreatorPhotos, setAccountCreatorPhotos] = useState<Map<string, string>>(new Map());
   const [creatorLinkedAccountIds, setCreatorLinkedAccountIds] = useState<string[]>([]);
   const [trackedLinks, setTrackedLinks] = useState<FirestoreTrackedLink[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
@@ -218,27 +219,30 @@ export const useAccounts = ({
     loadMetadata();
   }, [currentOrgId, currentProjectId, user, accounts.length, isDemoMode]);
 
-  // Load Creator Names for accounts
+  // Load Creator Names + Photos for accounts
   useEffect(() => {
-    const loadCreatorNames = async () => {
+    const loadCreatorInfo = async () => {
         if (isDemoMode) return; // Skip for demo
         if (!currentOrgId || !currentProjectId || accounts.length === 0) return;
-        const map = new Map<string, string>();
+        const nameMap = new Map<string, string>();
+        const photoMap = new Map<string, string>();
         const linked: string[] = [];
         
         for (const acc of accounts) {
             try {
-                const name = await CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, acc.id);
-                if (name) {
-                    map.set(acc.id, name);
+                const info = await CreatorLinksService.getCreatorInfoForAccount(currentOrgId, currentProjectId, acc.id);
+                if (info) {
+                    nameMap.set(acc.id, info.name);
+                    if (info.photoURL) photoMap.set(acc.id, info.photoURL);
                     linked.push(acc.id);
                 }
             } catch {}
         }
-        setAccountCreatorNames(map);
+        setAccountCreatorNames(nameMap);
+        setAccountCreatorPhotos(photoMap);
         setCreatorLinkedAccountIds(linked);
     };
-    loadCreatorNames();
+    loadCreatorInfo();
   }, [currentOrgId, currentProjectId, accounts, isDemoMode]);
 
   // Load Video Logic (extracted from AccountsPage)
@@ -579,6 +583,7 @@ export const useAccounts = ({
     creators,
     accountCreatorNames,
     setAccountCreatorNames,
+    accountCreatorPhotos,
     trackedLinks,
     linkClicks,
     usageLimits,

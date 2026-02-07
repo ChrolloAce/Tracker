@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3, Download, Link as LinkIcon } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, Users, BarChart3, Download, Link as LinkIcon } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -24,6 +24,7 @@ interface VideoSubmissionsTableProps {
   onDelete?: (id: string) => void;
   onBulkDelete?: (ids: string[]) => Promise<void>;
   onVideoClick?: (video: VideoSubmission) => void;
+  onAssignCreator?: (accountIds: string[], selectionLabel: string) => void;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
   trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
 }
@@ -157,6 +158,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onDelete,
   onBulkDelete,
   onVideoClick,
+  onAssignCreator,
   headerTitle,
   trendPeriodDays = 7
 }) => {
@@ -684,6 +686,27 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       <Download className="w-4 h-4" />
                       <span>Export to CSV</span>
                     </button>
+                    {onAssignCreator && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowActionsMenu(false);
+                          // Extract unique account IDs from selected videos
+                          const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+                          const accountIdSet = new Set<string>();
+                          selectedSubs.forEach(v => {
+                            if ((v as any).trackedAccountId) accountIdSet.add((v as any).trackedAccountId);
+                          });
+                          const uniqueAccountIds = Array.from(accountIdSet);
+                          const label = `${selectedSubs.length} video${selectedSubs.length !== 1 ? 's' : ''} (${uniqueAccountIds.length} account${uniqueAccountIds.length !== 1 ? 's' : ''})`;
+                          onAssignCreator(uniqueAccountIds, label);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                      >
+                        <Users className="w-4 h-4" />
+                        <span>Assign to Creator</span>
+                      </button>
+                    )}
                     {onDelete && (
                       <button
                         onClick={(e) => {

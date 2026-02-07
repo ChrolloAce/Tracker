@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { 
-  Users, RefreshCw, AlertCircle, Trash2, X, MoreVertical, 
+  RefreshCw, AlertCircle, Trash2, X, MoreVertical, 
   ExternalLink, Copy, User, BarChart3 
 } from 'lucide-react';
+import { ProxiedImage } from '../ProxiedImage';
 import { clsx } from 'clsx';
 import { PlatformIcon } from '../ui/PlatformIcon';
 import { ColumnHeader } from './ColumnHeader';
@@ -26,6 +27,7 @@ interface AccountsTableProps {
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   accountCreatorNames: Map<string, string>;
+  accountCreatorPhotos?: Map<string, string>;
   imageErrors: Set<string>;
   
   // Handlers
@@ -50,6 +52,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   sortBy,
   sortOrder,
   accountCreatorNames,
+  accountCreatorPhotos,
   imageErrors,
   onSort,
   onSelectAccount,
@@ -439,9 +442,25 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap">
                   {(() => {
                     const creatorName = accountCreatorNames.get(account.id);
+                    const creatorPhoto = accountCreatorPhotos?.get(account.id);
                     return creatorName ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                        <Users className="w-3 h-3 mr-1" />
+                      <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                        {creatorPhoto ? (
+                          <ProxiedImage
+                            src={creatorPhoto}
+                            alt={creatorName}
+                            className="w-5 h-5 rounded-full object-cover"
+                            fallback={
+                              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold text-white">
+                                {creatorName.charAt(0).toUpperCase()}
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold text-white">
+                            {creatorName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         {creatorName}
                       </span>
                     ) : (
