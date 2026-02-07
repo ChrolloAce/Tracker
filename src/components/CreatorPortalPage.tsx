@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus, MessageCircle } from 'lucide-react';
+import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus } from 'lucide-react';
+import { PlatformIcon } from './ui/PlatformIcon';
 import CreatorAddAccountModal from './CreatorAddAccountModal';
 import CreatorPaymentPlanCard from './CreatorPaymentPlanCard';
 import CreatorDirectVideoSubmission from './CreatorDirectVideoSubmission';
@@ -210,32 +211,6 @@ const CreatorPortalPage: React.FC = () => {
     return num.toString();
   };
 
-  const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case 'instagram': return (
-        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-        </svg>
-      );
-      case 'tiktok': return (
-        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-        </svg>
-      );
-      case 'youtube': return (
-        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-        </svg>
-      );
-      case 'twitter': return (
-        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-        </svg>
-      );
-      default: return <Link2 className="w-5 h-5" />;
-    }
-  };
-
   const getPlatformUrl = (platform: string, username: string) => {
     switch (platform) {
       case 'instagram': return `https://instagram.com/${username}`;
@@ -294,8 +269,11 @@ const CreatorPortalPage: React.FC = () => {
       {/* === LINKED ACCOUNTS TAB === */}
       {activeTab === 'accounts' && (
         <div className="space-y-4">
-          {/* Add Account Button */}
-          <div className="flex justify-end">
+          {/* Header row with title + button */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">
+              Account stats – All Time
+            </h2>
         <button
               onClick={() => setShowAddAccount(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
@@ -321,82 +299,129 @@ const CreatorPortalPage: React.FC = () => {
       </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {linkedAccounts.map(account => {
-                const acStats = accountStats.get(account.id);
-                return (
-                  <div
-                    key={account.id}
-                    className="bg-white/5 border border-white/10 hover:border-white/20 rounded-2xl transition-all overflow-hidden"
-                  >
-                    {/* Account Header */}
-                    <div className="flex items-center gap-4 p-4">
-                      {account.profilePicture ? (
-                        <img src={account.profilePicture} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-gray-400 ring-2 ring-white/10">
-                          {getPlatformIcon(account.platform)}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white truncate">@{account.username}</span>
-                          <span className="text-gray-500">{getPlatformIcon(account.platform)}</span>
-                        </div>
-                        {account.displayName && account.displayName !== account.username && (
-                          <p className="text-xs text-gray-400 truncate">{account.displayName}</p>
-                        )}
-                        {account.followerCount !== undefined && (
-                          <p className="text-xs text-gray-500 mt-0.5">{formatNumber(account.followerCount)} followers</p>
-                        )}
-                      </div>
-                      <a
-                        href={getPlatformUrl(account.platform, account.username)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4 text-gray-500 hover:text-white" />
-                      </a>
-                    </div>
+            <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead className="bg-zinc-900/40 border-b border-white/5">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Username
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Followers
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Total Posts
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Views
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Likes
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Comments
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {linkedAccounts.map(account => {
+                      const acStats = accountStats.get(account.id);
+                      return (
+                        <tr
+                          key={account.id}
+                          className="hover:bg-white/5 transition-colors"
+                        >
+                          {/* Username */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-3">
+                              <div className="relative w-10 h-10 flex-shrink-0">
+                                {account.profilePicture ? (
+                                  <img
+                                    src={account.profilePicture}
+                                    alt={`@${account.username}`}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    {(account.username || 'A').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
+                                  <PlatformIcon platform={account.platform as any} size="xs" />
+                                </div>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-white flex items-center gap-1.5">
+                                  {account.displayName || account.username}
+                                  {(account as any).isVerified && (
+                                    <img src="/verified-badge.png" alt="Verified" className="w-3.5 h-3.5" />
+                                  )}
+                                </div>
+                                <div className="text-xs text-white/40">@{account.username}</div>
+                              </div>
+    </div>
+                          </td>
 
-                    {/* Account Stats */}
-                    <div className="grid grid-cols-4 gap-px bg-white/5 border-t border-white/10">
-                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                          <Video className="w-3 h-3" />
-                        </div>
-                        <div className="text-sm font-bold text-white">{acStats?.videoCount || 0}</div>
-                        <div className="text-[10px] text-gray-500">Videos</div>
-                      </div>
-                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                          <Eye className="w-3 h-3" />
-                        </div>
-                        <div className="text-sm font-bold text-white">{formatNumber(acStats?.views || 0)}</div>
-                        <div className="text-[10px] text-gray-500">Views</div>
-                      </div>
-                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                          <Heart className="w-3 h-3" />
-                        </div>
-                        <div className="text-sm font-bold text-white">{formatNumber(acStats?.likes || 0)}</div>
-                        <div className="text-[10px] text-gray-500">Likes</div>
-                      </div>
-                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                          <MessageCircle className="w-3 h-3" />
-                        </div>
-                        <div className="text-sm font-bold text-white">{formatNumber(acStats?.comments || 0)}</div>
-                        <div className="text-[10px] text-gray-500">Comments</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                          {/* Followers */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-white font-medium">
+                              {account.followerCount !== undefined ? formatNumber(account.followerCount) : '—'}
+                            </span>
+                          </td>
+
+                          {/* Total Posts */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-white font-medium">
+                              {acStats?.videoCount || 0}
+                            </span>
+                          </td>
+
+                          {/* Views */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-white font-medium">
+                              {formatNumber(acStats?.views || 0)}
+                            </span>
+                          </td>
+
+                          {/* Likes */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-white font-medium">
+                              {formatNumber(acStats?.likes || 0)}
+                            </span>
+                          </td>
+
+                          {/* Comments */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-white font-medium">
+                              {formatNumber(acStats?.comments || 0)}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <a
+                              href={getPlatformUrl(account.platform, account.username)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View
+                            </a>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-    </div>
+        </div>
       )}
 
       {/* === DASHBOARD TAB === */}
