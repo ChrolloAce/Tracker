@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Video, Users as UsersIcon, Plus, Eye, DollarSign, TrendingUp, Heart } from 'lucide-react';
+import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart } from 'lucide-react';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
-import CreatorDirectVideoSubmission from './CreatorDirectVideoSubmission';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
@@ -37,11 +36,35 @@ const CreatorPortalPage: React.FC = () => {
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
-  const [showDirectSubmission, setShowDirectSubmission] = useState(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadData();
   }, [currentOrgId, currentProjectId, user]);
+
+  // Auto-refresh: poll every 15s when there are pending/processing videos
+  const hasPendingVideos = useMemo(() => {
+    return videos.some(v => 
+      v.syncStatus === 'pending' || v.syncStatus === 'processing' || 
+      v.status === 'pending' || v.status === 'processing'
+    );
+  }, [videos]);
+
+  useEffect(() => {
+    if (hasPendingVideos) {
+      pollIntervalRef.current = setInterval(() => {
+        console.log('🔄 Auto-refreshing creator dashboard (pending videos detected)');
+        loadData();
+      }, 15000); // 15 seconds
+    }
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [hasPendingVideos]);
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -281,6 +304,12 @@ const CreatorPortalPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-gray-400" />
             Your Videos
+            {hasPendingVideos && (
+              <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-gray-400">
+                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                Updating...
+              </span>
+            )}
           </h3>
           <VideoSubmissionsTable
             submissions={videoSubmissions}
@@ -290,36 +319,11 @@ const CreatorPortalPage: React.FC = () => {
         <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
           <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No videos yet</h3>
-          <p className="text-gray-500 mb-6">
-            Submit your first video to start tracking performance
+          <p className="text-gray-500">
+            Videos assigned to you will appear here
           </p>
-          <button
-            onClick={() => setShowDirectSubmission(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl transition-all font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Submit Videos
-          </button>
         </div>
       )}
-      
-      {/* Floating Action Button - Monotone */}
-      <button
-        onClick={() => setShowDirectSubmission(true)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
-        title="Submit Videos"
-      >
-        <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
-      </button>
-
-      {/* Direct Video Submission Modal */}
-      <CreatorDirectVideoSubmission
-        isOpen={showDirectSubmission}
-        onClose={() => setShowDirectSubmission(false)}
-        onSuccess={() => {
-          loadData();
-        }}
-      />
     </div>
   );
 };

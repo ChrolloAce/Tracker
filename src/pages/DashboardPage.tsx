@@ -4164,8 +4164,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         )}
       </Modal>
 
-      {/* Context-Aware Floating Action Button */}
-      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'invitations' && activeTab !== 'creators' && (
+      {/* Context-Aware Floating Action Button — hidden for creators */}
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'invitations' && activeTab !== 'creators' && userRole !== 'creator' && (
         <button
           onClick={isOverrideMode ? undefined : () => {
             // ✅ Show AddTypeSelector on dashboard, accounts, and videos tabs
