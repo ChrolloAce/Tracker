@@ -736,6 +736,81 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`✅ Successfully processed video: ${video.url}`);
 
+    // Auto-link account to creator if video was submitted by a creator
+    if (accountId && (addedBy || video.addedBy) && (addedBy || video.addedBy) !== 'system') {
+      const creatorId = addedBy || video.addedBy;
+      try {
+        console.log(`🔗 Auto-linking account ${accountId} to creator ${creatorId}...`);
+        
+        // Check if link already exists
+        const existingLink = await db
+          .collection('organizations').doc(orgId)
+          .collection('projects').doc(projectId)
+          .collection('creatorLinks')
+          .where('creatorId', '==', creatorId)
+          .where('accountId', '==', accountId)
+          .limit(1)
+          .get();
+        
+        if (existingLink.empty) {
+          // Create the creator link
+          const linkRef = db
+            .collection('organizations').doc(orgId)
+            .collection('projects').doc(projectId)
+            .collection('creatorLinks')
+            .doc();
+          
+          await linkRef.set({
+            orgId,
+            projectId,
+            creatorId,
+            accountId,
+            createdAt: Timestamp.now(),
+            createdBy: creatorId,
+          });
+          console.log(`✅ Auto-linked account ${accountId} to creator ${creatorId}`);
+          
+          // Create or update creator profile in this project
+          const creatorRef = db
+            .collection('organizations').doc(orgId)
+            .collection('projects').doc(projectId)
+            .collection('creators').doc(creatorId);
+          
+          const creatorDoc = await creatorRef.get();
+          if (!creatorDoc.exists) {
+            // Get member data for creator profile
+            const memberRef = db.collection('organizations').doc(orgId).collection('members').doc(creatorId);
+            const memberDoc = await memberRef.get();
+            const memberData = memberDoc.data();
+            
+            if (memberData) {
+              await creatorRef.set({
+                orgId,
+                projectId,
+                displayName: memberData.displayName || 'Unknown',
+                email: memberData.email || '',
+                ...(memberData.photoURL && { photoURL: memberData.photoURL }),
+                linkedAccountsCount: 1,
+                totalEarnings: 0,
+                payoutsEnabled: true,
+                createdAt: Timestamp.now(),
+              });
+              console.log(`✅ Created creator profile for ${creatorId}`);
+            }
+          } else {
+            // Increment linked accounts count
+            await creatorRef.update({
+              linkedAccountsCount: FieldValue.increment(1)
+            });
+          }
+        } else {
+          console.log(`ℹ️ Account ${accountId} already linked to creator ${creatorId}`);
+        }
+      } catch (linkError: any) {
+        console.warn(`⚠️ Failed to auto-link account to creator (non-critical):`, linkError.message);
+      }
+    }
+
     // Send email notification to user
     try {
       const userId = video.addedBy;

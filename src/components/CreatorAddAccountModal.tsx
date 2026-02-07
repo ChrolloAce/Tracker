@@ -154,6 +154,31 @@ const CreatorAddAccountModal: React.FC<CreatorAddAccountModalProps> = ({ isOpen,
             [accountId],
             user.uid
           );
+
+          // Explicitly trigger Vercel sync job for this account
+          try {
+            const token = await user.getIdToken();
+            const syncResponse = await fetch('/api/queue-manual-account', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                orgId: currentOrgId,
+                projectId: currentProjectId,
+                accountId
+              })
+            });
+            if (syncResponse.ok) {
+              console.log(`✅ Sync job created for @${account.username}`);
+            } else {
+              console.warn(`⚠️ Sync job request failed: ${syncResponse.status}`);
+            }
+          } catch (syncErr) {
+            console.warn(`⚠️ Failed to trigger sync job for @${account.username}:`, syncErr);
+          }
+
           added++;
         } catch (err: any) {
           console.error(`Failed to add account @${account.username}:`, err);

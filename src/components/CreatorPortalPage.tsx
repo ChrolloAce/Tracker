@@ -96,10 +96,7 @@ const CreatorPortalPage: React.FC = () => {
         currentProjectId
       );
 
-      const linkedAccountIds = links.map(link => link.accountId);
-      const accounts = allAccounts.filter(acc => linkedAccountIds.includes(acc.id));
-
-      setLinkedAccounts(accounts);
+      const linkedAccountIds = new Set(links.map(link => link.accountId));
 
       // Load all videos for this project
       const allVideos = await FirestoreDataService.getVideos(
@@ -112,13 +109,22 @@ const CreatorPortalPage: React.FC = () => {
       // 1. Videos from linked accounts
       // 2. Videos directly submitted by this creator (addedBy === user.uid)
       const filteredVideos = allVideos.filter((video) => {
-        // Video submitted directly by this creator
         if (video.addedBy === user.uid) return true;
-        // Video from a linked account
-        if (video.trackedAccountId && linkedAccountIds.includes(video.trackedAccountId)) return true;
+        if (video.trackedAccountId && linkedAccountIds.has(video.trackedAccountId)) return true;
         return false;
       });
 
+      // Also discover accounts from videos this creator submitted (auto-link discovery)
+      const videoAccountIds = new Set<string>();
+      filteredVideos.forEach(v => {
+        if (v.trackedAccountId) videoAccountIds.add(v.trackedAccountId);
+      });
+
+      // Merge: linked accounts + accounts from creator's videos
+      const allRelevantIds = new Set([...linkedAccountIds, ...videoAccountIds]);
+      const accounts = allAccounts.filter(acc => allRelevantIds.has(acc.id));
+
+      setLinkedAccounts(accounts);
       setVideos(filteredVideos);
 
       // Calculate stats
@@ -127,7 +133,7 @@ const CreatorPortalPage: React.FC = () => {
       const totalComments = filteredVideos.reduce((sum, v) => sum + (v.comments || 0), 0);
 
       setStats({
-        totalAccounts: links.length,
+        totalAccounts: accounts.length,
         totalVideos: filteredVideos.length,
         totalViews,
         totalLikes,
