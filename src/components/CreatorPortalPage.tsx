@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus } from 'lucide-react';
+import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus, MessageCircle } from 'lucide-react';
 import CreatorAddAccountModal from './CreatorAddAccountModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
@@ -175,6 +175,23 @@ const CreatorPortalPage: React.FC = () => {
     });
   }, [videos, linkedAccounts]);
 
+  // Per-account stats from videos
+  const accountStats = useMemo(() => {
+    const statsMap = new Map<string, { views: number; likes: number; comments: number; videoCount: number }>();
+    
+    linkedAccounts.forEach(account => {
+      const accountVideos = videos.filter(v => v.trackedAccountId === account.id);
+      statsMap.set(account.id, {
+        views: accountVideos.reduce((s, v) => s + (v.views || 0), 0),
+        likes: accountVideos.reduce((s, v) => s + (v.likes || 0), 0),
+        comments: accountVideos.reduce((s, v) => s + (v.comments || 0), 0),
+        videoCount: accountVideos.length,
+      });
+    });
+    
+    return statsMap;
+  }, [videos, linkedAccounts]);
+
   // Format large numbers
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -293,37 +310,79 @@ const CreatorPortalPage: React.FC = () => {
       </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {linkedAccounts.map(account => (
-                <a
-                  key={account.id}
-                  href={getPlatformUrl(account.platform, account.username)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all group"
-                >
-                  {account.profilePicture ? (
-                    <img src={account.profilePicture} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-gray-400 ring-2 ring-white/10">
-                      {getPlatformIcon(account.platform)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {linkedAccounts.map(account => {
+                const acStats = accountStats.get(account.id);
+                return (
+                  <div
+                    key={account.id}
+                    className="bg-white/5 border border-white/10 hover:border-white/20 rounded-2xl transition-all overflow-hidden"
+                  >
+                    {/* Account Header */}
+                    <div className="flex items-center gap-4 p-4">
+                      {account.profilePicture ? (
+                        <img src={account.profilePicture} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-gray-400 ring-2 ring-white/10">
+                          {getPlatformIcon(account.platform)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white truncate">@{account.username}</span>
+                          <span className="text-gray-500">{getPlatformIcon(account.platform)}</span>
+                        </div>
+                        {account.displayName && account.displayName !== account.username && (
+                          <p className="text-xs text-gray-400 truncate">{account.displayName}</p>
+                        )}
+                        {account.followerCount !== undefined && (
+                          <p className="text-xs text-gray-500 mt-0.5">{formatNumber(account.followerCount)} followers</p>
+                        )}
+                      </div>
+                      <a
+                        href={getPlatformUrl(account.platform, account.username)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 text-gray-500 hover:text-white" />
+                      </a>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white truncate">@{account.username}</span>
-                      <span className="text-gray-500">{getPlatformIcon(account.platform)}</span>
+
+                    {/* Account Stats */}
+                    <div className="grid grid-cols-4 gap-px bg-white/5 border-t border-white/10">
+                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                          <Video className="w-3 h-3" />
+                        </div>
+                        <div className="text-sm font-bold text-white">{acStats?.videoCount || 0}</div>
+                        <div className="text-[10px] text-gray-500">Videos</div>
+                      </div>
+                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                          <Eye className="w-3 h-3" />
+                        </div>
+                        <div className="text-sm font-bold text-white">{formatNumber(acStats?.views || 0)}</div>
+                        <div className="text-[10px] text-gray-500">Views</div>
+                      </div>
+                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                          <Heart className="w-3 h-3" />
+                        </div>
+                        <div className="text-sm font-bold text-white">{formatNumber(acStats?.likes || 0)}</div>
+                        <div className="text-[10px] text-gray-500">Likes</div>
+                      </div>
+                      <div className="bg-[#0A0A0B] px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                          <MessageCircle className="w-3 h-3" />
+                        </div>
+                        <div className="text-sm font-bold text-white">{formatNumber(acStats?.comments || 0)}</div>
+                        <div className="text-[10px] text-gray-500">Comments</div>
+                      </div>
                     </div>
-                    {account.displayName && account.displayName !== account.username && (
-                      <p className="text-xs text-gray-400 truncate">{account.displayName}</p>
-                    )}
-                    {account.followerCount !== undefined && (
-                      <p className="text-xs text-gray-500 mt-0.5">{formatNumber(account.followerCount)} followers</p>
-                    )}
                   </div>
-                  <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-gray-300 transition-colors flex-shrink-0" />
-                </a>
-              ))}
+                );
+              })}
             </div>
           )}
     </div>
