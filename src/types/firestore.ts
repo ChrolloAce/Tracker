@@ -59,6 +59,56 @@ export interface PaymentTermPreset {
   viewsRequired?: number; // For 'after_views_reached'
 }
 
+// ==================== PAYMENT PLANS ====================
+
+/**
+ * Payment plan type
+ * - flat: Fixed amount for reaching a view target (e.g. $300 for 150K views)
+ * - tiered: Progressive thresholds with payouts at each level
+ * - cpm: Cost per 1,000 views
+ * - flat_plus_cpm: Base flat amount + additional CPM on all views
+ */
+export type PaymentPlanType = 'flat' | 'tiered' | 'cpm' | 'flat_plus_cpm';
+
+/**
+ * A single tier in a tiered payment plan
+ */
+export interface PaymentTier {
+  viewThreshold: number; // Views required to unlock this tier
+  payout: number;        // Dollar amount paid when threshold is reached
+  label?: string;        // Optional label (e.g. "Bronze", "Silver")
+}
+
+/**
+ * Comprehensive payment plan stored on each Creator document
+ * Path: /organizations/{orgId}/projects/{projectId}/creators/{creatorId}  → .paymentPlan
+ */
+export interface CreatorPaymentPlan {
+  type: PaymentPlanType;
+  currency: string; // e.g. 'USD'
+
+  // ── Flat ──────────────────────────────────────────
+  flatAmount?: number;     // e.g. 300
+  flatViewTarget?: number; // e.g. 150000
+
+  // ── Tiered ────────────────────────────────────────
+  tiers?: PaymentTier[];
+
+  // ── CPM ───────────────────────────────────────────
+  cpmRate?: number; // e.g. 5.00 per 1K views
+
+  // ── Flat + CPM ────────────────────────────────────
+  flatBase?: number;      // Base flat amount, e.g. 200
+  cpmRateOnTop?: number;  // Additional CPM, e.g. 3.00
+
+  // ── Schedule & meta ───────────────────────────────
+  schedule?: 'weekly' | 'bi-weekly' | 'monthly' | 'per-video' | 'custom';
+  customSchedule?: string;
+  notes?: string;
+  updatedAt?: Timestamp;
+  updatedBy?: string;
+}
+
 // ==================== USER ACCOUNT ====================
 
 /**
@@ -458,7 +508,10 @@ export interface Creator {
   contractStartDate?: Timestamp;
   contractEndDate?: Timestamp;
   
-  // Flexible payment information (freeform)
+  // Structured payment plan (new system)
+  paymentPlan?: CreatorPaymentPlan;
+
+  // Flexible payment information (freeform / legacy)
   paymentInfo?: {
     isPaid: boolean;
     structure?: string; // Freeform payment structure description

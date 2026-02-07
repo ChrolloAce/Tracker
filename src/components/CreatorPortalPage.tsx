@@ -5,6 +5,7 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus, MessageCircle } from 'lucide-react';
 import CreatorAddAccountModal from './CreatorAddAccountModal';
+import CreatorPaymentPlanCard from './CreatorPaymentPlanCard';
 import CreatorDirectVideoSubmission from './CreatorDirectVideoSubmission';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
@@ -469,8 +470,17 @@ const CreatorPortalPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Payment Info Card - Monotone */}
-      {creatorProfile?.paymentInfo && (
+      {/* Payment Plan Card (new system) */}
+      {creatorProfile?.paymentPlan && (
+        <CreatorPaymentPlanCard
+          plan={creatorProfile.paymentPlan}
+          totalViews={stats.totalViews}
+          totalVideos={stats.totalVideos}
+        />
+      )}
+
+      {/* Legacy Payment Info Card (fallback for creators without new plan) */}
+      {!creatorProfile?.paymentPlan && creatorProfile?.paymentInfo && (
         <div className="bg-white/5 border border-white/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
