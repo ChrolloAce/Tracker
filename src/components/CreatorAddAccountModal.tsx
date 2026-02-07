@@ -186,9 +186,13 @@ const CreatorAddAccountModal: React.FC<CreatorAddAccountModalProps> = ({ isOpen,
             const updated = [...prev];
             const idx = updated.findIndex(a => a.id === account.id);
             if (idx >= 0) {
-              updated[idx].error = err.message?.includes('already') 
-                ? 'Account already tracked' 
-                : 'Failed to add';
+              let errorMsg = 'Failed to add';
+              if (err.message?.includes('already')) {
+                errorMsg = 'Account already tracked';
+              } else if (err.code === 'permission-denied' || err.message?.includes('permission')) {
+                errorMsg = 'Permission denied - please contact admin';
+              }
+              updated[idx].error = errorMsg;
             }
             return updated;
           });

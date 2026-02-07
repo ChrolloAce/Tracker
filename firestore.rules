@@ -294,10 +294,10 @@ service cloud.firestore {
           // App logic filters accounts for creators based on creatorLinks
           allow read: if canReadOrg(orgId);
           
-          // All members can create accounts (but not creators)
+          // All members can create accounts
+          // Creators can also create accounts (for linking their own social accounts)
           allow create: if canWriteOrg(orgId) 
-            && request.resource.data.addedBy == request.auth.uid
-            && getUserRole(orgId) != 'creator';
+            && request.resource.data.addedBy == request.auth.uid;
           
           // Only admins can update/delete accounts
           allow update, delete: if canManageOrg(orgId);
@@ -536,8 +536,12 @@ service cloud.firestore {
           // Note: resource.data check only works for get, not list queries
           allow read: if canReadOrg(orgId);
           
-          // Only admins can create/manage creator links
-          allow create, update, delete: if canManageOrg(orgId);
+          // Admins can create/manage creator links
+          // Creators can create links for themselves (linking their own accounts)
+          allow create: if canManageOrg(orgId) 
+            || (isSignedIn() && request.resource.data.creatorId == request.auth.uid);
+          
+          allow update, delete: if canManageOrg(orgId);
         }
         
         // ==================== PROJECT PAYOUT STRUCTURES ====================
@@ -600,11 +604,10 @@ service cloud.firestore {
         // App logic filters accounts for creators based on creatorLinks
         allow read: if canReadOrg(orgId);
         
-        // All members can create accounts (but not creators)
+        // All members can create accounts (including creators for linking their own)
         allow create: if canWriteOrg(orgId) 
           && request.resource.data.orgId == orgId
-          && request.resource.data.addedBy == request.auth.uid
-          && getUserRole(orgId) != 'creator';
+          && request.resource.data.addedBy == request.auth.uid;
         
         // Only admins can update/delete accounts
         allow update, delete: if canManageOrg(orgId);
