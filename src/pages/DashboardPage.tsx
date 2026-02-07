@@ -1430,8 +1430,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // Only trigger on spacebar
       if (e.code !== 'Space' && e.key !== ' ') return;
       
-      // Block spacebar action in demo/view-as mode
-      if (isOverrideMode) return;
+      // Block spacebar action in demo/view-as mode or for creators
+      if (isOverrideMode || userRole === 'creator') return;
       
       // Don't trigger if user is typing in an input, textarea, or contenteditable element
       const target = e.target as HTMLElement;
@@ -1469,7 +1469,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen, isOverrideMode]);
+  }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen, isOverrideMode, userRole]);
 
   // Apply platform, account, and rule filters (but NOT date filter) - for PP calculation
   // Create a stable dependency for rules that detects changes to rule properties
