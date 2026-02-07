@@ -10,7 +10,7 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2, MoreVertical, Edit3 } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2, MoreVertical, Edit3, CheckSquare } from 'lucide-react';
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import Pagination from './ui/Pagination';
@@ -64,6 +64,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // Multi-select state
+  const [selectedCreatorIds, setSelectedCreatorIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Check if user is a creator
   useEffect(() => {
@@ -363,19 +367,56 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
     setActionLoading(creatorId);
     try {
-      // Remove all creator links and creator profile from the project
       await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, creatorId);
-      
-      // Remove from organization members
       await OrganizationService.removeMember(currentOrgId, creatorId);
-      
-      // Reload data
       await loadData();
     } catch (error) {
       console.error('Failed to remove creator:', error);
       alert('Failed to remove creator. Please try again.');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // Multi-select helpers
+  const toggleSelectCreator = (creatorId: string) => {
+    setSelectedCreatorIds(prev => {
+      const next = new Set(prev);
+      if (next.has(creatorId)) next.delete(creatorId);
+      else next.add(creatorId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCreatorIds.size === paginatedCreators.length) {
+      setSelectedCreatorIds(new Set());
+    } else {
+      setSelectedCreatorIds(new Set(paginatedCreators.map(c => c.userId)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!currentOrgId || !currentProjectId || selectedCreatorIds.size === 0) return;
+    
+    const count = selectedCreatorIds.size;
+    if (!confirm(`Remove ${count} creator${count > 1 ? 's' : ''} from your team?\n\nThis will remove them from the organization, delete their profiles, and unlink all accounts.`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(
+        Array.from(selectedCreatorIds).map(async (creatorId) => {
+          await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, creatorId);
+          await OrganizationService.removeMember(currentOrgId, creatorId);
+        })
+      );
+      setSelectedCreatorIds(new Set());
+      await loadData();
+    } catch (error) {
+      console.error('Failed to bulk remove creators:', error);
+      alert('Some creators could not be removed. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -466,12 +507,51 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
             </div>
           </div>
 
+          {/* Bulk Action Bar */}
+          {selectedCreatorIds.size > 0 && (
+            <div className="px-6 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-white">
+                  {selectedCreatorIds.size} selected
+                </span>
+                <button
+                  onClick={() => setSelectedCreatorIds(new Set())}
+                  className="text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkActionLoading}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                >
+                  {bulkActionLoading ? (
+                    <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Remove Selected
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <div className="overflow-x-auto -mx-3 sm:-mx-0">
             <table className="w-full min-w-max">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="pl-6 pr-2 py-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={paginatedCreators.length > 0 && selectedCreatorIds.size === paginatedCreators.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-white/20 cursor-pointer"
+                    />
+                  </th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Creator
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
@@ -494,16 +574,24 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
               <tbody className="divide-y divide-white/5">
                 {paginatedCreators.map((creator) => {
                   const profile = creatorProfiles.get(creator.userId);
+                  const isSelected = selectedCreatorIds.has(creator.userId);
                   
                   return (
                     <tr 
                       key={creator.userId} 
-                      className="hover:bg-white/5 transition-colors group"
+                      className={`hover:bg-white/5 transition-colors group ${isSelected ? 'bg-white/5' : ''}`}
                     >
+                      <td className="pl-6 pr-2 py-4 w-10" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectCreator(creator.userId)}
+                          className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-white/20 cursor-pointer"
+                        />
+                      </td>
                       <td 
-                        className="px-6 py-4 cursor-pointer"
+                        className="px-4 py-4 cursor-pointer"
                         onClick={() => {
-                          // Redirect to dashboard with creator filter instead of separate creator page
                           const linkedAccounts = (creator as any).linkedAccounts || [];
                           if (linkedAccounts.length > 0) {
                             navigate(`/dashboard?creator=${creator.userId}`);
