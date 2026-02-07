@@ -23,7 +23,15 @@ export function isShortenedTikTokUrl(url: string): boolean {
 }
 
 /**
+ * Check if a TikTok URL is a full post URL (already resolved)
+ */
+export function isFullTikTokUrl(url: string): boolean {
+  return url.includes('tiktok.com/@') && url.includes('/video/');
+}
+
+/**
  * Resolve a shortened TikTok URL by following the redirect chain.
+ * Uses multiple strategies for maximum reliability.
  * Returns the final resolved URL, or the original if resolution fails.
  */
 export async function resolveTikTokUrl(url: string): Promise<string> {
@@ -31,66 +39,157 @@ export async function resolveTikTokUrl(url: string): Promise<string> {
     return url;
   }
 
-  console.log(`🔗 [TIKTOK] Resolving shortened URL: ${url}`);
+  if (isFullTikTokUrl(url)) {
+    return url;
+  }
 
+  console.log(`🔗 [TIKTOK URL RESOLVER] Resolving shortened URL: ${url}`);
+
+  // Strategy 1: Manual redirect following (most reliable)
   try {
-    // Follow redirects manually to get the final URL
-    const response = await fetch(url, {
-      method: 'HEAD',
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    console.log(`🔗 [TIKTOK URL RESOLVER] Strategy 1: Manual redirect following...`);
+    let currentUrl = url;
+    let maxRedirects = 10;
+
+    while (maxRedirects > 0) {
+      const response = await fetch(currentUrl, {
+        method: 'GET',
+        redirect: 'manual',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      });
+
+      const location = response.headers.get('location');
+      console.log(`🔗 [TIKTOK URL RESOLVER] Status: ${response.status}, Location: ${location || 'none'}`);
+
+      if (location) {
+        // Handle relative redirects
+        const nextUrl = location.startsWith('http') ? location : new URL(location, currentUrl).toString();
+        
+        // Check if we've arrived at a full TikTok video URL
+        if (isFullTikTokUrl(nextUrl)) {
+          const urlObj = new URL(nextUrl);
+          const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+          console.log(`✅ [TIKTOK URL RESOLVER] Resolved via redirect chain: ${cleanUrl}`);
+          return cleanUrl;
+        }
+
+        currentUrl = nextUrl;
+        maxRedirects--;
+        continue;
       }
-    });
 
-    const resolvedUrl = response.url;
+      // No more redirects — check if current URL is good
+      if (isFullTikTokUrl(currentUrl)) {
+        const urlObj = new URL(currentUrl);
+        const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+        console.log(`✅ [TIKTOK URL RESOLVER] Resolved at final redirect: ${cleanUrl}`);
+        return cleanUrl;
+      }
 
-    if (resolvedUrl && resolvedUrl !== url && resolvedUrl.includes('tiktok.com')) {
-      // Clean up the resolved URL - remove query params that aren't needed
-      const urlObj = new URL(resolvedUrl);
-      const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
-      console.log(`✅ [TIKTOK] Resolved to: ${cleanUrl}`);
-      return cleanUrl;
+      // Check response.url (some runtimes track final URL)
+      if (response.url && isFullTikTokUrl(response.url)) {
+        const urlObj = new URL(response.url);
+        const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+        console.log(`✅ [TIKTOK URL RESOLVER] Resolved via response.url: ${cleanUrl}`);
+        return cleanUrl;
+      }
+
+      // If it's a 200 OK, try parsing the page
+      if (response.status === 200) {
+        const body = await response.text();
+        const extracted = extractTikTokUrlFromHtml(body);
+        if (extracted) {
+          console.log(`✅ [TIKTOK URL RESOLVER] Resolved via HTML parsing: ${extracted}`);
+          return extracted;
+        }
+      }
+
+      break;
     }
+  } catch (error) {
+    console.warn(`⚠️ [TIKTOK URL RESOLVER] Strategy 1 failed:`, error);
+  }
 
-    // If HEAD didn't work, try GET with manual redirect tracking
-    console.log(`⚠️ [TIKTOK] HEAD redirect didn't resolve, trying GET...`);
-    const getResponse = await fetch(url, {
+  // Strategy 2: Auto-follow redirect with GET
+  try {
+    console.log(`🔗 [TIKTOK URL RESOLVER] Strategy 2: Auto-follow GET...`);
+    const response = await fetch(url, {
       method: 'GET',
       redirect: 'follow',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       }
     });
 
-    const finalUrl = getResponse.url;
-    if (finalUrl && finalUrl !== url && finalUrl.includes('tiktok.com')) {
-      const urlObj = new URL(finalUrl);
+    // Check final URL
+    if (response.url && isFullTikTokUrl(response.url)) {
+      const urlObj = new URL(response.url);
       const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
-      console.log(`✅ [TIKTOK] Resolved via GET to: ${cleanUrl}`);
+      console.log(`✅ [TIKTOK URL RESOLVER] Resolved via auto-follow: ${cleanUrl}`);
       return cleanUrl;
     }
 
-    // Last resort: parse the response body for a canonical URL or redirect meta tag
-    const body = await getResponse.text();
-    const canonicalMatch = body.match(/<link[^>]+rel="canonical"[^>]+href="([^"]+)"/);
-    if (canonicalMatch && canonicalMatch[1].includes('tiktok.com')) {
-      console.log(`✅ [TIKTOK] Resolved via canonical tag: ${canonicalMatch[1]}`);
-      return canonicalMatch[1];
+    // Parse body for video URL
+    const body = await response.text();
+    const extracted = extractTikTokUrlFromHtml(body);
+    if (extracted) {
+      console.log(`✅ [TIKTOK URL RESOLVER] Resolved via page HTML: ${extracted}`);
+      return extracted;
     }
-
-    // Try to find the actual video URL in the page content
-    const videoUrlMatch = body.match(/https:\/\/www\.tiktok\.com\/@[^"'\s]+\/video\/\d+/);
-    if (videoUrlMatch) {
-      console.log(`✅ [TIKTOK] Resolved via page content: ${videoUrlMatch[0]}`);
-      return videoUrlMatch[0];
-    }
-
-    console.warn(`⚠️ [TIKTOK] Could not resolve shortened URL, using original: ${url}`);
-    return url;
   } catch (error) {
-    console.error(`❌ [TIKTOK] Failed to resolve shortened URL:`, error);
-    console.warn(`⚠️ [TIKTOK] Falling back to original URL: ${url}`);
-    return url;
+    console.warn(`⚠️ [TIKTOK URL RESOLVER] Strategy 2 failed:`, error);
   }
+
+  console.error(`❌ [TIKTOK URL RESOLVER] All strategies failed for: ${url}`);
+  return url;
+}
+
+/**
+ * Extract a full TikTok video URL from HTML content
+ */
+function extractTikTokUrlFromHtml(html: string): string | null {
+  // Try canonical link
+  const canonicalMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/);
+  if (canonicalMatch && isFullTikTokUrl(canonicalMatch[1])) {
+    return canonicalMatch[1];
+  }
+
+  // Try alternate canonical format
+  const canonicalMatch2 = html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/);
+  if (canonicalMatch2 && isFullTikTokUrl(canonicalMatch2[1])) {
+    return canonicalMatch2[1];
+  }
+
+  // Try og:url meta tag
+  const ogUrlMatch = html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/);
+  if (ogUrlMatch && isFullTikTokUrl(ogUrlMatch[1])) {
+    return ogUrlMatch[1];
+  }
+
+  // Try to find video URL in page content
+  const videoUrlMatch = html.match(/https:\/\/www\.tiktok\.com\/@[^"'\s\\]+\/video\/\d+/);
+  if (videoUrlMatch) {
+    return videoUrlMatch[0];
+  }
+
+  // Try JSON-LD structured data
+  const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/);
+  if (jsonLdMatch) {
+    try {
+      const jsonData = JSON.parse(jsonLdMatch[1]);
+      const jsonUrl = jsonData.url || jsonData['@id'];
+      if (jsonUrl && isFullTikTokUrl(jsonUrl)) {
+        return jsonUrl;
+      }
+    } catch {
+      // Ignore JSON parse errors
+    }
+  }
+
+  return null;
 }

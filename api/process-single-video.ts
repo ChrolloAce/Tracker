@@ -5,7 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
-import { resolveTikTokUrl, isShortenedTikTokUrl } from './utils/resolve-tiktok-url.js';
+import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './utils/resolve-tiktok-url.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
 // @ts-ignore - heic-convert has no types
 import convert from 'heic-convert';
@@ -1709,9 +1709,30 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       token: apifyToken
     });
 
-    const items = result.items;
+    let items = result.items;
     console.log(`📦 [${platform.toUpperCase()}] Apify returned ${items?.length || 0} items`);
     
+    // 🔄 Retry with resolved URL if Apify returned 0 items for a shortened TikTok URL
+    if ((!items || items.length === 0) && platform === 'tiktok' && isShortenedTikTokUrl(url)) {
+      console.log(`🔄 [TIKTOK] 0 items with shortened URL — attempting URL resolution and retry...`);
+      const resolvedUrl = await resolveTikTokUrl(url);
+      
+      if (resolvedUrl !== url && isFullTikTokUrl(resolvedUrl)) {
+        console.log(`🔄 [TIKTOK] Retrying with resolved URL: ${resolvedUrl}`);
+        const retryInput = {
+          ...input,
+          startUrls: [resolvedUrl]
+        };
+        const retryResult = await runApifyActor({
+          actorId: actorId,
+          input: retryInput,
+          token: apifyToken
+        });
+        items = retryResult.items;
+        console.log(`📦 [TIKTOK] Retry returned ${items?.length || 0} items`);
+      }
+    }
+
     if (!items || items.length === 0) {
       console.error(`❌ [${platform.toUpperCase()}] No data returned from Apify`);
       throw new Error('No data returned from Apify');

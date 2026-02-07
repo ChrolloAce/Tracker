@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { runApifyActor } from './apify-client';
-import { resolveTikTokUrl, isShortenedTikTokUrl } from './utils/resolve-tiktok-url';
+import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './utils/resolve-tiktok-url';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -600,8 +600,31 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       throw new Error(`Apify API error: ${response.status}`);
     }
 
-    const items = await response.json();
+    let items = await response.json();
     
+    // 🔄 Retry with resolved URL if Apify returned 0 items for a shortened TikTok URL
+    if ((!items || items.length === 0) && platform === 'tiktok' && isShortenedTikTokUrl(url)) {
+      console.log(`🔄 [TIKTOK] 0 items with shortened URL — resolving and retrying...`);
+      const resolvedUrl = await resolveTikTokUrl(url);
+      
+      if (resolvedUrl !== url && isFullTikTokUrl(resolvedUrl)) {
+        console.log(`🔄 [TIKTOK] Retrying with resolved URL: ${resolvedUrl}`);
+        const retryInput = { ...input, startUrls: [resolvedUrl] };
+        const retryResponse = await fetch(
+          `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyToken}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(retryInput)
+          }
+        );
+        if (retryResponse.ok) {
+          items = await retryResponse.json();
+          console.log(`📦 [TIKTOK] Retry returned ${items?.length || 0} items`);
+        }
+      }
+    }
+
     if (!items || items.length === 0) {
       throw new Error('No data returned from Apify');
     }
