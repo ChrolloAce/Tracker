@@ -241,7 +241,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           item.id !== 'videos' &&
           item.id !== 'analytics' &&
           item.id !== 'extension' &&
-          item.id !== 'creators' // No separate Payouts tab - it's in the dashboard
+          item.id !== 'creators' &&
+          item.id !== 'viral' // Hide Discover/Viral Content for creators
         );
       });
     }
