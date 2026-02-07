@@ -5,6 +5,7 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus, MessageCircle } from 'lucide-react';
 import CreatorAddAccountModal from './CreatorAddAccountModal';
+import CreatorDirectVideoSubmission from './CreatorDirectVideoSubmission';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
@@ -39,6 +40,7 @@ const CreatorPortalPage: React.FC = () => {
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts'>('dashboard');
   const [showAddAccount, setShowAddAccount] = useState(false);
+  const [showSubmitVideo, setShowSubmitVideo] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -525,12 +527,33 @@ const CreatorPortalPage: React.FC = () => {
         </>
       )}
 
+      {/* Floating Submit Video Button - Only on Overview tab */}
+      {activeTab === 'dashboard' && (
+        <button
+          onClick={() => setShowSubmitVideo(true)}
+          className="fixed bottom-8 right-8 w-14 h-14 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
+          title="Submit Video"
+        >
+          <Video className="w-6 h-6 transition-transform group-hover:scale-110" />
+        </button>
+      )}
+
       {/* Add Account Modal */}
       <CreatorAddAccountModal
         isOpen={showAddAccount}
         onClose={() => setShowAddAccount(false)}
         onSuccess={() => {
           setShowAddAccount(false);
+          loadData();
+        }}
+      />
+
+      {/* Submit Video Modal */}
+      <CreatorDirectVideoSubmission
+        isOpen={showSubmitVideo}
+        onClose={() => setShowSubmitVideo(false)}
+        onSuccess={() => {
+          setShowSubmitVideo(false);
           loadData();
         }}
       />
