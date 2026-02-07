@@ -301,6 +301,8 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     // TikTok uses apidojo/tiktok-scraper-api format (channel + video objects or flat keys)
     const channel = rawData.channel || {};
     const video = rawData.video || {};
+    const authorMeta = rawData.authorMeta || {};
+    const author = rawData.author || {};
     
     // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
     let thumbnailUrl = '';
@@ -321,19 +323,25 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       thumbnailUrl = rawData.images[0].url || '';
     }
     
+    // ROBUST AVATAR EXTRACTION — check all known field names from different API responses
+    const profilePicUrl = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url
+      || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
+      || author.avatar || author.avatarLarger || author.avatarThumb
+      || rawData['channel.avatar'] || rawData.avatar || '';
+    
     return {
       id: rawData.id || rawData.post_id || '',
       thumbnail_url: thumbnailUrl,
       caption: rawData.title || rawData.subtitle || rawData.caption || '',
-      username: channel.username || rawData['channel.username'] || '',
+      username: channel.username || rawData['channel.username'] || authorMeta.name || author.uniqueId || '',
       like_count: rawData.likes || 0,
       comment_count: rawData.comments || 0,
       view_count: rawData.views || 0,
       share_count: rawData.shares || 0,
       save_count: rawData.bookmarks || 0, // ✅ ADD BOOKMARKS
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
-      profile_pic_url: channel.avatar || channel.avatar_url || rawData['channel.avatar'] || '',
-      display_name: channel.name || rawData['channel.name'] || channel.username || '',
+      profile_pic_url: profilePicUrl,
+      display_name: channel.name || rawData['channel.name'] || channel.username || authorMeta.name || author.name || '',
       follower_count: channel.followers || 0
     };
   } else if (platform === 'instagram') {

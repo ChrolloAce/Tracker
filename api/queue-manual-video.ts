@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
 import { JOB_PRIORITIES } from './constants/priorities.js';
+import { resolveTikTokUrl, isShortenedTikTokUrl } from './utils/resolve-tiktok-url.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -65,7 +66,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await authenticateAndVerifyOrg(req, orgId);
     console.log(`🔒 Authenticated user ${user.userId} for manual video queue`);
     
-    console.log(`🚀 [MANUAL-VIDEO] Queueing high-priority video processing: ${url}`);
+    // Resolve shortened TikTok URLs to full URLs before entering the pipeline
+    let resolvedUrl = url;
+    if (isShortenedTikTokUrl(url)) {
+      console.log(`🔗 [MANUAL-VIDEO] Resolving shortened TikTok URL: ${url}`);
+      resolvedUrl = await resolveTikTokUrl(url);
+      console.log(`🔗 [MANUAL-VIDEO] Resolved to: ${resolvedUrl}`);
+    }
+    
+    console.log(`🚀 [MANUAL-VIDEO] Queueing high-priority video processing: ${resolvedUrl}`);
     
     // Create high-priority job in syncQueue
     const jobRef = db.collection('syncQueue').doc();
@@ -74,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'pending',
       orgId,
       projectId,
-      videoUrl: url,
+      videoUrl: resolvedUrl,
       addedBy: user.userId, // Track who submitted the video
       createdAt: Timestamp.now(),
       startedAt: null,
@@ -87,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     
     console.log(`✅ [MANUAL-VIDEO] Job ${jobRef.id} queued with priority ${JOB_PRIORITIES.USER_INITIATED}`);
-    console.log(`   📹 Video URL: ${url}`);
+    console.log(`   📹 Video URL: ${resolvedUrl}${resolvedUrl !== url ? ` (resolved from ${url})` : ''}`);
     
     const baseUrl = 'https://www.viewtrack.app';
     const cronSecret = process.env.CRON_SECRET;
@@ -113,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            videoId: url,
+            videoId: resolvedUrl,
             orgId,
             projectId,
             jobId: jobRef.id,

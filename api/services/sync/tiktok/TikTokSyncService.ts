@@ -55,20 +55,26 @@ export class TikTokSyncService {
       
       console.log(`    📦 [TIKTOK] Fetched ${batch.length} videos from Apify`);
       
-      // Extract profile from first video
+      // Extract profile from first video — check all known avatar field names
       let profile = null;
       if (batch.length > 0) {
         const v = batch[0];
         const channel = v.channel || {};
-        if (channel.avatar) {
+        const authorMeta = v.authorMeta || {};
+        const author = v.author || {};
+        const avatarUrl = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url
+          || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
+          || author.avatar || author.avatarLarger || author.avatarThumb || '';
+        
+        if (avatarUrl) {
           profile = {
-            username: channel.username || channel.name,
-            displayName: channel.name || channel.username,
-            profilePicUrl: channel.avatar,
-            followersCount: channel.followers,
-            followingCount: channel.following,
+            username: channel.username || channel.name || authorMeta.name || author.uniqueId,
+            displayName: channel.name || channel.username || authorMeta.name || author.name,
+            profilePicUrl: avatarUrl,
+            followersCount: channel.followers || authorMeta.fans || author.fans,
+            followingCount: channel.following || authorMeta.following || author.following,
             likesCount: 0,
-            isVerified: channel.verified || false
+            isVerified: channel.verified || authorMeta.verified || false
           };
         }
       }

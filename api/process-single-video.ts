@@ -953,12 +953,31 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     
     // Log channel data for debugging
     console.log('🎵 [TIKTOK Transform] Channel keys:', Object.keys(channel).join(', '));
+    console.log('🎵 [TIKTOK Transform] Top-level keys:', Object.keys(rawData).filter(k => typeof rawData[k] !== 'object').join(', '));
     console.log('🎵 [TIKTOK Transform] Followers data:', {
       'channel.followers': channel.followers,
       'channel.followerCount': channel.followerCount,
       'channel.fans': channel.fans,
       'rawData.followers': rawData.followers,
       'rawData.followerCount': rawData.followerCount
+    });
+    
+    // Log ALL avatar-related fields for debugging
+    const authorMeta = rawData.authorMeta || {};
+    const author = rawData.author || {};
+    console.log('🎵 [TIKTOK Transform] Avatar fields:', {
+      'channel.avatar': channel.avatar ? 'YES' : 'NO',
+      'channel.avatarThumb': channel.avatarThumb ? 'YES' : 'NO',
+      'channel.avatarMedium': channel.avatarMedium ? 'YES' : 'NO',
+      'channel.avatarLarger': channel.avatarLarger ? 'YES' : 'NO',
+      'channel.avatar_url': channel.avatar_url ? 'YES' : 'NO',
+      'authorMeta.avatar': authorMeta.avatar ? 'YES' : 'NO',
+      'authorMeta.avatarThumb': authorMeta.avatarThumb ? 'YES' : 'NO',
+      'authorMeta.avatarLarger': authorMeta.avatarLarger ? 'YES' : 'NO',
+      'author.avatar': author.avatar ? 'YES' : 'NO',
+      'author.avatarThumb': author.avatarThumb ? 'YES' : 'NO',
+      'author.avatarLarger': author.avatarLarger ? 'YES' : 'NO',
+      'rawData.avatar': rawData.avatar ? 'YES' : 'NO',
     });
     
     // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
@@ -1022,10 +1041,13 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       share_count: rawData.shares || 0,
       save_count: rawData.bookmarks || 0, // ✅ ADD BOOKMARKS
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
-      profile_pic_url: channel.avatar || channel.avatar_url || rawData['channel.avatar'] || '',
-      display_name: channel.name || rawData['channel.name'] || channel.username || '',
+      profile_pic_url: channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url 
+        || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
+        || author.avatar || author.avatarLarger || author.avatarThumb
+        || rawData['channel.avatar'] || rawData.avatar || '',
+      display_name: channel.name || rawData['channel.name'] || channel.username || authorMeta.name || author.name || '',
       follower_count: followerCount,
-      verified: channel.verified || rawData['channel.verified'] || false
+      verified: channel.verified || rawData['channel.verified'] || authorMeta.verified || false
     };
   } else if (platform === 'instagram') {
     // Instagram - Handle hpix~ig-reels-scraper format
