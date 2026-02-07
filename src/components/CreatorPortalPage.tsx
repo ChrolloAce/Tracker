@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2 } from 'lucide-react';
+import { Video, Users as UsersIcon, Eye, DollarSign, TrendingUp, Heart, ExternalLink, Link2, Plus } from 'lucide-react';
+import CreatorAddAccountModal from './CreatorAddAccountModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
@@ -37,6 +38,7 @@ const CreatorPortalPage: React.FC = () => {
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts'>('dashboard');
+  const [showAddAccount, setShowAddAccount] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -264,13 +266,31 @@ const CreatorPortalPage: React.FC = () => {
       {/* === LINKED ACCOUNTS TAB === */}
       {activeTab === 'accounts' && (
         <div className="space-y-4">
+          {/* Add Account Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowAddAccount(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Link Account
+            </button>
+          </div>
+
           {linkedAccounts.length === 0 ? (
             <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
               <Link2 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-white mb-2">No linked accounts</h3>
-              <p className="text-gray-500 text-sm">
-                Your admin will link your social media accounts here
+              <p className="text-gray-500 text-sm mb-6">
+                Link your social media accounts to track your content
               </p>
+              <button
+                onClick={() => setShowAddAccount(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Link Your First Account
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -445,6 +465,16 @@ const CreatorPortalPage: React.FC = () => {
       )}
         </>
       )}
+
+      {/* Add Account Modal */}
+      <CreatorAddAccountModal
+        isOpen={showAddAccount}
+        onClose={() => setShowAddAccount(false)}
+        onSuccess={() => {
+          setShowAddAccount(false);
+          loadData();
+        }}
+      />
     </div>
   );
 };
