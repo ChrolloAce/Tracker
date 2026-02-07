@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  X, Eye, Heart, MessageCircle, Video, Calendar, DollarSign, 
-  ExternalLink, TrendingUp, User, Loader2 
+  X, Eye, Heart, Video, Calendar, DollarSign, 
+  ExternalLink, User, Loader2 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator, TrackedAccount, VideoDoc } from '../types/firestore';
@@ -9,8 +9,6 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
 import { ProxiedImage } from './ProxiedImage';
 
 interface CreatorDetailModalProps {
@@ -65,7 +63,7 @@ const getPlatformUrl = (platform: string, username: string) => {
 };
 
 const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
-  isOpen, onClose, creator, profile, earnings, videoCount
+  isOpen, onClose, creator, earnings
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -49,7 +49,7 @@ const CreatorPortalPage: React.FC = () => {
   const hasPendingVideos = useMemo(() => {
     return videos.some(v => 
       v.syncStatus === 'pending' || v.syncStatus === 'processing' || 
-      v.status === 'pending' || v.status === 'processing'
+      v.status === 'processing'
     );
   }, [videos]);
 
@@ -261,21 +261,21 @@ const CreatorPortalPage: React.FC = () => {
             )}
           </button>
         </nav>
-      </div>
+        </div>
 
       {/* === LINKED ACCOUNTS TAB === */}
       {activeTab === 'accounts' && (
         <div className="space-y-4">
           {/* Add Account Button */}
           <div className="flex justify-end">
-            <button
+        <button
               onClick={() => setShowAddAccount(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
-            >
+        >
               <Plus className="w-4 h-4" />
               Link Account
-            </button>
-          </div>
+        </button>
+      </div>
 
           {linkedAccounts.length === 0 ? (
             <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
@@ -284,13 +284,13 @@ const CreatorPortalPage: React.FC = () => {
               <p className="text-gray-500 text-sm mb-6">
                 Link your social media accounts to track your content
               </p>
-              <button
+      <button
                 onClick={() => setShowAddAccount(true)}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
-              >
+      >
                 <Plus className="w-4 h-4" />
                 Link Your First Account
-              </button>
+      </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -326,7 +326,7 @@ const CreatorPortalPage: React.FC = () => {
               ))}
             </div>
           )}
-        </div>
+    </div>
       )}
 
       {/* === DASHBOARD TAB === */}
@@ -339,7 +339,7 @@ const CreatorPortalPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
             <div className="bg-white/10 rounded-lg p-2.5">
               <DollarSign className="w-5 h-5 text-gray-300" />
-            </div>
+              </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
             ${(creatorProfile?.totalEarnings || 0).toFixed(2)}
@@ -352,7 +352,7 @@ const CreatorPortalPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
             <div className="bg-white/10 rounded-lg p-2.5">
               <Eye className="w-5 h-5 text-gray-300" />
-            </div>
+              </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
             {formatNumber(stats.totalViews)}
@@ -378,7 +378,7 @@ const CreatorPortalPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
             <div className="bg-white/10 rounded-lg p-2.5">
               <Video className="w-5 h-5 text-gray-300" />
-            </div>
+              </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
             {stats.totalVideos}
@@ -391,11 +391,11 @@ const CreatorPortalPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
             <div className="bg-white/10 rounded-lg p-2.5">
               <UsersIcon className="w-5 h-5 text-gray-300" />
-            </div>
+              </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
               {linkedAccounts.length}
-          </div>
+            </div>
           <div className="text-xs text-gray-500">Linked Accounts</div>
         </div>
       </div>

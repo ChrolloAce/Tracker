@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { useNavigate } from 'react-router-dom';
+// useNavigate removed - creator rows now open detail modal
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,7 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2, MoreVertical, Edit3, CheckSquare } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2, MoreVertical, Edit3 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import Pagination from './ui/Pagination';
@@ -42,7 +42,6 @@ interface CreatorsManagementPageProps {
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
   const { dateFilter = 'all', organizationId, projectId } = props;
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
-  const navigate = useNavigate();
   
   // Use props if provided (for demo mode), otherwise use auth
   const currentOrgId = organizationId || authOrgId;
