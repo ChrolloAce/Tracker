@@ -486,7 +486,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Support & Settings - Standalone at bottom with separator */}
           <>
             <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
-          <NavItemComponent item={supportItem} />
+          {userRole !== 'creator' && <NavItemComponent item={supportItem} />}
           {settingsItem && <NavItemComponent item={settingsItem} />}
           {superAdminItem && <NavItemComponent item={superAdminItem} />}
           </>

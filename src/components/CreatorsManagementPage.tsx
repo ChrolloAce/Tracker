@@ -108,6 +108,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   }));
 
   // Optimized: accepts pre-loaded accounts and links (no redundant fetching!)
+  // Also includes directly submitted videos (addedBy === creatorId)
   const calculateCreatorEarningsOptimized = async (
     creatorId: string, 
     profile: Creator,
@@ -119,23 +120,16 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     }
 
     try {
-      // Use pre-loaded links (no Firestore query!)
-      if (creatorLinks.length === 0) return { earnings: 0, videoCount: 0 };
-
       const accountIds = creatorLinks.map(link => link.accountId);
-      
-      // Use pre-loaded accounts (no Firestore query!)
       const linkedAccounts = projectAccounts.filter(acc => accountIds.includes(acc.id));
-      
-      if (linkedAccounts.length === 0) return { earnings: 0, videoCount: 0 };
 
-      // Load videos for each account
+      // Load videos from linked accounts
       const videosPromises = linkedAccounts.map(async (account) => {
         try {
           const videos = await FirestoreDataService.getVideos(
             currentOrgId,
             currentProjectId,
-            { trackedAccountId: account.id, limitCount: 10 }
+            { trackedAccountId: account.id, limitCount: 100 }
           );
           return videos;
         } catch (error) {
@@ -144,7 +138,28 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         }
       });
       
-      let allVideos = (await Promise.all(videosPromises)).flat();
+      const linkedVideos = (await Promise.all(videosPromises)).flat();
+
+      // Also load videos directly submitted by this creator (addedBy === creatorId)
+      let directlySubmittedVideos: any[] = [];
+      try {
+        const allProjectVideos = await FirestoreDataService.getVideos(
+          currentOrgId,
+          currentProjectId,
+          { limitCount: 1000 }
+        );
+        directlySubmittedVideos = allProjectVideos.filter(
+          (v: any) => v.addedBy === creatorId
+        );
+      } catch (error) {
+        console.error(`Failed to load directly submitted videos for creator ${creatorId}:`, error);
+      }
+
+      // Merge and deduplicate (a video could be both from a linked account AND addedBy the creator)
+      const videoMap = new Map<string, any>();
+      linkedVideos.forEach(v => videoMap.set(v.id, v));
+      directlySubmittedVideos.forEach(v => videoMap.set(v.id, v));
+      let allVideos = Array.from(videoMap.values());
       
       // Apply date filter
       if (dateFilter !== 'all') {
