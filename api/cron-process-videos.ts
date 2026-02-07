@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { runApifyActor } from './apify-client';
+import { resolveTikTokUrl, isShortenedTikTokUrl } from './utils/resolve-tiktok-url';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -476,9 +477,13 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     let input: any;
 
     if (platform === 'tiktok') {
+      // Resolve shortened TikTok URLs (/t/, vm.tiktok.com, vt.tiktok.com)
+      const resolvedUrl = isShortenedTikTokUrl(url) ? await resolveTikTokUrl(url) : url;
+      console.log(`✅ [TIKTOK] Using URL: ${resolvedUrl}`);
+      
       actorId = 'apidojo/tiktok-scraper-api';
       input = {
-        startUrls: [url],
+        startUrls: [resolvedUrl],
         maxItems: 1,
         sortType: 'RELEVANCE',
         dateRange: 'DEFAULT',

@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
+import { resolveTikTokUrl, isShortenedTikTokUrl } from './utils/resolve-tiktok-url.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
 // @ts-ignore - heic-convert has no types
 import convert from 'heic-convert';
@@ -1416,12 +1417,19 @@ async function downloadAndUploadImage(
 }
 
 /**
- * Extract video ID from TikTok CDN URL and validate/reconstruct proper post URL
+ * Extract video ID from TikTok CDN URL, resolve shortened URLs, and validate
  */
-function validateTikTokUrl(url: string): string {
+async function validateTikTokUrl(url: string): Promise<string> {
   // If it's already a proper TikTok post URL, return as-is
   if (url.includes('tiktok.com/@') && url.includes('/video/')) {
     return url;
+  }
+  
+  // Resolve shortened TikTok URLs (/t/, vm.tiktok.com, vt.tiktok.com)
+  if (isShortenedTikTokUrl(url)) {
+    const resolved = await resolveTikTokUrl(url);
+    console.log(`🔗 [TIKTOK] Shortened URL resolved: ${url} → ${resolved}`);
+    return resolved;
   }
   
   // If it's a CDN URL, try to extract video ID
@@ -1508,8 +1516,8 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     let input: any;
 
     if (platform === 'tiktok') {
-      // 🔥 Validate/reconstruct TikTok URL before calling Apify
-      const validatedUrl = validateTikTokUrl(url);
+      // 🔥 Validate/reconstruct TikTok URL before calling Apify (resolves shortened URLs)
+      const validatedUrl = await validateTikTokUrl(url);
       console.log(`✅ [TIKTOK] Using validated URL: ${validatedUrl}`);
       
       actorId = 'apidojo/tiktok-scraper-api';
