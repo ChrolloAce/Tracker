@@ -25,6 +25,7 @@ export interface VideoSubmission {
   uploaderHandle: string;
   uploaderProfilePicture?: string; // Account profile picture
   followerCount?: number; // Creator's follower count
+  trackedAccountId?: string; // Linked tracked-account ID (used for creator assignment)
   status: 'pending' | 'approved' | 'rejected';
   syncStatus?: 'idle' | 'pending' | 'syncing' | 'completed' | 'failed'; // Sync status for real-time processing
   syncError?: string; // Error message if sync failed

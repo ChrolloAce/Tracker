@@ -264,7 +264,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
-  const [bulkAssignCreatorState, setBulkAssignCreatorState] = useState<{ isOpen: boolean; accountIds: string[]; label: string }>({ isOpen: false, accountIds: [], label: '' });
+  const [bulkAssignCreatorState, setBulkAssignCreatorState] = useState<{ isOpen: boolean; videoIds: string[]; accountIds: string[]; label: string }>({ isOpen: false, videoIds: [], accountIds: [], label: '' });
   const [usageLimits, setUsageLimits] = useState<{
     accountsLeft: number;
     videosLeft: number;
@@ -1021,6 +1021,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           uploaderHandle: account?.username || video.uploaderHandle || '',
           uploaderProfilePicture: account?.profilePicture || video.uploaderProfilePicture,
           followerCount: account?.followerCount,
+          trackedAccountId: video.trackedAccountId || undefined,
           status: video.status === 'archived' ? 'rejected' : 'approved',
           views: video.views || 0,
           likes: video.likes || 0,
@@ -1194,6 +1195,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           uploaderHandle: account?.username || '',
           uploaderProfilePicture: account?.profilePicture,
           followerCount: account?.followerCount,
+          trackedAccountId: video.trackedAccountId || undefined,
           status: video.status === 'archived' ? 'rejected' : 'approved',
           views: video.views || 0,
           likes: video.likes || 0,
@@ -1386,6 +1388,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               uploaderHandle: account?.username || '',
               uploaderProfilePicture: account?.profilePicture,
               followerCount: account?.followerCount,
+              trackedAccountId: video.trackedAccountId || undefined,
               status: video.status === 'archived' ? 'rejected' : 'approved',
               views: video.views || 0,
               likes: video.likes || 0,
@@ -3274,7 +3277,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onDelete={handleDelete}
                             onBulkDelete={handleBulkDelete}
                             onVideoClick={handleVideoClick}
-                            onAssignCreator={(accountIds, label) => setBulkAssignCreatorState({ isOpen: true, accountIds, label })}
+                            onAssignCreator={(videoIds, accountIds, label) => setBulkAssignCreatorState({ isOpen: true, videoIds, accountIds, label })}
                             headerTitle={getVideoTableHeader(dateFilter)}
                             trendPeriodDays={getTrendPeriodDays(dateFilter)}
                           />
@@ -3439,7 +3442,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 onDelete={handleDelete}
                 onBulkDelete={handleBulkDelete}
                 onVideoClick={handleVideoClick}
-                onAssignCreator={(accountIds, label) => setBulkAssignCreatorState({ isOpen: true, accountIds, label })}
+                onAssignCreator={(videoIds, accountIds, label) => setBulkAssignCreatorState({ isOpen: true, videoIds, accountIds, label })}
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
@@ -4473,10 +4476,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <BulkAssignCreatorModal
         isOpen={bulkAssignCreatorState.isOpen}
         accountIds={bulkAssignCreatorState.accountIds}
+        videoIds={bulkAssignCreatorState.videoIds}
         selectionLabel={bulkAssignCreatorState.label}
-        onClose={() => setBulkAssignCreatorState({ isOpen: false, accountIds: [], label: '' })}
+        onClose={() => setBulkAssignCreatorState({ isOpen: false, videoIds: [], accountIds: [], label: '' })}
         onSuccess={() => {
-          setBulkAssignCreatorState({ isOpen: false, accountIds: [], label: '' });
+          setBulkAssignCreatorState({ isOpen: false, videoIds: [], accountIds: [], label: '' });
         }}
       />
     </div>

@@ -108,8 +108,10 @@ const CreatorPortalPage: React.FC = () => {
       // Filter videos to show:
       // 1. Videos from linked accounts
       // 2. Videos directly submitted by this creator (addedBy === user.uid)
+      // 3. Videos explicitly assigned to this creator (assignedCreatorId)
       const filteredVideos = allVideos.filter((video) => {
         if (video.addedBy === user.uid) return true;
+        if (video.assignedCreatorId === user.uid) return true;
         if (video.trackedAccountId && linkedAccountIds.has(video.trackedAccountId)) return true;
         return false;
       });

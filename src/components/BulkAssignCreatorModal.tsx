@@ -5,11 +5,15 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
 import { ProxiedImage } from './ProxiedImage';
+import { doc, writeBatch } from 'firebase/firestore';
+import { db } from '../services/firebase';
 
 interface BulkAssignCreatorModalProps {
   isOpen: boolean;
-  /** Account IDs to assign to the selected creator */
+  /** Account IDs to link to the selected creator */
   accountIds: string[];
+  /** Video IDs to directly assign (sets assignedCreatorId on each video doc) */
+  videoIds?: string[];
   /** Label shown in the header (e.g. "3 accounts" or "5 videos (2 accounts)") */
   selectionLabel: string;
   onClose: () => void;
@@ -18,18 +22,21 @@ interface BulkAssignCreatorModalProps {
 
 /**
  * BulkAssignCreatorModal
- * Allows bulk-assigning multiple accounts to a single creator.
+ * Allows bulk-assigning multiple accounts (and optionally videos) to a single creator.
  * Used from both the Videos table and the Accounts table.
+ *
+ * Shows ALL active org members so the admin can pick anyone as the creator.
  */
 const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
   isOpen,
   accountIds,
+  videoIds,
   selectionLabel,
   onClose,
   onSuccess,
 }) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
-  const [creators, setCreators] = useState<OrgMember[]>([]);
+  const [members, setMembers] = useState<OrgMember[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,23 +45,23 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadCreators();
+      loadMembers();
       setSelectedCreatorId(null);
       setSearchQuery('');
       setError(null);
     }
   }, [isOpen, currentOrgId]);
 
-  const loadCreators = async () => {
+  const loadMembers = async () => {
     if (!currentOrgId) return;
     setLoading(true);
     try {
       const allMembers = await OrganizationService.getOrgMembers(currentOrgId);
-      const creatorMembers = allMembers.filter((m: OrgMember) => m.role === 'creator');
-      setCreators(creatorMembers);
+      // Show all active org members — any member can be assigned as a creator
+      setMembers(allMembers);
     } catch (err) {
-      console.error('Failed to load creators:', err);
-      setError('Failed to load creators');
+      console.error('Failed to load members:', err);
+      setError('Failed to load team members');
     } finally {
       setLoading(false);
     }
@@ -62,36 +69,50 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
 
   const handleAssign = async () => {
     if (!currentOrgId || !currentProjectId || !selectedCreatorId || !user) return;
-    if (accountIds.length === 0) return;
+    // Need at least some accounts or videos to assign
+    if (accountIds.length === 0 && (!videoIds || videoIds.length === 0)) return;
 
     setSaving(true);
     setError(null);
 
     try {
-      // Deduplicate account IDs
-      const uniqueIds = [...new Set(accountIds)];
+      // 1. Link accounts to the creator (if any)
+      if (accountIds.length > 0) {
+        const uniqueAccountIds = [...new Set(accountIds)];
 
-      // For each account, first unlink any existing creator, then link the new one
-      for (const accountId of uniqueIds) {
-        // Unlink existing creators
-        const existingLinks = await CreatorLinksService.getAccountLinkedCreators(
-          currentOrgId, currentProjectId, accountId
-        );
-        for (const link of existingLinks) {
-          if (link.creatorId !== selectedCreatorId) {
-            await CreatorLinksService.unlinkCreatorFromAccount(
-              currentOrgId, currentProjectId, link.creatorId, accountId
+        for (const accountId of uniqueAccountIds) {
+          // Unlink existing creators for this account
+          const existingLinks = await CreatorLinksService.getAccountLinkedCreators(
+            currentOrgId, currentProjectId, accountId
+          );
+          for (const link of existingLinks) {
+            if (link.creatorId !== selectedCreatorId) {
+              await CreatorLinksService.unlinkCreatorFromAccount(
+                currentOrgId, currentProjectId, link.creatorId, accountId
+              );
+            }
+          }
+
+          // Link to the new creator if not already linked
+          const alreadyLinked = existingLinks.some(l => l.creatorId === selectedCreatorId);
+          if (!alreadyLinked) {
+            await CreatorLinksService.linkCreatorToAccounts(
+              currentOrgId, currentProjectId, selectedCreatorId, [accountId], user.uid
             );
           }
         }
+      }
 
-        // Check if already linked to this creator
-        const alreadyLinked = existingLinks.some(l => l.creatorId === selectedCreatorId);
-        if (!alreadyLinked) {
-          await CreatorLinksService.linkCreatorToAccounts(
-            currentOrgId, currentProjectId, selectedCreatorId, [accountId], user.uid
+      // 2. Directly assign videos to the creator (sets assignedCreatorId on each video doc)
+      if (videoIds && videoIds.length > 0) {
+        const batch = writeBatch(db);
+        for (const videoId of videoIds) {
+          const videoRef = doc(
+            db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos', videoId
           );
+          batch.update(videoRef, { assignedCreatorId: selectedCreatorId });
         }
+        await batch.commit();
       }
 
       onSuccess();
@@ -103,14 +124,25 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
     }
   };
 
-  const filteredCreators = creators.filter(creator => {
+  const filteredMembers = members.filter(member => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return (creator.displayName || '').toLowerCase().includes(q)
-      || (creator.email || '').toLowerCase().includes(q);
+    return (member.displayName || '').toLowerCase().includes(q)
+      || (member.email || '').toLowerCase().includes(q);
+  });
+
+  // Sort: creators first, then by name
+  const sortedMembers = [...filteredMembers].sort((a, b) => {
+    if (a.role === 'creator' && b.role !== 'creator') return -1;
+    if (a.role !== 'creator' && b.role === 'creator') return 1;
+    return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '');
   });
 
   if (!isOpen) return null;
+
+  const assignCount = accountIds.length > 0
+    ? `${new Set(accountIds).size} Account${new Set(accountIds).size !== 1 ? 's' : ''}`
+    : `${videoIds?.length || 0} Video${(videoIds?.length || 0) !== 1 ? 's' : ''}`;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -134,7 +166,7 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
             <input
               type="text"
-              placeholder="Search creators..."
+              placeholder="Search team members..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
@@ -142,7 +174,7 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
           </div>
         </div>
 
-        {/* Creators List */}
+        {/* Members List */}
         <div className="flex-1 overflow-y-auto px-6 py-3 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -152,35 +184,35 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
             <div className="text-center py-12">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
-          ) : filteredCreators.length === 0 ? (
+          ) : sortedMembers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-10 h-10 text-white/20 mx-auto mb-3" />
               <p className="text-white/40 text-sm">
-                {searchQuery ? 'No creators match your search' : 'No creators found — invite one first'}
+                {searchQuery ? 'No members match your search' : 'No team members found — invite one first'}
               </p>
             </div>
           ) : (
             <div className="space-y-1.5">
-              {filteredCreators.map(creator => (
+              {sortedMembers.map(member => (
                 <button
-                  key={creator.userId}
-                  onClick={() => setSelectedCreatorId(creator.userId)}
+                  key={member.userId}
+                  onClick={() => setSelectedCreatorId(member.userId)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
-                    selectedCreatorId === creator.userId
+                    selectedCreatorId === member.userId
                       ? 'bg-white/10 border border-white/20'
                       : 'bg-white/[0.02] border border-transparent hover:border-white/10'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {creator.photoURL ? (
+                    {member.photoURL ? (
                       <ProxiedImage
-                        src={creator.photoURL}
-                        alt={creator.displayName || 'Creator'}
+                        src={member.photoURL}
+                        alt={member.displayName || 'Member'}
                         className="w-9 h-9 rounded-full object-cover"
                         fallback={
                           <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
                             <span className="text-sm font-medium text-white/60">
-                              {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
+                              {(member.displayName || member.email || 'M').charAt(0).toUpperCase()}
                             </span>
                           </div>
                         }
@@ -188,16 +220,21 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
                         <span className="text-sm font-medium text-white/60">
-                          {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
+                          {(member.displayName || member.email || 'M').charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
                     <div className="text-left">
-                      <div className="text-sm font-medium text-white">{creator.displayName || 'Unnamed'}</div>
-                      <div className="text-xs text-white/40">{creator.email}</div>
+                      <div className="text-sm font-medium text-white flex items-center gap-2">
+                        {member.displayName || 'Unnamed'}
+                        {member.role === 'creator' && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full font-medium">Creator</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-white/40">{member.email}</div>
                     </div>
                   </div>
-                  {selectedCreatorId === creator.userId && (
+                  {selectedCreatorId === member.userId && (
                     <CheckCircle className="w-5 h-5 text-white" />
                   )}
                 </button>
@@ -233,7 +270,7 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
                 Assigning...
               </>
             ) : (
-              `Assign ${accountIds.length > 1 ? `${new Set(accountIds).size} Accounts` : '1 Account'}`
+              `Assign ${assignCount}`
             )}
           </button>
         </div>

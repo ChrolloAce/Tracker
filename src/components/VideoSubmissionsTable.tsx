@@ -24,7 +24,7 @@ interface VideoSubmissionsTableProps {
   onDelete?: (id: string) => void;
   onBulkDelete?: (ids: string[]) => Promise<void>;
   onVideoClick?: (video: VideoSubmission) => void;
-  onAssignCreator?: (accountIds: string[], selectionLabel: string) => void;
+  onAssignCreator?: (videoIds: string[], accountIds: string[], selectionLabel: string) => void;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
   trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
 }
@@ -691,15 +691,16 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowActionsMenu(false);
-                          // Extract unique account IDs from selected videos
+                          // Extract video IDs and unique account IDs from selected videos
                           const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+                          const videoIds = selectedSubs.map(v => v.id);
                           const accountIdSet = new Set<string>();
                           selectedSubs.forEach(v => {
-                            if ((v as any).trackedAccountId) accountIdSet.add((v as any).trackedAccountId);
+                            if (v.trackedAccountId) accountIdSet.add(v.trackedAccountId);
                           });
                           const uniqueAccountIds = Array.from(accountIdSet);
                           const label = `${selectedSubs.length} video${selectedSubs.length !== 1 ? 's' : ''} (${uniqueAccountIds.length} account${uniqueAccountIds.length !== 1 ? 's' : ''})`;
-                          onAssignCreator(uniqueAccountIds, label);
+                          onAssignCreator(videoIds, uniqueAccountIds, label);
                         }}
                         className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
                       >

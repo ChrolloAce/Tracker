@@ -281,6 +281,7 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   
   // Metadata
   addedBy: string; // userId
+  assignedCreatorId?: string; // Creator this video is assigned to (shows on their dashboard)
   status: 'active' | 'archived' | 'processing'; // processing = still being fetched from API
   isSingular: boolean; // Not tied to tracked account
   
