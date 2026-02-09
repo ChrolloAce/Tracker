@@ -34,13 +34,43 @@ export class AccountsDataService {
     accountData: Omit<TrackedAccount, 'id' | 'orgId' | 'dateAdded' | 'addedBy' | 'totalVideos' | 'totalViews' | 'totalLikes' | 'totalComments' | 'totalShares'>,
     skipSync: boolean = false
   ): Promise<string> {
+    // ── Dedup check: return existing account ID if one already exists ──
+    if (accountData.username && accountData.platform) {
+      const normalizedUsername = accountData.username.toLowerCase();
+      const accountsCol = collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts');
+
+      // 1) Check deterministic-ID doc first (instant, no query)
+      const deterministicId = `${accountData.platform}_${normalizedUsername.replace(/[^a-z0-9_.-]/g, '_')}`;
+      const deterministicRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts', deterministicId);
+      const deterministicSnap = await getDoc(deterministicRef);
+      if (deterministicSnap.exists()) {
+        console.log(`⚠️ Account @${normalizedUsername} on ${accountData.platform} already exists (deterministic ID: ${deterministicId}) — skipping creation`);
+        return deterministicId;
+      }
+
+      // 2) Fallback query for legacy random-ID accounts
+      const existingQuery = query(
+        accountsCol,
+        where('username', '==', normalizedUsername),
+        where('platform', '==', accountData.platform)
+      );
+      const existingSnap = await getDocs(existingQuery);
+      if (!existingSnap.empty) {
+        const existingId = existingSnap.docs[0].id;
+        console.log(`⚠️ Account @${normalizedUsername} on ${accountData.platform} already exists (legacy ID: ${existingId}) — skipping creation`);
+        return existingId;
+      }
+    }
+
     const batch = writeBatch(db);
     
-    // Create tracked account in project with background sync fields
-    const accountRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts'));
+    // Use deterministic ID to prevent race-condition duplicates
+    const normalizedUser = (accountData.username || 'unknown').toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
+    const deterministicAccountId = `${accountData.platform}_${normalizedUser}`;
+    const accountRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts', deterministicAccountId);
     const fullAccountData: TrackedAccount = {
       ...accountData,
-      id: accountRef.id,
+      id: deterministicAccountId,
       orgId,
       dateAdded: Timestamp.now(),
       addedBy: userId,

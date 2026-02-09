@@ -259,23 +259,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Check if account exists or needs to be created
+    // Use deterministic ID to prevent race-condition duplicates when multiple
+    // videos for the same account are processed concurrently.
+    const normalizedUsername = videoData.username.toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
+    const deterministicAccountId = `${video.platform}_${normalizedUsername}`;
     const accountsRef = db.collection(`organizations/${orgId}/projects/${projectId}/trackedAccounts`);
-    const accountQuery = accountsRef
-      .where('username', '==', videoData.username.toLowerCase())
-      .where('platform', '==', video.platform)
-      .limit(1);
-    
-    const accountSnapshot = await accountQuery.get();
-    let accountId = video.trackedAccountId;
 
-    if (!accountSnapshot.empty) {
+    // 1) Check deterministic-ID document first (fast, no query)
+    const deterministicRef = accountsRef.doc(deterministicAccountId);
+    const deterministicSnap = await deterministicRef.get();
+
+    // 2) Fallback: query by username+platform for legacy random-ID accounts
+    let accountSnapshot: FirebaseFirestore.QuerySnapshot | null = null;
+    if (!deterministicSnap.exists) {
+      const accountQuery = accountsRef
+        .where('username', '==', videoData.username.toLowerCase())
+        .where('platform', '==', video.platform)
+        .limit(1);
+      accountSnapshot = await accountQuery.get();
+    }
+
+    let accountId = video.trackedAccountId;
+    const existingAccountFound = deterministicSnap.exists || (accountSnapshot && !accountSnapshot.empty);
+
+    if (deterministicSnap.exists) {
+      const existingAccount = deterministicSnap.data()!;
+      console.log(`🔍 [${video.platform.toUpperCase()}] Account @${normalizedUsername}: FOUND (deterministic ID)`);
+      console.log(`   📋 Account ID: ${deterministicAccountId}`);
+      console.log(`   📋 Profile pic: ${existingAccount.profilePicture ? existingAccount.profilePicture.substring(0, 100) + '...' : 'NONE'}`);
+    } else if (accountSnapshot && !accountSnapshot.empty) {
       const existingAccount = accountSnapshot.docs[0].data();
-      console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: FOUND - Will use existing`);
-      console.log(`   📋 Existing account ID: ${accountSnapshot.docs[0].id}`);
+      console.log(`🔍 [${video.platform.toUpperCase()}] Account @${normalizedUsername}: FOUND (legacy ID: ${accountSnapshot.docs[0].id})`);
       console.log(`   📋 Profile pic: ${existingAccount.profilePicture ? existingAccount.profilePicture.substring(0, 100) + '...' : 'NONE'}`);
     } else {
-      console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: NOT FOUND - Will create`);
-      console.log(`   📋 Query: username='${videoData.username.toLowerCase()}' AND platform='${video.platform}'`);
+      console.log(`🔍 [${video.platform.toUpperCase()}] Account @${normalizedUsername}: NOT FOUND - Will create with deterministic ID ${deterministicAccountId}`);
     }
 
     // Track the final uploaded profile picture URL to use in video document
@@ -283,7 +300,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let finalUploadedCoverPic = '';
     
     // Create account if it doesn't exist
-    if (accountSnapshot.empty && !accountId) {
+    if (!existingAccountFound && !accountId) {
       console.log(`✨ [${video.platform.toUpperCase()}] Creating new account for @${videoData.username}`);
       
       // For Instagram, ALWAYS use apify/instagram-profile-scraper for complete profile data
@@ -441,9 +458,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       
-      const newAccountRef = accountsRef.doc();
+      // Use deterministic ID so concurrent creates for the same username
+      // write to the same document instead of creating duplicates.
+      const newAccountRef = accountsRef.doc(deterministicAccountId);
       
-      console.log(`\n📝 [${video.platform.toUpperCase()}] Creating account with data:`);
+      console.log(`\n📝 [${video.platform.toUpperCase()}] Creating account with deterministic ID: ${deterministicAccountId}`);
       console.log(`   - Username: ${videoData.username.toLowerCase()}`);
       console.log(`   - Display Name: ${displayName}`);
       console.log(`   - Profile Picture: ${uploadedProfilePic ? uploadedProfilePic.substring(0, 100) + '...' : 'EMPTY ❌'}`);
@@ -451,7 +470,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`   - Is Verified: ${isVerified}`);
       
       await newAccountRef.set({
-        id: newAccountRef.id,
+        id: deterministicAccountId,
         username: videoData.username.toLowerCase(), // Lowercase for consistency with queries
         platform: video.platform,
         displayName: displayName,
@@ -488,9 +507,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       finalUploadedProfilePic = uploadedProfilePic; // Track for video document
       finalUploadedCoverPic = uploadedCoverPic;
       console.log(`✅ [${video.platform.toUpperCase()}] Created account: ${accountId}`);
-    } else if (!accountSnapshot.empty) {
-      accountId = accountSnapshot.docs[0].id;
-      const existingAccountRef = accountSnapshot.docs[0].ref;
+    } else if (existingAccountFound) {
+      // Use deterministic-ID doc if it exists, otherwise fall back to legacy query result
+      const existingAccountRef = deterministicSnap.exists
+        ? deterministicRef
+        : accountSnapshot!.docs[0].ref;
+      accountId = existingAccountRef.id;
       
       // Update existing account with latest profile data from video scrape
       const updateData: any = {
@@ -592,12 +614,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await existingAccountRef.update(updateData);
       
       // Also set finalUploadedProfilePic if we have it in existing account
-      const existingAccount = accountSnapshot.docs[0].data();
-      if (!finalUploadedProfilePic && existingAccount.profilePicture) {
-        finalUploadedProfilePic = existingAccount.profilePicture;
+      const existingAccountData = deterministicSnap.exists
+        ? deterministicSnap.data()!
+        : accountSnapshot!.docs[0].data();
+      if (!finalUploadedProfilePic && existingAccountData.profilePicture) {
+        finalUploadedProfilePic = existingAccountData.profilePicture;
       }
-      if (!finalUploadedCoverPic && existingAccount.coverPicture) {
-        finalUploadedCoverPic = existingAccount.coverPicture;
+      if (!finalUploadedCoverPic && existingAccountData.coverPicture) {
+        finalUploadedCoverPic = existingAccountData.coverPicture;
       }
       
       console.log(`✅ [${video.platform.toUpperCase()}] Using existing account: ${accountId} (updated profile data)`);
