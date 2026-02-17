@@ -120,11 +120,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`⚡ Processing video immediately: ${videoId}`);
 
+  // Hoist videoRef so the catch block can update it on error
+  let videoRef: FirebaseFirestore.DocumentReference | null = null;
+
   try {
     // Check if videoId is actually a URL (new video) or a document ID (existing video)
     const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
     
-    let videoRef: FirebaseFirestore.DocumentReference;
     let video: FirebaseFirestore.DocumentData | undefined;
     let isNewVideo = false;
     
@@ -892,33 +894,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error(`❌ Failed to process video ${videoId}:`, error);
     
-    // Update video with error and send notifications
+    // Update the video document with error status.
+    // Use the hoisted videoRef if available; otherwise try to find by URL or doc ID.
     try {
-      const videoRef = db.doc(`organizations/${orgId}/projects/${projectId}/videos/${videoId}`);
-      const videoDoc = await videoRef.get();
-      const video = videoDoc.data();
+      if (!videoRef) {
+        const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
+        if (isUrl) {
+          // Look up the video document by URL (can't use raw URL as doc path)
+          const errorQuery = await db
+            .collection('organizations').doc(orgId)
+            .collection('projects').doc(projectId)
+            .collection('videos')
+            .where('url', '==', videoId)
+            .limit(1)
+            .get();
+          if (!errorQuery.empty) {
+            videoRef = errorQuery.docs[0].ref;
+          }
+        } else {
+          videoRef = db.doc(`organizations/${orgId}/projects/${projectId}/videos/${videoId}`);
+        }
+      }
 
-      await videoRef.update({
-        status: 'active', // ✅ Change from 'processing' to 'active' to hide loading indicator
-        syncStatus: 'error',
-        hasError: true,
-        syncError: error instanceof Error ? error.message : String(error),
-        lastSyncErrorAt: Timestamp.now(),
-        lastRefreshed: Timestamp.now()
-      });
-
-      // DISABLED: Error notification emails to users
-      // await ErrorNotificationService.notifyError({
-      //   type: 'video_processing',
-      //   platform: video?.platform || 'unknown',
-      //   videoId: videoId,
-      //   videoUrl: video?.url || 'unknown',
-      //   errorMessage: error instanceof Error ? error.message : String(error),
-      //   errorStack: error instanceof Error ? error.stack : undefined,
-      //   orgId: orgId,
-      //   projectId: projectId,
-      //   timestamp: new Date()
-      // });
+      if (videoRef) {
+        await videoRef.update({
+          status: 'active',
+          syncStatus: 'error',
+          hasError: true,
+          syncError: error instanceof Error ? error.message : String(error),
+          lastSyncErrorAt: Timestamp.now(),
+          lastRefreshed: Timestamp.now()
+        });
+        console.log(`📝 Video marked as error: ${videoRef.id}`);
+      } else {
+        console.warn('⚠️ Could not find video document to mark as error');
+      }
     } catch (updateError) {
       console.error('Failed to update video with error:', updateError);
     }
@@ -1424,6 +1434,14 @@ async function downloadAndUploadImage(
  * Extract video ID from TikTok CDN URL, resolve shortened URLs, and validate
  */
 async function validateTikTokUrl(url: string): Promise<string> {
+  // Convert /photo/ URLs to /video/ — TikTok treats them the same internally
+  // but the scraper only recognises /video/ paths.
+  if (url.includes('/photo/')) {
+    const converted = url.replace('/photo/', '/video/');
+    console.log(`📸→🎬 [TIKTOK] Converted /photo/ URL to /video/: ${converted}`);
+    url = converted;
+  }
+
   // If it's already a proper TikTok post URL, return as-is
   if (url.includes('tiktok.com/@') && url.includes('/video/')) {
     return url;
@@ -1433,6 +1451,12 @@ async function validateTikTokUrl(url: string): Promise<string> {
   if (isShortenedTikTokUrl(url)) {
     const resolved = await resolveTikTokUrl(url);
     console.log(`🔗 [TIKTOK] Shortened URL resolved: ${url} → ${resolved}`);
+    // Also check if resolved URL has /photo/ and convert
+    if (resolved.includes('/photo/')) {
+      const converted = resolved.replace('/photo/', '/video/');
+      console.log(`📸→🎬 [TIKTOK] Converted resolved /photo/ URL to /video/: ${converted}`);
+      return converted;
+    }
     return resolved;
   }
   
