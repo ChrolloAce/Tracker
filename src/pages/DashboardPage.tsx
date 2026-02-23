@@ -50,6 +50,7 @@ import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 // ViralContentPage import removed — using ComingSoonLocked for now
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
+import SuperAdminService from '../services/SuperAdminService';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
 import DemoOrgService from '../services/DemoOrgService';
@@ -192,6 +193,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Check if current user is a super admin (unlocks manual refresh)
+  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
 
   // Check if we're in demo mode - demo IDs ALWAYS override auth IDs
   let demoContext;
@@ -1719,6 +1723,48 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     // Reload the entire page to refresh all data
     window.location.reload();
   }, []);
+
+  // Super admin: manually re-fetch a single video's data from the platform
+  const handleRefreshVideo = useCallback(async (video: VideoSubmission) => {
+    if (!currentOrgId || !currentProjectId || !video.url) return;
+    try {
+      console.log(`🔄 [Super Admin] Refreshing video: ${video.url}`);
+      await AuthenticatedApiService.processVideo(video.url, currentOrgId, currentProjectId);
+      alert(`✅ Refresh queued for "${video.title || video.url}". Data will update shortly.`);
+      // Reload after a delay to let the processing finish
+      setTimeout(() => window.location.reload(), 8000);
+    } catch (error) {
+      console.error('❌ Failed to refresh video:', error);
+      alert(`Failed to refresh video: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [currentOrgId, currentProjectId]);
+
+  // Super admin: bulk refresh selected videos
+  const handleBulkRefreshVideos = useCallback(async (videos: VideoSubmission[]) => {
+    if (!currentOrgId || !currentProjectId) return;
+    const videosWithUrls = videos.filter(v => v.url);
+    if (videosWithUrls.length === 0) {
+      alert('No videos with URLs to refresh.');
+      return;
+    }
+    const confirmed = window.confirm(`Refresh ${videosWithUrls.length} video(s)? This will re-fetch data from the platform for each one.`);
+    if (!confirmed) return;
+
+    console.log(`🔄 [Super Admin] Bulk refreshing ${videosWithUrls.length} videos...`);
+    let successCount = 0;
+    let failCount = 0;
+    for (const video of videosWithUrls) {
+      try {
+        await AuthenticatedApiService.processVideo(video.url, currentOrgId, currentProjectId);
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Failed to refresh ${video.url}:`, error);
+        failCount++;
+      }
+    }
+    alert(`✅ Refresh queued: ${successCount} succeeded, ${failCount} failed. Data will update shortly.`);
+    setTimeout(() => window.location.reload(), 8000);
+  }, [currentOrgId, currentProjectId]);
 
   // Trigger scheduled refresh asynchronously (fire and forget)
 
@@ -3278,6 +3324,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onBulkDelete={handleBulkDelete}
                             onVideoClick={handleVideoClick}
                             onAssignCreator={(videoIds, accountIds, label) => setBulkAssignCreatorState({ isOpen: true, videoIds, accountIds, label })}
+                            onRefreshVideo={isSuperAdmin ? handleRefreshVideo : undefined}
+                            onBulkRefresh={isSuperAdmin ? handleBulkRefreshVideos : undefined}
+                            isSuperAdmin={isSuperAdmin}
                             headerTitle={getVideoTableHeader(dateFilter)}
                             trendPeriodDays={getTrendPeriodDays(dateFilter)}
                           />
@@ -3443,6 +3492,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 onBulkDelete={handleBulkDelete}
                 onVideoClick={handleVideoClick}
                 onAssignCreator={(videoIds, accountIds, label) => setBulkAssignCreatorState({ isOpen: true, videoIds, accountIds, label })}
+                onRefreshVideo={isSuperAdmin ? handleRefreshVideo : undefined}
+                onBulkRefresh={isSuperAdmin ? handleBulkRefreshVideos : undefined}
+                isSuperAdmin={isSuperAdmin}
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
@@ -3785,6 +3837,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onDelete={() => {}}
                   onBulkDelete={async () => {}}
                   onVideoClick={handleVideoClick}
+                  onRefreshVideo={isSuperAdmin ? handleRefreshVideo : undefined}
+                  isSuperAdmin={isSuperAdmin}
                   headerTitle={getVideoTableHeader(dateFilter)}
                   trendPeriodDays={getTrendPeriodDays(dateFilter)}
                 />

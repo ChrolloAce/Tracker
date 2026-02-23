@@ -25,6 +25,9 @@ interface VideoSubmissionsTableProps {
   onBulkDelete?: (ids: string[]) => Promise<void>;
   onVideoClick?: (video: VideoSubmission) => void;
   onAssignCreator?: (videoIds: string[], accountIds: string[], selectionLabel: string) => void;
+  onRefreshVideo?: (video: VideoSubmission) => void;
+  onBulkRefresh?: (videos: VideoSubmission[]) => void;
+  isSuperAdmin?: boolean;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
   trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
 }
@@ -34,7 +37,9 @@ const DropdownMenu: React.FC<{
   submission: VideoSubmission;
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
-}> = ({ submission, onDelete, onVideoClick }) => {
+  onRefreshVideo?: (video: VideoSubmission) => void;
+  isSuperAdmin?: boolean;
+}> = ({ submission, onDelete, onVideoClick, onRefreshVideo, isSuperAdmin }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -102,6 +107,21 @@ const DropdownMenu: React.FC<{
                 setIsOpen(false);
               }}
         />
+
+        {isSuperAdmin && onRefreshVideo && (
+          <>
+            <DropdownDivider />
+            <DropdownItem
+              icon={<RefreshCw className="w-4 h-4" />}
+              label="Refresh Data"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                onRefreshVideo(submission);
+              }}
+            />
+          </>
+        )}
         
         <DropdownDivider />
         
@@ -159,6 +179,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onBulkDelete,
   onVideoClick,
   onAssignCreator,
+  onRefreshVideo,
+  onBulkRefresh,
+  isSuperAdmin,
   headerTitle,
   trendPeriodDays = 7
 }) => {
@@ -706,6 +729,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       >
                         <Users className="w-4 h-4" />
                         <span>Assign to Creator</span>
+                      </button>
+                    )}
+                    {isSuperAdmin && onBulkRefresh && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowActionsMenu(false);
+                          const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+                          onBulkRefresh(selectedSubs);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-blue-400 hover:bg-blue-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Refresh Selected</span>
                       </button>
                     )}
                     {onDelete && (
@@ -1271,7 +1308,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                     <div className="relative">
-                      <DropdownMenu submission={submission} onDelete={onDelete} onVideoClick={onVideoClick} />
+                      <DropdownMenu submission={submission} onDelete={onDelete} onVideoClick={onVideoClick} onRefreshVideo={onRefreshVideo} isSuperAdmin={isSuperAdmin} />
                     </div>
                   </td>
                 </tr>
