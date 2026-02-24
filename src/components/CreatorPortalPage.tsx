@@ -437,9 +437,13 @@ const CreatorPortalPage: React.FC = () => {
               </div>
             </div>
             <div className="text-2xl font-bold text-white mb-0.5">
-            ${(creatorProfile?.totalEarnings || 0).toFixed(2)}
+            ${(
+              creatorProfile?.paymentPlan?.payments
+                ? creatorProfile.paymentPlan.payments.reduce((s: number, p: any) => s + (p.amount || 0), 0)
+                : creatorProfile?.totalEarnings || 0
+            ).toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500">Total Earnings</div>
+          <div className="text-xs text-gray-500">Total Paid</div>
         </div>
 
         {/* Total Views */}

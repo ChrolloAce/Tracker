@@ -202,7 +202,11 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                       <AdminCreatorPaymentBar
                         plan={profile.paymentPlan}
                         totalViews={creatorTotalViews.get(creator.userId) || 0}
-                        paidAmount={profile.totalEarnings || 0}
+                        paidAmount={
+                          profile.paymentPlan.payments
+                            ? profile.paymentPlan.payments.reduce((s: number, p: any) => s + (p.amount || 0), 0)
+                            : profile.totalEarnings || 0
+                        }
                       />
                     ) : (
                       <>

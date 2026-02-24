@@ -199,7 +199,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     return <PageLoadingSkeleton type="creators" />;
   }
 
-  const totalEarnings = Array.from(calculatedEarnings.values()).reduce((sum, earnings) => sum + earnings, 0);
+  // Sum total paid across all creators (prefer payments array, fallback to calculatedEarnings)
+  const totalEarnings = Array.from(creatorProfiles.values()).reduce((sum, p) => {
+    if (p.paymentPlan?.payments && p.paymentPlan.payments.length > 0) {
+      return sum + p.paymentPlan.payments.reduce((s: number, pay: any) => s + (pay.amount || 0), 0);
+    }
+    return sum + (calculatedEarnings.get(p.id) || 0);
+  }, 0);
   
   // Pagination calculations
   const totalPages = Math.ceil(creators.length / itemsPerPage);

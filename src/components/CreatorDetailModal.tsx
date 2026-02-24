@@ -297,9 +297,11 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
               <div className="bg-white/5 rounded-xl p-4">
                 <div className="flex items-center gap-2 text-gray-400 mb-1">
                   <DollarSign className="w-4 h-4" />
-                  <span className="text-xs">Earnings</span>
+                  <span className="text-xs">{paidAmount > 0 ? 'Total Paid' : 'Earnings'}</span>
                 </div>
-                <div className="text-xl font-bold text-white">${earnings.toFixed(2)}</div>
+                <div className="text-xl font-bold text-white">
+                  ${paidAmount > 0 ? paidAmount.toFixed(2) : earnings.toFixed(2)}
+                </div>
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <div className="flex items-center gap-2 text-gray-400 mb-1">
