@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, Creator, TrackedAccount, VideoDoc, PaymentRecord } from '../types/firestore';
+import { OrgMember, Creator, TrackedAccount, VideoDoc } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
