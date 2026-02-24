@@ -181,7 +181,7 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
       const freshPlan = {
         ...plan,
         campaignStatus: 'active' as const,
-        completedAt: null,
+        completedAt: undefined,
         payments: [],
       };
 
