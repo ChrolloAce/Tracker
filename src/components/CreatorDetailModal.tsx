@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   X, Eye, Heart, Video, Calendar, DollarSign, 
   ExternalLink, User, Loader2 
 } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, Creator, TrackedAccount, VideoDoc } from '../types/firestore';
+import { OrgMember, Creator, TrackedAccount, VideoDoc, PaymentRecord } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
 import { ProxiedImage } from './ProxiedImage';
+import CreatorPaymentPlanCard from './CreatorPaymentPlanCard';
+import CreatorPaymentPlanModal from './CreatorPaymentPlanModal';
 
 interface CreatorDetailModalProps {
   isOpen: boolean;
@@ -18,6 +21,7 @@ interface CreatorDetailModalProps {
   profile: Creator | undefined;
   earnings: number;
   videoCount: number;
+  onProfileUpdated?: () => void;
 }
 
 // Platform icons
@@ -63,12 +67,29 @@ const getPlatformUrl = (platform: string, username: string) => {
 };
 
 const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
-  isOpen, onClose, creator, earnings
+  isOpen, onClose, creator, profile, earnings, onProfileUpdated
 }) => {
-  const { currentOrgId, currentProjectId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  // ── Payment recording state ───────────────────────────────────
+  const [showRecordPayment, setShowRecordPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+
+  // ── Campaign actions state ────────────────────────────────────
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
+  const [showRenewModal, setShowRenewModal] = useState(false);
+
+  // Compute paidAmount from payments array
+  const paidAmount = useMemo(() => {
+    if (!profile?.paymentPlan?.payments) return profile?.totalEarnings || 0;
+    return profile.paymentPlan.payments.reduce((s, p) => s + p.amount, 0);
+  }, [profile]);
 
   useEffect(() => {
     if (isOpen) {
@@ -81,7 +102,6 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
     setLoadingData(true);
 
     try {
-      // Load linked accounts
       const links = await CreatorLinksService.getCreatorLinkedAccounts(
         currentOrgId, currentProjectId, creator.userId
       );
@@ -92,7 +112,6 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
       const accounts = allAccounts.filter(a => linkedAccountIds.includes(a.id));
       setLinkedAccounts(accounts);
 
-      // Load videos: from linked accounts + directly submitted
       const allVideos = await FirestoreDataService.getVideos(
         currentOrgId, currentProjectId, { limitCount: 1000 }
       );
@@ -107,6 +126,70 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
       setLoadingData(false);
     }
   };
+
+  // ── Record a payment ──────────────────────────────────────────
+  const handleRecordPayment = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || !profile?.paymentPlan || !user) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    setSavingPayment(true);
+    try {
+      const newPayment: PaymentRecord = {
+        id: `pay_${Date.now()}`,
+        amount,
+        date: Timestamp.now(),
+        note: paymentNote.trim() || undefined,
+        recordedBy: user.uid,
+      };
+
+      const existingPayments = profile.paymentPlan.payments || [];
+      const updatedPayments = [...existingPayments, newPayment];
+      const newTotalPaid = updatedPayments.reduce((s, p) => s + p.amount, 0);
+
+      await CreatorLinksService.updateCreatorProfile(currentOrgId, currentProjectId, creator.userId, {
+        totalEarnings: newTotalPaid,
+        lastPayoutAt: Timestamp.now(),
+        paymentPlan: {
+          ...profile.paymentPlan,
+          payments: updatedPayments,
+        },
+      });
+
+      setPaymentAmount('');
+      setPaymentNote('');
+      setShowRecordPayment(false);
+      onProfileUpdated?.();
+    } catch (error) {
+      console.error('Failed to record payment:', error);
+      alert('Failed to record payment. Please try again.');
+    } finally {
+      setSavingPayment(false);
+    }
+  }, [currentOrgId, currentProjectId, creator.userId, profile, user, paymentAmount, paymentNote, onProfileUpdated]);
+
+  // ── Mark campaign as complete ──────────────────────────────────
+  const handleMarkComplete = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || !profile?.paymentPlan) return;
+
+    setSavingCampaign(true);
+    try {
+      await CreatorLinksService.updateCreatorProfile(currentOrgId, currentProjectId, creator.userId, {
+        paymentPlan: {
+          ...profile.paymentPlan,
+          campaignStatus: 'completed',
+          completedAt: Timestamp.now(),
+        },
+      });
+      setShowCompleteConfirm(false);
+      onProfileUpdated?.();
+    } catch (error) {
+      console.error('Failed to mark campaign complete:', error);
+      alert('Failed to update campaign status.');
+    } finally {
+      setSavingCampaign(false);
+    }
+  }, [currentOrgId, currentProjectId, creator.userId, profile, onProfileUpdated]);
 
   // Convert to VideoSubmission[] for the table
   const videoSubmissions: VideoSubmission[] = useMemo(() => {
@@ -231,6 +314,109 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
                 <div className="text-xl font-bold text-white">{formatNumber(totalLikes)}</div>
               </div>
             </div>
+
+            {/* Payment Plan */}
+            {profile?.paymentPlan && (
+              <div className="p-6 border-b border-white/10 space-y-4">
+                <CreatorPaymentPlanCard
+                  plan={profile.paymentPlan}
+                  totalViews={totalViews}
+                  totalVideos={videos.length}
+                  paidAmount={paidAmount}
+                  isAdmin={true}
+                  onRecordPayment={() => setShowRecordPayment(true)}
+                  onMarkComplete={() => setShowCompleteConfirm(true)}
+                  onRenewCampaign={() => setShowRenewModal(true)}
+                />
+
+                {/* ── Record Payment Inline Form ─────────────────── */}
+                {showRecordPayment && (
+                  <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="text-sm font-semibold text-white/80">Record Payment</div>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="text-[11px] text-white/40 mb-1 block">Amount ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={paymentAmount}
+                          onChange={e => setPaymentAmount(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/25 placeholder-white/20"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[11px] text-white/40 mb-1 block">Note (optional)</label>
+                        <input
+                          type="text"
+                          value={paymentNote}
+                          onChange={e => setPaymentNote(e.target.value)}
+                          placeholder="e.g. PayPal transfer"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/25 placeholder-white/20"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        onClick={() => { setShowRecordPayment(false); setPaymentAmount(''); setPaymentNote(''); }}
+                        className="px-3 py-1.5 text-xs text-white/50 hover:text-white/70 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleRecordPayment}
+                        disabled={savingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      >
+                        {savingPayment && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Save Payment
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Complete Campaign Confirmation ──────────────── */}
+                {showCompleteConfirm && (
+                  <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="text-sm font-semibold text-white/80">Mark Campaign Complete?</div>
+                    <p className="text-xs text-white/40">
+                      This will mark the current payment plan as completed. You can then renew it or assign a new plan.
+                    </p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        onClick={() => setShowCompleteConfirm(false)}
+                        className="px-3 py-1.5 text-xs text-white/50 hover:text-white/70 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleMarkComplete}
+                        disabled={savingCampaign}
+                        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all disabled:opacity-40 flex items-center gap-1.5"
+                      >
+                        {savingCampaign && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Confirm Complete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Renew / New Campaign Modal */}
+            {showRenewModal && (
+              <CreatorPaymentPlanModal
+                isOpen={showRenewModal}
+                onClose={() => setShowRenewModal(false)}
+                onSuccess={() => {
+                  setShowRenewModal(false);
+                  onProfileUpdated?.();
+                }}
+                creator={creator}
+              />
+            )}
 
             {/* Linked Accounts */}
             <div className="p-6 border-b border-white/10">

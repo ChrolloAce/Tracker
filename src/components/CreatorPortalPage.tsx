@@ -501,6 +501,11 @@ const CreatorPortalPage: React.FC = () => {
           plan={creatorProfile.paymentPlan}
           totalViews={stats.totalViews}
           totalVideos={stats.totalVideos}
+          paidAmount={
+            creatorProfile.paymentPlan.payments
+              ? creatorProfile.paymentPlan.payments.reduce((s, p) => s + p.amount, 0)
+              : creatorProfile.totalEarnings || 0
+          }
         />
       )}
 

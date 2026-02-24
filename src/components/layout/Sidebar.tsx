@@ -108,6 +108,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [can, permissionsLoading, baseHref]);
 
+  // Creators item (standalone, right under Dashboard)
+  const creatorsItem: NavItem | null = useMemo(() => {
+    if (permissionsLoading || can.accessTab('creators')) {
+      return {
+        id: 'creators',
+        label: userRole === 'creator' ? 'Payouts' : 'Creators',
+        icon: Video,
+        href: `${baseHref}/creators`,
+      };
+    }
+    return null;
+  }, [can, permissionsLoading, baseHref, userRole]);
+
   // Navigation sections with dropdown
   const navigationSections: NavSection[] = useMemo(() => {
     
@@ -144,12 +157,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'manage',
         label: 'Manage',
         items: [
-      {
-        id: 'creators',
-        label: userRole === 'creator' ? 'Payouts' : 'Creators',
-        icon: Video,
-        href: `${baseHref}/creators`,
-      },
       {
         id: 'campaigns',
         label: 'Campaigns',
@@ -446,6 +453,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
         {/* Dashboard - Standalone at top */}
         {dashboardItem && <NavItemComponent item={dashboardItem} />}
+
+        {/* Creators - Standalone right under Dashboard */}
+        {creatorsItem && <NavItemComponent item={creatorsItem} />}
 
         {/* Section Dropdowns */}
         {navigationSections.map((section) => {

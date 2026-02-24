@@ -83,6 +83,14 @@ export interface PaymentTier {
  * Comprehensive payment plan stored on each Creator document
  * Path: /organizations/{orgId}/projects/{projectId}/creators/{creatorId}  → .paymentPlan
  */
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  date: Timestamp;
+  note?: string;
+  recordedBy: string; // userId of admin who recorded
+}
+
 export interface CreatorPaymentPlan {
   type: PaymentPlanType;
   currency: string; // e.g. 'USD'
@@ -107,6 +115,11 @@ export interface CreatorPaymentPlan {
   notes?: string;
   updatedAt?: Timestamp;
   updatedBy?: string;
+
+  // ── Campaign lifecycle ─────────────────────────────
+  campaignStatus?: 'active' | 'completed' | 'paused';
+  completedAt?: Timestamp;
+  payments?: PaymentRecord[];  // History of individual payments
 }
 
 // ==================== USER ACCOUNT ====================

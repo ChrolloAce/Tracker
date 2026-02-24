@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { format } from 'date-fns';
 import { VideoDoc } from '../types/firestore';
 import { ProxiedImage } from './ProxiedImage';
 import {
@@ -52,20 +55,41 @@ export function getEngagementRate(videos: VideoDoc[]): number {
   return (totalEngagement / totalViews) * 100;
 }
 
-/** Build a 14-day posting heatmap (array of post counts) */
-export function buildPostActivityBars(videos: VideoDoc[]): number[] {
+/** Day cell data for the heatmap squares */
+export interface DayCellData {
+  date: Date;
+  count: number;
+  videos: VideoDoc[];
+}
+
+/** Build a 14-day posting heatmap with date+video details */
+export function buildPostActivitySquares(videos: VideoDoc[]): DayCellData[] {
   const days = 14;
-  const counts = Array(days).fill(0);
   const now = new Date();
+  const cells: DayCellData[] = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    cells.push({ date, count: 0, videos: [] });
+  }
 
   for (const v of videos) {
     const d = v.uploadDate?.toDate ? v.uploadDate.toDate() : new Date(v.uploadDate as any);
     const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays >= 0 && diffDays < days) {
-      counts[days - 1 - diffDays]++;
+      const idx = days - 1 - diffDays;
+      cells[idx].count++;
+      cells[idx].videos.push(v);
     }
   }
-  return counts;
+  return cells;
+}
+
+// Legacy compat
+export function buildPostActivityBars(videos: VideoDoc[]): number[] {
+  return buildPostActivitySquares(videos).map(c => c.count);
 }
 
 // ─── Creator Cell (shared between both tables) ─────────────
@@ -117,6 +141,78 @@ function EngagementBadge({ rate }: { rate: number }) {
 
 // ─── Activity Table ─────────────────────────────────────────
 
+/** Hoverable square tooltip for the heatmap */
+function HeatmapSquareTooltip({ cell, position }: { cell: DayCellData; position: { x: number; y: number } }) {
+  return createPortal(
+    <div
+      className="bg-[#1a1a1a] text-white rounded-lg shadow-2xl border border-white/10 px-3 py-2 pointer-events-none"
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        transform: 'translate(-50%, -100%) translateY(-8px)',
+        zIndex: 999999,
+        minWidth: 140,
+      }}
+    >
+      <p className="text-[11px] text-white/50 font-medium">{format(cell.date, 'EEE, MMM d')}</p>
+      <p className="text-sm font-bold text-white mt-0.5">
+        {cell.count} post{cell.count !== 1 ? 's' : ''}
+      </p>
+      {cell.videos.length > 0 && (
+        <div className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
+          {cell.videos.slice(0, 4).map((v, i) => (
+            <p key={i} className="text-[10px] text-white/40 truncate max-w-[200px]">
+              {(v as any).title || (v as any).description || (v as any).videoTitle || 'Untitled'} — {formatNumber(v.views || 0)} views
+            </p>
+          ))}
+          {cell.videos.length > 4 && (
+            <p className="text-[10px] text-white/30">+{cell.videos.length - 4} more</p>
+          )}
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+/** Inline 14-day heatmap squares with hover tooltip */
+function PostActivityHeatmapInline({ videos }: { videos: VideoDoc[] }) {
+  const [hoveredCell, setHoveredCell] = useState<DayCellData | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const cells = buildPostActivitySquares(videos);
+  const maxCount = Math.max(...cells.map(c => c.count), 1);
+
+  const getSquareColor = (count: number) => {
+    if (count === 0) return 'bg-white/[0.04]';
+    const intensity = count / maxCount;
+    if (intensity >= 0.8) return 'bg-emerald-500/80';
+    if (intensity >= 0.5) return 'bg-emerald-500/50';
+    if (intensity >= 0.25) return 'bg-emerald-500/30';
+    return 'bg-emerald-500/20';
+  };
+
+  return (
+    <div className="flex items-center gap-[3px]">
+      {cells.map((cell, i) => (
+        <div
+          key={i}
+          className={`w-4 h-4 rounded-[3px] transition-all cursor-pointer ${getSquareColor(cell.count)} ${
+            cell.count > 0 ? 'hover:ring-1 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''
+          }`}
+          onMouseEnter={(e) => {
+            setHoveredCell(cell);
+            const rect = (e.target as HTMLElement).getBoundingClientRect();
+            setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+          }}
+          onMouseLeave={() => setHoveredCell(null)}
+        />
+      ))}
+      {hoveredCell && <HeatmapSquareTooltip cell={hoveredCell} position={tooltipPos} />}
+    </div>
+  );
+}
+
 export function ActivityTable({
   rows,
   toggleSort,
@@ -162,8 +258,6 @@ export function ActivityTable({
             {rows.map(row => {
               const totalViews = row.videos.reduce((s, v) => s + (v.views || 0), 0);
               const engagement = getEngagementRate(row.videos);
-              const bars = buildPostActivityBars(row.allVideos);
-              const maxBar = Math.max(...bars, 1);
 
               return (
                 <tr key={row.creatorId} className="hover:bg-white/5 transition-colors">
@@ -177,21 +271,7 @@ export function ActivityTable({
                     </span>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex items-end space-x-[2px] h-6">
-                      {bars.map((count, i) => (
-                        <div
-                          key={i}
-                          className="w-[6px] rounded-sm transition-all"
-                          style={{
-                            height: `${count > 0 ? Math.max(20, (count / maxBar) * 100) : 8}%`,
-                            backgroundColor: count > 0
-                              ? `rgba(168, 85, 247, ${0.4 + (count / maxBar) * 0.6})`
-                              : 'rgba(255,255,255,0.08)'
-                          }}
-                          title={`${count} post${count !== 1 ? 's' : ''}`}
-                        />
-                      ))}
-                    </div>
+                    <PostActivityHeatmapInline videos={row.allVideos} />
                   </td>
                 </tr>
               );

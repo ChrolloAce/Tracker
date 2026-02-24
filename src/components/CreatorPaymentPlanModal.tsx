@@ -177,9 +177,17 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
           break;
       }
 
+      // Reset campaign lifecycle fields for a fresh plan
+      const freshPlan = {
+        ...plan,
+        campaignStatus: 'active' as const,
+        completedAt: null,
+        payments: [],
+      };
+
       await CreatorLinksService.updateCreatorProfile(
         currentOrgId, currentProjectId, creator.userId,
-        { paymentPlan: plan }
+        { paymentPlan: freshPlan, totalEarnings: 0 }
       );
 
       onSuccess();
