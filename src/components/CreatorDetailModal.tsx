@@ -135,25 +135,31 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
 
     setSavingPayment(true);
     try {
-      const newPayment: PaymentRecord = {
+      const newPayment: Record<string, any> = {
         id: `pay_${Date.now()}`,
         amount,
         date: Timestamp.now(),
-        note: paymentNote.trim() || undefined,
         recordedBy: user.uid,
       };
+      if (paymentNote.trim()) {
+        newPayment.note = paymentNote.trim();
+      }
 
       const existingPayments = profile.paymentPlan.payments || [];
       const updatedPayments = [...existingPayments, newPayment];
       const newTotalPaid = updatedPayments.reduce((s, p) => s + p.amount, 0);
 
+      // Strip undefined values from the plan before writing to Firestore
+      const cleanPlan: Record<string, any> = {};
+      const merged = { ...profile.paymentPlan, payments: updatedPayments };
+      for (const [k, v] of Object.entries(merged)) {
+        if (v !== undefined) cleanPlan[k] = v;
+      }
+
       await CreatorLinksService.updateCreatorProfile(currentOrgId, currentProjectId, creator.userId, {
         totalEarnings: newTotalPaid,
         lastPayoutAt: Timestamp.now(),
-        paymentPlan: {
-          ...profile.paymentPlan,
-          payments: updatedPayments,
-        },
+        paymentPlan: cleanPlan as any,
       });
 
       setPaymentAmount('');
@@ -174,12 +180,15 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
 
     setSavingCampaign(true);
     try {
+      // Strip undefined values before writing to Firestore
+      const cleanPlan: Record<string, any> = {};
+      const merged = { ...profile.paymentPlan, campaignStatus: 'completed', completedAt: Timestamp.now() };
+      for (const [k, v] of Object.entries(merged)) {
+        if (v !== undefined) cleanPlan[k] = v;
+      }
+
       await CreatorLinksService.updateCreatorProfile(currentOrgId, currentProjectId, creator.userId, {
-        paymentPlan: {
-          ...profile.paymentPlan,
-          campaignStatus: 'completed',
-          completedAt: Timestamp.now(),
-        },
+        paymentPlan: cleanPlan as any,
       });
       setShowCompleteConfirm(false);
       onProfileUpdated?.();

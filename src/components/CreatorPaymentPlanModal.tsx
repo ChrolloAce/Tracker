@@ -177,17 +177,16 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
           break;
       }
 
-      // Reset campaign lifecycle fields for a fresh plan
-      const freshPlan = {
-        ...plan,
-        campaignStatus: 'active' as const,
-        completedAt: undefined,
-        payments: [],
-      };
+      // Reset campaign lifecycle fields for a fresh plan — strip undefined for Firestore
+      const merged = { ...plan, campaignStatus: 'active' as const, payments: [] };
+      const freshPlan: Record<string, any> = {};
+      for (const [k, v] of Object.entries(merged)) {
+        if (v !== undefined && k !== 'completedAt') freshPlan[k] = v;
+      }
 
       await CreatorLinksService.updateCreatorProfile(
         currentOrgId, currentProjectId, creator.userId,
-        { paymentPlan: freshPlan, totalEarnings: 0 }
+        { paymentPlan: freshPlan as any, totalEarnings: 0 }
       );
 
       onSuccess();
