@@ -22,6 +22,7 @@ import ContractsManagementPage from './ContractsManagementPage';
 import CreatorPayoutsPage from './CreatorPayoutsPage';
 import CreatorDetailModal from './CreatorDetailModal';
 import CreatorPaymentPlanModal from './CreatorPaymentPlanModal';
+import CreatorActivitySection from './CreatorActivitySection';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
 import { ProxiedImage } from './ProxiedImage';
 
@@ -47,7 +48,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   // Use props if provided (for demo mode), otherwise use auth
   const currentOrgId = organizationId || authOrgId;
   const currentProjectId = projectId || authProjectId;
-  const [activeTab, setActiveTab] = useState<'accounts' | 'contracts'>('accounts');
+  const [activeTab, setActiveTab] = useState<'accounts' | 'contracts' | 'activity'>('accounts');
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
@@ -462,6 +463,19 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           Creators
         </button>
         <button
+          onClick={() => setActiveTab('activity')}
+            className={`
+              flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'activity'
+                ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }
+            `}
+        >
+          <TrendingUp className="w-4 h-4" />
+          Activity & Performance
+        </button>
+        <button
           onClick={() => setActiveTab('contracts')}
             className={`
               flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
@@ -476,6 +490,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         </button>
         </nav>
       </div>
+
+      {/* Activity & Performance Tab */}
+      {activeTab === 'activity' && (
+        <CreatorActivitySection
+          dateFilter={dateFilter}
+          organizationId={currentOrgId || undefined}
+          projectId={currentProjectId || undefined}
+        />
+      )}
 
       {/* Contracts Tab */}
       {activeTab === 'contracts' && (

@@ -3534,7 +3534,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Creators Tab */}
           {activeTab === 'creators' && (
-            <CreatorsManagementPage />
+            <CreatorsManagementPage dateFilter={creatorsDateFilter} />
           )}
 
           {/* Campaigns Tab */}

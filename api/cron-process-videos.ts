@@ -294,6 +294,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
+ * Deep-scan an object for avatar/profile picture URLs.
+ */
+function deepScanForAvatarUrl(obj: any, depth: number = 0, maxDepth: number = 4): string {
+  if (!obj || typeof obj !== 'object' || depth > maxDepth) return '';
+  const avatarKeys = [
+    'avatarLarger', 'avatarMedium', 'avatar', 'avatarThumb', 'avatar_url',
+    'profilePicUrl', 'profile_pic_url', 'profile_pic_url_hd', 'profilePicture',
+    'profileImage', 'profile_image', 'coverMediumUrl'
+  ];
+  for (const key of avatarKeys) {
+    const val = obj[key];
+    if (typeof val === 'string' && val.startsWith('http') && (val.includes('.jpg') || val.includes('.jpeg') || val.includes('.png') || val.includes('.webp') || val.includes('tiktokcdn') || val.includes('tplv-'))) {
+      return val;
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'string') {
+      const lk = key.toLowerCase();
+      if ((lk.includes('avatar') || lk.includes('profilepic') || lk.includes('profile_pic')) && obj[key].startsWith('http')) {
+        return obj[key];
+      }
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+      const found = deepScanForAvatarUrl(obj[key], depth + 1, maxDepth);
+      if (found) return found;
+    }
+  }
+  return '';
+}
+
+/**
  * Transform raw Apify data to standardized VideoData format
  */
 function transformVideoData(rawData: any, platform: string): VideoData {
@@ -310,24 +343,24 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       thumbnailUrl = video.cover;
     } else if (video.thumbnail) {
       thumbnailUrl = video.thumbnail;
-    } else if (rawData['video.cover']) { // Flat key: "video.cover"
+    } else if (rawData['video.cover']) {
       thumbnailUrl = rawData['video.cover'];
-    } else if (rawData['video.thumbnail']) { // Flat key: "video.thumbnail"
+    } else if (rawData['video.thumbnail']) {
       thumbnailUrl = rawData['video.thumbnail'];
     } else if (rawData.cover) {
       thumbnailUrl = rawData.cover;
     } else if (rawData.thumbnail) {
       thumbnailUrl = rawData.thumbnail;
     } else if (rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0) {
-      // Photo Mode post - use first image
       thumbnailUrl = rawData.images[0].url || '';
     }
     
-    // ROBUST AVATAR EXTRACTION — check all known field names from different API responses
-    const profilePicUrl = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url
+    // ROBUST AVATAR EXTRACTION — known fields first, then deep scan as fallback
+    const knownAvatar = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url
       || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
       || author.avatar || author.avatarLarger || author.avatarThumb
-      || rawData['channel.avatar'] || rawData.avatar || '';
+      || rawData['channel.avatar'] || rawData['authorMeta.avatar'] || rawData.avatar || '';
+    const profilePicUrl = knownAvatar || deepScanForAvatarUrl(rawData);
     
     return {
       id: rawData.id || rawData.post_id || '',
@@ -338,10 +371,10 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       comment_count: rawData.comments || 0,
       view_count: rawData.views || 0,
       share_count: rawData.shares || 0,
-      save_count: rawData.bookmarks || 0, // ✅ ADD BOOKMARKS
+      save_count: rawData.bookmarks || 0,
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
       profile_pic_url: profilePicUrl,
-      display_name: channel.name || rawData['channel.name'] || channel.username || authorMeta.name || author.name || '',
+      display_name: channel.name || rawData['channel.name'] || channel.username || authorMeta.name || author.name || rawData['authorMeta.name'] || '',
       follower_count: channel.followers || 0
     };
   } else if (platform === 'instagram') {

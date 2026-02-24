@@ -38,8 +38,9 @@ const DropdownMenu: React.FC<{
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
   onRefreshVideo?: (video: VideoSubmission) => void;
+  onAssignCreator?: (videoId: string, accountId: string | undefined) => void;
   isSuperAdmin?: boolean;
-}> = ({ submission, onDelete, onVideoClick, onRefreshVideo, isSuperAdmin }) => {
+}> = ({ submission, onDelete, onVideoClick, onRefreshVideo, onAssignCreator, isSuperAdmin }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -107,6 +108,18 @@ const DropdownMenu: React.FC<{
                 setIsOpen(false);
               }}
         />
+
+        {onAssignCreator && (
+          <DropdownItem
+            icon={<Users className="w-4 h-4" />}
+            label="Assign to Creator"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+              onAssignCreator(submission.id, submission.trackedAccountId);
+            }}
+          />
+        )}
 
         {isSuperAdmin && onRefreshVideo && (
           <>
@@ -1308,7 +1321,17 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                     <div className="relative">
-                      <DropdownMenu submission={submission} onDelete={onDelete} onVideoClick={onVideoClick} onRefreshVideo={onRefreshVideo} isSuperAdmin={isSuperAdmin} />
+                      <DropdownMenu
+                        submission={submission}
+                        onDelete={onDelete}
+                        onVideoClick={onVideoClick}
+                        onRefreshVideo={onRefreshVideo}
+                        onAssignCreator={onAssignCreator ? (videoId, accountId) => {
+                          const accountIds = accountId ? [accountId] : [];
+                          onAssignCreator([videoId], accountIds, `1 video`);
+                        } : undefined}
+                        isSuperAdmin={isSuperAdmin}
+                      />
                     </div>
                   </td>
                 </tr>

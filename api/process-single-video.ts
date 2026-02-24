@@ -979,6 +979,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 /**
  * Transform raw Apify data to standardized VideoData format
  */
+/**
+ * Deep-scan an object for avatar/profile picture URLs.
+ * Searches all keys (recursively) for names containing avatar/profile/pic
+ * and returns the first valid image URL found.
+ */
+function deepScanForAvatarUrl(obj: any, depth: number = 0, maxDepth: number = 4): string {
+  if (!obj || typeof obj !== 'object' || depth > maxDepth) return '';
+
+  const avatarKeys = [
+    'avatarLarger', 'avatarMedium', 'avatar', 'avatarThumb', 'avatar_url',
+    'profilePicUrl', 'profile_pic_url', 'profile_pic_url_hd', 'profilePicture',
+    'profileImage', 'profile_image', 'profileImageUrl', 'profile_image_url',
+    'userAvatar', 'user_avatar', 'coverMediumUrl'
+  ];
+
+  // Check known avatar keys first (priority order)
+  for (const key of avatarKeys) {
+    const val = obj[key];
+    if (typeof val === 'string' && val.startsWith('http') && (val.includes('.jpg') || val.includes('.jpeg') || val.includes('.png') || val.includes('.webp') || val.includes('tiktokcdn') || val.includes('tplv-'))) {
+      return val;
+    }
+  }
+
+  // Check flat dot-notation keys (e.g., "authorMeta.avatar", "channel.avatar")
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'string') {
+      const lk = key.toLowerCase();
+      if ((lk.includes('avatar') || lk.includes('profilepic') || lk.includes('profile_pic')) && obj[key].startsWith('http')) {
+        return obj[key];
+      }
+    }
+  }
+
+  // Recurse into nested objects
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+      const found = deepScanForAvatarUrl(obj[key], depth + 1, maxDepth);
+      if (found) return found;
+    }
+  }
+
+  return '';
+}
+
 function transformVideoData(rawData: any, platform: string): VideoData {
   if (platform === 'tiktok') {
     // TikTok uses apidojo/tiktok-scraper-api format (channel + video objects or flat keys)
@@ -986,33 +1030,11 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     const video = rawData.video || {};
     
     // Log channel data for debugging
+    console.log('🎵 [TIKTOK Transform] All top-level keys:', Object.keys(rawData).join(', '));
     console.log('🎵 [TIKTOK Transform] Channel keys:', Object.keys(channel).join(', '));
-    console.log('🎵 [TIKTOK Transform] Top-level keys:', Object.keys(rawData).filter(k => typeof rawData[k] !== 'object').join(', '));
-    console.log('🎵 [TIKTOK Transform] Followers data:', {
-      'channel.followers': channel.followers,
-      'channel.followerCount': channel.followerCount,
-      'channel.fans': channel.fans,
-      'rawData.followers': rawData.followers,
-      'rawData.followerCount': rawData.followerCount
-    });
     
-    // Log ALL avatar-related fields for debugging
     const authorMeta = rawData.authorMeta || {};
     const author = rawData.author || {};
-    console.log('🎵 [TIKTOK Transform] Avatar fields:', {
-      'channel.avatar': channel.avatar ? 'YES' : 'NO',
-      'channel.avatarThumb': channel.avatarThumb ? 'YES' : 'NO',
-      'channel.avatarMedium': channel.avatarMedium ? 'YES' : 'NO',
-      'channel.avatarLarger': channel.avatarLarger ? 'YES' : 'NO',
-      'channel.avatar_url': channel.avatar_url ? 'YES' : 'NO',
-      'authorMeta.avatar': authorMeta.avatar ? 'YES' : 'NO',
-      'authorMeta.avatarThumb': authorMeta.avatarThumb ? 'YES' : 'NO',
-      'authorMeta.avatarLarger': authorMeta.avatarLarger ? 'YES' : 'NO',
-      'author.avatar': author.avatar ? 'YES' : 'NO',
-      'author.avatarThumb': author.avatarThumb ? 'YES' : 'NO',
-      'author.avatarLarger': author.avatarLarger ? 'YES' : 'NO',
-      'rawData.avatar': rawData.avatar ? 'YES' : 'NO',
-    });
     
     // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
     // Now we can handle HEIC thumbnails with heic-convert!
@@ -1075,11 +1097,26 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       share_count: rawData.shares || 0,
       save_count: rawData.bookmarks || 0, // ✅ ADD BOOKMARKS
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
-      profile_pic_url: channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url 
-        || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
-        || author.avatar || author.avatarLarger || author.avatarThumb
-        || rawData['channel.avatar'] || rawData.avatar || '',
-      display_name: channel.name || rawData['channel.name'] || channel.username || authorMeta.name || author.name || '',
+      profile_pic_url: (() => {
+        // Check known locations first (fast path)
+        const knownAvatar = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url 
+          || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
+          || author.avatar || author.avatarLarger || author.avatarThumb
+          || rawData['channel.avatar'] || rawData['authorMeta.avatar'] || rawData.avatar || '';
+        if (knownAvatar) {
+          console.log(`✅ [TIKTOK] Profile pic found via known field: ${knownAvatar.substring(0, 80)}...`);
+          return knownAvatar;
+        }
+        // Deep scan the entire raw response for any avatar-like URL
+        const deepScanned = deepScanForAvatarUrl(rawData);
+        if (deepScanned) {
+          console.log(`✅ [TIKTOK] Profile pic found via deep scan: ${deepScanned.substring(0, 80)}...`);
+          return deepScanned;
+        }
+        console.warn(`⚠️ [TIKTOK] No profile pic found anywhere in raw data`);
+        return '';
+      })(),
+      display_name: channel.name || rawData['channel.name'] || channel.username || authorMeta.name || author.name || rawData['authorMeta.name'] || '',
       follower_count: followerCount,
       verified: channel.verified || rawData['channel.verified'] || authorMeta.verified || false
     };
@@ -1715,13 +1752,13 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     
     console.log(`📊 [${platform.toUpperCase()}] First item keys:`, Object.keys(items[0] || {}).join(', '));
     
-    // Extra logging for Instagram and Twitter to debug
+    // Extra logging to debug raw Apify responses
     if (platform === 'instagram') {
       console.log('📸 [INSTAGRAM] Full first item:', JSON.stringify(items[0], null, 2));
-    }
-    
-    if (platform === 'twitter') {
+    } else if (platform === 'twitter') {
       console.log('🐦 [TWITTER/X] Full first item:', JSON.stringify(items[0], null, 2));
+    } else if (platform === 'tiktok') {
+      console.log('🎵 [TIKTOK] Full first item:', JSON.stringify(items[0], null, 2));
     }
 
     let rawData = items[0];

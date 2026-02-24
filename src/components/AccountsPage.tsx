@@ -147,6 +147,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [showBulkAssignCreator, setShowBulkAssignCreator] = useState(false);
+  const [singleAssignAccountId, setSingleAssignAccountId] = useState<string | null>(null);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
@@ -428,6 +429,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 onDelete={handleBulkDeleteAccounts}
                                 onAssignCreator={() => {
                                     setShowActionsMenu(false);
+                                    setSingleAssignAccountId(null);
                                     setShowBulkAssignCreator(true);
                                 }}
                             />
@@ -472,7 +474,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 onRemoveAccount={handleRemoveAccount} 
                                 onToggleType={toggleAccountType} 
                                 onNavigate={(url) => navigate(url)} 
-                                onImageError={(id) => setImageErrors(prev => new Set(prev).add(id))} 
+                                onImageError={(id) => setImageErrors(prev => new Set(prev).add(id))}
+                                onAssignCreator={(accountId) => {
+                                    setSingleAssignAccountId(accountId);
+                                    setShowBulkAssignCreator(true);
+                                }}
                             />
           <div className="mt-6">
             <Pagination
@@ -600,13 +606,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
       <BulkAssignCreatorModal
         isOpen={showBulkAssignCreator}
-        accountIds={Array.from(selectedAccounts)}
-        selectionLabel={`${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}`}
-        onClose={() => setShowBulkAssignCreator(false)}
-        onSuccess={() => {
+        accountIds={singleAssignAccountId ? [singleAssignAccountId] : Array.from(selectedAccounts)}
+        selectionLabel={singleAssignAccountId ? '1 account' : `${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''}`}
+        onClose={() => {
           setShowBulkAssignCreator(false);
+          setSingleAssignAccountId(null);
+        }}
+        onSuccess={() => {
+          const count = singleAssignAccountId ? 1 : selectedAccounts.size;
+          setShowBulkAssignCreator(false);
+          setSingleAssignAccountId(null);
           setSelectedAccounts(new Set());
-          setShowToast({ message: `Assigned ${selectedAccounts.size} account${selectedAccounts.size !== 1 ? 's' : ''} to creator`, type: 'success' });
+          setShowToast({ message: `Assigned ${count} account${count !== 1 ? 's' : ''} to creator`, type: 'success' });
           // Refresh creator names
           const refreshCreatorNames = async () => {
             if (!currentOrgId || !currentProjectId) return;

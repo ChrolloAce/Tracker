@@ -3,6 +3,38 @@ import { runApifyActor } from '../../../apify-client.js';
 import { ImageUploadService } from '../shared/ImageUploadService.js';
 
 /**
+ * Deep-scan an object for avatar/profile picture URLs.
+ */
+function deepScanForAvatarUrl(obj: any, depth: number = 0, maxDepth: number = 4): string {
+  if (!obj || typeof obj !== 'object' || depth > maxDepth) return '';
+  const avatarKeys = [
+    'avatarLarger', 'avatarMedium', 'avatar', 'avatarThumb', 'avatar_url',
+    'profilePicUrl', 'profile_pic_url', 'profilePicture', 'coverMediumUrl'
+  ];
+  for (const key of avatarKeys) {
+    const val = obj[key];
+    if (typeof val === 'string' && val.startsWith('http') && (val.includes('.jpg') || val.includes('.jpeg') || val.includes('.png') || val.includes('.webp') || val.includes('tiktokcdn') || val.includes('tplv-'))) {
+      return val;
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'string') {
+      const lk = key.toLowerCase();
+      if ((lk.includes('avatar') || lk.includes('profilepic') || lk.includes('profile_pic')) && obj[key].startsWith('http')) {
+        return obj[key];
+      }
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+      const found = deepScanForAvatarUrl(obj[key], depth + 1, maxDepth);
+      if (found) return found;
+    }
+  }
+  return '';
+}
+
+/**
  * TikTokSyncService
  * 
  * Purpose: Handle TikTok video discovery and refresh
@@ -55,27 +87,32 @@ export class TikTokSyncService {
       
       console.log(`    📦 [TIKTOK] Fetched ${batch.length} videos from Apify`);
       
-      // Extract profile from first video — check all known avatar field names
+      // Extract profile from first video — check all known avatar field names + deep scan
       let profile = null;
       if (batch.length > 0) {
         const v = batch[0];
         const channel = v.channel || {};
         const authorMeta = v.authorMeta || {};
         const author = v.author || {};
-        const avatarUrl = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url
+        const knownAvatar = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url
           || authorMeta.avatar || authorMeta.avatarLarger || authorMeta.avatarThumb
-          || author.avatar || author.avatarLarger || author.avatarThumb || '';
+          || author.avatar || author.avatarLarger || author.avatarThumb
+          || v['channel.avatar'] || v['authorMeta.avatar'] || v.avatar || '';
+        const avatarUrl = knownAvatar || deepScanForAvatarUrl(v);
         
         if (avatarUrl) {
+          console.log(`✅ [TIKTOK] Profile avatar found: ${avatarUrl.substring(0, 80)}...`);
           profile = {
-            username: channel.username || channel.name || authorMeta.name || author.uniqueId,
-            displayName: channel.name || channel.username || authorMeta.name || author.name,
+            username: channel.username || channel.name || authorMeta.name || author.uniqueId || v['channel.username'] || v['authorMeta.name'],
+            displayName: channel.name || channel.username || authorMeta.name || author.name || v['channel.name'] || v['authorMeta.name'],
             profilePicUrl: avatarUrl,
             followersCount: channel.followers || authorMeta.fans || author.fans,
             followingCount: channel.following || authorMeta.following || author.following,
             likesCount: 0,
             isVerified: channel.verified || authorMeta.verified || false
           };
+        } else {
+          console.warn(`⚠️ [TIKTOK] No avatar URL found in raw data for @${account.username}`);
         }
       }
       

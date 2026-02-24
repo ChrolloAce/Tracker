@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   RefreshCw, AlertCircle, Trash2, X, MoreVertical, 
-  ExternalLink, Copy, User, BarChart3 
+  ExternalLink, Copy, User, Users, BarChart3 
 } from 'lucide-react';
 import { ProxiedImage } from '../ProxiedImage';
 import { clsx } from 'clsx';
@@ -42,6 +42,8 @@ interface AccountsTableProps {
   onToggleType: (account: TrackedAccount) => void;
   onNavigate: (url: string) => void;
   onImageError: (id: string) => void;
+  /** Assign a single account to a creator (opens modal) */
+  onAssignCreator?: (accountId: string) => void;
 }
 
 export const AccountsTable: React.FC<AccountsTableProps> = ({
@@ -64,7 +66,8 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   onRemoveAccount,
   onToggleType,
   onNavigate,
-  onImageError
+  onImageError,
+  onAssignCreator
 }) => {
   const typeBadgeRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -438,13 +441,22 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                   </div>
                 </td>
 
-                {/* Creator Column */}
+                {/* Creator Column — clickable to assign/reassign */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   {(() => {
                     const creatorName = accountCreatorNames.get(account.id);
                     const creatorPhoto = accountCreatorPhotos?.get(account.id);
+                    const handleClick = onAssignCreator ? (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      onAssignCreator(account.id);
+                    } : undefined;
+
                     return creatorName ? (
-                      <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                      <button
+                        onClick={handleClick}
+                        className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:border-white/30 transition-colors cursor-pointer"
+                        title="Click to reassign creator"
+                      >
                         {creatorPhoto ? (
                           <ProxiedImage
                             src={creatorPhoto}
@@ -462,9 +474,16 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                           </div>
                         )}
                         {creatorName}
-                      </span>
+                      </button>
                     ) : (
-                      <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
+                      <button
+                        onClick={handleClick}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs text-gray-500 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-colors cursor-pointer"
+                        title="Click to assign a creator"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Assign</span>
+                      </button>
                     );
                   })()}
                 </td>
@@ -652,6 +671,17 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                           onToggleType(account);
                         }}
                       />
+                      {onAssignCreator && (
+                        <DropdownItem
+                          icon={<Users className="w-4 h-4" />}
+                          label={accountCreatorNames.get(account.id) ? 'Reassign Creator' : 'Assign to Creator'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            onAssignCreator(account.id);
+                          }}
+                        />
+                      )}
                       <DropdownDivider />
                       <DropdownItem
                         icon={<Trash2 className="w-4 h-4" />}
