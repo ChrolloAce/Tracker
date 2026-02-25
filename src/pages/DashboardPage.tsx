@@ -51,6 +51,7 @@ import CreatorPortalPage from '../components/CreatorPortalPage';
 // ViralContentPage import removed — using ComingSoonLocked for now
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import SuperAdminService from '../services/SuperAdminService';
+import AdminService from '../services/AdminService';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
 import DemoOrgService from '../services/DemoOrgService';
@@ -501,6 +502,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       if (isDemo) {
         console.log('🎭 Demo user logged in - paywall permanently disabled');
+        setShowPaywall(false);
+        return;
+      }
+
+      // Check if super admin / admin - NEVER show paywall for admins
+      const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
+      if (shouldBypass) {
+        console.log('🔓 Admin user - paywall bypassed');
         setShowPaywall(false);
         return;
       }
