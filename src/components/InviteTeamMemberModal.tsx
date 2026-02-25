@@ -4,6 +4,7 @@ import { Role } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
 import OrganizationService from '../services/OrganizationService';
 import UsageTrackingService from '../services/UsageTrackingService';
+import AdminService from '../services/AdminService';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { X, Mail, UserPlus, AlertCircle, Crown } from 'lucide-react';
@@ -41,6 +42,16 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
       try {
         setCheckingLimit(true);
         console.log('🔍 [CLIENT] Checking team seat limit for org:', currentOrgId);
+        
+        // Admin / super admin bypass — never limit them
+        const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
+        if (shouldBypass) {
+          console.log('🔓 Admin user — bypassing team seat limit');
+          setIsAtLimit(false);
+          setLimitInfo({ current: 0, limit: -1, active: 0, pending: 0 });
+          setCheckingLimit(false);
+          return;
+        }
         
         // Get organization's plan limits
         const limits = await UsageTrackingService.getLimits(currentOrgId);

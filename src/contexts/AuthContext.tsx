@@ -14,6 +14,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
+import { SUPER_ADMIN_EMAILS } from '../services/SuperAdminService';
 
 interface AuthContextType {
   user: User | null;
@@ -213,10 +214,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // User has orgs! Get the default org or use first one
         const userAccount = await OrganizationService.getUserAccount(user.uid);
         
-        // Set admin status
-        setIsAdmin(userAccount?.isAdmin === true);
-        if (userAccount?.isAdmin) {
-          console.log('🔓 Admin user detected:', user.uid);
+        // Set admin status — Firestore field OR super admin email
+        const isSuperAdminEmail = SUPER_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email?.toLowerCase() || '');
+        const adminStatus = userAccount?.isAdmin === true || isSuperAdminEmail;
+        setIsAdmin(adminStatus);
+        if (adminStatus) {
+          console.log('🔓 Admin user detected:', user.uid, isSuperAdminEmail ? '(super admin email)' : '(Firestore flag)');
         }
         
         if (userAccount?.defaultOrgId && userOrgs.find(o => o.id === userAccount.defaultOrgId)) {
