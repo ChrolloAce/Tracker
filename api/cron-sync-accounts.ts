@@ -421,12 +421,16 @@ export default async function handler(
           if (userDoc.exists) {
             const userData = userDoc.data();
             const isAdmin = userData?.isAdmin === true;
-            const isDemoAccount = userData?.email?.toLowerCase() === '001ernestolopez@gmail.com';
+            const userEmail = userData?.email?.toLowerCase() || '';
+            const isDemoAccount = userEmail === '001ernestolopez@gmail.com';
+            const isSuperAdmin = userEmail === 'ernesto@maktubtechnologies.com';
             
-            shouldBypassLimits = isAdmin || isDemoAccount;
+            shouldBypassLimits = isAdmin || isDemoAccount || isSuperAdmin;
             
             if (isDemoAccount) {
-              console.log(`🎭 Demo account detected (${userData.email}) - bypassing ALL video limits for org ${account.orgId}`);
+              console.log(`🎭 Demo account detected (${userData?.email}) - bypassing ALL video limits for org ${account.orgId}`);
+            } else if (isSuperAdmin) {
+              console.log(`👑 Super admin detected (${userData?.email}) - bypassing ALL video limits for org ${account.orgId}`);
             } else if (isAdmin) {
               console.log(`🔓 Admin user ${userId} bypassing video limit check for org ${account.orgId}`);
             }

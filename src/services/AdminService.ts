@@ -1,5 +1,6 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { SUPER_ADMIN_EMAILS } from './SuperAdminService';
 
 /**
  * AdminService
@@ -40,7 +41,9 @@ class AdminService {
       }
       
       const userData = userSnap.data();
-      const isAdmin = userData.isAdmin === true;
+      const userEmail = userData.email?.toLowerCase() || '';
+      // isAdmin if Firestore field is true OR if email is in the super admin list
+      const isAdmin = userData.isAdmin === true || SUPER_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(userEmail);
       
       // Update cache
       this.adminCache.set(userId, { isAdmin, timestamp: Date.now() });
@@ -95,6 +98,12 @@ class AdminService {
         // Demo account ALWAYS bypasses all limits
         if (userEmail === '001ernestolopez@gmail.com') {
           console.log(`🎭 Demo account detected (${userEmail}) - bypassing ALL limits`);
+          return true;
+        }
+
+        // Super admin emails ALWAYS bypass all limits
+        if (SUPER_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(userEmail)) {
+          console.log(`👑 Super admin detected (${userEmail}) - bypassing ALL limits`);
           return true;
         }
       } else {
