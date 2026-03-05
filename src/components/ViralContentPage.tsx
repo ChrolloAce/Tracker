@@ -88,7 +88,7 @@ const getPlatformIcon = (platform: string, className = 'w-4 h-4') => {
   }
 };
 
-const PAGE_SIZE = 48;
+const PAGE_SIZE = 12;
 
 // ─── Main Page ────────────────────────────────────────────
 

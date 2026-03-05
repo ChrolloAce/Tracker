@@ -14,7 +14,7 @@ import { db } from './firebase';
 import { ViralVideo } from '../types/viralContent';
 
 const COLLECTION = 'viralContent';
-const DEFAULT_PAGE_SIZE = 48;
+const DEFAULT_PAGE_SIZE = 12;
 
 // ─── Public types ────────────────────────────────────────
 
