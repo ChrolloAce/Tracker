@@ -1,30 +1,31 @@
 import { Timestamp } from 'firebase/firestore';
 
 /**
- * Viral video content for discovery
- * Stored at: /viralContent/{videoId}
+ * Viral video content stored in Firestore.
+ * Collection: /viralContent/{docId}
  */
 export interface ViralVideo {
   id: string;
+  order: number;
   url: string;
-  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
+  platform: 'tiktok' | 'instagram' | 'youtube';
   title: string;
-  description?: string;
-  thumbnail?: string;
-  views?: number;
-  likes?: number;
-  comments?: number;
-  shares?: number;
-  saves?: number;
-  followerCount?: number;
-  contentType?: 'video' | 'slideshow';
-  uploaderName?: string;
-  uploaderHandle?: string;
-  uploaderProfilePic?: string;
-  uploadDate?: Timestamp;
+  description: string;
+  thumbnail: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  followerCount: number;
+  uploaderHandle: string;
+  contentType: 'video' | 'slideshow';
+  category: string;
+  monetization?: string | null;
+  productBrand?: string | null;
+  tags: string[];
+  uploadDate: Timestamp;
   addedAt: Timestamp;
   addedBy: string;
-  tags?: string[];
-  category?: string;
   isActive: boolean;
 }

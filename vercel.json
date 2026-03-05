@@ -116,6 +116,9 @@
     },
     "api/super-admin/refresh-monitor.ts": {
       "maxDuration": 60
+    },
+    "api/super-admin/seed-viral-content.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [

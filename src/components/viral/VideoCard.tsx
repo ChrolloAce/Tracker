@@ -8,11 +8,11 @@ import {
   Share2,
   ExternalLink,
 } from 'lucide-react';
-import { ViralSeedEntry } from '../../data/viralSeedData';
+import { ViralVideo } from '../../types/viralContent';
 import VideoPlayerModal from './VideoPlayerModal';
 
 interface VideoCardProps {
-  video: ViralSeedEntry;
+  video: ViralVideo;
   getPlatformIcon: (platform: string, className?: string) => JSX.Element;
   formatNumber: (num: number) => string;
 }

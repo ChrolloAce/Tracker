@@ -1,9 +1,9 @@
 import React from 'react';
 import { X, ExternalLink } from 'lucide-react';
-import { ViralSeedEntry } from '../../data/viralSeedData';
+import { ViralVideo } from '../../types/viralContent';
 
 interface VideoPlayerModalProps {
-  video: ViralSeedEntry;
+  video: ViralVideo;
   onClose: () => void;
 }
 
