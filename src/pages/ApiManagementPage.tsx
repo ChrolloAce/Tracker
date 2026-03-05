@@ -289,7 +289,6 @@ const ApiPlayground: React.FC = () => {
   // Build curl command
   const buildCurl = () => {
     const url = buildUrl().replace(window.location.origin, API_BASE.replace('/api/v1', ''));
-    const fullUrl = url.replace('/api/', `${API_BASE.split('/api/v1')[0]}/api/`);
     let curlUrl = url;
 
     // Use the production URL in curl
