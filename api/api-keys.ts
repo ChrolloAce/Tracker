@@ -10,40 +10,45 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHash, randomBytes } from 'crypto';
 import { initializeFirebase } from './utils/firebase-admin';
 import { authenticateRequest, verifyOrgAccess } from './middleware/auth';
-import type { ApiKey, ApiKeyCreateRequest, ApiKeyResponse, ApiKeyCreateResponse } from '../src/types/apiKeys';
+
+// ─── Inline types (avoid cross-boundary import issues) ────
+interface ApiKeyDoc {
+  organizationId: string;
+  projectId?: string;
+  name: string;
+  keyHash: string;
+  keyPrefix: string;
+  scopes: string[];
+  lastUsedAt?: any;
+  usageCount: number;
+  rateLimit: number;
+  status: string;
+  expiresAt?: any;
+  createdBy: string;
+  createdAt: any;
+  updatedAt: any;
+  revokedAt?: any;
+  revokedBy?: string;
+}
 
 const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com'];
 
 // Initialize Firebase Admin
-initializeFirebase();
-const db = getFirestore();
+try {
+  initializeFirebase();
+} catch (e) {
+  console.error('Failed to init Firebase in api-keys:', e);
+}
 
 /**
  * Generate a secure API key
  */
-function generateApiKey(isTest: boolean = false): { key: string; hash: string; prefix: string } {
-  const prefix = isTest ? 'vt_test_' : 'vt_live_';
+function generateApiKey(): { key: string; hash: string; prefix: string } {
+  const pfx = 'vt_live_';
   const randomPart = randomBytes(24).toString('base64url');
-  const key = `${prefix}${randomPart}`;
+  const key = `${pfx}${randomPart}`;
   const hash = createHash('sha256').update(key).digest('hex');
   return { key, hash, prefix: key.substring(0, 12) };
-}
-
-/**
- * Format API key for response (hide sensitive data)
- */
-function formatApiKeyResponse(key: ApiKey): ApiKeyResponse {
-  return {
-    id: key.id,
-    name: key.name,
-    keyPrefix: key.keyPrefix,
-    scopes: key.scopes,
-    status: key.status,
-    lastUsedAt: key.lastUsedAt,
-    usageCount: key.usageCount,
-    createdAt: key.createdAt,
-    expiresAt: key.expiresAt
-  };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -51,240 +56,243 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  let db: FirebaseFirestore.Firestore;
+  try {
+    db = getFirestore();
+  } catch (e: any) {
+    console.error('Firestore init failed:', e);
+    return res.status(500).json({ success: false, error: { message: 'Database unavailable', code: 'DB_INIT_ERROR' } });
   }
 
   try {
     // Authenticate user (requires Firebase auth token)
     const user = await authenticateRequest(req);
     const { orgId, keyId } = req.query;
-    
+
     if (!orgId || typeof orgId !== 'string') {
       return res.status(400).json({
         success: false,
-        error: { message: 'Organization ID required', code: 'MISSING_ORG_ID' }
+        error: { message: 'Organization ID required', code: 'MISSING_ORG_ID' },
       });
     }
-    
+
     // Super admins bypass org access checks
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
-    
+
     if (!isSuperAdmin) {
-      // Verify user has access to org
       const { hasAccess, role } = await verifyOrgAccess(user.userId, orgId);
       if (!hasAccess) {
         return res.status(403).json({
           success: false,
-          error: { message: 'Access denied to this organization', code: 'FORBIDDEN' }
+          error: { message: 'Access denied to this organization', code: 'FORBIDDEN' },
         });
       }
-      
-      // Only admins/owners can manage API keys
       if (role !== 'admin' && role !== 'owner') {
         return res.status(403).json({
           success: false,
-          error: { message: 'Admin or owner role required to manage API keys', code: 'FORBIDDEN' }
+          error: { message: 'Admin or owner role required to manage API keys', code: 'FORBIDDEN' },
         });
       }
     }
 
     switch (req.method) {
       case 'POST':
-        return await createApiKey(req, res, orgId, user.userId);
+        return await createApiKey(req, res, db, orgId, user.userId);
       case 'GET':
-        return await listApiKeys(res, orgId);
+        return await listApiKeys(res, db, orgId);
       case 'DELETE':
-        return await revokeApiKey(req, res, orgId, user.userId, keyId as string);
+        return await revokeApiKey(req, res, db, orgId, user.userId, keyId as string);
       default:
         return res.status(405).json({
           success: false,
-          error: { message: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' }
+          error: { message: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' },
         });
     }
   } catch (error: any) {
     console.error('API Keys error:', error);
-    return res.status(error.message?.includes('authentication') ? 401 : 500).json({
+    const isAuth = error.message?.includes('authentication') || error.message?.includes('token');
+    return res.status(isAuth ? 401 : 500).json({
       success: false,
       error: {
         message: error.message || 'Internal server error',
-        code: error.message?.includes('authentication') ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'
-      }
+        code: isAuth ? 'UNAUTHORIZED' : 'INTERNAL_ERROR',
+      },
     });
   }
 }
 
-/**
- * Create a new API key
- */
+// ─── Create ───────────────────────────────────────────────
+
 async function createApiKey(
   req: VercelRequest,
   res: VercelResponse,
+  db: FirebaseFirestore.Firestore,
   orgId: string,
-  userId: string
+  userId: string,
 ) {
-  const body = req.body as ApiKeyCreateRequest;
-  
-  if (!body.name || !body.scopes || body.scopes.length === 0) {
+  const body = req.body || {};
+
+  if (!body.name || !body.scopes || !Array.isArray(body.scopes) || body.scopes.length === 0) {
     return res.status(400).json({
       success: false,
-      error: { message: 'Name and scopes are required', code: 'VALIDATION_ERROR' }
+      error: { message: 'Name and scopes are required', code: 'VALIDATION_ERROR' },
     });
   }
-  
-  // Validate scopes
+
   const validScopes = [
     'accounts:read', 'accounts:write',
     'videos:read', 'videos:write',
     'analytics:read',
     'projects:read', 'projects:write',
-    'organizations:read'
+    'organizations:read',
   ];
-  
+
   for (const scope of body.scopes) {
     if (!validScopes.includes(scope)) {
       return res.status(400).json({
         success: false,
-        error: { message: `Invalid scope: ${scope}`, code: 'VALIDATION_ERROR' }
+        error: { message: `Invalid scope: ${scope}`, code: 'VALIDATION_ERROR' },
       });
     }
   }
-  
-  // Generate the key
-  const { key, hash, prefix } = generateApiKey(false);
-  
-  // Calculate expiration
-  let expiresAt: Date | undefined;
-  if (body.expiresInDays) {
+
+  const { key, hash, prefix } = generateApiKey();
+
+  let expiresAt: Date | null = null;
+  if (body.expiresInDays && typeof body.expiresInDays === 'number') {
     expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + body.expiresInDays);
   }
-  
-  // Create the API key document
-  const keyDoc: Omit<ApiKey, 'id'> = {
+
+  const docData: Record<string, any> = {
     organizationId: orgId,
-    projectId: body.projectId,
     name: body.name,
     keyHash: hash,
     keyPrefix: prefix,
     scopes: body.scopes,
-    lastUsedAt: undefined,
     usageCount: 0,
-    rateLimit: body.rateLimit || 100, // Default 100 req/min
+    rateLimit: body.rateLimit || 100,
     status: 'active',
-    expiresAt,
     createdBy: userId,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    expiresAt: expiresAt || null,
   };
-  
+
+  if (body.projectId) {
+    docData.projectId = body.projectId;
+  }
+
   const docRef = await db
     .collection('organizations')
     .doc(orgId)
     .collection('apiKeys')
-    .add({
-      ...keyDoc,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      expiresAt: expiresAt || null
-    });
-  
-  // Return the full key (only time it's shown!)
-  const response: ApiKeyCreateResponse = {
-    id: docRef.id,
-    name: body.name,
-    key, // Full key - only shown once!
-    keyPrefix: prefix,
-    scopes: body.scopes,
-    status: 'active',
-    usageCount: 0,
-    createdAt: new Date(),
-    expiresAt
-  };
-  
+    .add(docData);
+
   console.log(`✅ Created API key ${prefix}... for org ${orgId}`);
-  
+
   return res.status(201).json({
     success: true,
-    data: response,
-    warning: 'Save this API key now. It will not be shown again.'
+    data: {
+      id: docRef.id,
+      name: body.name,
+      key, // Full key — only shown once!
+      keyPrefix: prefix,
+      scopes: body.scopes,
+      status: 'active',
+      usageCount: 0,
+      createdAt: new Date().toISOString(),
+      expiresAt: expiresAt?.toISOString() || null,
+    },
+    warning: 'Save this API key now. It will not be shown again.',
   });
 }
 
-/**
- * List all API keys for organization
- */
-async function listApiKeys(res: VercelResponse, orgId: string) {
-  const keysSnapshot = await db
+// ─── List ─────────────────────────────────────────────────
+
+async function listApiKeys(
+  res: VercelResponse,
+  db: FirebaseFirestore.Firestore,
+  orgId: string,
+) {
+  const snapshot = await db
     .collection('organizations')
     .doc(orgId)
     .collection('apiKeys')
     .orderBy('createdAt', 'desc')
     .get();
-  
-  const keys: ApiKeyResponse[] = keysSnapshot.docs.map(doc => {
-    const data = doc.data() as ApiKey;
-    return formatApiKeyResponse({
-      ...data,
+
+  const keys = snapshot.docs.map((doc) => {
+    const d = doc.data();
+    return {
       id: doc.id,
-      createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt as any),
-      lastUsedAt: data.lastUsedAt?.toDate?.() || (data.lastUsedAt ? new Date(data.lastUsedAt as any) : undefined),
-      expiresAt: data.expiresAt?.toDate?.() || (data.expiresAt ? new Date(data.expiresAt as any) : undefined)
-    });
+      name: d.name || '',
+      keyPrefix: d.keyPrefix || '',
+      scopes: d.scopes || [],
+      status: d.status || 'active',
+      lastUsedAt: d.lastUsedAt?.toDate?.()?.toISOString() || null,
+      usageCount: d.usageCount || 0,
+      createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+      expiresAt: d.expiresAt?.toDate?.()?.toISOString() || null,
+    };
   });
-  
+
   return res.status(200).json({
     success: true,
-    data: { keys, total: keys.length }
+    data: { keys, total: keys.length },
   });
 }
 
-/**
- * Revoke an API key
- */
+// ─── Revoke ───────────────────────────────────────────────
+
 async function revokeApiKey(
   req: VercelRequest,
   res: VercelResponse,
+  db: FirebaseFirestore.Firestore,
   orgId: string,
   userId: string,
-  keyId?: string
+  keyId?: string,
 ) {
   const targetKeyId = keyId || req.body?.keyId;
-  
+
   if (!targetKeyId) {
     return res.status(400).json({
       success: false,
-      error: { message: 'Key ID required', code: 'VALIDATION_ERROR' }
+      error: { message: 'Key ID required', code: 'VALIDATION_ERROR' },
     });
   }
-  
+
   const keyRef = db
     .collection('organizations')
     .doc(orgId)
     .collection('apiKeys')
     .doc(targetKeyId);
-  
+
   const keyDoc = await keyRef.get();
-  
+
   if (!keyDoc.exists) {
     return res.status(404).json({
       success: false,
-      error: { message: 'API key not found', code: 'NOT_FOUND' }
+      error: { message: 'API key not found', code: 'NOT_FOUND' },
     });
   }
-  
+
   await keyRef.update({
     status: 'revoked',
     revokedAt: FieldValue.serverTimestamp(),
     revokedBy: userId,
-    updatedAt: FieldValue.serverTimestamp()
+    updatedAt: FieldValue.serverTimestamp(),
   });
-  
+
   console.log(`✅ Revoked API key ${targetKeyId} for org ${orgId}`);
-  
+
   return res.status(200).json({
     success: true,
-    message: 'API key revoked successfully'
+    message: 'API key revoked successfully',
   });
 }
