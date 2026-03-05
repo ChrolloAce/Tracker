@@ -52,6 +52,11 @@ const PLATFORMS = [
 
 const CATEGORIES = [
   'All',
+  'Business & Finance',
+  'Health & Wellness',
+  'Fashion & Beauty',
+  'Arts, Hobbies & Entertainment',
+  'Food & Cooking',
   'Entertainment',
   'Education',
   'Lifestyle',
@@ -59,9 +64,6 @@ const CATEGORIES = [
   'Music',
   'Sports',
   'Tech',
-  'Beauty',
-  'Food',
-  'Business & Finance',
 ];
 
 type SortOption = 'recently_added' | 'latest_posted' | 'most_views' | 'most_likes';

@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { ViralVideo } from '../types/viralContent';
+import { VIRAL_SEED_DATA } from '../data/viralSeedData';
 
 // Super admin email that can manage viral content
 const SUPER_ADMIN_EMAIL = 'ernesto@maktubtechnologies.com';
@@ -63,7 +64,8 @@ class ViralContentService {
   }
 
   /**
-   * Seed initial curated viral content if the collection is empty
+   * Seed curated viral content if the collection is empty.
+   * Data lives in src/data/viralSeedData.ts (12 entries from genviral_top12).
    */
   static async seedInitialContentIfEmpty(): Promise<boolean> {
     const videosRef = collection(db, this.COLLECTION);
@@ -72,37 +74,35 @@ class ViralContentService {
 
     if (!checkSnapshot.empty) return false;
 
-    const seedVideos: Omit<ViralVideo, 'id'>[] = [
-      {
-        url: 'https://www.tiktok.com/@amanda.saves/video/7603219066978979085',
-        platform: 'tiktok',
-        title: 'YieldClub helping me money do more',
-        description: 'YieldClub helping me money do more #yield #earninganimation #tryyieldclub #tiktok',
-        thumbnail: 'https://cdn.vireel.io/viral-content/slideshows/amanda-saves-https---www-tiktok-com--amanda-saves-video-7603219066978979085-7603219066978979085/slide-1.jpg',
-        views: 715800,
-        likes: 10100,
-        comments: 184,
-        shares: 162,
-        saves: 421,
-        followerCount: 153,
-        uploaderHandle: 'amanda.saves',
-        uploaderName: 'amanda.saves',
-        category: 'Business & Finance',
-        contentType: 'video',
-        tags: ['yield', 'earninganimation', 'tryyieldclub', 'tiktok'],
-        uploadDate: Timestamp.fromDate(new Date('2025-02-04')),
+    for (const entry of VIRAL_SEED_DATA) {
+      const videoRef = doc(collection(db, this.COLLECTION));
+      const video: ViralVideo = {
+        id: videoRef.id,
+        url: entry.url,
+        platform: entry.platform,
+        title: entry.title,
+        description: entry.description,
+        thumbnail: entry.thumbnail,
+        views: entry.views,
+        likes: entry.likes,
+        comments: entry.comments,
+        shares: entry.shares,
+        saves: entry.saves,
+        followerCount: entry.followerCount,
+        uploaderHandle: entry.uploaderHandle,
+        uploaderName: entry.uploaderName,
+        category: entry.category,
+        contentType: entry.contentType,
+        tags: entry.tags,
+        uploadDate: Timestamp.fromDate(new Date(entry.uploadDateISO)),
         addedAt: Timestamp.now(),
         addedBy: 'system',
         isActive: true,
-      },
-    ];
-
-    for (const videoData of seedVideos) {
-      const videoRef = doc(collection(db, this.COLLECTION));
-      await setDoc(videoRef, { id: videoRef.id, ...videoData });
+      };
+      await setDoc(videoRef, video);
     }
 
-    console.log(`✅ Seeded ${seedVideos.length} initial viral video(s)`);
+    console.log(`✅ Seeded ${VIRAL_SEED_DATA.length} curated viral videos`);
     return true;
   }
 
