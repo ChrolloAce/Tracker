@@ -1,19 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Flame, 
-  Eye, 
-  Heart, 
-  MessageCircle, 
   Search,
-  Play,
   SlidersHorizontal,
   ChevronDown,
-  Bookmark,
-  Share2,
 } from 'lucide-react';
-import { VIRAL_SEED_DATA, ViralSeedEntry } from '../data/viralSeedData';
+import { VIRAL_SEED_DATA } from '../data/viralSeedData';
+import VideoCard from './viral/VideoCard';
 
-// Platform icons
+// ─── Platform icons ───────────────────────────────────────
+
 const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
@@ -37,6 +33,8 @@ const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
   </svg>
 );
+
+// ─── Constants ────────────────────────────────────────────
 
 const PLATFORMS = [
   { id: 'all', name: 'All Platforms' },
@@ -78,6 +76,27 @@ const CONTENT_TYPE_OPTIONS: { value: ContentTypeFilter; label: string }[] = [
   { value: 'slideshow', label: 'Slideshow Only' },
 ];
 
+// ─── Helpers ──────────────────────────────────────────────
+
+const formatNumber = (num: number): string => {
+  if (!num) return '0';
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+};
+
+const getPlatformIcon = (platform: string, className: string = "w-4 h-4") => {
+  switch (platform) {
+    case 'instagram': return <InstagramIcon className={className} />;
+    case 'tiktok': return <TikTokIcon className={className} />;
+    case 'youtube': return <YouTubeIcon className={className} />;
+    case 'twitter': return <XIcon className={className} />;
+    default: return <Flame className={className} />;
+  }
+};
+
+// ─── Main Page ────────────────────────────────────────────
+
 const ViralContentPage: React.FC = () => {
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -86,28 +105,23 @@ const ViralContentPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('recently_added');
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
 
-  // All data is hardcoded — no Firestore, instant render
   const filteredVideos = useMemo(() => {
     let result = VIRAL_SEED_DATA.filter(video => {
       const matchesPlatform = selectedPlatform === 'all' || video.platform === selectedPlatform;
-
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         video.uploaderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         video.uploaderHandle.toLowerCase().includes(searchQuery.toLowerCase()) ||
         video.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-
       const matchesCategory = selectedCategory === 'All' || video.category === selectedCategory;
-
       const matchesContentType = contentTypeFilter === 'all' || video.contentType === contentTypeFilter;
-
       return matchesPlatform && matchesSearch && matchesCategory && matchesContentType;
     });
 
     result.sort((a, b) => {
       switch (sortBy) {
         case 'recently_added':
-          return VIRAL_SEED_DATA.indexOf(a) - VIRAL_SEED_DATA.indexOf(b); // CSV order = added order
+          return VIRAL_SEED_DATA.indexOf(a) - VIRAL_SEED_DATA.indexOf(b);
         case 'latest_posted':
           return new Date(b.uploadDateISO).getTime() - new Date(a.uploadDateISO).getTime();
         case 'most_views':
@@ -122,27 +136,8 @@ const ViralContentPage: React.FC = () => {
     return result;
   }, [searchQuery, selectedPlatform, selectedCategory, contentTypeFilter, sortBy]);
 
-  const formatNumber = (num?: number) => {
-    if (!num) return '0';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
-
-  const getPlatformIcon = (platform: string, className: string = "w-4 h-4") => {
-    switch (platform) {
-      case 'instagram': return <InstagramIcon className={className} />;
-      case 'tiktok': return <TikTokIcon className={className} />;
-      case 'youtube': return <YouTubeIcon className={className} />;
-      case 'twitter': return <XIcon className={className} />;
-      default: return <Flame className={className} />;
-    }
-  };
-
-  const activeFilterCount = [
-    sortBy !== 'recently_added' ? 1 : 0,
-    contentTypeFilter !== 'all' ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  const activeFilterCount =
+    (sortBy !== 'recently_added' ? 1 : 0) + (contentTypeFilter !== 'all' ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -159,7 +154,6 @@ const ViralContentPage: React.FC = () => {
           />
         </div>
 
-        {/* Filters Button */}
         <div className="relative">
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -179,64 +173,31 @@ const ViralContentPage: React.FC = () => {
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Filters Dropdown */}
           {showFilters && (
             <div className="absolute right-0 top-full mt-2 w-72 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 space-y-4">
-              {/* Sort By */}
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Sort By
-                </label>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Sort By</label>
                 <div className="space-y-1">
-                  {SORT_OPTIONS.map(option => (
-                    <button
-                      key={option.value}
-                      onClick={() => setSortBy(option.value)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                        sortBy === option.value
-                          ? 'bg-white/10 text-white font-medium'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
+                  {SORT_OPTIONS.map(o => (
+                    <button key={o.value} onClick={() => setSortBy(o.value)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${sortBy === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                    >{o.label}</button>
                   ))}
                 </div>
               </div>
-
-              {/* Content Type */}
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Content Type
-                </label>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Content Type</label>
                 <div className="space-y-1">
-                  {CONTENT_TYPE_OPTIONS.map(option => (
-                    <button
-                      key={option.value}
-                      onClick={() => setContentTypeFilter(option.value)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                        contentTypeFilter === option.value
-                          ? 'bg-white/10 text-white font-medium'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
+                  {CONTENT_TYPE_OPTIONS.map(o => (
+                    <button key={o.value} onClick={() => setContentTypeFilter(o.value)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${contentTypeFilter === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                    >{o.label}</button>
                   ))}
                 </div>
               </div>
-
-              {/* Reset */}
               {activeFilterCount > 0 && (
-                <button
-                  onClick={() => {
-                    setSortBy('recently_added');
-                    setContentTypeFilter('all');
-                  }}
-                  className="w-full text-center py-2 text-xs text-gray-500 hover:text-white transition-all"
-                >
-                  Reset Filters
-                </button>
+                <button onClick={() => { setSortBy('recently_added'); setContentTypeFilter('all'); }}
+                  className="w-full text-center py-2 text-xs text-gray-500 hover:text-white transition-all">Reset Filters</button>
               )}
             </div>
           )}
@@ -245,21 +206,15 @@ const ViralContentPage: React.FC = () => {
 
       {/* Platform Filters */}
       <div className="flex flex-wrap gap-2">
-        {PLATFORMS.map(platform => {
-          const Icon = platform.icon;
-          const isSelected = selectedPlatform === platform.id;
+        {PLATFORMS.map(p => {
+          const Icon = p.icon;
+          const sel = selectedPlatform === p.id;
           return (
-            <button
-              key={platform.id}
-              onClick={() => setSelectedPlatform(platform.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm ${
-                isSelected
-                  ? 'bg-white/15 border-white/30 text-white'
-                  : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
-              } border`}
+            <button key={p.id} onClick={() => setSelectedPlatform(p.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm border ${sel ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}
             >
               {Icon && <Icon className="w-4 h-4" />}
-              <span>{platform.name}</span>
+              <span>{p.name}</span>
             </button>
           );
         })}
@@ -267,18 +222,10 @@ const ViralContentPage: React.FC = () => {
 
       {/* Category Pills */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {CATEGORIES.map(category => (
-          <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-              selectedCategory === category
-                ? 'bg-white/15 text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            {category}
-          </button>
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={() => setSelectedCategory(c)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${selectedCategory === c ? 'bg-white/15 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+          >{c}</button>
         ))}
       </div>
 
@@ -308,119 +255,8 @@ const ViralContentPage: React.FC = () => {
 
       {/* Click-away overlay for filters dropdown */}
       {showFilters && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowFilters(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
       )}
-    </div>
-  );
-};
-
-// ─── Video Card ───────────────────────────────────────────
-
-interface VideoCardProps {
-  video: ViralSeedEntry;
-  getPlatformIcon: (platform: string, className?: string) => JSX.Element;
-  formatNumber: (num: number) => string;
-}
-
-const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNumber }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const contentBadgeLabel = video.contentType === 'slideshow' ? 'Slideshow' : 'Video';
-  const hasLink = video.url.length > 0;
-
-  return (
-    <div
-      className="group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Thumbnail */}
-      <div className="relative aspect-[9/16] bg-black/50">
-        <img
-          src={video.thumbnail}
-          alt={video.title}
-          className="w-full h-full object-cover"
-        />
-
-        {/* Content Type Badge */}
-        <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-lg flex items-center gap-1.5">
-          <Play className="w-3 h-3 text-white" fill="currentColor" />
-          <span className="text-xs text-white font-medium">{contentBadgeLabel}</span>
-        </div>
-
-        {/* Caption Overlay */}
-        {video.description && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-            <p className="text-white text-sm font-medium line-clamp-3 drop-shadow-lg">
-              {video.description}
-            </p>
-          </div>
-        )}
-
-        {/* Play Button Overlay */}
-        {hasLink && (
-          <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-            <a
-              href={video.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
-            >
-              <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Content Info */}
-      <div className="p-4">
-        {/* Creator Info */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-            {getPlatformIcon(video.platform)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-medium text-white truncate">
-                @{video.uploaderHandle}
-              </span>
-              {getPlatformIcon(video.platform, "w-3.5 h-3.5 text-gray-400")}
-            </div>
-            <span className="text-xs text-gray-500">{video.category}</span>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
-          <span className="flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5" />
-            {formatNumber(video.views)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Heart className="w-3.5 h-3.5" />
-            {formatNumber(video.likes)}
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageCircle className="w-3.5 h-3.5" />
-            {formatNumber(video.comments)}
-          </span>
-          {video.shares > 0 && (
-            <span className="flex items-center gap-1">
-              <Share2 className="w-3.5 h-3.5" />
-              {formatNumber(video.shares)}
-            </span>
-          )}
-          {video.saves > 0 && (
-            <span className="flex items-center gap-1">
-              <Bookmark className="w-3.5 h-3.5" />
-              {formatNumber(video.saves)}
-            </span>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
