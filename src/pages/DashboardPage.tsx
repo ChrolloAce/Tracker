@@ -48,7 +48,7 @@ import ComingSoonLocked from '../components/ComingSoonLocked';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
-// ViralContentPage import removed — using ComingSoonLocked for now
+import ViralContentPage from '../components/ViralContentPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import SuperAdminService from '../services/SuperAdminService';
 import AdminService from '../services/AdminService';
@@ -3552,12 +3552,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
 
           {/* Viral Content Tab */}
-          {activeTab === 'viral' && (
-            <ComingSoonLocked 
-              title="Viral Content" 
-              description="Discover and curate trending viral content across Instagram, TikTok, YouTube, and X. Browse a library of top-performing videos to inspire your next campaign."
-            />
-          )}
+          {activeTab === 'viral' && <ViralContentPage />}
 
           {/* Team Members Tab */}
           {activeTab === 'team' && <TeamManagementPage />}
