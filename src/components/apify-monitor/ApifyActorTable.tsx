@@ -32,7 +32,7 @@ const ApifyActorTable: React.FC<ApifyActorTableProps> = ({ actors }) => {
         <table className="w-full text-xs">
           <thead>
             <tr className="text-white/30 border-b border-white/5">
-              <th className="text-left px-4 py-2 font-medium">Actor ID</th>
+              <th className="text-left px-4 py-2 font-medium">Actor</th>
               <th className="text-right px-4 py-2 font-medium">Runs</th>
               <th className="text-right px-4 py-2 font-medium">Failed</th>
               <th className="text-right px-4 py-2 font-medium">Avg $/Run</th>
@@ -46,8 +46,9 @@ const ApifyActorTable: React.FC<ApifyActorTableProps> = ({ actors }) => {
               const pct = (actor.totalUsd / totalCost) * 100;
               return (
                 <tr key={actor.actorId} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-2.5 text-white/70 font-mono truncate max-w-[180px]">
-                    {actor.actorId}
+                  <td className="px-4 py-2.5 max-w-[220px]">
+                    <div className="text-white/80 font-medium text-xs truncate">{actor.actorName}</div>
+                    <div className="text-white/30 font-mono text-[10px] truncate">{actor.actorId}</div>
                   </td>
                   <td className="px-4 py-2.5 text-right text-white/60">
                     {actor.runCount.toLocaleString()}

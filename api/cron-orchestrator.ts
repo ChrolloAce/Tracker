@@ -34,11 +34,11 @@ function initializeFirebase() {
 
 /**
  * Cron Orchestrator - Hierarchical Dispatcher
- * Runs at 05:00 UTC (Midnight EST) and 17:00 UTC (Noon EST)
+ * Runs at 17:00 UTC (Noon EST) — ONCE per day
  * 
  * SCHEDULE (EST Timezone):
- * - Premium (Ultra/Enterprise): Refresh at Midnight EST AND Noon EST (2x per day)
- * - Regular (Free/Basic/Pro): Refresh at Noon EST only (1x per day)
+ * - ALL plans: Refresh at Noon EST (1x per day)
+ * - Manual refresh available via Super Admin at any time
  * 
  * ARCHITECTURE:
  * Orchestrator → Organization Jobs → Project Jobs → Account Jobs
@@ -133,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isManualTrigger) {
       console.log(`⚡ Manual trigger detected - processing ALL organizations immediately\n`);
     } else {
-      console.log(`⏰ Scheduled cron - processing based on plan tier and time\n`);
+      console.log(`⏰ Scheduled cron (once daily at 17:00 UTC / Noon EST) - processing ALL organizations\n`);
     }
 
     // Always use production URL
@@ -161,22 +161,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         const planTier = subscriptionDoc.data()?.planTier || 'free';
         
-        // Determine if this org should be processed
-        let shouldProcess = true;
-        
-        // For scheduled cron (not manual), check time-based restrictions
-        if (!isManualTrigger) {
-          const isPremium = planTier === 'ultra' || planTier === 'enterprise';
-          // 17:00 UTC is 12:00 PM EST (Noon) - Process everyone
-          // 05:00 UTC is 00:00 AM EST (Midnight) - Process Premium only
-          shouldProcess = isPremium || currentHour === 17;
-          
-          if (!shouldProcess) {
-            console.log(`⏭️  Skip ${orgId} (${planTier} - not their refresh time)`);
-            skippedCount++;
-            continue;
-          }
-        }
+        // All orgs processed on every run (once daily at noon EST)
+        // Manual triggers always process all orgs
         
         console.log(`✅ Dispatch ${orgId} (${planTier})`);
         

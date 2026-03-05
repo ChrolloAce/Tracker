@@ -9,6 +9,13 @@ export default defineConfig({
     watch: {
       ignored: ['**/api/**'], // Ignore Vercel serverless functions
     },
+    proxy: {
+      '/api': {
+        target: 'https://www.viewtrack.app',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
   define: {
     global: 'globalThis',

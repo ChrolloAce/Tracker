@@ -26,6 +26,39 @@ interface ApifyRunItem {
   meta?: { origin?: string };
 }
 
+/**
+ * Resolve Apify internal actor IDs to human-readable names.
+ * Fetches actor details from Apify API and caches for the request.
+ */
+async function resolveActorNames(
+  actorIds: string[],
+  token: string
+): Promise<Record<string, string>> {
+  const nameMap: Record<string, string> = {};
+
+  await Promise.all(
+    actorIds.map(async (actId) => {
+      try {
+        const resp = await fetch(
+          `https://api.apify.com/v2/acts/${actId}?token=${token}`
+        );
+        if (resp.ok) {
+          const json = await resp.json();
+          const actorName = json.data?.name || json.data?.title || actId;
+          const ownerUsername = json.data?.username || '';
+          nameMap[actId] = ownerUsername ? `${ownerUsername}/${actorName}` : actorName;
+        } else {
+          nameMap[actId] = actId;
+        }
+      } catch {
+        nameMap[actId] = actId;
+      }
+    })
+  );
+
+  return nameMap;
+}
+
 interface DailyCost {
   date: string;
   totalUsd: number;
@@ -120,8 +153,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!entry.lastRunAt || run.startedAt > entry.lastRunAt) entry.lastRunAt = run.startedAt;
       actorMap.set(run.actId, entry);
     }
-    const actorBreakdown: ActorBreakdown[] = Array.from(actorMap.values())
-      .map(a => ({ ...a, avgCostPerRun: a.runCount > 0 ? a.totalUsd / a.runCount : 0 }))
+    // Resolve actor names from Apify API
+    const uniqueActorIds = Array.from(actorMap.keys());
+    const actorNames = await resolveActorNames(uniqueActorIds, APIFY_TOKEN);
+
+    const actorBreakdown: (ActorBreakdown & { actorName: string })[] = Array.from(actorMap.values())
+      .map(a => ({
+        ...a,
+        avgCostPerRun: a.runCount > 0 ? a.totalUsd / a.runCount : 0,
+        actorName: actorNames[a.actorId] || a.actorId,
+      }))
       .sort((a, b) => b.totalUsd - a.totalUsd);
 
     // ── Summary stats ──
@@ -143,6 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const recentRuns = filteredRuns.slice(0, 50).map(r => ({
       id: r.id,
       actorId: r.actId,
+      actorName: actorNames[r.actId] || r.actId,
       status: r.status,
       startedAt: r.startedAt,
       finishedAt: r.finishedAt,

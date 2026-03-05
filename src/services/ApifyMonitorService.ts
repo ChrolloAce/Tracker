@@ -29,6 +29,7 @@ export interface DailyCost {
 
 export interface ActorBreakdown {
   actorId: string;
+  actorName: string;
   totalUsd: number;
   runCount: number;
   avgCostPerRun: number;
@@ -39,6 +40,7 @@ export interface ActorBreakdown {
 export interface RecentRun {
   id: string;
   actorId: string;
+  actorName: string;
   status: string;
   startedAt: string;
   finishedAt: string | null;

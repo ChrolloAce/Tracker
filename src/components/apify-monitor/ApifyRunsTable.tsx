@@ -68,8 +68,8 @@ const ApifyRunsTable: React.FC<ApifyRunsTableProps> = ({ runs }) => {
                   <td className="px-4 py-2.5 text-white/50 font-mono truncate max-w-[120px]">
                     {run.id}
                   </td>
-                  <td className="px-4 py-2.5 text-white/60 font-mono truncate max-w-[140px]">
-                    {run.actorId}
+                  <td className="px-4 py-2.5 max-w-[160px]">
+                    <div className="text-white/60 text-xs truncate">{run.actorName}</div>
                   </td>
                   <td className="px-4 py-2.5 text-right text-white/70">
                     ${run.costUsd.toFixed(4)}
