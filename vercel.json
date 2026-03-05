@@ -110,6 +110,9 @@
     },
     "api/super-admin/dashboard-data.ts": {
       "maxDuration": 120
+    },
+    "api/super-admin/apify-monitor.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [

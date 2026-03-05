@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
+import {
   Video, 
   Users, 
   Settings, 
@@ -18,7 +18,8 @@ import {
   Lock,
   MessageCircle,
   Shield,
-  Flame
+  Flame,
+  Activity
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -287,6 +288,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [isSuperAdmin, isDemoMode]);
 
+  // Apify Monitor item (only for super admins)
+  const apifyMonitorItem: NavItem | null = useMemo(() => {
+    if (isSuperAdmin && !isDemoMode) {
+      return {
+        id: 'apify-monitor',
+        label: 'Apify Monitor',
+        icon: Activity,
+        href: '/apify-monitor',
+      };
+    }
+    return null;
+  }, [isSuperAdmin, isDemoMode]);
+
   // Support item (standalone at bottom)
   const supportItem: NavItem = useMemo(() => ({
     id: 'support',
@@ -500,6 +514,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {userRole !== 'creator' && <NavItemComponent item={supportItem} />}
           {settingsItem && <NavItemComponent item={settingsItem} />}
           {superAdminItem && <NavItemComponent item={superAdminItem} />}
+          {apifyMonitorItem && <NavItemComponent item={apifyMonitorItem} />}
           </>
       </nav>
 
