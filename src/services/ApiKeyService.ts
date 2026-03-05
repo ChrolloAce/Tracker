@@ -23,12 +23,22 @@ async function authHeaders(): Promise<HeadersInit> {
 }
 
 class ApiKeyService {
+  /** Safely parse JSON, returning a fallback on failure. */
+  private static async safeJson(res: Response): Promise<any> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(text || `Server returned ${res.status}`);
+    }
+  }
+
   /** List all API keys for an organization. */
   static async list(orgId: string): Promise<ApiKeyResponse[]> {
     const res = await fetch(`${BASE}?orgId=${orgId}`, {
       headers: await authHeaders(),
     });
-    const json = await res.json();
+    const json = await this.safeJson(res);
     if (!json.success) throw new Error(json.error?.message || 'Failed to list keys');
     return json.data.keys;
   }
@@ -51,7 +61,7 @@ class ApiKeyService {
         rateLimit: options?.rateLimit,
       }),
     });
-    const json = await res.json();
+    const json = await this.safeJson(res);
     if (!json.success) throw new Error(json.error?.message || 'Failed to create key');
     return json.data;
   }
@@ -62,7 +72,7 @@ class ApiKeyService {
       method: 'DELETE',
       headers: await authHeaders(),
     });
-    const json = await res.json();
+    const json = await this.safeJson(res);
     if (!json.success) throw new Error(json.error?.message || 'Failed to revoke key');
   }
 }

@@ -12,6 +12,8 @@ import { initializeFirebase } from './utils/firebase-admin';
 import { authenticateRequest, verifyOrgAccess } from './middleware/auth';
 import type { ApiKey, ApiKeyCreateRequest, ApiKeyResponse, ApiKeyCreateResponse } from '../src/types/apiKeys';
 
+const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com'];
+
 // Initialize Firebase Admin
 initializeFirebase();
 const db = getFirestore();
@@ -66,21 +68,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Verify user has access to org
-    const { hasAccess, role } = await verifyOrgAccess(user.userId, orgId);
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        error: { message: 'Access denied to this organization', code: 'FORBIDDEN' }
-      });
-    }
+    // Super admins bypass org access checks
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
     
-    // Only admins/owners can manage API keys
-    if (role !== 'admin' && role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        error: { message: 'Admin or owner role required to manage API keys', code: 'FORBIDDEN' }
-      });
+    if (!isSuperAdmin) {
+      // Verify user has access to org
+      const { hasAccess, role } = await verifyOrgAccess(user.userId, orgId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'Access denied to this organization', code: 'FORBIDDEN' }
+        });
+      }
+      
+      // Only admins/owners can manage API keys
+      if (role !== 'admin' && role !== 'owner') {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'Admin or owner role required to manage API keys', code: 'FORBIDDEN' }
+        });
+      }
     }
 
     switch (req.method) {

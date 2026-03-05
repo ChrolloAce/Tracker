@@ -45,7 +45,7 @@ const API_BASE = 'https://viewtrack.app/api/v1';
 // ─── Page ─────────────────────────────────────────────────
 
 const ApiManagementPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, currentOrgId } = useAuth();
   const navigate = useNavigate();
   const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
 
@@ -62,10 +62,14 @@ const ApiManagementPage: React.FC = () => {
     if (!isSuperAdmin) navigate('/dashboard');
   }, [isSuperAdmin, navigate]);
 
-  // Load keys — we need to pick an org. Super admin can use a default.
-  const orgId = (user as any)?.organizationId || 'default';
+  // Use the actual org ID from auth context
+  const orgId = currentOrgId || '';
 
   const loadKeys = useCallback(async () => {
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -79,8 +83,8 @@ const ApiManagementPage: React.FC = () => {
   }, [orgId]);
 
   useEffect(() => {
-    if (isSuperAdmin) loadKeys();
-  }, [isSuperAdmin, loadKeys]);
+    if (isSuperAdmin && orgId) loadKeys();
+  }, [isSuperAdmin, orgId, loadKeys]);
 
   if (!isSuperAdmin) return null;
 
