@@ -4,6 +4,7 @@ import {
   Search,
   SlidersHorizontal,
   ChevronDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { VIRAL_SEED_DATA } from '../data/viralSeedData';
 import VideoCard from './viral/VideoCard';
@@ -28,12 +29,6 @@ const YouTubeIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
-const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-  </svg>
-);
-
 // ─── Constants ────────────────────────────────────────────
 
 const PLATFORMS = [
@@ -41,7 +36,6 @@ const PLATFORMS = [
   { id: 'tiktok', name: 'TikTok', icon: TikTokIcon },
   { id: 'instagram', name: 'Instagram', icon: InstagramIcon },
   { id: 'youtube', name: 'YouTube', icon: YouTubeIcon },
-  { id: 'twitter', name: 'X', icon: XIcon },
 ];
 
 const CATEGORIES = [
@@ -90,18 +84,19 @@ const getPlatformIcon = (platform: string, className: string = "w-4 h-4") => {
     case 'instagram': return <InstagramIcon className={className} />;
     case 'tiktok': return <TikTokIcon className={className} />;
     case 'youtube': return <YouTubeIcon className={className} />;
-    case 'twitter': return <XIcon className={className} />;
     default: return <Flame className={className} />;
   }
 };
 
 // ─── Main Page ────────────────────────────────────────────
 
+type OpenDropdown = 'none' | 'filters' | 'sort';
+
 const ViralContentPage: React.FC = () => {
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
   const [sortBy, setSortBy] = useState<SortOption>('recently_added');
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
 
@@ -137,11 +132,19 @@ const ViralContentPage: React.FC = () => {
   }, [searchQuery, selectedPlatform, selectedCategory, contentTypeFilter, sortBy]);
 
   const activeFilterCount =
-    (sortBy !== 'recently_added' ? 1 : 0) + (contentTypeFilter !== 'all' ? 1 : 0);
+    (selectedPlatform !== 'all' ? 1 : 0) +
+    (selectedCategory !== 'All' ? 1 : 0) +
+    (contentTypeFilter !== 'all' ? 1 : 0);
+
+  const toggleDropdown = (which: OpenDropdown) => {
+    setOpenDropdown(prev => prev === which ? 'none' : which);
+  };
+
+  const sortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Sort';
 
   return (
     <div className="space-y-6">
-      {/* Search & Filters Row */}
+      {/* ── Header: Search + Filters + Sort ── */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -154,82 +157,112 @@ const ViralContentPage: React.FC = () => {
           />
         </div>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
-              showFilters || activeFilterCount > 0
-                ? 'bg-white/15 border-white/30 text-white'
-                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="ml-1 w-5 h-5 bg-white/20 rounded-full text-xs flex items-center justify-center text-white">
-                {activeFilterCount}
-              </span>
-            )}
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showFilters && (
-            <div className="absolute right-0 top-full mt-2 w-72 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Sort By</label>
-                <div className="space-y-1">
-                  {SORT_OPTIONS.map(o => (
-                    <button key={o.value} onClick={() => setSortBy(o.value)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${sortBy === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-                    >{o.label}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Content Type</label>
-                <div className="space-y-1">
-                  {CONTENT_TYPE_OPTIONS.map(o => (
-                    <button key={o.value} onClick={() => setContentTypeFilter(o.value)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${contentTypeFilter === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-                    >{o.label}</button>
-                  ))}
-                </div>
-              </div>
+        <div className="flex items-center gap-2">
+          {/* Filters dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => toggleDropdown('filters')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
+                openDropdown === 'filters' || activeFilterCount > 0
+                  ? 'bg-white/15 border-white/30 text-white'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
               {activeFilterCount > 0 && (
-                <button onClick={() => { setSortBy('recently_added'); setContentTypeFilter('all'); }}
-                  className="w-full text-center py-2 text-xs text-gray-500 hover:text-white transition-all">Reset Filters</button>
+                <span className="ml-0.5 w-5 h-5 bg-white/20 rounded-full text-xs flex items-center justify-center text-white">
+                  {activeFilterCount}
+                </span>
               )}
-            </div>
-          )}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'filters' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {openDropdown === 'filters' && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 space-y-4">
+                {/* Platform */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Platform</label>
+                  <div className="space-y-1">
+                    {PLATFORMS.map(p => {
+                      const Icon = p.icon;
+                      return (
+                        <button key={p.id} onClick={() => setSelectedPlatform(p.id)}
+                          className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-sm transition-all ${selectedPlatform === p.id ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          {Icon && <Icon className="w-4 h-4" />}
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Category</label>
+                  <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-hide">
+                    {CATEGORIES.map(c => (
+                      <button key={c} onClick={() => setSelectedCategory(c)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${selectedCategory === c ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                      >{c}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content Type */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Content Type</label>
+                  <div className="space-y-1">
+                    {CONTENT_TYPE_OPTIONS.map(o => (
+                      <button key={o.value} onClick={() => setContentTypeFilter(o.value)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${contentTypeFilter === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                      >{o.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reset */}
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => { setSelectedPlatform('all'); setSelectedCategory('All'); setContentTypeFilter('all'); }}
+                    className="w-full text-center py-2 text-xs text-gray-500 hover:text-white transition-all"
+                  >Reset All Filters</button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sort dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => toggleDropdown('sort')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
+                openDropdown === 'sort' || sortBy !== 'recently_added'
+                  ? 'bg-white/15 border-white/30 text-white'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              {sortLabel}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'sort' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {openDropdown === 'sort' && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-3 space-y-1">
+                {SORT_OPTIONS.map(o => (
+                  <button key={o.value}
+                    onClick={() => { setSortBy(o.value); setOpenDropdown('none'); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${sortBy === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                  >{o.label}</button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Platform Filters */}
-      <div className="flex flex-wrap gap-2">
-        {PLATFORMS.map(p => {
-          const Icon = p.icon;
-          const sel = selectedPlatform === p.id;
-          return (
-            <button key={p.id} onClick={() => setSelectedPlatform(p.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm border ${sel ? 'bg-white/15 border-white/30 text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}
-            >
-              {Icon && <Icon className="w-4 h-4" />}
-              <span>{p.name}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Category Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {CATEGORIES.map(c => (
-          <button key={c} onClick={() => setSelectedCategory(c)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${selectedCategory === c ? 'bg-white/15 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
-          >{c}</button>
-        ))}
-      </div>
-
-      {/* Content Grid */}
+      {/* ── Content Grid ── */}
       {filteredVideos.length === 0 ? (
         <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -253,9 +286,9 @@ const ViralContentPage: React.FC = () => {
         </div>
       )}
 
-      {/* Click-away overlay for filters dropdown */}
-      {showFilters && (
-        <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
+      {/* Click-away overlay to close any open dropdown */}
+      {openDropdown !== 'none' && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown('none')} />
       )}
     </div>
   );
