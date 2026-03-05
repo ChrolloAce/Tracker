@@ -6,43 +6,63 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { createHash, randomBytes } from 'crypto';
-import { initializeFirebase } from './utils/firebase-admin';
-import { authenticateRequest, verifyOrgAccess } from './middleware/auth';
-
-// ─── Inline types (avoid cross-boundary import issues) ────
-interface ApiKeyDoc {
-  organizationId: string;
-  projectId?: string;
-  name: string;
-  keyHash: string;
-  keyPrefix: string;
-  scopes: string[];
-  lastUsedAt?: any;
-  usageCount: number;
-  rateLimit: number;
-  status: string;
-  expiresAt?: any;
-  createdBy: string;
-  createdAt: any;
-  updatedAt: any;
-  revokedAt?: any;
-  revokedBy?: string;
-}
 
 const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com'];
 
-// Initialize Firebase Admin
-try {
-  initializeFirebase();
-} catch (e) {
-  console.error('Failed to init Firebase in api-keys:', e);
+// ─── Firebase Admin Init (inlined) ───────────────────────
+function initFirebase() {
+  if (!getApps().length) {
+    try {
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
+      initializeApp({
+        credential: cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey,
+        }),
+      });
+    } catch (e) {
+      console.error('❌ Firebase init failed in api-keys:', e);
+    }
+  }
 }
 
-/**
- * Generate a secure API key
- */
+initFirebase();
+
+// ─── Auth helpers (inlined) ──────────────────────────────
+async function authenticateUser(req: VercelRequest): Promise<{ userId: string; email?: string }> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error('No authentication token provided');
+  }
+  const idToken = authHeader.split('Bearer ')[1];
+  const decoded = await getAuth().verifyIdToken(idToken);
+  return { userId: decoded.uid, email: decoded.email };
+}
+
+async function verifyOrgAccess(userId: string, orgId: string): Promise<{ hasAccess: boolean; role?: string }> {
+  const db = getFirestore();
+  try {
+    const memberDoc = await db.collection('organizations').doc(orgId).collection('members').doc(userId).get();
+    if (!memberDoc.exists) return { hasAccess: false };
+    const data = memberDoc.data();
+    if (data?.status !== 'active') return { hasAccess: false };
+    return { hasAccess: true, role: data.role };
+  } catch {
+    return { hasAccess: false };
+  }
+}
+
+// ─── Key Generation ──────────────────────────────────────
 function generateApiKey(): { key: string; hash: string; prefix: string } {
   const pfx = 'vt_live_';
   const randomPart = randomBytes(24).toString('base64url');
@@ -51,8 +71,8 @@ function generateApiKey(): { key: string; hash: string; prefix: string } {
   return { key, hash, prefix: key.substring(0, 12) };
 }
 
+// ─── Handler ─────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -61,17 +81,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  let db: FirebaseFirestore.Firestore;
   try {
-    db = getFirestore();
-  } catch (e: any) {
-    console.error('Firestore init failed:', e);
-    return res.status(500).json({ success: false, error: { message: 'Database unavailable', code: 'DB_INIT_ERROR' } });
-  }
-
-  try {
-    // Authenticate user (requires Firebase auth token)
-    const user = await authenticateRequest(req);
+    const db = getFirestore();
+    const user = await authenticateUser(req);
     const { orgId, keyId } = req.query;
 
     if (!orgId || typeof orgId !== 'string') {
@@ -95,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (role !== 'admin' && role !== 'owner') {
         return res.status(403).json({
           success: false,
-          error: { message: 'Admin or owner role required to manage API keys', code: 'FORBIDDEN' },
+          error: { message: 'Admin or owner role required', code: 'FORBIDDEN' },
         });
       }
     }
@@ -127,7 +139,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // ─── Create ───────────────────────────────────────────────
-
 async function createApiKey(
   req: VercelRequest,
   res: VercelResponse,
@@ -201,7 +212,7 @@ async function createApiKey(
     data: {
       id: docRef.id,
       name: body.name,
-      key, // Full key — only shown once!
+      key,
       keyPrefix: prefix,
       scopes: body.scopes,
       status: 'active',
@@ -214,7 +225,6 @@ async function createApiKey(
 }
 
 // ─── List ─────────────────────────────────────────────────
-
 async function listApiKeys(
   res: VercelResponse,
   db: FirebaseFirestore.Firestore,
@@ -249,7 +259,6 @@ async function listApiKeys(
 }
 
 // ─── Revoke ───────────────────────────────────────────────
-
 async function revokeApiKey(
   req: VercelRequest,
   res: VercelResponse,
