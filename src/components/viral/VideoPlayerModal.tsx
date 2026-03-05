@@ -50,6 +50,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) =
   const videoId = extractVideoId(video.url);
   const canEmbed = !!videoId;
   const embedUrl = videoId ? `https://www.tiktok.com/embed/v2/${videoId}` : null;
+  const isSlideshow = video.contentType === 'slideshow';
 
   return (
     <div
@@ -106,7 +107,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) =
                 <img
                   src={video.thumbnail}
                   alt={video.title}
-                  className="w-full aspect-[9/14] object-cover"
+                  className={`w-full ${isSlideshow ? 'aspect-[4/3] object-contain bg-black' : 'aspect-[9/14] object-cover'}`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
 
