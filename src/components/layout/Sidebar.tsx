@@ -20,7 +20,8 @@ import {
   Shield,
   Flame,
   Activity,
-  RefreshCw
+  RefreshCw,
+  Key
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -315,6 +316,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [isSuperAdmin, isDemoMode]);
 
+  // API Management item (only for super admins)
+  const apiManagementItem: NavItem | null = useMemo(() => {
+    if (isSuperAdmin && !isDemoMode) {
+      return {
+        id: 'api-management',
+        label: 'API Management',
+        icon: Key,
+        href: '/api-management',
+      };
+    }
+    return null;
+  }, [isSuperAdmin, isDemoMode]);
+
   // Support item (standalone at bottom)
   const supportItem: NavItem = useMemo(() => ({
     id: 'support',
@@ -530,6 +544,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {superAdminItem && <NavItemComponent item={superAdminItem} />}
           {apifyMonitorItem && <NavItemComponent item={apifyMonitorItem} />}
           {refreshMonitorItem && <NavItemComponent item={refreshMonitorItem} />}
+          {apiManagementItem && <NavItemComponent item={apiManagementItem} />}
           </>
       </nav>
 

@@ -119,6 +119,30 @@
     },
     "api/super-admin/seed-viral-content.ts": {
       "maxDuration": 120
+    },
+    "api/api-keys.ts": {
+      "maxDuration": 15
+    },
+    "api/v1/videos/index.ts": {
+      "maxDuration": 30
+    },
+    "api/v1/videos/[id].ts": {
+      "maxDuration": 30
+    },
+    "api/v1/accounts/index.ts": {
+      "maxDuration": 30
+    },
+    "api/v1/accounts/[id].ts": {
+      "maxDuration": 30
+    },
+    "api/v1/analytics/overview.ts": {
+      "maxDuration": 60
+    },
+    "api/v1/refreshes/index.ts": {
+      "maxDuration": 30
+    },
+    "api/v1/projects/index.ts": {
+      "maxDuration": 15
     }
   },
   "crons": [

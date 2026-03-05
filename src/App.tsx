@@ -37,6 +37,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import SupportPage from './pages/SupportPage';
 import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import ApiDocsPage from './pages/ApiDocsPage';
+import ApiManagementPage from './pages/ApiManagementPage';
 import ViralPage from './pages/ViralPage';
 import { useEffect, useState } from 'react';
 import NotFoundPage from './pages/NotFoundPage';
@@ -378,6 +379,18 @@ function App() {
             <Navigate to="/login" replace />
           ) : (
             <ApifyMonitorPage />
+          )
+        } 
+      />
+
+      {/* API Management Page (Super Admin) */}
+      <Route 
+        path="/api-management" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <ApiManagementPage />
           )
         } 
       />
