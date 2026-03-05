@@ -1,7 +1,6 @@
 import {
   collection,
   query,
-  where,
   orderBy,
   limit,
   startAfter,
@@ -36,16 +35,18 @@ export interface ViralFetchResult {
 class ViralContentService {
   /**
    * Fetch a page of viral videos from Firestore.
-   * Sorting is done by Firestore; extra filtering (platform,
-   * category, contentType, search) is expected to happen
-   * client-side on the returned results.
+   *
+   * Uses simple single-field orderBy queries that work with
+   * Firestore's automatic indexes — no composite index setup needed.
+   *
+   * Additional filtering (platform, category, contentType, search)
+   * is done client-side on the returned results.
    */
   static async fetchPage(options: ViralFetchOptions = {}): Promise<ViralFetchResult> {
     const pageSize = options.pageSize || DEFAULT_PAGE_SIZE;
     const { field, direction } = this.resolveSortField(options.sortBy);
 
     const constraints: QueryConstraint[] = [
-      where('isActive', '==', true),
       orderBy(field, direction),
     ];
 
@@ -53,7 +54,7 @@ class ViralContentService {
       constraints.push(startAfter(options.lastDoc));
     }
 
-    // Fetch one extra document to know if there are more pages
+    // Fetch one extra document to detect if more pages exist
     constraints.push(limit(pageSize + 1));
 
     const q = query(collection(db, COLLECTION), ...constraints);
@@ -71,13 +72,10 @@ class ViralContentService {
   }
 
   /**
-   * Get the total count of active viral videos (cheap aggregate).
+   * Get total count of viral videos.
    */
   static async getTotalCount(): Promise<number> {
-    const q = query(
-      collection(db, COLLECTION),
-      where('isActive', '==', true),
-    );
+    const q = query(collection(db, COLLECTION));
     const snap = await getCountFromServer(q);
     return snap.data().count;
   }
