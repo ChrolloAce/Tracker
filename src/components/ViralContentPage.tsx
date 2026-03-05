@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Flame, 
-  Trash2, 
   Eye, 
   Heart, 
   MessageCircle, 
-  Loader2,
   Search,
   Play,
   SlidersHorizontal,
@@ -13,9 +11,7 @@ import {
   Bookmark,
   Share2,
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import ViralContentService from '../services/ViralContentService';
-import { ViralVideo } from '../types/viralContent';
+import { VIRAL_SEED_DATA, ViralSeedEntry } from '../data/viralSeedData';
 
 // Platform icons
 const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -83,9 +79,6 @@ const CONTENT_TYPE_OPTIONS: { value: ContentTypeFilter; label: string }[] = [
 ];
 
 const ViralContentPage: React.FC = () => {
-  const { user } = useAuth();
-  const [videos, setVideos] = useState<ViralVideo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,74 +86,41 @@ const ViralContentPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('recently_added');
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
 
-  const isSuperAdmin = ViralContentService.isSuperAdmin(user?.email);
-
-  useEffect(() => {
-    loadVideos();
-  }, [selectedPlatform]);
-
-  const loadVideos = async () => {
-    setLoading(true);
-    try {
-      // Seed initial content if collection is empty
-      await ViralContentService.seedInitialContentIfEmpty();
-
-      const data = selectedPlatform === 'all'
-        ? await ViralContentService.getViralVideos()
-        : await ViralContentService.getViralVideosByPlatform(selectedPlatform);
-      setVideos(data);
-    } catch (error) {
-      console.error('Failed to load viral videos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // All data is hardcoded — no Firestore, instant render
   const filteredVideos = useMemo(() => {
-    let result = videos.filter(video => {
+    let result = VIRAL_SEED_DATA.filter(video => {
+      const matchesPlatform = selectedPlatform === 'all' || video.platform === selectedPlatform;
+
       const matchesSearch = !searchQuery || 
         video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        video.uploaderName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        video.uploaderHandle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        video.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+        video.uploaderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        video.uploaderHandle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        video.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesCategory = selectedCategory === 'All' || video.category === selectedCategory;
 
       const matchesContentType = contentTypeFilter === 'all' || video.contentType === contentTypeFilter;
 
-      return matchesSearch && matchesCategory && matchesContentType;
+      return matchesPlatform && matchesSearch && matchesCategory && matchesContentType;
     });
 
-    // Sort
     result.sort((a, b) => {
       switch (sortBy) {
         case 'recently_added':
-          return (b.addedAt?.toMillis?.() || 0) - (a.addedAt?.toMillis?.() || 0);
+          return VIRAL_SEED_DATA.indexOf(a) - VIRAL_SEED_DATA.indexOf(b); // CSV order = added order
         case 'latest_posted':
-          return (b.uploadDate?.toMillis?.() || 0) - (a.uploadDate?.toMillis?.() || 0);
+          return new Date(b.uploadDateISO).getTime() - new Date(a.uploadDateISO).getTime();
         case 'most_views':
-          return (b.views || 0) - (a.views || 0);
+          return b.views - a.views;
         case 'most_likes':
-          return (b.likes || 0) - (a.likes || 0);
+          return b.likes - a.likes;
         default:
           return 0;
       }
     });
 
     return result;
-  }, [videos, searchQuery, selectedCategory, contentTypeFilter, sortBy]);
-
-  const handleDelete = async (videoId: string) => {
-    if (!user?.email || !confirm('Are you sure you want to delete this video?')) return;
-
-    try {
-      await ViralContentService.deleteViralVideo(videoId, user.email);
-      setVideos(prev => prev.filter(v => v.id !== videoId));
-    } catch (error) {
-      console.error('Failed to delete video:', error);
-      alert('Failed to delete video');
-    }
-  };
+  }, [searchQuery, selectedPlatform, selectedCategory, contentTypeFilter, sortBy]);
 
   const formatNumber = (num?: number) => {
     if (!num) return '0';
@@ -323,11 +283,7 @@ const ViralContentPage: React.FC = () => {
       </div>
 
       {/* Content Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
-      ) : filteredVideos.length === 0 ? (
+      {filteredVideos.length === 0 ? (
         <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Flame className="w-8 h-8 text-gray-600" />
@@ -339,12 +295,10 @@ const ViralContentPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredVideos.map(video => (
+          {filteredVideos.map((video, idx) => (
             <VideoCard
-              key={video.id}
+              key={`${video.uploaderHandle}-${idx}`}
               video={video}
-              isSuperAdmin={isSuperAdmin}
-              onDelete={handleDelete}
               getPlatformIcon={getPlatformIcon}
               formatNumber={formatNumber}
             />
@@ -366,23 +320,16 @@ const ViralContentPage: React.FC = () => {
 // ─── Video Card ───────────────────────────────────────────
 
 interface VideoCardProps {
-  video: ViralVideo;
-  isSuperAdmin: boolean;
-  onDelete: (id: string) => void;
+  video: ViralSeedEntry;
   getPlatformIcon: (platform: string, className?: string) => JSX.Element;
-  formatNumber: (num?: number) => string;
+  formatNumber: (num: number) => string;
 }
 
-const VideoCard: React.FC<VideoCardProps> = ({ 
-  video, 
-  isSuperAdmin, 
-  onDelete, 
-  getPlatformIcon, 
-  formatNumber 
-}) => {
+const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNumber }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const contentBadgeLabel = video.contentType === 'slideshow' ? 'Slideshow' : 'Video';
+  const hasLink = video.url.length > 0;
 
   return (
     <div
@@ -392,17 +339,11 @@ const VideoCard: React.FC<VideoCardProps> = ({
     >
       {/* Thumbnail */}
       <div className="relative aspect-[9/16] bg-black/50">
-        {video.thumbnail ? (
-          <img
-            src={video.thumbnail}
-            alt={video.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/5 to-white/10">
-            {getPlatformIcon(video.platform, "w-12 h-12 text-gray-600")}
-          </div>
-        )}
+        <img
+          src={video.thumbnail}
+          alt={video.title}
+          className="w-full h-full object-cover"
+        />
 
         {/* Content Type Badge */}
         <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-lg flex items-center gap-1.5">
@@ -420,28 +361,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
         )}
 
         {/* Play Button Overlay */}
-        <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-          <a
-            href={video.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
-          >
-            <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
-          </a>
-        </div>
-
-        {/* Admin Delete Button */}
-        {isSuperAdmin && isHovered && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(video.id);
-            }}
-            className="absolute top-3 right-3 p-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg transition-all backdrop-blur-sm"
-          >
-            <Trash2 className="w-4 h-4 text-red-400" />
-          </button>
+        {hasLink && (
+          <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+            <a
+              href={video.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
+            >
+              <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
+            </a>
+          </div>
         )}
       </div>
 
@@ -449,27 +379,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <div className="p-4">
         {/* Creator Info */}
         <div className="flex items-center gap-2 mb-3">
-          {video.uploaderProfilePic ? (
-            <img 
-              src={video.uploaderProfilePic} 
-              alt={video.uploaderName || ''} 
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              {getPlatformIcon(video.platform)}
-            </div>
-          )}
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+            {getPlatformIcon(video.platform)}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-medium text-white truncate">
-                @{video.uploaderHandle || video.uploaderName || 'unknown'}
+                @{video.uploaderHandle}
               </span>
               {getPlatformIcon(video.platform, "w-3.5 h-3.5 text-gray-400")}
             </div>
-            {video.category && (
-              <span className="text-xs text-gray-500">{video.category}</span>
-            )}
+            <span className="text-xs text-gray-500">{video.category}</span>
           </div>
         </div>
 
@@ -487,13 +407,13 @@ const VideoCard: React.FC<VideoCardProps> = ({
             <MessageCircle className="w-3.5 h-3.5" />
             {formatNumber(video.comments)}
           </span>
-          {video.shares !== undefined && video.shares > 0 && (
+          {video.shares > 0 && (
             <span className="flex items-center gap-1">
               <Share2 className="w-3.5 h-3.5" />
               {formatNumber(video.shares)}
             </span>
           )}
-          {video.saves !== undefined && video.saves > 0 && (
+          {video.saves > 0 && (
             <span className="flex items-center gap-1">
               <Bookmark className="w-3.5 h-3.5" />
               {formatNumber(video.saves)}
