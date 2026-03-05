@@ -20,8 +20,7 @@ interface VideoCardProps {
 const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNumber }) => {
   const [showPlayer, setShowPlayer] = useState(false);
 
-  const isSlideshow = video.contentType === 'slideshow';
-  const contentBadgeLabel = isSlideshow ? 'Slideshow' : 'Video';
+  const contentBadgeLabel = video.contentType === 'slideshow' ? 'Slideshow' : 'Video';
 
   return (
     <>
@@ -29,12 +28,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNum
         className="group relative bg-black rounded-2xl overflow-hidden border border-white/10 hover:border-white/25 transition-all cursor-pointer"
         onClick={() => setShowPlayer(true)}
       >
-        {/* Full-bleed thumbnail — aspect ratio adapts to content type */}
-        <div className={`relative ${isSlideshow ? 'aspect-[4/3]' : 'aspect-[9/16]'}`}>
+        {/* Full-bleed thumbnail */}
+        <div className="relative aspect-[9/16]">
           <img
             src={video.thumbnail}
             alt={video.title}
-            className={`w-full h-full ${isSlideshow ? 'object-contain' : 'object-cover'}`}
+            className="w-full h-full object-cover"
           />
 
           {/* Dark gradient overlay for readability */}
@@ -47,15 +46,15 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNum
           </div>
 
           {/* ── Right sidebar: TikTok-style metrics ── */}
-          <div className={`absolute right-2 flex flex-col items-center ${isSlideshow ? 'top-10 gap-2' : 'bottom-24 gap-4'}`}>
-            <StatIcon icon={<Eye className={isSlideshow ? "w-4 h-4" : "w-5 h-5"} />} value={formatNumber(video.views)} />
-            <StatIcon icon={<Heart className={isSlideshow ? "w-4 h-4" : "w-5 h-5"} />} value={formatNumber(video.likes)} />
-            <StatIcon icon={<MessageCircle className={isSlideshow ? "w-4 h-4" : "w-5 h-5"} />} value={formatNumber(video.comments)} />
+          <div className="absolute right-2 bottom-24 flex flex-col items-center gap-4">
+            <StatIcon icon={<Eye className="w-5 h-5" />} value={formatNumber(video.views)} />
+            <StatIcon icon={<Heart className="w-5 h-5" />} value={formatNumber(video.likes)} />
+            <StatIcon icon={<MessageCircle className="w-5 h-5" />} value={formatNumber(video.comments)} />
             {video.shares > 0 && (
-              <StatIcon icon={<Share2 className={isSlideshow ? "w-4 h-4" : "w-5 h-5"} />} value={formatNumber(video.shares)} />
+              <StatIcon icon={<Share2 className="w-5 h-5" />} value={formatNumber(video.shares)} />
             )}
             {video.saves > 0 && (
-              <StatIcon icon={<Bookmark className={isSlideshow ? "w-4 h-4" : "w-5 h-5"} />} value={formatNumber(video.saves)} />
+              <StatIcon icon={<Bookmark className="w-5 h-5" />} value={formatNumber(video.saves)} />
             )}
           </div>
 
