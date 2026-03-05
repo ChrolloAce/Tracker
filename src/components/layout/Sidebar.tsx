@@ -19,7 +19,8 @@ import {
   MessageCircle,
   Shield,
   Flame,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -301,6 +302,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [isSuperAdmin, isDemoMode]);
 
+  // Refresh Monitor item (only for super admins)
+  const refreshMonitorItem: NavItem | null = useMemo(() => {
+    if (isSuperAdmin && !isDemoMode) {
+      return {
+        id: 'refresh-monitor',
+        label: 'Refresh Monitor',
+        icon: RefreshCw,
+        href: '/refresh-monitor',
+      };
+    }
+    return null;
+  }, [isSuperAdmin, isDemoMode]);
+
   // Support item (standalone at bottom)
   const supportItem: NavItem = useMemo(() => ({
     id: 'support',
@@ -515,6 +529,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {settingsItem && <NavItemComponent item={settingsItem} />}
           {superAdminItem && <NavItemComponent item={superAdminItem} />}
           {apifyMonitorItem && <NavItemComponent item={apifyMonitorItem} />}
+          {refreshMonitorItem && <NavItemComponent item={refreshMonitorItem} />}
           </>
       </nav>
 

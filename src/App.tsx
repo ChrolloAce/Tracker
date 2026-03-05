@@ -10,6 +10,7 @@ import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
 import DashboardPage from './pages/DashboardPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import ApifyMonitorPage from './pages/ApifyMonitorPage';
+import RefreshMonitorPage from './pages/RefreshMonitorPage';
 import ViewAsPage from './pages/ViewAsPage';
 import AccountsPage from './pages/AccountsPage';
 import VideosPage from './pages/VideosPage';
@@ -377,6 +378,18 @@ function App() {
             <Navigate to="/login" replace />
           ) : (
             <ApifyMonitorPage />
+          )
+        } 
+      />
+
+      {/* Refresh Monitor Page (Super Admin) */}
+      <Route 
+        path="/refresh-monitor" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <RefreshMonitorPage />
           )
         } 
       />

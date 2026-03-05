@@ -113,6 +113,9 @@
     },
     "api/super-admin/apify-monitor.ts": {
       "maxDuration": 30
+    },
+    "api/super-admin/refresh-monitor.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
