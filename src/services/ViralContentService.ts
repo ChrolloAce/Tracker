@@ -8,10 +8,11 @@ import {
   where, 
   orderBy, 
   Timestamp,
-  updateDoc 
+  updateDoc,
+  limit
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { ViralVideo, ViralVideoInput } from '../types/viralContent';
+import { ViralVideo } from '../types/viralContent';
 
 // Super admin email that can manage viral content
 const SUPER_ADMIN_EMAIL = 'ernesto@maktubtechnologies.com';
@@ -62,47 +63,47 @@ class ViralContentService {
   }
 
   /**
-   * Add a viral video (super admin only)
+   * Seed initial curated viral content if the collection is empty
    */
-  static async addViralVideo(
-    input: ViralVideoInput,
-    addedByEmail: string
-  ): Promise<string> {
-    if (!this.isSuperAdmin(addedByEmail)) {
-      throw new Error('Only super admin can add viral videos');
+  static async seedInitialContentIfEmpty(): Promise<boolean> {
+    const videosRef = collection(db, this.COLLECTION);
+    const checkQuery = query(videosRef, limit(1));
+    const checkSnapshot = await getDocs(checkQuery);
+
+    if (!checkSnapshot.empty) return false;
+
+    const seedVideos: Omit<ViralVideo, 'id'>[] = [
+      {
+        url: 'https://www.tiktok.com/@amanda.saves/video/7603219066978979085',
+        platform: 'tiktok',
+        title: 'YieldClub helping me money do more',
+        description: 'YieldClub helping me money do more #yield #earninganimation #tryyieldclub #tiktok',
+        thumbnail: 'https://cdn.vireel.io/viral-content/slideshows/amanda-saves-https---www-tiktok-com--amanda-saves-video-7603219066978979085-7603219066978979085/slide-1.jpg',
+        views: 715800,
+        likes: 10100,
+        comments: 184,
+        shares: 162,
+        saves: 421,
+        followerCount: 153,
+        uploaderHandle: 'amanda.saves',
+        uploaderName: 'amanda.saves',
+        category: 'Business & Finance',
+        contentType: 'video',
+        tags: ['yield', 'earninganimation', 'tryyieldclub', 'tiktok'],
+        uploadDate: Timestamp.fromDate(new Date('2025-02-04')),
+        addedAt: Timestamp.now(),
+        addedBy: 'system',
+        isActive: true,
+      },
+    ];
+
+    for (const videoData of seedVideos) {
+      const videoRef = doc(collection(db, this.COLLECTION));
+      await setDoc(videoRef, { id: videoRef.id, ...videoData });
     }
 
-    const videoRef = doc(collection(db, this.COLLECTION));
-    
-    const video: ViralVideo = {
-      id: videoRef.id,
-      ...input,
-      addedAt: Timestamp.now(),
-      addedBy: addedByEmail,
-      isActive: true
-    };
-
-    await setDoc(videoRef, video);
-    console.log(`✅ Added viral video: ${video.title}`);
-    
-    return videoRef.id;
-  }
-
-  /**
-   * Update a viral video (super admin only)
-   */
-  static async updateViralVideo(
-    videoId: string,
-    updates: Partial<ViralVideoInput>,
-    userEmail: string
-  ): Promise<void> {
-    if (!this.isSuperAdmin(userEmail)) {
-      throw new Error('Only super admin can update viral videos');
-    }
-
-    const videoRef = doc(db, this.COLLECTION, videoId);
-    await updateDoc(videoRef, updates);
-    console.log(`✅ Updated viral video: ${videoId}`);
+    console.log(`✅ Seeded ${seedVideos.length} initial viral video(s)`);
+    return true;
   }
 
   /**

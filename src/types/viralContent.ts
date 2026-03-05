@@ -15,23 +15,16 @@ export interface ViralVideo {
   likes?: number;
   comments?: number;
   shares?: number;
+  saves?: number;
+  followerCount?: number;
+  contentType?: 'video' | 'slideshow';
   uploaderName?: string;
   uploaderHandle?: string;
   uploaderProfilePic?: string;
   uploadDate?: Timestamp;
   addedAt: Timestamp;
-  addedBy: string; // Super admin email
+  addedBy: string;
   tags?: string[];
   category?: string;
   isActive: boolean;
-}
-
-export interface ViralVideoInput {
-  url: string;
-  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
-  title: string;
-  description?: string;
-  thumbnail?: string;
-  tags?: string[];
-  category?: string;
 }
