@@ -2,100 +2,39 @@ import {
   collection,
   query,
   orderBy,
-  limit,
-  startAfter,
   getDocs,
-  getCountFromServer,
-  QueryDocumentSnapshot,
-  DocumentData,
-  QueryConstraint,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { ViralVideo } from '../types/viralContent';
 
 const COLLECTION = 'viralContent';
-const DEFAULT_PAGE_SIZE = 12;
-
-// ─── Public types ────────────────────────────────────────
-
-export interface ViralFetchOptions {
-  sortBy?: 'recently_added' | 'latest_posted' | 'most_views' | 'most_likes';
-  pageSize?: number;
-  lastDoc?: QueryDocumentSnapshot<DocumentData> | null;
-}
-
-export interface ViralFetchResult {
-  videos: ViralVideo[];
-  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
-  hasMore: boolean;
-}
 
 // ─── Service ─────────────────────────────────────────────
 
 class ViralContentService {
+  /** In-memory cache so we only read Firestore once per session. */
+  private static cachedVideos: ViralVideo[] | null = null;
+
   /**
-   * Fetch a page of viral videos from Firestore.
-   *
-   * Uses simple single-field orderBy queries that work with
-   * Firestore's automatic indexes — no composite index setup needed.
-   *
-   * Additional filtering (platform, category, contentType, search)
-   * is done client-side on the returned results.
+   * Fetch ALL viral videos from Firestore (cached after first call).
+   * ~4 K small docs ≈ 1–2 MB — fine to hold in memory.
    */
-  static async fetchPage(options: ViralFetchOptions = {}): Promise<ViralFetchResult> {
-    const pageSize = options.pageSize || DEFAULT_PAGE_SIZE;
-    const { field, direction } = this.resolveSortField(options.sortBy);
+  static async fetchAll(): Promise<ViralVideo[]> {
+    if (this.cachedVideos) return this.cachedVideos;
 
-    const constraints: QueryConstraint[] = [
-      orderBy(field, direction),
-    ];
-
-    if (options.lastDoc) {
-      constraints.push(startAfter(options.lastDoc));
-    }
-
-    // Fetch one extra document to detect if more pages exist
-    constraints.push(limit(pageSize + 1));
-
-    const q = query(collection(db, COLLECTION), ...constraints);
+    const q = query(collection(db, COLLECTION), orderBy('order', 'asc'));
     const snapshot = await getDocs(q);
 
-    const docs = snapshot.docs;
-    const hasMore = docs.length > pageSize;
-    const pageDocs = hasMore ? docs.slice(0, pageSize) : docs;
+    this.cachedVideos = snapshot.docs.map(
+      (d) => ({ id: d.id, ...d.data() } as ViralVideo),
+    );
 
-    return {
-      videos: pageDocs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo)),
-      lastDoc: pageDocs.length > 0 ? pageDocs[pageDocs.length - 1] : null,
-      hasMore,
-    };
+    return this.cachedVideos;
   }
 
-  /**
-   * Get total count of viral videos.
-   */
-  static async getTotalCount(): Promise<number> {
-    const q = query(collection(db, COLLECTION));
-    const snap = await getCountFromServer(q);
-    return snap.data().count;
-  }
-
-  // ─── Private helpers ─────────────────────────────────────
-
-  private static resolveSortField(
-    sortBy?: string,
-  ): { field: string; direction: 'asc' | 'desc' } {
-    switch (sortBy) {
-      case 'most_views':
-        return { field: 'views', direction: 'desc' };
-      case 'most_likes':
-        return { field: 'likes', direction: 'desc' };
-      case 'latest_posted':
-        return { field: 'uploadDate', direction: 'desc' };
-      case 'recently_added':
-      default:
-        return { field: 'order', direction: 'asc' };
-    }
+  /** Clear the in-memory cache (e.g. after re-seeding). */
+  static clearCache(): void {
+    this.cachedVideos = null;
   }
 }
 

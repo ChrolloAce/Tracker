@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Flame, 
   Search,
@@ -9,13 +9,12 @@ import {
   ArrowUpDown,
   Loader2,
 } from 'lucide-react';
-import ViralContentService, { ViralFetchResult } from '../services/ViralContentService';
+import ViralContentService from '../services/ViralContentService';
 import { ViralVideo } from '../types/viralContent';
 import { useAuth } from '../contexts/AuthContext';
 import SuperAdminService from '../services/SuperAdminService';
 import VideoCard from './viral/VideoCard';
 import SeedViralButton from './viral/SeedViralButton';
-import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 // ─── Platform icons ───────────────────────────────────────
 
@@ -98,6 +97,11 @@ const ViralContentPage: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
 
+  // All videos fetched once from Firestore
+  const [allVideos, setAllVideos] = useState<ViralVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   // Filter / sort state
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -105,107 +109,73 @@ const ViralContentPage: React.FC = () => {
   const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
   const [sortBy, setSortBy] = useState<SortOption>('recently_added');
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
-
-  // Pagination state
+  
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [videos, setVideos] = useState<ViralVideo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [hasMore, setHasMore] = useState(false);
 
-  // Cursor cache: page number → lastDoc of that page (for forward navigation)
-  const cursorsRef = useRef<Record<number, QueryDocumentSnapshot<DocumentData>>>({});
-
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  // ── Load a specific page ───────────────────────────────
-  const loadPage = useCallback(
-    async (page: number) => {
+  // ── Fetch all videos once ──────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
     setLoading(true);
       setError(null);
-
       try {
-        // For page 1 → no cursor. For page N → use the lastDoc of page N-1.
-        const cursor = page === 1 ? null : (cursorsRef.current[page - 1] ?? null);
-
-        // If we don't have the cursor for a non-first page, we need to walk forward
-        // from the closest cached page. Usually pages are visited sequentially.
-        if (page > 1 && !cursor) {
-          // Find the closest cached page
-          let closestPage = 1;
-          for (let p = page - 1; p >= 1; p--) {
-            if (p === 1 || cursorsRef.current[p]) { closestPage = p; break; }
-          }
-          // Walk forward from closest page to target page
-          let walkCursor: QueryDocumentSnapshot<DocumentData> | null =
-            closestPage === 1 ? null : cursorsRef.current[closestPage];
-          for (let p = closestPage + 1; p <= page; p++) {
-            const walkResult = await ViralContentService.fetchPage({
-              sortBy,
-              pageSize: PAGE_SIZE,
-              lastDoc: walkCursor,
-            });
-            if (walkResult.lastDoc) {
-              cursorsRef.current[p - 1] = walkResult.lastDoc; // store cursor for previous page
-              if (p < page) walkCursor = walkResult.lastDoc;
-            }
-            // If this is the target page, use these results
-            if (p === page) {
-              setVideos(walkResult.videos);
-              setHasMore(walkResult.hasMore);
-              if (walkResult.lastDoc) cursorsRef.current[page] = walkResult.lastDoc;
-              setCurrentPage(page);
-              setLoading(false);
-              return;
-            }
-          }
-        }
-
-        const result: ViralFetchResult = await ViralContentService.fetchPage({
-          sortBy,
-          pageSize: PAGE_SIZE,
-          lastDoc: cursor,
-        });
-
-        setVideos(result.videos);
-        setHasMore(result.hasMore);
-        if (result.lastDoc) cursorsRef.current[page] = result.lastDoc;
-        setCurrentPage(page);
+        const videos = await ViralContentService.fetchAll();
+        if (!cancelled) setAllVideos(videos);
       } catch (err) {
-        console.error('Failed to load viral content:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load content');
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load content');
     } finally {
-      setLoading(false);
+        if (!cancelled) setLoading(false);
     }
-    },
-    [sortBy],
-  );
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  // Initial load + reload on sort change
-  useEffect(() => {
-    cursorsRef.current = {}; // Reset cursors when sort changes
-    setCurrentPage(1);
-    loadPage(1);
-    ViralContentService.getTotalCount().then(setTotalCount).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy]);
-
-  // ── Client-side filtering ──────────────────────────────
+  // ── Filter + sort (runs on full dataset) ───────────────
   const filteredVideos = useMemo(() => {
-    return videos.filter((video) => {
+    const q = searchQuery.toLowerCase();
+
+    let result = allVideos.filter((video) => {
       const matchPlatform = selectedPlatform === 'all' || video.platform === selectedPlatform;
       const matchCategory = selectedCategory === 'All' || video.category === selectedCategory;
       const matchType = contentTypeFilter === 'all' || video.contentType === contentTypeFilter;
       const matchSearch =
-        !searchQuery ||
-        video.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        video.uploaderHandle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        video.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        video.tags?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+        !q ||
+        video.title?.toLowerCase().includes(q) ||
+        video.uploaderHandle?.toLowerCase().includes(q) ||
+        video.description?.toLowerCase().includes(q) ||
+        video.tags?.some((t) => t.toLowerCase().includes(q));
       return matchPlatform && matchCategory && matchType && matchSearch;
     });
-  }, [videos, selectedPlatform, selectedCategory, contentTypeFilter, searchQuery]);
+
+    // Sort
+    result = [...result];
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'most_views':    return (b.views || 0) - (a.views || 0);
+        case 'most_likes':    return (b.likes || 0) - (a.likes || 0);
+        case 'latest_posted': {
+          const dateA = a.uploadDate?.toDate?.() ?? new Date(0);
+          const dateB = b.uploadDate?.toDate?.() ?? new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        }
+        case 'recently_added':
+        default:              return (a.order || 0) - (b.order || 0);
+      }
+    });
+
+    return result;
+  }, [allVideos, selectedPlatform, selectedCategory, contentTypeFilter, searchQuery, sortBy]);
+
+  // Reset to page 1 whenever filters/search/sort change
+  useEffect(() => { setCurrentPage(1); }, [selectedPlatform, selectedCategory, contentTypeFilter, searchQuery, sortBy]);
+
+  // ── Pagination math ────────────────────────────────────
+  const totalFiltered = filteredVideos.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageVideos = filteredVideos.slice(startIdx, startIdx + PAGE_SIZE);
 
   const activeFilterCount =
     (selectedPlatform !== 'all' ? 1 : 0) +
@@ -217,34 +187,33 @@ const ViralContentPage: React.FC = () => {
 
   const sortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Sort';
 
-  // ── Pagination helpers ────────────────────────────────
   const goToPage = (page: number) => {
-    if (page < 1 || page > totalPages || page === currentPage) return;
+    if (page < 1 || page > totalPages || page === safePage) return;
+    setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    loadPage(page);
   };
 
-  // Build visible page numbers (1 … 4 5 [6] 7 8 … 85)
+  // Build page numbers: 1 … 4 5 [6] 7 8 … 85
   const pageNumbers = useMemo(() => {
     const pages: (number | '...')[] = [];
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
       pages.push(1);
-      if (currentPage > 3) pages.push('...');
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
+      if (safePage > 3) pages.push('...');
+      const start = Math.max(2, safePage - 1);
+      const end = Math.min(totalPages - 1, safePage + 1);
       for (let i = start; i <= end; i++) pages.push(i);
-      if (currentPage < totalPages - 2) pages.push('...');
+      if (safePage < totalPages - 2) pages.push('...');
       pages.push(totalPages);
     }
     return pages;
-  }, [currentPage, totalPages]);
+  }, [safePage, totalPages]);
 
   // ── Render ─────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* ── Super-admin seed tool ── */}
+      {/* Super-admin seed tool */}
       {isSuperAdmin && (
         <div className="flex items-center justify-between bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3">
           <span className="text-xs text-gray-500">Admin: seed viral library from CSV</span>
@@ -252,7 +221,7 @@ const ViralContentPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Header: Search + Filters + Sort ── */}
+      {/* Header: Search + Filters + Sort */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex items-center gap-3 flex-1">
         <div className="relative flex-1 max-w-md">
@@ -265,13 +234,11 @@ const ViralContentPage: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 text-sm"
           />
         </div>
-          {totalCount > 0 && (
-            <span className="text-xs text-gray-500 whitespace-nowrap">
-              {totalCount.toLocaleString()} videos
-            </span>
-          )}
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            {totalFiltered.toLocaleString()} video{totalFiltered !== 1 ? 's' : ''}
+          </span>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* Filters dropdown */}
           <div className="relative">
@@ -303,8 +270,8 @@ const ViralContentPage: React.FC = () => {
                         {Icon && <Icon className="w-4 h-4" />}
                         {p.name}
                       </FilterButton>
-          );
-        })}
+                    );
+                  })}
                 </FilterSection>
 
                 <FilterSection label="Category">
@@ -326,18 +293,20 @@ const ViralContentPage: React.FC = () => {
                 </FilterSection>
 
                 {activeFilterCount > 0 && (
-                  <button
+          <button
                     onClick={() => { setSelectedPlatform('all'); setSelectedCategory('All'); setContentTypeFilter('all'); }}
                     className="w-full text-center py-2 text-xs text-gray-500 hover:text-white transition-all"
-                  >Reset All Filters</button>
-                )}
-              </div>
-            )}
+          >
+                    Reset All Filters
+          </button>
+        )}
       </div>
-
+            )}
+        </div>
+        
           {/* Sort dropdown */}
           <div className="relative">
-          <button
+            <button
               onClick={() => toggleDropdown('sort')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
                 openDropdown === 'sort' || sortBy !== 'recently_added'
@@ -348,45 +317,47 @@ const ViralContentPage: React.FC = () => {
               <ArrowUpDown className="w-4 h-4" />
               {sortLabel}
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'sort' ? 'rotate-180' : ''}`} />
-          </button>
+            </button>
 
             {openDropdown === 'sort' && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-3 space-y-1">
                 {SORT_OPTIONS.map((o) => (
-                  <button
+          <button
                     key={o.value}
                     onClick={() => { setSortBy(o.value); setOpenDropdown('none'); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                       sortBy === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'
                     }`}
-                  >{o.label}</button>
-                ))}
+                  >
+                    {o.label}
+          </button>
+        ))}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Error banner ── */}
+      {/* Error banner */}
       {error && (
         <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
 
-      {/* ── Content Grid ── */}
+      {/* Content Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
         </div>
-      ) : filteredVideos.length === 0 ? (
+      ) : pageVideos.length === 0 ? (
         <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Flame className="w-8 h-8 text-gray-600" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">No viral content found</h3>
           <p className="text-gray-500 text-sm max-w-sm mx-auto">
-            {videos.length === 0
+            {allVideos.length === 0
               ? 'The viral library is empty. Use the admin seed tool above to import content.'
               : 'Try adjusting your filters or search to find content.'}
           </p>
@@ -394,7 +365,7 @@ const ViralContentPage: React.FC = () => {
       ) : (
         <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredVideos.map((video) => (
+            {pageVideos.map((video) => (
             <VideoCard
               key={video.id}
               video={video}
@@ -404,19 +375,17 @@ const ViralContentPage: React.FC = () => {
           ))}
         </div>
 
-          {/* ── Pagination ── */}
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1.5 pt-4">
-              {/* Previous */}
+            <div className="flex items-center justify-center gap-1.5 pt-4 pb-2">
               <button
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
+                onClick={() => goToPage(safePage - 1)}
+                disabled={safePage === 1}
                 className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              {/* Page numbers */}
               {pageNumbers.map((p, idx) =>
                 p === '...' ? (
                   <span key={`dots-${idx}`} className="px-2 text-gray-600 text-sm select-none">…</span>
@@ -425,7 +394,7 @@ const ViralContentPage: React.FC = () => {
                     key={p}
                     onClick={() => goToPage(p)}
                     className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-all ${
-                      p === currentPage
+                      p === safePage
                         ? 'bg-white/15 border border-white/30 text-white'
                         : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
                     }`}
@@ -435,18 +404,16 @@ const ViralContentPage: React.FC = () => {
                 ),
               )}
 
-              {/* Next */}
           <button
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages || !hasMore}
+                onClick={() => goToPage(safePage + 1)}
+                disabled={safePage === totalPages}
                 className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="w-4 h-4" />
           </button>
 
-              {/* Page indicator */}
               <span className="ml-3 text-xs text-gray-500">
-                Page {currentPage} of {totalPages}
+                Page {safePage} of {totalPages}
               </span>
             </div>
           )}
