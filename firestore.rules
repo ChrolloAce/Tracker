@@ -739,6 +739,15 @@ service cloud.firestore {
       allow delete: if isSignedIn();
     }
     
+    // ==================== VIRAL CONTENT LIBRARY ====================
+    
+    // Curated viral content — any signed-in user can browse,
+    // writes happen exclusively via Admin SDK (seed endpoint).
+    match /viralContent/{videoId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    
     // ==================== CONTRACT TEMPLATES ====================
     
     // Contract templates for reusable contract terms
