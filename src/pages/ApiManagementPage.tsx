@@ -361,11 +361,12 @@ const ApiPlayground: React.FC = () => {
 
       const res = await fetch(url, options);
       const elapsed = Date.now() - start;
+      const text = await res.text();
       let body;
       try {
-        body = await res.json();
+        body = JSON.parse(text);
       } catch {
-        body = await res.text();
+        body = text;
       }
       setResponse({ status: res.status, body, time: elapsed });
     } catch (err) {
