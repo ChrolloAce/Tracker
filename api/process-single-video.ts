@@ -486,7 +486,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         creatorType: 'manual', // Manual tracking - only refreshes existing videos (created from video URL)
         orgId: orgId,
         dateAdded: Timestamp.now(),
-        addedBy: video.addedBy,
+        addedBy: video.addedBy || 'system',
         lastSynced: Timestamp.now(),
         totalVideos: 0,
         totalViews: 0,
@@ -494,7 +494,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         totalComments: 0,
         totalShares: 0,
         syncStatus: 'completed',
-        syncRequestedBy: video.addedBy,
+        syncRequestedBy: video.addedBy || 'system',
         syncRequestedAt: Timestamp.now(),
         syncRetryCount: 0,
         maxRetries: 3,
