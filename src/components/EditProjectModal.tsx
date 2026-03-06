@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit3, Upload, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Edit3, Upload, Trash2, AlertTriangle, Copy, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ProjectService from '../services/ProjectService';
@@ -252,6 +252,10 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
             )}
           </div>
 
+          {/* API IDs */}
+          <IdCopySection label="Project ID" value={project.id} />
+          {currentOrgId && <IdCopySection label="Organization ID" value={currentOrgId} />}
+
           {/* Danger Zone - Delete Project */}
           <div className="border-t border-red-200 dark:border-red-900/30 pt-6 mt-6">
             <div className="flex items-start space-x-3 mb-4">
@@ -334,6 +338,42 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
       </div>
     </div>,
     document.body
+  );
+};
+
+// ─── Copyable ID row ─────────────────────────────────────
+const IdCopySection: React.FC<{ label: string; value: string }> = ({ label, value }) => {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+        {label}
+      </label>
+      <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2">
+        <code className="flex-1 text-xs text-gray-700 dark:text-gray-300 font-mono truncate select-all">
+          {value}
+        </code>
+        <button
+          type="button"
+          onClick={copy}
+          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 transition-colors shrink-0"
+          title="Copy to clipboard"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-green-500" />
+          ) : (
+            <Copy className="w-3.5 h-3.5 text-gray-400" />
+          )}
+        </button>
+      </div>
+    </div>
   );
 };
 
