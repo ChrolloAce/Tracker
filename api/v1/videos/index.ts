@@ -5,10 +5,13 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { initializeFirebase } from '../../utils/firebase-admin.js';
 import { withApiAuth } from '../../middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
+
+const JOB_PRIORITY_USER_INITIATED = 100;
+const BASE_URL = 'https://www.viewtrack.app';
 
 initializeFirebase();
 const db = getFirestore();
@@ -202,6 +205,12 @@ async function listVideosFromProject(
 
 /**
  * Add a video to track
+ * Mirrors the manual video submission flow:
+ * 1. Validate & detect platform
+ * 2. Check for duplicates
+ * 3. Create a pending video doc
+ * 4. Create a high-priority syncQueue job
+ * 5. Dispatch to process-single-video for immediate processing
  */
 async function addVideo(
   req: VercelRequest,
@@ -257,20 +266,29 @@ async function addVideo(
     });
   }
   
-  // Create video document (will be processed by sync system)
+  // Step 1: Create pending video document (same fields as manual flow)
   const videoData = {
     url,
     platform,
-    status: 'pending',
-    syncStatus: 'pending',
+    videoId: `temp-${Date.now()}`,
+    thumbnail: '',
+    title: 'Processing...',
+    description: '',
+    uploadDate: Timestamp.now(),
     views: 0,
     likes: 0,
     comments: 0,
+    shares: 0,
+    status: 'processing',
+    isSingular: false,
+    syncStatus: 'pending',
+    syncRequestedAt: Timestamp.now(),
+    syncRetryCount: 0,
     organizationId: auth.organizationId,
     projectId: targetProjectId,
-    dateSubmitted: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date()
+    dateSubmitted: Timestamp.now(),
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now()
   };
   
   const docRef = await db
@@ -280,6 +298,73 @@ async function addVideo(
     .doc(targetProjectId)
     .collection('videos')
     .add(videoData);
+
+  console.log(`📹 [API] Video doc created: ${docRef.id} for ${url}`);
+  
+  // Step 2: Create high-priority syncQueue job (same as queue-manual-video)
+  const jobRef = db.collection('syncQueue').doc();
+  await jobRef.set({
+    type: 'single_video',
+    status: 'pending',
+    orgId: auth.organizationId,
+    projectId: targetProjectId,
+    videoUrl: url,
+    addedBy: 'api',
+    createdAt: Timestamp.now(),
+    startedAt: null,
+    completedAt: null,
+    attempts: 0,
+    maxAttempts: 3,
+    priority: JOB_PRIORITY_USER_INITIATED,
+    error: null,
+    userInitiated: true
+  });
+  
+  console.log(`📋 [API] SyncQueue job created: ${jobRef.id}`);
+
+  // Step 3: Dispatch to process-single-video for immediate processing
+  const cronSecret = process.env.CRON_SECRET;
+  let processingStatus = 'queued';
+  
+  try {
+    const dispatchResponse = await fetch(`${BASE_URL}/api/process-single-video`, {
+      method: 'POST',
+      headers: {
+        'Authorization': cronSecret || '',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        videoId: url,
+        orgId: auth.organizationId,
+        projectId: targetProjectId,
+        jobId: jobRef.id,
+        addedBy: 'api'
+      })
+    });
+    
+    if (dispatchResponse.ok) {
+      await jobRef.update({
+        status: 'running',
+        startedAt: Timestamp.now()
+      });
+      processingStatus = 'processing';
+      console.log(`⚡ [API] Immediate dispatch successful for ${url}`);
+    } else {
+      console.warn(`⚠️ [API] Dispatch returned ${dispatchResponse.status}, falling back to queue`);
+    }
+  } catch (dispatchError: any) {
+    console.warn(`⚠️ [API] Immediate dispatch failed: ${dispatchError.message}, job stays queued`);
+    
+    // Trigger queue-worker as fallback
+    fetch(`${BASE_URL}/api/queue-worker`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ trigger: 'api_video_added' })
+    }).catch(() => {});
+  }
   
   return res.status(201).json({
     success: true,
@@ -287,11 +372,14 @@ async function addVideo(
       id: docRef.id,
       url,
       platform,
-      status: 'pending',
-      message: 'Video added. Metrics will be fetched shortly.'
+      status: processingStatus,
+      jobId: jobRef.id,
+      message: processingStatus === 'processing'
+        ? 'Video dispatched for immediate processing. Metrics typically available within 30-60 seconds.'
+        : 'Video queued for processing. Metrics will be available shortly.'
     }
   });
 }
 
-// Export with authentication wrapper
+// Export — handler checks method internally, so accept both read & write scopes
 export default withApiAuth(['videos:read'], handler);
