@@ -70,11 +70,10 @@ export async function authenticateApiKey(
   const keyHash = hashApiKey(apiKey);
   const keyPrefix = apiKey.substring(0, 12);
   
-  // Find the API key in Firestore
+  // Find the API key in Firestore (single where to avoid composite index requirement)
   const keysSnapshot = await db
     .collectionGroup('apiKeys')
     .where('keyHash', '==', keyHash)
-    .where('status', '==', 'active')
     .limit(1)
     .get();
   
@@ -84,6 +83,11 @@ export async function authenticateApiKey(
   
   const keyDoc = keysSnapshot.docs[0];
   const keyData = keyDoc.data() as ApiKey;
+
+  // Check status client-side instead of in query (avoids composite index)
+  if (keyData.status !== 'active') {
+    throw new ApiAuthError('Invalid or revoked API key', 401);
+  }
   
   // Check expiration
   if (keyData.expiresAt && new Date(keyData.expiresAt) < new Date()) {
