@@ -119,7 +119,7 @@ const ViralContentPage: React.FC = () => {
     (async () => {
     setLoading(true);
       setError(null);
-      try {
+    try {
         const videos = await ViralContentService.fetchAll();
         if (!cancelled) setAllVideos(videos);
       } catch (err) {
@@ -327,8 +327,8 @@ const ViralContentPage: React.FC = () => {
                     onClick={() => { setSortBy(o.value); setOpenDropdown('none'); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                       sortBy === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
+            }`}
+          >
                     {o.label}
           </button>
         ))}
@@ -408,7 +408,7 @@ const ViralContentPage: React.FC = () => {
                 onClick={() => goToPage(safePage + 1)}
                 disabled={safePage === totalPages}
                 className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
+          >
                 <ChevronRight className="w-4 h-4" />
           </button>
 

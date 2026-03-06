@@ -6,7 +6,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHash } from 'crypto';
-import { initializeFirebase } from '../utils/firebase-admin';
+import { initializeFirebase } from '../utils/firebase-admin.js';
 import type { ApiKey, ApiKeyScope, AuthenticatedApiRequest } from '../../src/types/apiKeys';
 
 // Initialize Firebase Admin
