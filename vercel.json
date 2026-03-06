@@ -124,7 +124,7 @@
       "maxDuration": 15
     },
     "api/v1/videos/index.ts": {
-      "maxDuration": 30
+      "maxDuration": 120
     },
     "api/v1/videos/[id].ts": {
       "maxDuration": 30

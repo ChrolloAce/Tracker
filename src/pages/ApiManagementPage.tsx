@@ -188,6 +188,7 @@ const PLAYGROUND_ENDPOINTS: PlaygroundEndpoint[] = [
     bodyFields: [
       { key: 'url', placeholder: 'https://tiktok.com/@user/video/123', type: 'text', required: true },
       { key: 'projectId', placeholder: 'Project ID', type: 'text', required: false },
+      { key: 'sync', placeholder: 'true — wait for data (up to 90s)', type: 'checkbox', required: false },
     ],
   },
   {
@@ -314,9 +315,11 @@ const ApiPlayground: React.FC = () => {
 
     if (selectedEndpoint.method === 'POST') {
       cmd += ` \\\n  -H "Content-Type: application/json"`;
-      const body: Record<string, string> = {};
+      const body: Record<string, string | boolean> = {};
       (selectedEndpoint.bodyFields || []).forEach((f) => {
-        if (bodyValues[f.key]?.trim()) body[f.key] = bodyValues[f.key];
+        if (bodyValues[f.key]?.trim()) {
+          body[f.key] = f.type === 'checkbox' ? bodyValues[f.key] === 'true' : bodyValues[f.key];
+        }
       });
       if (Object.keys(body).length > 0) {
         cmd += ` \\\n  -d '${JSON.stringify(body)}'`;
@@ -352,9 +355,11 @@ const ApiPlayground: React.FC = () => {
       };
 
       if (selectedEndpoint.method === 'POST' && selectedEndpoint.bodyFields) {
-        const body: Record<string, string> = {};
+        const body: Record<string, string | boolean> = {};
         selectedEndpoint.bodyFields.forEach((f) => {
-          if (bodyValues[f.key]?.trim()) body[f.key] = bodyValues[f.key];
+          if (bodyValues[f.key]?.trim()) {
+            body[f.key] = f.type === 'checkbox' ? bodyValues[f.key] === 'true' : bodyValues[f.key];
+          }
         });
         options.body = JSON.stringify(body);
       }
@@ -499,13 +504,25 @@ const ApiPlayground: React.FC = () => {
                         {f.key}
                         {f.required && <span className="text-red-400">*</span>}
                       </span>
-                      <input
-                        type={f.type}
-                        value={bodyValues[f.key] || ''}
-                        onChange={(e) => setBodyValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder}
-                        className="flex-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-xs font-mono focus:outline-none focus:border-white/20"
-                      />
+                      {f.type === 'checkbox' ? (
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={bodyValues[f.key] === 'true'}
+                            onChange={(e) => setBodyValues((prev) => ({ ...prev, [f.key]: e.target.checked ? 'true' : '' }))}
+                            className="w-4 h-4 rounded bg-white/5 border border-white/20 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-emerald-500"
+                          />
+                          <span className="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">{f.placeholder}</span>
+                        </label>
+                      ) : (
+                        <input
+                          type={f.type}
+                          value={bodyValues[f.key] || ''}
+                          onChange={(e) => setBodyValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                          placeholder={f.placeholder}
+                          className="flex-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-xs font-mono focus:outline-none focus:border-white/20"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -586,7 +603,7 @@ const QuickReference: React.FC = () => {
 
           <div className="space-y-2">
             <EndpointRow method="GET" path="/api/v1/videos" desc="List tracked videos" />
-            <EndpointRow method="POST" path="/api/v1/videos" desc="Add video to track" />
+            <EndpointRow method="POST" path="/api/v1/videos" desc="Add video to track (sync: true to wait for data)" />
             <EndpointRow method="GET" path="/api/v1/videos/:id" desc="Get video details + snapshots" />
             <EndpointRow method="GET" path="/api/v1/accounts" desc="List tracked accounts" />
             <EndpointRow method="POST" path="/api/v1/accounts" desc="Add account to track" />
