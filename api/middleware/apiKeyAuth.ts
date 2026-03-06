@@ -70,9 +70,9 @@ export async function authenticateApiKey(
   const keyHash = hashApiKey(apiKey);
   const keyPrefix = apiKey.substring(0, 12);
   
-  // Find the API key in Firestore (single where to avoid composite index requirement)
+  // Find the API key in top-level apiKeys collection (no collectionGroup = no index needed)
   const keysSnapshot = await db
-    .collectionGroup('apiKeys')
+    .collection('apiKeys')
     .where('keyHash', '==', keyHash)
     .limit(1)
     .get();

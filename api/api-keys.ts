@@ -200,8 +200,6 @@ async function createApiKey(
   }
 
   const docRef = await db
-    .collection('organizations')
-    .doc(orgId)
     .collection('apiKeys')
     .add(docData);
 
@@ -231,26 +229,31 @@ async function listApiKeys(
   orgId: string,
 ) {
   const snapshot = await db
-    .collection('organizations')
-    .doc(orgId)
     .collection('apiKeys')
-    .orderBy('createdAt', 'desc')
+    .where('organizationId', '==', orgId)
     .get();
 
-  const keys = snapshot.docs.map((doc) => {
-    const d = doc.data();
-    return {
-      id: doc.id,
-      name: d.name || '',
-      keyPrefix: d.keyPrefix || '',
-      scopes: d.scopes || [],
-      status: d.status || 'active',
-      lastUsedAt: d.lastUsedAt?.toDate?.()?.toISOString() || null,
-      usageCount: d.usageCount || 0,
-      createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
-      expiresAt: d.expiresAt?.toDate?.()?.toISOString() || null,
-    };
-  });
+  const keys = snapshot.docs
+    .map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        name: d.name || '',
+        keyPrefix: d.keyPrefix || '',
+        scopes: d.scopes || [],
+        status: d.status || 'active',
+        lastUsedAt: d.lastUsedAt?.toDate?.()?.toISOString() || null,
+        usageCount: d.usageCount || 0,
+        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+        expiresAt: d.expiresAt?.toDate?.()?.toISOString() || null,
+      };
+    })
+    .sort((a, b) => {
+      // Sort by createdAt descending (newest first)
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bDate - aDate;
+    });
 
   return res.status(200).json({
     success: true,
@@ -277,8 +280,6 @@ async function revokeApiKey(
   }
 
   const keyRef = db
-    .collection('organizations')
-    .doc(orgId)
     .collection('apiKeys')
     .doc(targetKeyId);
 
@@ -288,6 +289,14 @@ async function revokeApiKey(
     return res.status(404).json({
       success: false,
       error: { message: 'API key not found', code: 'NOT_FOUND' },
+    });
+  }
+
+  // Verify key belongs to this org
+  if (keyDoc.data()?.organizationId !== orgId) {
+    return res.status(403).json({
+      success: false,
+      error: { message: 'API key does not belong to this organization', code: 'FORBIDDEN' },
     });
   }
 
