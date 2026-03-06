@@ -130,7 +130,7 @@
       "maxDuration": 30
     },
     "api/v1/accounts/index.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     },
     "api/v1/accounts/[id].ts": {
       "maxDuration": 30
