@@ -131,7 +131,7 @@ async function addAccount(
     });
   }
 
-  const videoLimit = Math.min(Math.max(parseInt(maxVideos) || DEFAULT_MAX_VIDEOS, 1), 50);
+  const videoLimit = Math.min(Math.max(parseInt(maxVideos) || DEFAULT_MAX_VIDEOS, 1), 1000);
   const cleanUsername = username.toLowerCase().replace(/^@/, '');
 
   const accountsCol = db

@@ -78,7 +78,7 @@ const PLAYGROUND_ENDPOINTS: PlaygroundEndpoint[] = [
       { key: 'platform', placeholder: 'tiktok', type: 'text', required: true },
       { key: 'username', placeholder: '@username', type: 'text', required: true },
       { key: 'projectId', placeholder: 'Project ID', type: 'text', required: false },
-      { key: 'maxVideos', placeholder: '10 (default, max 50)', type: 'text', required: false },
+      { key: 'maxVideos', placeholder: '10 (default, max 1000)', type: 'text', required: false },
     ],
   },
   {

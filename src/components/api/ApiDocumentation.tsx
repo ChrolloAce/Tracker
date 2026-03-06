@@ -344,7 +344,7 @@ Request body:
 | username  | string | yes      | —       | Creator username (with or without @) |
 | platform  | string | yes      | —       | Platform: tiktok, instagram, youtube, twitter |
 | projectId | string | yes*     | —       | Target project (* not needed if key is project-scoped) |
-| maxVideos | number | no       | 10      | Number of recent videos to fetch (1-50) |
+| maxVideos | number | no       | 10      | Number of recent videos to fetch (1-1000) |
 
 \`\`\`json
 // Request
