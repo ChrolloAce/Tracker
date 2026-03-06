@@ -332,7 +332,9 @@ Response:
 ---
 
 #### POST /api/v1/accounts
-Add a creator account to track. Automatically syncs the latest videos.
+Add a creator account to track, or trigger re-discovery on an existing account. Automatically syncs the latest videos.
+
+If the account already exists, a **re-discovery** is launched instead (HTTP 200). This fetches the latest videos without creating a duplicate. Project stats and usage counters are updated atomically.
 
 Required scope: \`accounts:write\`
 
@@ -354,19 +356,38 @@ POST /api/v1/accounts
   "maxVideos": 10
 }
 
-// Response (201 Created)
+// Response — NEW account (201 Created)
 {
   "success": true,
   "data": {
-    "id": "GGSW1i24XH9ejTCk1OnJ",
+    "id": "twitter_simonecanciello",
     "username": "simonecanciello",
     "platform": "twitter",
     "maxVideos": 10,
     "status": "processing",
     "jobId": "xUGS0oBqHzdG2jBTTXGg",
-    "message": "Account @simonecanciello dispatched for immediate sync. Up to 10 videos will be fetched.",
+    "isExisting": false,
+    "message": "Account @simonecanciello created & dispatched. Up to 10 videos will be fetched.",
     "endpoints": {
-      "poll": "/api/v1/accounts/GGSW1i24XH9ejTCk1OnJ?projectId=wQyFcJ5xrAnMbKYQKMw8"
+      "poll": "/api/v1/accounts/twitter_simonecanciello?projectId=wQyFcJ5xrAnMbKYQKMw8"
+    }
+  }
+}
+
+// Response — EXISTING account re-discovery (200 OK)
+{
+  "success": true,
+  "data": {
+    "id": "twitter_simonecanciello",
+    "username": "simonecanciello",
+    "platform": "twitter",
+    "maxVideos": 10,
+    "status": "processing",
+    "jobId": "abc123",
+    "isExisting": true,
+    "message": "Re-discovery launched for @simonecanciello. Up to 10 newest videos will be checked.",
+    "endpoints": {
+      "poll": "/api/v1/accounts/twitter_simonecanciello?projectId=wQyFcJ5xrAnMbKYQKMw8"
     }
   }
 }

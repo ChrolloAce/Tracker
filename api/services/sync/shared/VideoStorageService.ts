@@ -117,6 +117,7 @@ export class VideoStorageService {
         
       if (existingVideo.exists) {
         // VIDEO EXISTS - Update metrics only (and thumbnail if we have a new one)
+        const existingData = existingVideo.data() || {};
         const updateData: any = {
           views: video.views || 0,
           likes: video.likes || 0,
@@ -125,6 +126,12 @@ export class VideoStorageService {
           saves: video.saves || 0,
           lastRefreshed: snapshotTime
         };
+        
+        // Backfill uploaderHandle for old docs missing it
+        if (!existingData.uploaderHandle) {
+          updateData.uploaderHandle = video.accountUsername || account.username;
+          updateData.uploader = video.accountDisplayName || account.username;
+        }
         
         // Update thumbnail only if we have a new valid one
         if (firebaseThumbnailUrl) {
@@ -181,6 +188,9 @@ export class VideoStorageService {
         
         batch.set(videoRef, {
           ...cleanVideoData,
+          // Map normalized fields → frontend-expected fields
+          uploaderHandle: video.accountUsername || account.username,
+          uploader: video.accountDisplayName || account.username,
           thumbnail: firebaseThumbnailUrl,
           orgId: orgId,
           projectId: projectId,

@@ -5,7 +5,7 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { initializeFirebase } from '../../utils/firebase-admin.js';
 import { withApiAuth } from '../../middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
@@ -13,6 +13,9 @@ import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 const JOB_PRIORITY_USER_INITIATED = 100;
 const BASE_URL = 'https://www.viewtrack.app';
 const DEFAULT_MAX_VIDEOS = 10;
+const COLL_ORGS = 'organizations';
+const COLL_PROJECTS = 'projects';
+const COLL_ACCOUNTS = 'trackedAccounts';
 
 initializeFirebase();
 const db = getFirestore();
@@ -96,7 +99,7 @@ async function listAccounts(
   });
 }
 
-// ─── POST: Add Account ──────────────────────────────────
+// ─── POST: Add Account (or re-discover existing) ───────
 
 async function addAccount(
   req: VercelRequest,
@@ -105,7 +108,6 @@ async function addAccount(
 ) {
   const { username, platform, projectId, maxVideos } = req.body;
 
-  // ── Validate inputs ───────────────────────────────────
   if (!username || !platform) {
     return res.status(400).json({
       success: false,
@@ -129,17 +131,13 @@ async function addAccount(
     });
   }
 
-  // Sanitize & clamp maxVideos
   const videoLimit = Math.min(Math.max(parseInt(maxVideos) || DEFAULT_MAX_VIDEOS, 1), 50);
   const cleanUsername = username.toLowerCase().replace(/^@/, '');
 
-  // ── Check for duplicate ───────────────────────────────
   const accountsCol = db
-    .collection('organizations')
-    .doc(auth.organizationId)
-    .collection('projects')
-    .doc(targetProjectId)
-    .collection('trackedAccounts');
+    .collection(COLL_ORGS).doc(auth.organizationId)
+    .collection(COLL_PROJECTS).doc(targetProjectId)
+    .collection(COLL_ACCOUNTS);
 
   const existingQuery = await accountsCol
     .where('username', '==', cleanUsername)
@@ -147,46 +145,182 @@ async function addAccount(
     .limit(1)
     .get();
 
+  // ── Existing account → trigger re-discovery ────────────
   if (!existingQuery.empty) {
-    return res.status(409).json({
-      success: false,
-      error: { message: 'Account already being tracked', code: 'ALREADY_EXISTS' }
-    });
+    return await triggerRediscovery(
+      existingQuery.docs[0], cleanUsername, platform, videoLimit,
+      auth.organizationId, targetProjectId, res
+    );
   }
 
-  // ── Step 1: Create tracked account document ───────────
+  // ── New account → create doc + update stats ────────────
+  return await createNewAccount(
+    cleanUsername, platform, videoLimit,
+    auth.organizationId, targetProjectId, accountsCol, res
+  );
+}
+
+// ─── Re-discover existing account ────────────────────────
+
+async function triggerRediscovery(
+  existingDoc: FirebaseFirestore.QueryDocumentSnapshot,
+  username: string,
+  platform: string,
+  videoLimit: number,
+  orgId: string,
+  projectId: string,
+  res: VercelResponse
+) {
+  const accountId = existingDoc.id;
+  const accountData = existingDoc.data();
+  console.log(`🔄 [API] Account @${username} already exists (${accountId}), triggering re-discovery`);
+
+  // Update maxVideos if caller wants more
+  if (videoLimit > (accountData.maxVideos || 0)) {
+    await existingDoc.ref.update({ maxVideos: videoLimit, updatedAt: Timestamp.now() });
+  }
+
+  // Create sync job + dispatch
+  const { jobId, processingStatus } = await createSyncJobAndDispatch(
+    accountId, username, platform, videoLimit, orgId, projectId
+  );
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      id: accountId,
+      username,
+      platform,
+      maxVideos: Math.max(videoLimit, accountData.maxVideos || 0),
+      status: processingStatus,
+      jobId,
+      isExisting: true,
+      message: `Re-discovery launched for @${username}. Up to ${videoLimit} newest videos will be checked.`,
+      endpoints: { poll: `/api/v1/accounts/${accountId}?projectId=${projectId}` }
+    }
+  });
+}
+
+// ─── Create brand-new account ────────────────────────────
+
+async function createNewAccount(
+  username: string,
+  platform: string,
+  videoLimit: number,
+  orgId: string,
+  projectId: string,
+  accountsCol: FirebaseFirestore.CollectionReference,
+  res: VercelResponse
+) {
+  // Use deterministic ID (mirrors manual flow)
+  const normalizedUser = username.replace(/[^a-z0-9_.-]/g, '_');
+  const deterministicId = `${platform}_${normalizedUser}`;
+  const accountRef = accountsCol.doc(deterministicId);
+
   const accountData = {
-    username: cleanUsername,
+    id: deterministicId,
+    username,
     platform,
-    organizationId: auth.organizationId,
-    projectId: targetProjectId,
+    organizationId: orgId,
+    projectId,
     status: 'processing',
     syncStatus: 'pending',
     maxVideos: videoLimit,
+    creatorType: 'automatic',
+    displayName: username,
+    profilePicture: '',
+    followerCount: 0,
+    followingCount: 0,
+    postCount: 0,
+    bio: '',
+    isVerified: false,
     totalVideos: 0,
     totalViews: 0,
     totalLikes: 0,
+    totalComments: 0,
+    totalShares: 0,
     isActive: true,
+    isRead: false,
     addedBy: 'api',
+    syncRequestedBy: 'api',
+    syncRequestedAt: Timestamp.now(),
+    syncRetryCount: 0,
+    maxRetries: 3,
+    syncProgress: { current: 0, total: 100, message: 'Queued for sync...' },
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
   };
 
-  const docRef = await accountsCol.add(accountData);
-  console.log(`👤 [API] Account doc created: ${docRef.id} for @${cleanUsername} (${platform})`);
+  // Batch: create account + increment project trackedAccountCount
+  const projectRef = db
+    .collection(COLL_ORGS).doc(orgId)
+    .collection(COLL_PROJECTS).doc(projectId);
 
-  // ── Step 2: Create high-priority syncQueue job ────────
+  const batch = db.batch();
+  batch.set(accountRef, accountData);
+  batch.update(projectRef, {
+    trackedAccountCount: FieldValue.increment(1),
+    updatedAt: Timestamp.now()
+  });
+  await batch.commit();
+  console.log(`👤 [API] Account created: ${deterministicId}, project stats updated`);
+
+  // Increment org usage counter (non-critical)
+  try {
+    const usageRef = db.collection(COLL_ORGS).doc(orgId).collection('billing').doc('usage');
+    await usageRef.update({
+      trackedAccounts: FieldValue.increment(1),
+      lastUpdated: Timestamp.now()
+    });
+    console.log(`📊 [API] Org usage counter incremented for ${orgId}`);
+  } catch (usageErr: any) {
+    console.warn(`⚠️ [API] Usage counter update failed (non-critical): ${usageErr.message}`);
+  }
+
+  // Create sync job + dispatch
+  const { jobId, processingStatus } = await createSyncJobAndDispatch(
+    deterministicId, username, platform, videoLimit, orgId, projectId
+  );
+
+  return res.status(201).json({
+    success: true,
+    data: {
+      id: deterministicId,
+      username,
+      platform,
+      maxVideos: videoLimit,
+      status: processingStatus,
+      jobId,
+      isExisting: false,
+      message: processingStatus === 'processing'
+        ? `Account @${username} created & dispatched. Up to ${videoLimit} videos will be fetched.`
+        : `Account @${username} created & queued. Up to ${videoLimit} videos will be fetched shortly.`,
+      endpoints: { poll: `/api/v1/accounts/${deterministicId}?projectId=${projectId}` }
+    }
+  });
+}
+
+// ─── Shared: create syncQueue job + dispatch ─────────────
+
+async function createSyncJobAndDispatch(
+  accountId: string,
+  username: string,
+  platform: string,
+  maxVideos: number,
+  orgId: string,
+  projectId: string
+): Promise<{ jobId: string; processingStatus: string }> {
   const jobRef = db.collection('syncQueue').doc();
   await jobRef.set({
     type: 'account_sync',
     status: 'pending',
     syncStrategy: 'direct',
-    maxVideos: videoLimit,
-    orgId: auth.organizationId,
-    projectId: targetProjectId,
-    accountId: docRef.id,
+    maxVideos,
+    orgId,
+    projectId,
+    accountId,
     sessionId: null,
-    accountUsername: cleanUsername,
+    accountUsername: username,
     accountPlatform: platform,
     createdAt: Timestamp.now(),
     startedAt: null,
@@ -198,39 +332,26 @@ async function addAccount(
     userInitiated: true,
     addedBy: 'api'
   });
-  console.log(`📋 [API] SyncQueue job created: ${jobRef.id} (maxVideos=${videoLimit})`);
+  console.log(`📋 [API] SyncQueue job: ${jobRef.id} (maxVideos=${maxVideos})`);
 
-  // ── Step 3: Dispatch for immediate processing ─────────
   let processingStatus = 'queued';
   const cronSecret = process.env.CRON_SECRET;
 
   try {
-    const dispatchResponse = await fetch(`${BASE_URL}/api/sync-single-account`, {
+    const resp = await fetch(`${BASE_URL}/api/sync-single-account`, {
       method: 'POST',
-      headers: {
-        'Authorization': cronSecret || '',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        orgId: auth.organizationId,
-        projectId: targetProjectId,
-        accountId: docRef.id,
-        sessionId: null,
-        jobId: jobRef.id
-      })
+      headers: { 'Authorization': cronSecret || '', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId, projectId, accountId, sessionId: null, jobId: jobRef.id })
     });
-
-    if (dispatchResponse.ok) {
+    if (resp.ok) {
       await jobRef.update({ status: 'running', startedAt: Timestamp.now() });
       processingStatus = 'processing';
-      console.log(`⚡ [API] Immediate dispatch successful for @${cleanUsername}`);
+      console.log(`⚡ [API] Dispatch OK for @${username}`);
     } else {
-      console.warn(`⚠️ [API] Dispatch returned ${dispatchResponse.status}, falling back to queue`);
+      console.warn(`⚠️ [API] Dispatch returned ${resp.status}`);
     }
-  } catch (dispatchError: any) {
-    console.warn(`⚠️ [API] Immediate dispatch failed: ${dispatchError.message}, job stays queued`);
-
-    // Fire-and-forget queue-worker fallback
+  } catch (err: any) {
+    console.warn(`⚠️ [API] Dispatch failed: ${err.message}`);
     fetch(`${BASE_URL}/api/queue-worker`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${cronSecret}`, 'Content-Type': 'application/json' },
@@ -238,25 +359,9 @@ async function addAccount(
     }).catch(() => {});
   }
 
-  return res.status(201).json({
-    success: true,
-    data: {
-      id: docRef.id,
-      username: cleanUsername,
-      platform,
-      maxVideos: videoLimit,
-      status: processingStatus,
-      jobId: jobRef.id,
-      message: processingStatus === 'processing'
-        ? `Account @${cleanUsername} dispatched for immediate sync. Up to ${videoLimit} videos will be fetched.`
-        : `Account @${cleanUsername} queued for sync. Up to ${videoLimit} videos will be fetched shortly.`,
-      endpoints: {
-        poll: `/api/v1/accounts/${docRef.id}?projectId=${targetProjectId}`,
-      }
-    }
-  });
+  return { jobId: jobRef.id, processingStatus };
 }
 
 // ─── Export ──────────────────────────────────────────────
 
-export default withApiAuth(['accounts:read'], handler);
+export default withApiAuth(['accounts:read', 'accounts:write'], handler);
