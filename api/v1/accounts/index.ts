@@ -217,12 +217,15 @@ async function createNewAccount(
   const deterministicId = `${platform}_${normalizedUser}`;
   const accountRef = accountsCol.doc(deterministicId);
 
+  const now = Timestamp.now();
   const accountData = {
     id: deterministicId,
     username,
     platform,
-    organizationId: orgId,
+    orgId,                        // ← frontend expects 'orgId', not 'organizationId'
+    organizationId: orgId,        // ← backend sync services expect 'organizationId'
     projectId,
+    accountType: 'my' as const,   // ← required by TrackedAccount type
     status: 'processing',
     syncStatus: 'pending',
     maxVideos: videoLimit,
@@ -242,13 +245,14 @@ async function createNewAccount(
     isActive: true,
     isRead: false,
     addedBy: 'api',
+    dateAdded: now,               // ← CRITICAL: frontend queries orderBy('dateAdded')
+    createdAt: now,               // ← alias for dateAdded
+    updatedAt: now,
     syncRequestedBy: 'api',
-    syncRequestedAt: Timestamp.now(),
+    syncRequestedAt: now,
     syncRetryCount: 0,
     maxRetries: 3,
-    syncProgress: { current: 0, total: 100, message: 'Queued for sync...' },
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now()
+    syncProgress: { current: 0, total: 100, message: 'Queued for sync...' }
   };
 
   // Batch: create account + increment project trackedAccountCount
