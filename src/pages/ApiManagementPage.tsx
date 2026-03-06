@@ -251,6 +251,16 @@ const PLAYGROUND_ENDPOINTS: PlaygroundEndpoint[] = [
     path: '/api/v1/projects',
     label: 'List Projects',
   },
+  {
+    method: 'POST',
+    path: '/api/v1/projects',
+    label: 'Create Project',
+    bodyFields: [
+      { key: 'name', placeholder: 'My New Project', type: 'text', required: true },
+      { key: 'description', placeholder: 'Optional description', type: 'text', required: false },
+      { key: 'color', placeholder: '#3B82F6 (optional hex color)', type: 'text', required: false },
+    ],
+  },
 ];
 
 const ApiPlayground: React.FC = () => {
@@ -610,6 +620,7 @@ const QuickReference: React.FC = () => {
             <EndpointRow method="POST" path="/api/v1/accounts" desc="Add account to track" />
             <EndpointRow method="GET" path="/api/v1/analytics/overview" desc="Full analytics overview" />
             <EndpointRow method="GET" path="/api/v1/refreshes" desc="Refresh history & stats" />
+            <EndpointRow method="POST" path="/api/v1/projects" desc="Create a new project" />
           </div>
 
           <div className="mt-4 rounded-xl bg-black/50 p-4">
