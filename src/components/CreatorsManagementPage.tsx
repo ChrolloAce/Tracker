@@ -137,8 +137,20 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
     setActionLoading(creatorId);
     try {
+      const memberRole = await OrganizationService.getUserRole(currentOrgId, creatorId);
+
+      if (memberRole === 'owner') {
+        alert('Cannot remove the organization owner. You can unlink their creator accounts instead.');
+        return;
+      }
+
       await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, creatorId);
-      await OrganizationService.removeMember(currentOrgId, creatorId);
+
+      // Only remove org membership for pure creators; admins/members keep their membership
+      if (memberRole === 'creator') {
+        await OrganizationService.removeMember(currentOrgId, creatorId);
+      }
+
       await loadData();
     } catch (error) {
       console.error('Failed to remove creator:', error);
@@ -168,16 +180,37 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
   const handleBulkDelete = async () => {
     if (!currentOrgId || !currentProjectId || selectedCreatorIds.size === 0) return;
-    
-    const count = selectedCreatorIds.size;
-    if (!confirm(`Remove ${count} creator${count > 1 ? 's' : ''} from your team?\n\nThis will remove them from the organization, delete their profiles, and unlink all accounts.`)) return;
+
+    // Filter out any owners from the selection
+    const safeIds: string[] = [];
+    let ownerSkipped = false;
+    for (const creatorId of selectedCreatorIds) {
+      const role = await OrganizationService.getUserRole(currentOrgId, creatorId);
+      if (role === 'owner') {
+        ownerSkipped = true;
+        continue;
+      }
+      safeIds.push(creatorId);
+    }
+
+    if (ownerSkipped) {
+      alert('The organization owner cannot be removed and was skipped.');
+    }
+
+    if (safeIds.length === 0) return;
+
+    const count = safeIds.length;
+    if (!confirm(`Remove ${count} creator${count > 1 ? 's' : ''} from your team?\n\nThis will delete their profiles and unlink all accounts.`)) return;
 
     setBulkActionLoading(true);
     try {
       await Promise.all(
-        Array.from(selectedCreatorIds).map(async (creatorId) => {
+        safeIds.map(async (creatorId) => {
+          const role = await OrganizationService.getUserRole(currentOrgId, creatorId);
           await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, creatorId);
-          await OrganizationService.removeMember(currentOrgId, creatorId);
+          if (role === 'creator') {
+            await OrganizationService.removeMember(currentOrgId, creatorId);
+          }
         })
       );
       setSelectedCreatorIds(new Set());

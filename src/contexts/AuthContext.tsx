@@ -201,14 +201,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let orgId: string | null = null;
         
         if (userOrgs.length === 0) {
-          // No organizations at all - let routing handle redirect
-          console.log('❌ User has no organizations');
-          setCurrentOrgId(null);
-          setCurrentProjectId(null);
-          setUserRole(null);
-          setLoading(false);
-          // Don't manually redirect - App.tsx routing will handle it
-          return;
+          // Auto-recovery: check if user was removed from an org they own
+          console.log('🔄 No active orgs found — checking for removed memberships to auto-recover...');
+          const removedMemberships = await OrganizationService.getRemovedMemberships(user.uid);
+
+          let recovered = false;
+          for (const membership of removedMemberships) {
+            const org = await OrganizationService.getOrganization(membership.orgId);
+            if (org && (org.ownerUserId === user.uid || membership.role === 'owner' || membership.role === 'admin')) {
+              console.log(`🔧 Auto-restoring owner/admin membership for org: ${membership.orgId}`);
+              await OrganizationService.restoreMember(membership.orgId, user.uid);
+              recovered = true;
+            }
+          }
+
+          if (recovered) {
+            // Re-fetch orgs now that membership is restored
+            const restoredOrgs = await OrganizationService.getUserOrganizations(user.uid);
+            if (restoredOrgs.length > 0) {
+              console.log('✅ Auto-recovery successful, proceeding with org:', restoredOrgs[0].id);
+              // Fall through to normal org loading below
+              userOrgs.push(...restoredOrgs);
+            }
+          }
+
+          if (userOrgs.length === 0) {
+            console.log('❌ User has no organizations');
+            setCurrentOrgId(null);
+            setCurrentProjectId(null);
+            setUserRole(null);
+            setLoading(false);
+            return;
+          }
         }
         
         // User has orgs! Get the default org or use first one

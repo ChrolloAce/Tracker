@@ -327,21 +327,77 @@ class OrganizationService {
   }
 
   /**
-   * Remove member from organization
+   * Remove member from organization (with owner protection)
    */
   static async removeMember(orgId: string, userId: string): Promise<void> {
-    const batch = writeBatch(db);
-    
-    // Update member status
     const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+    const memberSnap = await getDoc(memberRef);
+
+    if (memberSnap.exists() && memberSnap.data().role === 'owner') {
+      throw new Error('Cannot remove the organization owner');
+    }
+
+    const batch = writeBatch(db);
     batch.update(memberRef, { status: 'removed' });
     
-    // Decrement member count
     const orgRef = doc(db, 'organizations', orgId);
     batch.update(orgRef, { memberCount: increment(-1) });
     
     await batch.commit();
     console.log(`✅ Removed member ${userId} from organization ${orgId}`);
+  }
+
+  /**
+   * Restore a previously removed member back to active status
+   */
+  static async restoreMember(orgId: string, userId: string): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+    const memberSnap = await getDoc(memberRef);
+
+    if (!memberSnap.exists()) {
+      throw new Error('Member document not found');
+    }
+
+    if (memberSnap.data().status === 'active') {
+      return; // Already active, nothing to do
+    }
+
+    const batch = writeBatch(db);
+    batch.update(memberRef, { status: 'active' });
+
+    const orgRef = doc(db, 'organizations', orgId);
+    batch.update(orgRef, { memberCount: increment(1) });
+
+    await batch.commit();
+    console.log(`✅ Restored member ${userId} in organization ${orgId}`);
+  }
+
+  /**
+   * Find organizations where user was removed (for auto-recovery)
+   */
+  static async getRemovedMemberships(userId: string): Promise<Array<{ orgId: string; role: string }>> {
+    try {
+      const membersQuery = query(
+        collectionGroup(db, 'members'),
+        where('userId', '==', userId),
+        where('status', '==', 'removed')
+      );
+
+      const snapshot = await getDocs(membersQuery);
+      const results: Array<{ orgId: string; role: string }> = [];
+
+      for (const memberDoc of snapshot.docs) {
+        const orgId = memberDoc.ref.parent.parent?.id;
+        if (orgId) {
+          results.push({ orgId, role: memberDoc.data().role });
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Failed to check removed memberships:', error);
+      return [];
+    }
   }
 
   /**

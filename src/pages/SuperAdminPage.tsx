@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import SuperAdminService, { OrganizationSummary, SuperAdminStats } from '../services/SuperAdminService';
+import OrganizationService from '../services/OrganizationService';
 import Sidebar from '../components/layout/Sidebar';
 import { 
   Building2, 
@@ -18,7 +19,8 @@ import {
   Eye,
   RefreshCw,
   Zap,
-  Check
+  Check,
+  UserCheck
 } from 'lucide-react';
 import { ProxiedImage } from '../components/ProxiedImage';
 
@@ -162,6 +164,22 @@ const SuperAdminPage: React.FC = () => {
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Action: Restore removed member
+  const handleRestoreMember = async (orgId: string, userId: string) => {
+    setActionLoading('restore-' + userId);
+    try {
+      await OrganizationService.restoreMember(orgId, userId);
+      setActionSuccess('Member restored successfully!');
+      loadOrgDetails(orgId);
+      loadData();
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to restore member');
     } finally {
       setActionLoading(null);
     }
@@ -480,20 +498,41 @@ const SuperAdminPage: React.FC = () => {
                   <div>
                     <h3 className="text-[10px] font-medium text-white/40 mb-2 uppercase tracking-wider">Members</h3>
                     <div className="bg-white/[0.02] border border-white/5 rounded-lg divide-y divide-white/5">
-                      {orgDetails.members.map((member: any) => (
-                        <div key={member.id} className="px-3 py-2 flex items-center gap-2">
-                          <div className="w-7 h-7 bg-white/5 rounded-full flex items-center justify-center text-white/50 text-xs font-medium">
-                            {(member.displayName || member.email || 'U').charAt(0).toUpperCase()}
+                      {orgDetails.members.map((member: any) => {
+                        const isRemoved = member.status === 'removed';
+                        return (
+                          <div key={member.id} className={`px-3 py-2 flex items-center gap-2 ${isRemoved ? 'opacity-50' : ''}`}>
+                            <div className="w-7 h-7 bg-white/5 rounded-full flex items-center justify-center text-white/50 text-xs font-medium">
+                              {(member.displayName || member.email || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium text-white/70 truncate">
+                                {member.displayName || 'No name'}
+                                {isRemoved && <span className="ml-1.5 text-red-400/80">(removed)</span>}
+                              </div>
+                              <div className="text-[10px] text-white/40 truncate">{member.email}</div>
+                            </div>
+                            <span className="px-1.5 py-0.5 bg-white/5 rounded text-[10px] text-white/50">
+                              {member.role || 'member'}
+                            </span>
+                            {isRemoved && (
+                              <button
+                                onClick={() => handleRestoreMember(selectedOrg, member.id)}
+                                disabled={actionLoading === 'restore-' + member.id}
+                                className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] text-white/80 transition-colors disabled:opacity-50"
+                                title="Restore this member"
+                              >
+                                {actionLoading === 'restore-' + member.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <UserCheck className="w-3 h-3" />
+                                )}
+                                Restore
+                              </button>
+                            )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-white/70 truncate">{member.displayName || 'No name'}</div>
-                            <div className="text-[10px] text-white/40 truncate">{member.email}</div>
-                          </div>
-                          <span className="px-1.5 py-0.5 bg-white/5 rounded text-[10px] text-white/50">
-                            {member.role || 'member'}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
