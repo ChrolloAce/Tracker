@@ -34,7 +34,7 @@ export class AccountsDataService {
     accountData: Omit<TrackedAccount, 'id' | 'orgId' | 'dateAdded' | 'addedBy' | 'totalVideos' | 'totalViews' | 'totalLikes' | 'totalComments' | 'totalShares'>,
     skipSync: boolean = false
   ): Promise<string> {
-    // ── Dedup check: return existing account ID if one already exists ──
+    // ── Dedup check: return existing account ID if one already exists and is healthy ──
     if (accountData.username && accountData.platform) {
       const normalizedUsername = accountData.username.toLowerCase();
       const accountsCol = collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts');
@@ -44,8 +44,14 @@ export class AccountsDataService {
       const deterministicRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts', deterministicId);
       const deterministicSnap = await getDoc(deterministicRef);
       if (deterministicSnap.exists()) {
-        console.log(`⚠️ Account @${normalizedUsername} on ${accountData.platform} already exists (deterministic ID: ${deterministicId}) — skipping creation`);
-        return deterministicId;
+        const existing = deterministicSnap.data();
+        // Only skip if account is healthy (has required fields and is active)
+        if (existing?.username && existing?.platform && existing?.isActive !== false) {
+          console.log(`⚠️ Account @${normalizedUsername} on ${accountData.platform} already exists (deterministic ID: ${deterministicId}) — skipping creation`);
+          return deterministicId;
+        }
+        // Account doc exists but is broken/inactive — will be overwritten below
+        console.log(`🔧 Account @${normalizedUsername} exists but is broken/inactive — re-creating`);
       }
 
       // 2) Fallback query for legacy random-ID accounts
@@ -56,9 +62,13 @@ export class AccountsDataService {
       );
       const existingSnap = await getDocs(existingQuery);
       if (!existingSnap.empty) {
-        const existingId = existingSnap.docs[0].id;
-        console.log(`⚠️ Account @${normalizedUsername} on ${accountData.platform} already exists (legacy ID: ${existingId}) — skipping creation`);
-        return existingId;
+        const existingDoc = existingSnap.docs[0];
+        const existing = existingDoc.data();
+        if (existing?.username && existing?.platform && existing?.isActive !== false) {
+          console.log(`⚠️ Account @${normalizedUsername} on ${accountData.platform} already exists (legacy ID: ${existingDoc.id}) — skipping creation`);
+          return existingDoc.id;
+        }
+        console.log(`🔧 Legacy account @${normalizedUsername} exists but is broken/inactive — re-creating with deterministic ID`);
       }
     }
 
