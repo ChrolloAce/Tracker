@@ -272,14 +272,18 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                                   <Edit3 className="w-4 h-4 text-blue-400" />
                                   <span>Edit Linked Accounts</span>
                                 </button>
-                                <div className="my-1 border-t border-white/10" />
-                                <button
-                                  onClick={() => { setOpenDropdownId(null); onRemoveCreator(creator); }}
-                                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  <span>Remove Creator</span>
-                                </button>
+                                {creator.role !== 'owner' && (
+                                  <>
+                                    <div className="my-1 border-t border-white/10" />
+                                    <button
+                                      onClick={() => { setOpenDropdownId(null); onRemoveCreator(creator); }}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      <span>Remove Creator</span>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </>
                           )}
