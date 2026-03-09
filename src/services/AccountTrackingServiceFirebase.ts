@@ -70,23 +70,26 @@ export class AccountTrackingServiceFirebase {
     username: string,
     platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
     accountType: 'my' | 'competitor' = 'my',
-    maxVideos: number = 100 // Default to 100 if not specified
+    maxVideos: number = 100,
+    youtubeVideoType?: 'shorts' | 'long' | 'both'
   ): Promise<string> {
     try {
       console.log(`⚡ Quick-adding ${accountType} account @${username} on ${platform} (background sync, max ${maxVideos} videos)`);
-      
-      // Add to Firestore immediately with minimal data
-      // The cron job will fetch profile data and videos in the background
+
       const accountData: any = {
         username,
         platform,
         accountType,
-        displayName: username, // Use username as placeholder
+        displayName: username,
         isActive: true,
-        maxVideos: maxVideos, // Store the user's preference for how many videos to scrape
-        creatorType: 'automatic' // Full account tracking - discovers new videos on refresh
+        maxVideos: maxVideos,
+        creatorType: 'automatic'
       };
-      
+
+      if (platform === 'youtube' && youtubeVideoType) {
+        accountData.youtubeVideoType = youtubeVideoType;
+      }
+
       const accountId = await FirestoreDataService.addTrackedAccount(orgId, projectId, userId, accountData);
 
       console.log(`✅ Queued account @${username} for background sync (ID: ${accountId})`);

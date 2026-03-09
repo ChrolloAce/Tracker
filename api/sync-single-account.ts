@@ -378,15 +378,15 @@ export default async function handler(
         throw tiktokError;
       }
     } else if (account.platform === 'youtube') {
-      console.log(`📺 Fetching YouTube Shorts for ${account.username}...`);
-      
+      const ytVideoType = account.youtubeVideoType || 'both';
+      console.log(`📺 Fetching YouTube videos for ${account.username} (type: ${ytVideoType})...`);
+
       try {
         const creatorType = account.creatorType || 'automatic';
         console.log(`🔧 Account type: ${creatorType}`);
-        
+
         const youtubeVideos: any[] = [];
-        
-        // Get existing video IDs
+
         const existingVideosSnapshot = await db
           .collection('organizations')
           .doc(orgId)
@@ -397,68 +397,61 @@ export default async function handler(
           .where('platform', '==', 'youtube')
           .select('videoId')
           .get();
-        
+
         const existingVideoIds = new Set(
           existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
         );
-        
-        console.log(`📊 Found ${existingVideoIds.size} existing YouTube Shorts in database`);
-        
+
+        console.log(`📊 Found ${existingVideoIds.size} existing YouTube videos in database`);
+
         // ==================== PHASE 1: REFRESH EXISTING VIDEOS ====================
-        // Always run refresh FIRST for any account with existing videos
         if (existingVideoIds.size > 0) {
-          console.log(`\n🔄 [YOUTUBE PHASE 1] Refreshing ${existingVideoIds.size} existing Shorts...`);
+          console.log(`\n🔄 [YOUTUBE PHASE 1] Refreshing ${existingVideoIds.size} existing videos...`);
           try {
             const refreshedVideos = await YoutubeSyncService.refresh(account, orgId, Array.from(existingVideoIds));
-            
-            // Mark ALL refreshed videos with flag to prevent duplication (CRITICAL FIX!)
+
             const markedRefreshedVideos = refreshedVideos.map((v: any) => ({
               ...v,
               _isRefreshOnly: true
             }));
-            
+
             youtubeVideos.push(...markedRefreshedVideos);
-            console.log(`   ✅ Refreshed ${refreshedVideos.length} Shorts`);
+            console.log(`   ✅ Refreshed ${refreshedVideos.length} videos`);
           } catch (refreshError) {
             console.error('⚠️ [YOUTUBE] Refresh failed (non-fatal):', refreshError);
           }
         }
-        
+
         // ==================== PHASE 2: DISCOVER NEW VIDEOS ====================
-        // Only run discovery for automatic accounts (static accounts skip this)
         if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
-          console.log(`\n🔍 [YOUTUBE PHASE 2] Discovering new Shorts...`);
-          
-          // For first-time syncs, pass EMPTY set (fetch all up to limit)
-          // For regular syncs, pass FULL set (stop at first duplicate)
+          console.log(`\n🔍 [YOUTUBE PHASE 2] Discovering new videos (type: ${ytVideoType})...`);
+
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
-          
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} Shorts`);
+            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} videos`);
           } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
-          
+
           const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, maxVideos);
           const newVideos = result.videos;
-          
-          console.log(`   ✅ Discovered ${newVideos.length} NEW Shorts`);
-          
-          // Add NEW videos (not marked as _isRefreshOnly, so they'll be created)
+
+          console.log(`   ✅ Discovered ${newVideos.length} NEW videos`);
+
           youtubeVideos.push(...newVideos);
-          
-          // Profile handling
+
           if (result.profile) {
             const profile = result.profile;
             console.log(`   👤 Fetched profile: ${profile.followersCount || 0} subscribers`);
-            
+
             const profileUpdates: any = {
               displayName: profile.displayName,
               followerCount: profile.followersCount || 0,
               isVerified: profile.isVerified || false
             };
-            
+
             if (profile.profilePicUrl) {
               try {
                 const uploadedProfilePic = await ImageUploadService.downloadAndUpload(
@@ -472,7 +465,12 @@ export default async function handler(
                 console.warn('⚠️ Could not upload profile pic:', err.message);
               }
             }
-            
+
+            // Also persist the resolved channelId if not already stored
+            if (profile.channelId && !account.youtubeChannelId) {
+              profileUpdates.youtubeChannelId = profile.channelId;
+            }
+
             await accountRef.update(profileUpdates);
           }
         } else if (syncStrategy === 'refresh_only') {
@@ -480,35 +478,27 @@ export default async function handler(
         } else {
           console.log(`\n⏭️  [YOUTUBE PHASE 2] Static account - skipping discovery`);
         }
-        
+
         // ==================== PHASE 3: PROCESS ALL VIDEOS ====================
-        // CRITICAL: Deduplicate by videoId (keep refreshed version if duplicate exists)
         const videoMap = new Map();
         for (const video of youtubeVideos) {
           const videoId = video.videoId;
           if (!videoMap.has(videoId)) {
             videoMap.set(videoId, video);
           } else {
-            // Duplicate found - keep the REFRESHED version (has _isRefreshOnly flag)
             const existing = videoMap.get(videoId);
             if (video._isRefreshOnly && !existing._isRefreshOnly) {
-              console.log(`   🔄 Deduplicating ${videoId} - keeping refreshed version`);
               videoMap.set(videoId, video);
-            } else if (!video._isRefreshOnly && existing._isRefreshOnly) {
-              console.log(`   🔄 Deduplicating ${videoId} - already have refreshed version`);
-              // Keep existing (refreshed) version
-            } else {
-              console.log(`   ⚠️  Duplicate ${videoId} with same type - keeping first`);
             }
           }
         }
-        
+
         const dedupedVideos = Array.from(videoMap.values());
         const refreshedCount = dedupedVideos.filter(v => v._isRefreshOnly).length;
         const newCount = dedupedVideos.length - refreshedCount;
         console.log(`\n📊 [YOUTUBE] Processing ${dedupedVideos.length} total videos (${refreshedCount} refreshed + ${newCount} new) - removed ${youtubeVideos.length - dedupedVideos.length} duplicates`);
         videos = dedupedVideos;
-        
+
       } catch (youtubeError) {
         console.error('YouTube fetch error:', youtubeError);
         throw youtubeError;

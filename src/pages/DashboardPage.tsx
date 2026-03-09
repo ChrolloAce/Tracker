@@ -1899,14 +1899,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [user, currentOrgId, currentProjectId]);
 
-  const handleAddAccounts = useCallback(async (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number}>) => {
+  const handleAddAccounts = useCallback(async (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>) => {
     if (!currentOrgId || !currentProjectId || !user) return;
 
-    // Close modal immediately
     setIsAddAccountModalOpen(false);
 
     try {
-      // Process all accounts in PARALLEL
       const addPromises = accounts.map(account => 
         AccountTrackingServiceFirebase.addAccount(
           currentOrgId,
@@ -1915,7 +1913,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           account.username,
           account.platform,
           'my',
-          account.videoCount
+          account.videoCount,
+          account.youtubeVideoType
         )
       );
 

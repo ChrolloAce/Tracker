@@ -17,10 +17,12 @@ interface UsageLimits {
   isAtVideoLimit: boolean;
 }
 
+export type YoutubeVideoType = 'shorts' | 'long' | 'both';
+
 export interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number}>) => void;
+  onAdd: (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: YoutubeVideoType}>) => void;
   usageLimits: UsageLimits;
 }
 
@@ -55,6 +57,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [urlError, setUrlError] = useState<string | null>(null);
   const [videoCount, setVideoCount] = useState(10);
   const [showPresets, setShowPresets] = useState(false);
+  const [youtubeVideoType, setYoutubeVideoType] = useState<YoutubeVideoType>('both');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const presetsRef = useRef<HTMLDivElement>(null);
@@ -65,6 +68,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setInputValue('');
       setUrlError(null);
       setVideoCount(10);
+      setYoutubeVideoType('both');
 
       const checkClipboard = async () => {
         const parsed = await UrlParserService.autoDetectFromClipboard();
@@ -164,7 +168,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       url: a.url,
       username: a.username!,
       platform: a.platform!,
-      videoCount
+      videoCount,
+      ...(a.platform === 'youtube' ? { youtubeVideoType } : {})
     }));
 
     setAccounts([]);
@@ -247,33 +252,62 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </div>
         </div>
 
-        {/* Video count selector */}
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-xs text-gray-400">Videos per account:</span>
-          <div className="relative" ref={presetsRef}>
-            <button
-              onClick={() => setShowPresets(!showPresets)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-sm text-white font-medium hover:border-white/20 transition-colors"
-            >
-              {videoCount}
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-            </button>
-            {showPresets && (
-              <div className="absolute left-0 mt-1 w-32 bg-[#1E1E20] border border-gray-700/50 rounded-lg shadow-xl z-10">
-                {[10, 25, 50, 100, 250, 500, 1000, 2000].map((preset) => (
+        {/* Settings row */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4">
+          {/* Video count selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">Videos per account:</span>
+            <div className="relative" ref={presetsRef}>
+              <button
+                onClick={() => setShowPresets(!showPresets)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-sm text-white font-medium hover:border-white/20 transition-colors"
+              >
+                {videoCount}
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+              {showPresets && (
+                <div className="absolute left-0 mt-1 w-32 bg-[#1E1E20] border border-gray-700/50 rounded-lg shadow-xl z-10">
+                  {[10, 25, 50, 100, 250, 500, 1000, 2000].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => { setVideoCount(preset); setShowPresets(false); }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 first:rounded-t-lg last:rounded-b-lg transition-colors ${
+                        videoCount === preset ? 'text-white font-medium' : 'text-gray-400'
+                      }`}
+                    >
+                      {preset} videos
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* YouTube video type selector — only visible when YouTube accounts are present */}
+          {(platformCounts['youtube'] > 0 || validAccounts.some(a => a.platform === 'youtube') || inputValue.toLowerCase().includes('youtube')) && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">YouTube type:</span>
+              <div className="flex gap-1 bg-[#1E1E20] border border-gray-700/50 rounded-full p-0.5">
+                {([
+                  { value: 'shorts', label: 'Shorts' },
+                  { value: 'both', label: 'Both' },
+                  { value: 'long', label: 'Long' },
+                ] as const).map((opt) => (
                   <button
-                    key={preset}
-                    onClick={() => { setVideoCount(preset); setShowPresets(false); }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 first:rounded-t-lg last:rounded-b-lg transition-colors ${
-                      videoCount === preset ? 'text-white font-medium' : 'text-gray-400'
+                    key={opt.value}
+                    onClick={() => setYoutubeVideoType(opt.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      youtubeVideoType === opt.value
+                        ? 'bg-white text-black'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    {preset} videos
+                    {opt.label}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Summary bar */}

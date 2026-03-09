@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -22,13 +21,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'YouTube API key not configured (YOUTUBE_API_KEY)' });
     }
 
-    // Get channel info (profile)
     if (action === 'getChannelInfo') {
       let url: string;
       
-      // Support both channel ID and @handle
       if (channelHandle && channelHandle.startsWith('@')) {
-        // Use forHandle to get channel by handle
         url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent(channelHandle.substring(1))}&key=${apiKey}`;
       } else if (channelId) {
         url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${encodeURIComponent(channelId)}&key=${apiKey}`;
@@ -50,14 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ channel: data.items[0] });
     }
 
-    // Get channel Shorts videos
+    // Get channel Shorts only (legacy, kept for backward compat)
     if (action === 'getShorts') {
       if (!channelId) {
         return res.status(400).json({ error: 'Missing channelId for getShorts' });
       }
 
-      // Search for Shorts videos from this channel
-      // We'll use search API with videoDuration=short and channelId
       const maxResults = req.body.maxResults || 50;
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&type=video&videoDuration=short&maxResults=${maxResults}&order=date&key=${apiKey}`;
       
@@ -74,7 +68,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ videos: [] });
       }
 
-      // Fetch full video details (statistics, contentDetails) for all Shorts
       const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${apiKey}`;
       const videoRes = await fetch(videoUrl);
       if (!videoRes.ok) {
@@ -86,6 +79,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ videos: videoData.items || [] });
     }
 
+    // Get channel videos with type filter: 'shorts' | 'long' | 'both'
+    if (action === 'getVideos') {
+      if (!channelId) {
+        return res.status(400).json({ error: 'Missing channelId for getVideos' });
+      }
+
+      const maxResults = Math.min(req.body.maxResults || 50, 50);
+      const videoType: string = req.body.videoType || 'both';
+      const pageToken: string | undefined = req.body.pageToken;
+      let allVideoIds: string[] = [];
+      let nextPageToken: string | undefined;
+
+      if (videoType === 'shorts') {
+        const result = await searchChannelVideos(channelId, apiKey, maxResults, 'short', pageToken);
+        allVideoIds = result.videoIds;
+        nextPageToken = result.nextPageToken;
+      } else if (videoType === 'long') {
+        const result = await searchChannelVideos(channelId, apiKey, maxResults, 'long', pageToken);
+        allVideoIds = result.videoIds;
+        nextPageToken = result.nextPageToken;
+      } else {
+        // 'both' — fetch without duration filter to get all video types
+        const result = await searchChannelVideos(channelId, apiKey, maxResults, undefined, pageToken);
+        allVideoIds = result.videoIds;
+        nextPageToken = result.nextPageToken;
+      }
+
+      if (allVideoIds.length === 0) {
+        return res.status(200).json({ videos: [], nextPageToken });
+      }
+
+      // Fetch full video details in batches of 50
+      const videos: any[] = [];
+      for (let i = 0; i < allVideoIds.length; i += 50) {
+        const batch = allVideoIds.slice(i, i + 50);
+        const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${batch.join(',')}&key=${apiKey}`;
+        const videoRes = await fetch(videoUrl);
+        if (videoRes.ok) {
+          const videoData = await videoRes.json();
+          videos.push(...(videoData.items || []));
+        }
+      }
+
+      return res.status(200).json({ videos, nextPageToken });
+    }
+
     // Batch refresh videos by IDs (up to 50 per call)
     if (action === 'batchGetVideos') {
       const { videoIds } = req.body || {};
@@ -94,10 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing videoIds array' });
       }
       
-      // YouTube API supports up to 50 video IDs per request
       const limitedIds = videoIds.slice(0, 50);
-      
-      // Fetch full video details (statistics, contentDetails) for all videos
       const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${limitedIds.join(',')}&key=${apiKey}`;
       const videoRes = await fetch(videoUrl);
       
@@ -110,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ videos: videoData.items || [] });
     }
 
-    return res.status(400).json({ error: 'Invalid action. Use "getChannelInfo", "getShorts", or "batchGetVideos"' });
+    return res.status(400).json({ error: 'Invalid action. Use "getChannelInfo", "getShorts", "getVideos", or "batchGetVideos"' });
   } catch (error) {
     return res.status(500).json({ 
       error: 'Internal server error', 
@@ -119,3 +155,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
+async function searchChannelVideos(
+  channelId: string,
+  apiKey: string,
+  maxResults: number,
+  videoDuration?: 'short' | 'long',
+  pageToken?: string
+): Promise<{ videoIds: string[]; nextPageToken?: string }> {
+  let searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&type=video&maxResults=${maxResults}&order=date&key=${apiKey}`;
+
+  if (videoDuration) {
+    searchUrl += `&videoDuration=${videoDuration}`;
+  }
+  if (pageToken) {
+    searchUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
+  }
+
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) {
+    const text = await searchRes.text();
+    throw new Error(`YouTube search API error: ${searchRes.status} - ${text}`);
+  }
+
+  const searchData = await searchRes.json();
+  const videoIds = (searchData.items || []).map((item: any) => item.id.videoId).filter(Boolean);
+
+  return { videoIds, nextPageToken: searchData.nextPageToken };
+}

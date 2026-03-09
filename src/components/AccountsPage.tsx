@@ -261,17 +261,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         }
     }, [processedAccounts, hookHandleSyncAccount, selectedAccount, loadAccountVideos]);
 
-    const handleAccountsAdded = useCallback(async (accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number}>) => {
+    const handleAccountsAdded = useCallback(async (accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>) => {
         if (!currentOrgId || !currentProjectId || !user) return;
-        
+
         setProcessingAccounts(prev => [
           ...accountsToAdd.map(acc => ({ username: acc.username, platform: acc.platform, startedAt: Date.now() })),
           ...prev
         ]);
-        
+
         setIsAddModalOpen(false);
-    
-        const addPromises = accountsToAdd.map(account => 
+
+        const addPromises = accountsToAdd.map(account =>
           AccountTrackingServiceFirebase.addAccount(
             currentOrgId,
             currentProjectId,
@@ -279,7 +279,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             account.username,
             account.platform,
             'my',
-            account.videoCount
+            account.videoCount,
+            account.youtubeVideoType
           ).then(() => ({ success: true, username: account.username }))
            .catch(error => {
             console.error(`Failed to add account @${account.username}:`, error);
