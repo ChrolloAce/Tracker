@@ -92,7 +92,6 @@ class SuperAdminService {
     try {
       const response = await fetch(`/api/super-admin/organizations/${orgId}?email=${encodeURIComponent(userEmail)}`);
       
-      // Check if response is JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Super Admin API not available.');
@@ -105,7 +104,6 @@ class SuperAdminService {
       
       const data = await response.json();
       
-      // Convert date string back to Date object
       if (data.organization) {
         data.organization.createdAt = new Date(data.organization.createdAt);
       }
@@ -114,6 +112,56 @@ class SuperAdminService {
     } catch (error) {
       console.error('❌ SuperAdmin: Failed to fetch org details:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Delete an organization and all its data (super admin only)
+   */
+  async deleteOrganization(orgId: string, userEmail: string): Promise<void> {
+    const response = await fetch('/api/super-admin/delete-org', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, orgId }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to delete organization');
+    }
+  }
+
+  /**
+   * Assign an owner to an organization by email
+   */
+  async assignOwner(orgId: string, targetEmail: string, userEmail: string): Promise<{ displayName: string }> {
+    const response = await fetch('/api/super-admin/assign-owner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, orgId, targetEmail }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to assign owner');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete or remove a member from an organization
+   */
+  async deleteMember(orgId: string, memberId: string, userEmail: string, hardDelete: boolean = false): Promise<void> {
+    const response = await fetch('/api/super-admin/delete-member', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, orgId, memberId, hardDelete }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to delete member');
     }
   }
 }

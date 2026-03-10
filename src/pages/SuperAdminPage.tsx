@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import SuperAdminService, { OrganizationSummary, SuperAdminStats } from '../services/SuperAdminService';
 import OrganizationService from '../services/OrganizationService';
 import Sidebar from '../components/layout/Sidebar';
+import OrgDetailsModal from '../components/admin/OrgDetailsModal';
 import { 
   Building2, 
   Users, 
@@ -14,15 +15,11 @@ import {
   ChevronRight,
   Loader2,
   Shield,
-  X,
   AlertCircle,
   Eye,
   RefreshCw,
-  Zap,
   Check,
-  UserCheck
 } from 'lucide-react';
-import { ProxiedImage } from '../components/ProxiedImage';
 
 const SuperAdminPage: React.FC = () => {
   const { user } = useAuth();
@@ -99,77 +96,43 @@ const SuperAdminPage: React.FC = () => {
     setActionSuccess(null);
   };
 
-  // Action: View as user
-  const handleViewAsUser = (orgId: string) => {
-    navigate(`/view-as/${orgId}`);
-  };
+  const handleViewAsUser = (orgId: string) => navigate(`/view-as/${orgId}`);
 
-  // Action: Grant plan
   const handleGrantPlan = async () => {
     if (!selectedOrg || !user?.email) return;
-    
     setActionLoading('grant-plan');
     try {
-      const response = await fetch(`/api/super-admin/grant-plan`, {
+      const response = await fetch('/api/super-admin/grant-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          orgId: selectedOrg,
-          planTier: selectedPlan
-        })
+        body: JSON.stringify({ email: user.email, orgId: selectedOrg, planTier: selectedPlan }),
       });
-      
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to grant plan');
-      }
-      
+      if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to grant plan'); }
       setActionSuccess(`Granted ${selectedPlan} plan successfully!`);
       setShowPlanModal(false);
-      
-      // Refresh org details
       loadOrgDetails(selectedOrg);
       loadData();
-      
       setTimeout(() => setActionSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err: any) { setError(err.message); }
+    finally { setActionLoading(null); }
   };
 
-  // Action: Trigger refresh
   const handleTriggerRefresh = async (orgId: string) => {
     if (!user?.email) return;
-    
     setActionLoading('refresh-' + orgId);
     try {
-      const response = await fetch(`/api/super-admin/trigger-refresh`, {
+      const response = await fetch('/api/super-admin/trigger-refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          orgId: orgId
-        })
+        body: JSON.stringify({ email: user.email, orgId }),
       });
-      
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to trigger refresh');
-      }
-      
+      if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to trigger refresh'); }
       setActionSuccess('Refresh triggered successfully!');
       setTimeout(() => setActionSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err: any) { setError(err.message); }
+    finally { setActionLoading(null); }
   };
 
-  // Action: Restore removed member
   const handleRestoreMember = async (orgId: string, userId: string) => {
     setActionLoading('restore-' + userId);
     try {
@@ -178,25 +141,14 @@ const SuperAdminPage: React.FC = () => {
       loadOrgDetails(orgId);
       loadData();
       setTimeout(() => setActionSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to restore member');
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err: any) { setError(err.message || 'Failed to restore member'); }
+    finally { setActionLoading(null); }
   };
 
-  // Filter organizations
   const filteredOrgs = organizations.filter(org => {
-    const matchesSearch = 
-      org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      org.ownerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      org.ownerName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesPlan = 
-      filterPlan === 'all' ||
-      (filterPlan === 'paid' && org.planTier !== 'free') ||
-      (filterPlan === 'free' && org.planTier === 'free');
-    
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = org.name.toLowerCase().includes(q) || org.ownerEmail.toLowerCase().includes(q) || org.ownerName.toLowerCase().includes(q);
+    const matchesPlan = filterPlan === 'all' || (filterPlan === 'paid' && org.planTier !== 'free') || (filterPlan === 'free' && org.planTier === 'free');
     return matchesSearch && matchesPlan;
   });
 
@@ -416,303 +368,100 @@ const SuperAdminPage: React.FC = () => {
 
       {/* Organization Details Modal */}
       {selectedOrg && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111] border border-white/10 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header */}
-            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-3">
-                {orgDetails?.organization && (
-                  <>
-                    <div className="w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center text-white/70 font-medium">
-                      {orgDetails.organization.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h2 className="font-medium text-white text-sm">{orgDetails.organization.name}</h2>
-                      <p className="text-xs text-white/40">{orgDetails.organization.ownerEmail}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Action Buttons */}
-                <button
-                  onClick={() => handleViewAsUser(selectedOrg)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  View as User
-                </button>
-                <button
-                  onClick={() => setShowPlanModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-colors"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  Grant Plan
-                </button>
-                <button
-                  onClick={() => handleTriggerRefresh(selectedOrg)}
-                  disabled={actionLoading === 'refresh-' + selectedOrg}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${actionLoading === 'refresh-' + selectedOrg ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-                <button
-                  onClick={closeOrgDetails}
-                  className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4 text-white/50" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {loadingDetails ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-5 h-5 animate-spin text-white/30" />
-                </div>
-              ) : orgDetails ? (
-                <div className="space-y-4">
-                  {/* Org Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 text-center">
-                      <div className="text-lg font-medium text-white">{orgDetails.members.length}</div>
-                      <div className="text-[10px] text-white/40 uppercase">Members</div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 text-center">
-                      <div className="text-lg font-medium text-white">{orgDetails.organization?.projectCount || 0}</div>
-                      <div className="text-[10px] text-white/40 uppercase">Projects</div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 text-center">
-                      <div className="text-lg font-medium text-white">{orgDetails.trackedAccounts.length}</div>
-                      <div className="text-[10px] text-white/40 uppercase">Accounts</div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 text-center">
-                      <div className="text-lg font-medium text-white">{orgDetails.videos.length}</div>
-                      <div className="text-[10px] text-white/40 uppercase">Videos</div>
-                    </div>
-                  </div>
-
-                  {/* Members */}
-                  <div>
-                    <h3 className="text-[10px] font-medium text-white/40 mb-2 uppercase tracking-wider">Members</h3>
-                    <div className="bg-white/[0.02] border border-white/5 rounded-lg divide-y divide-white/5">
-                      {orgDetails.members.map((member: any) => {
-                        const isRemoved = member.status === 'removed';
-                        return (
-                          <div key={member.id} className={`px-3 py-2 flex items-center gap-2 ${isRemoved ? 'opacity-50' : ''}`}>
-                            <div className="w-7 h-7 bg-white/5 rounded-full flex items-center justify-center text-white/50 text-xs font-medium">
-                              {(member.displayName || member.email || 'U').charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-white/70 truncate">
-                                {member.displayName || 'No name'}
-                                {isRemoved && <span className="ml-1.5 text-red-400/80">(removed)</span>}
-                              </div>
-                              <div className="text-[10px] text-white/40 truncate">{member.email}</div>
-                            </div>
-                            <span className="px-1.5 py-0.5 bg-white/5 rounded text-[10px] text-white/50">
-                              {member.role || 'member'}
-                            </span>
-                            {isRemoved && (
-                              <button
-                                onClick={() => handleRestoreMember(selectedOrg, member.id)}
-                                disabled={actionLoading === 'restore-' + member.id}
-                                className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] text-white/80 transition-colors disabled:opacity-50"
-                                title="Restore this member"
-                              >
-                                {actionLoading === 'restore-' + member.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <UserCheck className="w-3 h-3" />
-                                )}
-                                Restore
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Tracked Accounts */}
-                  <div>
-                    <h3 className="text-[10px] font-medium text-white/40 mb-2 uppercase tracking-wider">
-                      Tracked Accounts ({orgDetails.trackedAccounts.length})
-                    </h3>
-                    {orgDetails.trackedAccounts.length > 0 ? (
-                      <div className="bg-white/[0.02] border border-white/5 rounded-lg divide-y divide-white/5 max-h-48 overflow-y-auto">
-                        {orgDetails.trackedAccounts.map((account: any) => (
-                          <div key={account.id} className="px-3 py-2 flex items-center gap-2">
-                            {account.profilePicture ? (
-                              <ProxiedImage
-                                src={account.profilePicture}
-                                alt={account.username}
-                                className="w-8 h-8 rounded-full object-cover"
-                                fallback={
-                                  <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-white/50 text-xs">
-                                    {(account.username || 'A').charAt(0).toUpperCase()}
-                                  </div>
-                                }
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-white/50 text-xs">
-                                {(account.username || 'A').charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-white/70 truncate">
-                                @{account.username || account.displayName}
-                              </div>
-                              <div className="text-[10px] text-white/40 capitalize">{account.platform}</div>
-                            </div>
-                            <div className="text-right text-xs">
-                              <div className="text-white/70">{(account.followerCount || 0).toLocaleString()}</div>
-                              <div className="text-[10px] text-white/40">followers</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-white/[0.02] border border-white/5 rounded-lg p-4 text-center text-white/30 text-xs">
-                        No tracked accounts
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Videos */}
-                  <div>
-                    <h3 className="text-[10px] font-medium text-white/40 mb-2 uppercase tracking-wider">
-                      Videos ({orgDetails.videos.length})
-                    </h3>
-                    {orgDetails.videos.length > 0 ? (
-                      <div className="bg-white/[0.02] border border-white/5 rounded-lg divide-y divide-white/5 max-h-48 overflow-y-auto">
-                        {orgDetails.videos.slice(0, 20).map((video: any) => (
-                          <div key={video.id} className="px-3 py-2 flex items-center gap-2">
-                            {video.thumbnail ? (
-                              <img
-                                src={video.thumbnail}
-                                alt="Video"
-                                className="w-12 h-8 rounded object-cover bg-white/5"
-                              />
-                            ) : (
-                              <div className="w-12 h-8 bg-white/5 rounded flex items-center justify-center">
-                                <Video className="w-3 h-3 text-white/20" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-white/70 truncate">
-                                {video.title || video.description || 'No title'}
-                              </div>
-                              <div className="text-[10px] text-white/40 capitalize">{video.platform}</div>
-                            </div>
-                            <div className="text-right text-xs">
-                              <div className="text-white/70">{(video.views || 0).toLocaleString()}</div>
-                              <div className="text-[10px] text-white/40">views</div>
-                            </div>
-                          </div>
-                        ))}
-                        {orgDetails.videos.length > 20 && (
-                          <div className="px-3 py-2 text-center text-[10px] text-white/30">
-                            + {orgDetails.videos.length - 20} more
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="bg-white/[0.02] border border-white/5 rounded-lg p-4 text-center text-white/30 text-xs">
-                        No videos
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <OrgDetailsModal
+          orgId={selectedOrg}
+          orgDetails={orgDetails}
+          loading={loadingDetails}
+          userEmail={user?.email || ''}
+          actionLoading={actionLoading}
+          onClose={closeOrgDetails}
+          onViewAsUser={handleViewAsUser}
+          onGrantPlan={() => setShowPlanModal(true)}
+          onTriggerRefresh={handleTriggerRefresh}
+          onRestoreMember={handleRestoreMember}
+          onSuccess={(msg) => { setActionSuccess(msg); setTimeout(() => setActionSuccess(null), 3000); }}
+          onError={(msg) => setError(msg)}
+          onRefresh={() => { loadData(); if (selectedOrg) loadOrgDetails(selectedOrg); }}
+        />
       )}
 
       {/* Grant Plan Modal */}
       {showPlanModal && selectedOrg && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#111] border border-white/10 rounded-xl w-full max-w-sm p-4">
-            <h3 className="text-sm font-medium text-white mb-4">Grant Plan Access</h3>
-            
-            <div className="space-y-2 mb-4">
-              {(['free', 'basic', 'pro', 'enterprise'] as const).map((plan) => (
-                <button
-                  key={plan}
-                  onClick={() => setSelectedPlan(plan)}
-                  className={`w-full px-4 py-3 rounded-lg text-left text-sm transition-colors ${
-                    selectedPlan === plan 
-                      ? 'bg-white text-black' 
-                      : 'bg-white/5 text-white/70 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="font-medium capitalize">{plan}</div>
-                  <div className={`text-xs ${selectedPlan === plan ? 'text-black/60' : 'text-white/40'}`}>
-                    {plan === 'free' && 'Limited features'}
-                    {plan === 'basic' && '10 accounts, basic analytics'}
-                    {plan === 'pro' && '50 accounts, advanced analytics'}
-                    {plan === 'enterprise' && 'Unlimited, priority support'}
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowPlanModal(false)}
-                className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white/70 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleGrantPlan}
-                disabled={actionLoading === 'grant-plan'}
-                className="flex-1 px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
-              >
-                {actionLoading === 'grant-plan' ? (
-                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                ) : (
-                  'Grant Access'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <GrantPlanModal
+          selectedPlan={selectedPlan}
+          onPlanSelect={setSelectedPlan}
+          onCancel={() => setShowPlanModal(false)}
+          onGrant={handleGrantPlan}
+          loading={actionLoading === 'grant-plan'}
+        />
       )}
     </div>
   );
 };
 
-// Stat Card Component
 const StatCard: React.FC<{
   icon: React.ElementType;
   label: string;
   value: number;
   highlight?: boolean;
-}> = ({ icon: Icon, label, value, highlight }) => {
-  return (
-    <div className={`rounded-lg p-3 ${highlight ? 'bg-white/[0.04] border border-white/10' : 'bg-white/[0.02] border border-white/5'}`}>
-      <Icon className="w-4 h-4 text-white/30 mb-2" />
-      <div className="text-xl font-medium text-white">{value.toLocaleString()}</div>
-      <div className="text-[10px] text-white/40 uppercase tracking-wider">{label}</div>
-    </div>
-  );
-};
+}> = ({ icon: Icon, label, value, highlight }) => (
+  <div className={`rounded-lg p-3 ${highlight ? 'bg-white/[0.04] border border-white/10' : 'bg-white/[0.02] border border-white/5'}`}>
+    <Icon className="w-4 h-4 text-white/30 mb-2" />
+    <div className="text-xl font-medium text-white">{value.toLocaleString()}</div>
+    <div className="text-[10px] text-white/40 uppercase tracking-wider">{label}</div>
+  </div>
+);
 
-// Plan Badge Component
-const PlanBadge: React.FC<{
-  plan: string;
-  count: number;
-}> = ({ plan, count }) => {
-  return (
-    <div className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 flex items-center gap-2">
-      <span className="text-xs text-white/50">{plan}</span>
-      <span className="text-sm font-medium text-white">{count}</span>
+const PlanBadge: React.FC<{ plan: string; count: number }> = ({ plan, count }) => (
+  <div className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 flex items-center gap-2">
+    <span className="text-xs text-white/50">{plan}</span>
+    <span className="text-sm font-medium text-white">{count}</span>
+  </div>
+);
+
+const GrantPlanModal: React.FC<{
+  selectedPlan: 'free' | 'basic' | 'pro' | 'enterprise';
+  onPlanSelect: (plan: 'free' | 'basic' | 'pro' | 'enterprise') => void;
+  onCancel: () => void;
+  onGrant: () => void;
+  loading: boolean;
+}> = ({ selectedPlan, onPlanSelect, onCancel, onGrant, loading }) => (
+  <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div className="bg-[#111] border border-white/10 rounded-xl w-full max-w-sm p-4">
+      <h3 className="text-sm font-medium text-white mb-4">Grant Plan Access</h3>
+      <div className="space-y-2 mb-4">
+        {(['free', 'basic', 'pro', 'enterprise'] as const).map((plan) => (
+          <button
+            key={plan}
+            onClick={() => onPlanSelect(plan)}
+            className={`w-full px-4 py-3 rounded-lg text-left text-sm transition-colors ${
+              selectedPlan === plan ? 'bg-white text-black' : 'bg-white/5 text-white/70 hover:bg-white/10'
+            }`}
+          >
+            <div className="font-medium capitalize">{plan}</div>
+            <div className={`text-xs ${selectedPlan === plan ? 'text-black/60' : 'text-white/40'}`}>
+              {plan === 'free' && 'Limited features'}
+              {plan === 'basic' && '10 accounts, basic analytics'}
+              {plan === 'pro' && '50 accounts, advanced analytics'}
+              {plan === 'enterprise' && 'Unlimited, priority support'}
+            </div>
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white/70 transition-colors">
+          Cancel
+        </button>
+        <button
+          onClick={onGrant}
+          disabled={loading}
+          className="flex-1 px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Grant Access'}
+        </button>
+      </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default SuperAdminPage;
