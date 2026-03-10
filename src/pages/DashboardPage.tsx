@@ -1835,21 +1835,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       isLoading: true // Custom flag for loading state
     } as VideoSubmission & { isLoading: boolean }));
 
-    // Add placeholders to state immediately
     setPendingVideos(prev => [...prev, ...placeholderVideos]);
+
+    // Create a batch tracking document so the backend sends ONE email when all finish
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    try {
+      const batchRef = doc(db, 'videoBatches', batchId);
+      await setDoc(batchRef, {
+        orgId: currentOrgId,
+        projectId: currentProjectId,
+        userId: user.uid,
+        totalVideos: videoUrls.length,
+        completedVideos: 0,
+        platform,
+        createdAt: Timestamp.now(),
+      });
+    } catch (batchErr) {
+      console.warn('Failed to create batch doc (non-critical):', batchErr);
+    }
 
     let successCount = 0;
     let failureCount = 0;
 
-    // Queue videos for background processing (like accounts)
     for (const videoUrl of videoUrls) {
       try {
-        
-        // Create a pending video record
         const videoId = await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
-          videoId: `temp-${Date.now()}`, // Temporary ID until processed
+          videoId: `temp-${Date.now()}`,
           thumbnail: '',
           title: 'Processing...',
           description: '',
@@ -1858,27 +1871,22 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           likes: 0,
           comments: 0,
           shares: 0,
-          status: 'processing', // ✅ Set to 'processing' so sidebar shows loading indicator
+          status: 'processing',
           isSingular: false,
-          // Background processing fields
           syncStatus: 'pending',
           syncRequestedBy: user.uid,
           syncRequestedAt: Timestamp.now(),
           syncRetryCount: 0
         });
 
-        
-        // Trigger immediate processing (like accounts) with authentication
-        AuthenticatedApiService.processVideo(videoId, currentOrgId, currentProjectId).catch((err: any) => {
+        AuthenticatedApiService.processVideo(videoId, currentOrgId, currentProjectId, batchId).catch((err: any) => {
           console.error('Failed to trigger immediate processing:', err);
-          // Non-critical - cron will pick it up
         });
 
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`❌ Failed to queue video ${videoUrl}:`, errorMessage);
-        console.error('Full error:', error);
         failureCount++;
       }
     }

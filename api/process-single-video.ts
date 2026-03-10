@@ -334,30 +334,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         followerCount = videoData.follower_count || 0;
         displayName = videoData.display_name || videoData.username;
       } else if (video.platform === 'tiktok') {
-        // For TikTok, upload profile pic from already-fetched profile data
-        console.log(`👤 [TIKTOK] Uploading profile pic for @${videoData.username}...`);
-        console.log(`   Profile pic URL: ${videoData.profile_pic_url ? videoData.profile_pic_url.substring(0, 100) + '...' : 'NONE'}`);
-        
-        if (videoData.profile_pic_url) {
-          try {
-            uploadedProfilePic = await downloadAndUploadImage(
-              videoData.profile_pic_url,
-              orgId,
-              `tiktok_profile_${videoData.username}.jpg`,
-              'profile'
-            );
-            console.log(`✅ [TIKTOK] Profile pic uploaded to Firebase Storage: ${uploadedProfilePic}`);
-          } catch (uploadError) {
-            console.error(`❌ [TIKTOK] Profile pic upload failed:`, uploadError);
-            console.warn(`⚠️ [TIKTOK] Using original URL as fallback`);
-            uploadedProfilePic = videoData.profile_pic_url; // Fallback to original URL
+        // TikTok video API returns followers:null — fetch real profile data via account scraper
+        console.log(`👤 [TIKTOK] Video API lacks profile data — fetching via account scraper for @${videoData.username}...`);
+        try {
+          const profileData = await fetchTikTokAccountProfile(videoData.username);
+          if (profileData) {
+            followerCount = profileData.followers || 0;
+            displayName = profileData.displayName || videoData.display_name || videoData.username;
+            isVerified = profileData.verified || false;
+            if (profileData.avatarUrl) {
+              uploadedProfilePic = await downloadAndUploadImage(
+                profileData.avatarUrl,
+                orgId,
+                `tiktok_profile_${videoData.username}.jpg`,
+                'profile'
+              );
+              console.log(`✅ [TIKTOK] Profile pic uploaded from account scraper: ${uploadedProfilePic}`);
+            }
+            console.log(`✅ [TIKTOK] Account profile fetched: ${followerCount} followers, verified=${isVerified}`);
           }
-        } else {
-          console.warn(`⚠️ [TIKTOK] No profile pic URL available from profile scraper`);
+        } catch (profileError) {
+          console.warn(`⚠️ [TIKTOK] Account profile fetch failed, falling back to video data:`, profileError);
+          followerCount = videoData.follower_count || 0;
+          displayName = videoData.display_name || videoData.username;
+          isVerified = videoData.verified || false;
+          if (videoData.profile_pic_url) {
+            try {
+              uploadedProfilePic = await downloadAndUploadImage(
+                videoData.profile_pic_url, orgId,
+                `tiktok_profile_${videoData.username}.jpg`, 'profile'
+              );
+            } catch (_) { uploadedProfilePic = videoData.profile_pic_url; }
+          }
         }
-        followerCount = videoData.follower_count || 0;
-        displayName = videoData.display_name || videoData.username;
-        isVerified = videoData.verified || false;
       } else if (video.platform === 'twitter') {
         // For Twitter, upload profile pic and cover pic from video data
         console.log(`👤 [TWITTER] Uploading profile pic and cover pic for @${videoData.username}...`);
@@ -795,73 +804,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Send email notification to user
-    try {
-      const userId = video.addedBy;
-      if (userId) {
-        // Get user document to find email
-        const userRef = db.collection('users').doc(userId);
-        const userDoc = await userRef.get();
-        const userData = userDoc.data();
-        
-        if (userData?.email) {
-          const RESEND_API_KEY = process.env.RESEND_API_KEY;
-          
-          if (!RESEND_API_KEY) {
-            console.warn('⚠️ RESEND_API_KEY not configured - skipping email notification');
-          } else {
-            console.log(`📧 Sending video processed notification to ${userData.email}...`);
-            
-            const videoTitle = videoData.caption?.substring(0, 100) || 'Video';
-            
-            const emailResponse = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${RESEND_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-            body: JSON.stringify({
-                from: 'ViewTrack <team@viewtrack.app>',
-                to: [userData.email],
-                subject: `🎬 Video processed successfully`,
-                html: `
-                  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="padding: 30px 20px;">
-                    <h2 style="color: #f5576c; margin-top: 0;">Video Processed!</h2>
-                    <p>Your video has been successfully processed and added to your dashboard!</p>
-                    ${videoData.thumbnail_url ? `
-                    <div style="text-align: center; margin: 20px 0;">
-                      <img src="${videoData.thumbnail_url}" alt="Video thumbnail" style="max-width: 100%; height: auto; border-radius: 8px;">
-                    </div>
-                    ` : ''}
-                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                      <p><strong>Title:</strong> ${videoTitle}</p>
-                      <p><strong>Platform:</strong> ${video.platform}</p>
-                      <p><strong>Account:</strong> @${videoData.username}</p>
-                      <p><strong>Views:</strong> ${(videoData.view_count || 0).toLocaleString()}</p>
-                      <p><strong>Likes:</strong> ${(videoData.like_count || 0).toLocaleString()}</p>
-                    </div>
-                    <p>The video is now available in your dashboard with full analytics tracking.</p>
-                    <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
-                    </div>
-                  </div>
-                `,
-              }),
-            });
+    // Track batch progress — if this video is part of a batch, increment completion count
+    // When the last video in a batch finishes, send a single summary email to the org owner
+    const batchId = req.body.batchId;
+    if (batchId) {
+      try {
+        const batchRef = db.collection('videoBatches').doc(batchId);
+        const batchUpdate: any = {
+          completedVideos: FieldValue.increment(1),
+          lastCompletedAt: Timestamp.now(),
+        };
+        await batchRef.update(batchUpdate);
 
-            if (emailResponse.ok) {
-              const emailData = await emailResponse.json();
-              console.log(`✅ Video processed email sent to ${userData.email} (ID: ${emailData.id})`);
-            } else {
-              const errorData = await emailResponse.json();
-              console.error('❌ Failed to send email:', errorData);
-            }
-          }
+        const updatedBatch = await batchRef.get();
+        const batchData = updatedBatch.data();
+        if (batchData && batchData.completedVideos >= batchData.totalVideos) {
+          console.log(`📧 Batch ${batchId} complete (${batchData.completedVideos}/${batchData.totalVideos}) — sending summary email`);
+          await sendBatchSummaryEmail(batchData, db);
         }
+      } catch (batchErr: any) {
+        console.warn(`⚠️ Batch tracking failed (non-critical): ${batchErr.message}`);
       }
-    } catch (emailError) {
-      console.error('Failed to send notification email:', emailError);
-      // Don't fail the request if email fails
     }
 
     // 🧹 Auto-cleanup: Delete any invalid videos/accounts (no username, no stats, etc.)
@@ -1808,6 +1771,140 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
   } catch (error) {
     console.error('Failed to fetch video data:', error);
     return null;
+  }
+}
+
+/**
+ * Fetch TikTok account profile (followers, avatar) via account scraper.
+ * Uses the same actor as account sync but with maxItems=1 to minimise cost.
+ */
+async function fetchTikTokAccountProfile(username: string): Promise<{
+  followers: number;
+  following: number;
+  displayName: string;
+  avatarUrl: string;
+  verified: boolean;
+} | null> {
+  const apifyToken = process.env.APIFY_TOKEN;
+  if (!apifyToken) return null;
+
+  const profileUrl = `https://www.tiktok.com/@${username.replace('@', '')}`;
+  console.log(`🔍 [TIKTOK] Fetching account profile: ${profileUrl}`);
+
+  try {
+    const result = await runApifyActor({
+      actorId: 'apidojo/tiktok-scraper-api',
+      input: {
+        startUrls: [profileUrl],
+        maxItems: 1,
+        proxy: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] },
+      },
+      token: apifyToken,
+    });
+
+    const items = result.items || [];
+    if (items.length === 0) return null;
+
+    const item = items[0];
+    const channel = item.channel || item.authorMeta || item.author || {};
+
+    const avatarUrl = channel.avatarLarger || channel.avatar || channel.avatarMedium || channel.avatarThumb || '';
+    const followers = (typeof channel.followers === 'number' ? channel.followers : null)
+      || (typeof channel.fans === 'number' ? channel.fans : null)
+      || (typeof channel.followerCount === 'number' ? channel.followerCount : null)
+      || 0;
+    const following = (typeof channel.following === 'number' ? channel.following : null)
+      || (typeof channel.followingCount === 'number' ? channel.followingCount : null)
+      || 0;
+
+    return {
+      followers,
+      following,
+      displayName: channel.name || channel.nickname || username,
+      avatarUrl,
+      verified: channel.verified || false,
+    };
+  } catch (error) {
+    console.error(`❌ [TIKTOK] Account profile fetch failed:`, error);
+    return null;
+  }
+}
+
+/**
+ * Send a summary email when all videos in a batch have finished processing.
+ */
+async function sendBatchSummaryEmail(batchData: any, batchDb: FirebaseFirestore.Firestore) {
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY not set — skipping batch email');
+    return;
+  }
+
+  const { orgId, totalVideos, completedVideos } = batchData;
+
+  // Look up org owner email
+  let ownerEmail = '';
+  let orgName = '';
+  try {
+    const orgDoc = await batchDb.collection('organizations').doc(orgId).get();
+    const orgData = orgDoc.data();
+    orgName = orgData?.name || 'Your Organization';
+    const ownerId = orgData?.ownerUserId;
+    if (ownerId) {
+      const ownerDoc = await batchDb.collection('users').doc(ownerId).get();
+      ownerEmail = ownerDoc.data()?.email || '';
+    }
+  } catch (_) { /* non-critical */ }
+
+  if (!ownerEmail) {
+    console.warn('⚠️ No owner email found for batch summary');
+    return;
+  }
+
+  console.log(`📧 Sending batch summary to ${ownerEmail}: ${completedVideos}/${totalVideos} videos`);
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'ViewTrack <team@viewtrack.app>',
+        to: [ownerEmail],
+        subject: `${orgName} — ${completedVideos} video${completedVideos !== 1 ? 's' : ''} processed`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 36px; margin-bottom: 16px;" />
+              <h1 style="margin: 0; color: #fff; font-size: 26px; font-weight: 700;">${orgName}</h1>
+              <p style="margin: 10px 0 0; color: rgba(255,255,255,.9); font-size: 16px;">Video Batch Complete</p>
+            </div>
+            <div style="padding: 32px 30px;">
+              <div style="background: #f9fafb; border-radius: 10px; padding: 24px; text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 48px; font-weight: 800; color: #667eea;">${completedVideos}</div>
+                <div style="font-size: 14px; color: #6b7280; margin-top: 4px;">video${completedVideos !== 1 ? 's' : ''} processed successfully</div>
+              </div>
+              <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+                All videos in your batch have been processed and are now available in your dashboard with full analytics tracking.
+              </p>
+              <div style="text-align: center;">
+                <a href="https://www.viewtrack.app" style="display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                  View Dashboard →
+                </a>
+              </div>
+            </div>
+            <div style="background: #111827; padding: 20px 30px; text-align: center;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">ViewTrack • Professional Social Media Analytics</p>
+            </div>
+          </div>
+        `,
+      }),
+    });
+    console.log(`✅ Batch summary email sent to ${ownerEmail}`);
+  } catch (emailErr) {
+    console.error('❌ Failed to send batch summary email:', emailErr);
   }
 }
 

@@ -235,11 +235,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              videoId: job.videoUrl, // process-single-video expects videoId (which is the URL)
+              videoId: job.videoUrl,
               orgId: job.orgId,
               projectId: job.projectId,
               jobId: jobId,
-              addedBy: job.addedBy // Pass through the user who submitted the video
+              addedBy: job.addedBy,
+              ...(job.batchId && { batchId: job.batchId }),
             })
           }).then(response => {
             if (response.ok) {
