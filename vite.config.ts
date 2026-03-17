@@ -11,9 +11,9 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'https://www.viewtrack.app',
+        target: process.env.VITE_API_TARGET || 'http://localhost:3001',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
     },
   },
