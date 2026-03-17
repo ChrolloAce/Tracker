@@ -81,6 +81,8 @@ export default async function handler(
 
     console.log(`⚡ Sync started for account: ${accountId} [${isManualSync ? 'MANUAL' : 'SCHEDULED'}]`);
 
+  const lockKey = jobId || `sync_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
   try {
     // Read job metadata to determine sync strategy
     let syncStrategy = 'progressive'; // default for backwards compatibility
@@ -151,7 +153,6 @@ export default async function handler(
 
     // ==================== FIX #1: JOB-LEVEL LOCKING ====================
     // Prevent multiple simultaneous syncs for the same account
-    const lockKey = jobId || `sync_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const lockResult = await LockService.acquireLock(accountRef, lockKey, 5);
     
     if (!lockResult.acquired) {
@@ -282,8 +283,12 @@ export default async function handler(
             
             tiktokVideos.push(...markedRefreshedVideos);
             console.log(`   ✅ Refreshed ${refreshedVideos.length} videos`);
-          } catch (refreshError) {
+          } catch (refreshError: any) {
             console.error('⚠️ [TIKTOK] Refresh failed (non-fatal):', refreshError);
+            await accountRef.update({
+              lastRefreshError: `TikTok refresh failed: ${refreshError.message || String(refreshError)}`,
+              lastRefreshErrorAt: Timestamp.now()
+            });
           }
         }
         
@@ -417,8 +422,12 @@ export default async function handler(
 
             youtubeVideos.push(...markedRefreshedVideos);
             console.log(`   ✅ Refreshed ${refreshedVideos.length} videos`);
-          } catch (refreshError) {
+          } catch (refreshError: any) {
             console.error('⚠️ [YOUTUBE] Refresh failed (non-fatal):', refreshError);
+            await accountRef.update({
+              lastRefreshError: `YouTube refresh failed: ${refreshError.message || String(refreshError)}`,
+              lastRefreshErrorAt: Timestamp.now()
+            });
           }
         }
 
@@ -579,8 +588,12 @@ export default async function handler(
           
           tweets.push(...markedRefreshedTweets);
           console.log(`   ✅ Refreshed ${refreshedTweets.length} tweets`);
-        } catch (refreshError) {
+        } catch (refreshError: any) {
           console.error('⚠️ [TWITTER] Refresh failed (non-fatal):', refreshError);
+          await accountRef.update({
+            lastRefreshError: `Twitter refresh failed: ${refreshError.message || String(refreshError)}`,
+            lastRefreshErrorAt: Timestamp.now()
+          });
         }
       }
       
@@ -732,8 +745,12 @@ export default async function handler(
             }
             
             console.log(`   ✅ Refreshed ${successCount} reels (${errorCount} errors)`);
-          } catch (refreshError) {
+          } catch (refreshError: any) {
             console.error('⚠️ [INSTAGRAM] Refresh failed (non-fatal):', refreshError);
+            await accountRef.update({
+              lastRefreshError: `Instagram refresh failed: ${refreshError.message || String(refreshError)}`,
+              lastRefreshErrorAt: Timestamp.now()
+            });
           }
         }
         
@@ -920,8 +937,10 @@ export default async function handler(
         syncStatus: 'completed',
         lastSyncAt: Timestamp.now(),
         lastSynced: Timestamp.now(),
-        lastRefreshed: Timestamp.now(), // Update lastRefreshed for UI display
+        lastRefreshed: Timestamp.now(),
         lastSyncError: null,
+        lastRefreshError: null,
+        lastRefreshErrorAt: null,
         syncRetryCount: 0,
         syncProgress: {
           current: 100,

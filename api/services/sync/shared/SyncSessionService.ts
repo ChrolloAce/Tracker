@@ -86,11 +86,32 @@ export class SyncSessionService {
       });
       
       // Check if this is the last account to complete ("last one out")
+      // Use both the session counter AND remaining queue jobs for robustness
       const sessionSnapshot = await sessionRef.get();
       const session = sessionSnapshot.data() as any;
       
-      if (session && session.completedAccounts >= session.totalAccounts) {
-        console.log(`🎉 Last account completed! Sending summary email...`);
+      const completedAccounts = session?.completedAccounts || 0;
+      const totalAccounts = session?.totalAccounts || 0;
+      const counterComplete = completedAccounts >= totalAccounts;
+      
+      // Also check if any jobs remain in the queue for this session
+      let queueComplete = false;
+      if (!counterComplete) {
+        const remainingJobsSnapshot = await db
+          .collection('syncQueue')
+          .where('sessionId', '==', sessionId)
+          .where('status', 'in', ['pending', 'running'])
+          .limit(1)
+          .get();
+        queueComplete = remainingJobsSnapshot.empty;
+      }
+      
+      if (counterComplete || queueComplete) {
+        if (queueComplete && !counterComplete) {
+          console.log(`🎉 Queue empty for session (${completedAccounts}/${totalAccounts} counter) — treating as complete`);
+        } else {
+          console.log(`🎉 Last account completed! (${completedAccounts}/${totalAccounts})`);
+        }
         
         // Mark session as completed
         await sessionRef.update({
@@ -98,8 +119,11 @@ export class SyncSessionService {
           completedAt: Timestamp.now()
         });
         
+        // Re-read for email (includes final incremented values)
+        const finalSession = (await sessionRef.get()).data() as any;
+        
         // Send summary email
-        await NotificationService.sendRefreshSummaryEmail(session, db);
+        await NotificationService.sendRefreshSummaryEmail(finalSession, db);
         
         // Mark email as sent
         await sessionRef.update({
@@ -109,7 +133,7 @@ export class SyncSessionService {
         
         console.log(`✅ Summary email sent successfully`);
       } else {
-        console.log(`⏳ Session progress: ${session?.completedAccounts || 0}/${session?.totalAccounts || 0} accounts`);
+        console.log(`⏳ Session progress: ${completedAccounts}/${totalAccounts} accounts`);
       }
       
     } catch (sessionError: any) {

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -24,6 +24,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('🧹 [CLEANUP] Starting cleanup of stuck items...');
   
   try {
+    // Authenticate: Vercel cron or Bearer token
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    const isVercelCron = req.headers['x-vercel-cron'] === '1';
+    const isAuthenticated = isVercelCron || (authHeader === `Bearer ${cronSecret}`);
+    
+    if (!isAuthenticated) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     const now = Date.now();
     const fiveMinutesAgo = now - (5 * 60 * 1000);
     const tenMinutesAgo = now - (10 * 60 * 1000);
@@ -109,13 +118,111 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    console.log(`✅ [CLEANUP] Cleanup complete: ${stuckVideosCount} videos, ${stuckAccountsCount} accounts reset`);
+    // 🔥 CLEANUP STALE SYNC LOCKS
+    console.log('🔍 [CLEANUP] Scanning for stale sync locks...');
+    let staleLockCount = 0;
+    const lockMaxAgeMs = 7 * 60 * 1000; // 7 minutes (matches queue-worker timeout)
+    
+    for (const orgDoc of orgsSnapshot.docs) {
+      const orgId = orgDoc.id;
+      const projectsSnapshot = await db.collection('organizations').doc(orgId).collection('projects').get();
+      
+      for (const projectDoc of projectsSnapshot.docs) {
+        const projectId = projectDoc.id;
+        const accountsRef = db.collection('organizations').doc(orgId).collection('projects').doc(projectId).collection('trackedAccounts');
+        const lockedAccountsQuery = await accountsRef
+          .where('syncLockTimestamp', '!=', null)
+          .get();
+        
+        for (const accountDoc of lockedAccountsQuery.docs) {
+          const accountData = accountDoc.data();
+          const lockTimestamp = accountData.syncLockTimestamp?.toMillis?.() || 0;
+          
+          if (lockTimestamp && (now - lockTimestamp) > lockMaxAgeMs) {
+            console.log(`  🔓 [CLEANUP] Stale lock on @${accountData.username}: ${Math.floor((now - lockTimestamp) / 1000 / 60)} mins old`);
+            await accountDoc.ref.update({
+              syncLockId: FieldValue.delete(),
+              syncLockTimestamp: FieldValue.delete()
+            });
+            staleLockCount++;
+          }
+        }
+      }
+    }
+    
+    if (staleLockCount > 0) {
+      console.log(`✅ [CLEANUP] Cleared ${staleLockCount} stale sync locks`);
+    }
+    
+    // 🔥 CLEANUP FAILED/COMPLETED SYNC QUEUE JOBS (older than 24 hours)
+    // Loops in batches of 500 (Firestore limit) until all stale jobs are purged
+    console.log('🔍 [CLEANUP] Scanning for stale syncQueue jobs...');
+    
+    const twentyFourHoursAgo = new Date(now - 24 * 60 * 60 * 1000);
+    let deletedFailedJobs = 0;
+    let deletedCompletedJobs = 0;
+    const BATCH_DELETE_LIMIT = 500;
+    
+    // Purge failed jobs in batches until none remain
+    let hasMoreFailed = true;
+    while (hasMoreFailed) {
+      const failedJobsSnapshot = await db.collection('syncQueue')
+        .where('status', '==', 'failed')
+        .where('completedAt', '<', twentyFourHoursAgo)
+        .limit(BATCH_DELETE_LIMIT)
+        .get();
+      
+      if (failedJobsSnapshot.empty) {
+        hasMoreFailed = false;
+        break;
+      }
+      
+      const deleteBatch = db.batch();
+      failedJobsSnapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
+      await deleteBatch.commit();
+      deletedFailedJobs += failedJobsSnapshot.size;
+      console.log(`  🗑️ [CLEANUP] Deleted batch of ${failedJobsSnapshot.size} failed jobs (${deletedFailedJobs} total)`);
+      
+      if (failedJobsSnapshot.size < BATCH_DELETE_LIMIT) {
+        hasMoreFailed = false;
+      }
+    }
+    
+    // Purge completed jobs in batches until none remain
+    let hasMoreCompleted = true;
+    while (hasMoreCompleted) {
+      const completedJobsSnapshot = await db.collection('syncQueue')
+        .where('status', '==', 'completed')
+        .where('completedAt', '<', twentyFourHoursAgo)
+        .limit(BATCH_DELETE_LIMIT)
+        .get();
+      
+      if (completedJobsSnapshot.empty) {
+        hasMoreCompleted = false;
+        break;
+      }
+      
+      const deleteBatch = db.batch();
+      completedJobsSnapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
+      await deleteBatch.commit();
+      deletedCompletedJobs += completedJobsSnapshot.size;
+      console.log(`  🗑️ [CLEANUP] Deleted batch of ${completedJobsSnapshot.size} completed jobs (${deletedCompletedJobs} total)`);
+      
+      if (completedJobsSnapshot.size < BATCH_DELETE_LIMIT) {
+        hasMoreCompleted = false;
+      }
+    }
+    
+    console.log(`✅ [CLEANUP] Cleanup complete: ${stuckVideosCount} videos, ${stuckAccountsCount} accounts reset, ${staleLockCount} stale locks, ${deletedFailedJobs + deletedCompletedJobs} queue jobs purged`);
     
     return res.status(200).json({
       success: true,
       cleaned: {
         videos: stuckVideosCount,
-        accounts: stuckAccountsCount
+        accounts: stuckAccountsCount,
+        staleLocks: staleLockCount,
+        failedJobsPurged: deletedFailedJobs,
+        completedJobsPurged: deletedCompletedJobs
       }
     });
     

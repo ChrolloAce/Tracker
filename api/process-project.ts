@@ -286,7 +286,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      📋 Total jobs tracked: ${jobIds.length}`);
     
     // Conditional dispatch based on manual vs scheduled refresh
-    const APIFY_CONCURRENCY_LIMIT = 6;
+    const APIFY_CONCURRENCY_LIMIT = 10;
     let immediatelyDispatched = 0;
     
     if (isManualRefresh) {

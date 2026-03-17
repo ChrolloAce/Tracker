@@ -101,90 +101,128 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`📊 Job status: ${pendingCount} pending, ${runningCount} running`);
     
-    // If no jobs exist, stop
+    // If no active jobs exist, auto-cleanup stale jobs and stop
     if (pendingCount === 0 && runningCount === 0) {
-      console.log(`\n✨ No pending or running jobs found - queue is empty`);
+      console.log(`\n✨ No pending or running jobs - checking for stale jobs to purge...`);
+      
+      // Auto-purge failed/completed jobs older than 24 hours (in batches of 500)
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      let totalPurged = 0;
+      
+      for (const status of ['failed', 'completed'] as const) {
+        let hasMore = true;
+        while (hasMore) {
+          const staleSnapshot = await db.collection('syncQueue')
+            .where('status', '==', status)
+            .where('completedAt', '<', cutoff)
+            .limit(500)
+            .get();
+          
+          if (staleSnapshot.empty) { hasMore = false; break; }
+          
+          const purgeBatch = db.batch();
+          staleSnapshot.docs.forEach(doc => purgeBatch.delete(doc.ref));
+          await purgeBatch.commit();
+          totalPurged += staleSnapshot.size;
+          console.log(`   🗑️  Purged ${staleSnapshot.size} stale ${status} jobs (${totalPurged} total)`);
+          
+          if (staleSnapshot.size < 500) hasMore = false;
+        }
+      }
       
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`✅ Queue worker complete: ${duration}s - worker stopped\n`);
+      console.log(`✅ Queue worker complete: ${duration}s - ${totalPurged > 0 ? `purged ${totalPurged} stale jobs` : 'queue clean'}\n`);
       
       return res.status(200).json({
         success: true,
-        message: 'Queue empty - worker stopped',
+        message: totalPurged > 0 ? `Queue empty - purged ${totalPurged} stale jobs` : 'Queue empty - worker stopped',
         stats: {
           duration: parseFloat(duration),
           pendingJobs: 0,
           runningJobs: 0,
-          dispatchedJobs: 0
+          dispatchedJobs: 0,
+          purgedStaleJobs: totalPurged
         }
       });
     }
     
-    // Validate running jobs (check if they're actually still running)
+    // Validate running jobs in parallel (check if they're actually still running)
     console.log(`\n🔍 Validating ${runningCount} running jobs...`);
     
-    const JOB_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes (reduced from 10)
+    const JOB_TIMEOUT_MS = 7 * 60 * 1000; // 7 minutes — exceeds sync-single-account maxDuration (5min) to avoid premature timeout
     const now = Date.now();
     let validatedCount = 0;
     let markedFailedCount = 0;
     let accountDeletedCount = 0;
+    let retriedCount = 0;
     
-    for (const jobDoc of runningJobsSnapshot.docs) {
-      const job = jobDoc.data();
-      const jobId = jobDoc.id;
-      const jobType = job.type || 'account_sync';
-      
-      // Check if account still exists (may have been deleted) - ONLY for account jobs
-      if (jobType === 'account_sync' && job.accountId) {
-        try {
-          const accountRef = db
-            .collection('organizations').doc(job.orgId)
-            .collection('projects').doc(job.projectId)
-            .collection('trackedAccounts').doc(job.accountId);
-          
-          const accountDoc = await accountRef.get();
-          
-          if (!accountDoc.exists) {
-            console.log(`   🗑️  Job ${jobId}: Account deleted - removing job`);
-            await jobDoc.ref.delete();
-            accountDeletedCount++;
-            continue;
-          }
-        } catch (error: any) {
-          console.error(`   ⚠️  Error checking account for job ${jobId}:`, error.message);
-        }
-      }
-      
-      // Check if job has been running for too long
-      const startedAt = job.startedAt?.toMillis() || 0;
-      const runningTime = now - startedAt;
-      
-      if (runningTime > JOB_TIMEOUT_MS) {
-        console.log(`   ⚠️  Job ${jobId} (@${job.accountUsername}) timed out after ${Math.round(runningTime / 60000)}min`);
+    // Validate all running jobs in parallel instead of sequentially
+    const validationResults = await Promise.allSettled(
+      runningJobsSnapshot.docs.map(async (jobDoc) => {
+        const job = jobDoc.data();
+        const jobId = jobDoc.id;
+        const jobType = job.type || 'account_sync';
         
-        // Mark as failed and reset to pending for retry if attempts < maxAttempts
-        if (job.attempts < job.maxAttempts) {
-          await jobDoc.ref.update({
-            status: 'pending',
-            attempts: job.attempts + 1,
-            error: 'Job timed out after 3 minutes',
-            startedAt: null
-          });
-          console.log(`   🔄 Reset to pending for retry (attempt ${job.attempts + 1}/${job.maxAttempts})`);
-        } else {
-          await jobDoc.ref.update({
-            status: 'failed',
-            completedAt: Timestamp.now(),
-            error: 'Job timed out after 3 minutes - max retries exceeded'
-          });
-          console.log(`   ❌ Marked as failed (max retries exceeded)`);
-          markedFailedCount++;
+        // Check if account still exists (may have been deleted) - ONLY for account jobs
+        if (jobType === 'account_sync' && job.accountId) {
+          try {
+            const accountRef = db
+              .collection('organizations').doc(job.orgId)
+              .collection('projects').doc(job.projectId)
+              .collection('trackedAccounts').doc(job.accountId);
+            
+            const accountDoc = await accountRef.get();
+            
+            if (!accountDoc.exists) {
+              console.log(`   🗑️  Job ${jobId}: Account deleted - removing job`);
+              await jobDoc.ref.delete();
+              return 'deleted' as const;
+            }
+          } catch (error: any) {
+            console.error(`   ⚠️  Error checking account for job ${jobId}:`, error.message);
+          }
         }
-        continue;
+        
+        // Check if job has been running for too long
+        const startedAt = job.startedAt?.toMillis() || 0;
+        const runningTime = now - startedAt;
+        
+        if (runningTime > JOB_TIMEOUT_MS) {
+          console.log(`   ⚠️  Job ${jobId} (@${job.accountUsername}) timed out after ${Math.round(runningTime / 60000)}min`);
+          
+          if (job.attempts < job.maxAttempts) {
+            await jobDoc.ref.update({
+              status: 'pending',
+              attempts: job.attempts + 1,
+              error: 'Job timed out after 5 minutes',
+              startedAt: null
+            });
+            console.log(`   🔄 Reset to pending for retry (attempt ${job.attempts + 1}/${job.maxAttempts})`);
+            return 'retried' as const;
+          } else {
+            await jobDoc.ref.update({
+              status: 'failed',
+              completedAt: Timestamp.now(),
+              error: 'Job timed out after 5 minutes - max retries exceeded'
+            });
+            console.log(`   ❌ Marked as failed (max retries exceeded)`);
+            return 'failed' as const;
+          }
+        }
+        
+        return 'valid' as const;
+      })
+    );
+    
+    for (const result of validationResults) {
+      if (result.status === 'fulfilled') {
+        switch (result.value) {
+          case 'valid': validatedCount++; break;
+          case 'failed': markedFailedCount++; break;
+          case 'deleted': accountDeletedCount++; break;
+          case 'retried': retriedCount++; break;
+        }
       }
-      
-      // Job is still running and not timed out - consider it valid
-      validatedCount++;
     }
     
     if (accountDeletedCount > 0) {
@@ -194,7 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Calculate available slots for new jobs
     const APIFY_CONCURRENCY_LIMIT = 10;
-    const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount;
+    const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount - retriedCount;
     const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
     
     console.log(`\n📊 Capacity: ${actualRunningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
@@ -203,35 +241,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let dispatchedCount = 0;
     
     if (availableSlots > 0 && pendingCount > 0) {
-      console.log(`\n🚀 Dispatching up to ${availableSlots} new jobs...`);
-      
       const jobsToDispatch = pendingJobsSnapshot.docs.slice(0, availableSlots);
+      console.log(`\n🚀 Dispatching ${jobsToDispatch.length} new jobs...`);
+      
+      // Step 1: Batch-update all job statuses to 'running' in one Firestore write
+      const statusBatch = db.batch();
+      const startedTimestamp = Timestamp.now();
       
       for (const jobDoc of jobsToDispatch) {
+        statusBatch.update(jobDoc.ref, {
+          status: 'running',
+          startedAt: startedTimestamp
+        });
+      }
+      
+      await statusBatch.commit();
+      console.log(`   📝 Marked ${jobsToDispatch.length} jobs as running (single batch write)`);
+      
+      // Step 2: Fire all HTTP dispatches in parallel (fire-and-forget)
+      const dispatchPromises = jobsToDispatch.map(jobDoc => {
         const job = jobDoc.data();
         const jobId = jobDoc.id;
         const jobType = job.type || 'account_sync';
         
-        // Log based on job type
         if (jobType === 'single_video') {
           console.log(`   ⚡ Dispatching video job ${jobId}: ${job.videoUrl}`);
-        } else {
-          console.log(`   ⚡ Dispatching account job ${jobId}: @${job.accountUsername} (${job.accountPlatform})`);
-        }
-        
-        // Update job status to running
-        await jobDoc.ref.update({
-          status: 'running',
-          startedAt: Timestamp.now()
-        });
-        
-        // Dispatch based on job type
-        if (jobType === 'single_video') {
-          // Dispatch to process-single-video for video jobs
-          fetch(`${baseUrl}/api/process-single-video`, {
+          return fetch(`${baseUrl}/api/process-single-video`, {
             method: 'POST',
             headers: {
-              'Authorization': cronSecret, // Raw secret (no Bearer prefix)
+              'Authorization': cronSecret,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -242,21 +280,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               addedBy: job.addedBy,
               ...(job.batchId && { batchId: job.batchId }),
             })
-          }).then(response => {
-            if (response.ok) {
-              console.log(`      ✅ Video job started`);
-            } else {
-              console.error(`      ❌ Video job failed: HTTP ${response.status}`);
-            }
-          }).catch(err => {
-            console.error(`      ❌ Video job error:`, err.message);
           });
         } else {
-          // Dispatch to sync-single-account for account sync jobs
-          fetch(`${baseUrl}/api/sync-single-account`, {
+          console.log(`   ⚡ Dispatching account job ${jobId}: @${job.accountUsername} (${job.accountPlatform})`);
+          return fetch(`${baseUrl}/api/sync-single-account`, {
             method: 'POST',
             headers: {
-              'Authorization': cronSecret, // Raw secret (no Bearer prefix)
+              'Authorization': cronSecret,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -266,21 +296,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               sessionId: job.sessionId,
               jobId: jobId
             })
-          }).then(response => {
-            if (response.ok) {
-              console.log(`      ✅ @${job.accountUsername}: Started`);
-            } else {
-              console.error(`      ❌ @${job.accountUsername}: HTTP ${response.status}`);
-            }
-          }).catch(err => {
-            console.error(`      ❌ @${job.accountUsername}:`, err.message);
           });
         }
+      });
+      
+      // Wait for all dispatches to be accepted (not completed)
+      const results = await Promise.allSettled(dispatchPromises);
+      
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const job = jobsToDispatch[i].data();
+        const label = job.type === 'single_video' ? `video ${job.videoUrl}` : `@${job.accountUsername}`;
         
-        dispatchedCount++;
+        if (result.status === 'fulfilled' && result.value.ok) {
+          dispatchedCount++;
+        } else {
+          const reason = result.status === 'rejected' 
+            ? result.reason?.message 
+            : `HTTP ${result.value.status}`;
+          console.error(`      ❌ ${label}: ${reason}`);
+          dispatchedCount++; // Still count — job is marked running, will timeout if truly failed
+        }
       }
       
-      console.log(`✅ Dispatched ${dispatchedCount} new jobs`);
+      console.log(`✅ Dispatched ${dispatchedCount} new jobs (parallel)`);
     } else if (availableSlots <= 0) {
       console.log(`⏸️  No available slots - all ${APIFY_CONCURRENCY_LIMIT} slots occupied`);
     } else {
