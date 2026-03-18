@@ -43,10 +43,12 @@ export class VideoStorageService {
     account: any,
     orgId: string,
     projectId: string,
-    db: FirebaseFirestore.Firestore
+    db: FirebaseFirestore.Firestore,
+    maxNewVideos?: number  // Cap on new video creation (plan limit enforcement)
   ): Promise<number> {
     let batch = db.batch();
     let savedCount = 0;
+    let newVideoCount = 0; // Track new videos created (for limit enforcement)
     let batchOperations = 0; // Track operations in current batch
     const accountId = account.id;
     const BATCH_COMMIT_THRESHOLD = 20; // Commit every 20 videos (more frequent = safer)
@@ -182,6 +184,12 @@ export class VideoStorageService {
           continue; // Skip to next video
         }
         
+        // Check plan video limit before creating new video
+        if (typeof maxNewVideos === 'number' && newVideoCount >= maxNewVideos) {
+          console.log(`    ⏭️  Skipping new video ${video.videoId} — plan video limit reached (${newVideoCount}/${maxNewVideos})`);
+          continue;
+        }
+
         // NEW VIDEO - Create with initial snapshot (only for discovery, not refresh)
         // Remove internal flags before saving
         const { _isRefreshOnly, ...cleanVideoData } = video;
@@ -221,6 +229,7 @@ export class VideoStorageService {
         });
 
         console.log(`    ✅ Created new video ${video.videoId} + initial snapshot`);
+        newVideoCount++;
       }
 
       savedCount++;

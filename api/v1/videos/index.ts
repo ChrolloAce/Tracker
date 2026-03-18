@@ -240,6 +240,27 @@ async function addVideo(
     });
   }
 
+  // ==================== VIDEO LIMIT CHECK ====================
+  const PLAN_MAX_VIDEOS: Record<string, number> = {
+    free: 5, basic: 150, pro: 1000, ultra: 5000, enterprise: -1
+  };
+  const subDoc = await db.collection('organizations').doc(auth.organizationId)
+    .collection('billing').doc('subscription').get();
+  const planTier = subDoc.data()?.planTier || 'free';
+  const planLimit = PLAN_MAX_VIDEOS[planTier] ?? 5;
+  const currentCount = subDoc.data()?.usage?.videos ?? 0;
+
+  if (planLimit !== -1 && currentCount >= planLimit) {
+    return res.status(403).json({
+      success: false,
+      error: {
+        message: `Video limit reached (${currentCount}/${planLimit}). Upgrade your plan for more.`,
+        code: 'VIDEO_LIMIT_REACHED'
+      }
+    });
+  }
+  // ==================== END VIDEO LIMIT CHECK ====================
+
   // Check duplicate
   const videosCol = db
     .collection('organizations')

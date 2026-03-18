@@ -124,8 +124,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let videoRef: FirebaseFirestore.DocumentReference | null = null;
 
   try {
-    // Check if videoId is actually a URL (new video) or a document ID (existing video)
+    // ==================== VIDEO LIMIT CHECK ====================
     const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
+    if (isUrl) {
+      // New video — check plan limit before processing
+      const PLAN_MAX_VIDEOS: Record<string, number> = {
+        free: 5, basic: 150, pro: 1000, ultra: 5000, enterprise: -1
+      };
+      const subDoc = await db.collection('organizations').doc(orgId)
+        .collection('billing').doc('subscription').get();
+      const planTier = subDoc.data()?.planTier || 'free';
+      const planLimit = PLAN_MAX_VIDEOS[planTier] ?? 5;
+      const currentCount = subDoc.data()?.usage?.videos ?? 0;
+
+      if (planLimit !== -1 && currentCount >= planLimit) {
+        console.log(`❌ Video limit reached (${currentCount}/${planLimit}) for ${planTier} plan`);
+        if (jobId) {
+          await db.collection('syncQueue').doc(jobId).update({
+            status: 'failed', completedAt: Timestamp.now(),
+            error: `Video limit reached (${planLimit})`
+          });
+        }
+        return res.status(403).json({
+          error: 'Video limit reached',
+          message: `Your ${planTier} plan allows ${planLimit} videos. Upgrade for more.`,
+          currentCount, limit: planLimit
+        });
+      }
+    }
+    // ==================== END VIDEO LIMIT CHECK ====================
+
+    // Check if videoId is actually a URL (new video) or a document ID (existing video)
     
     let video: FirebaseFirestore.DocumentData | undefined;
     let isNewVideo = false;

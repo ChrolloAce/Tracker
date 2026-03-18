@@ -3,6 +3,16 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { JOB_PRIORITIES } from './constants/priorities.js';
 
+// Refresh interval per plan tier (in hours)
+// Mirrors dataRefreshHours from src/types/subscription.ts
+const REFRESH_HOURS: Record<string, number> = {
+  free: 48,
+  basic: 24,
+  pro: 24,
+  ultra: 12,
+  enterprise: 6
+};
+
 // Initialize Firebase Admin
 function initializeFirebase() {
   if (!getApps().length) {
@@ -26,9 +36,9 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-// Note: We queue ALL active accounts every time (no time-based filtering)
-// The orchestrator controls when refreshes happen (noon/midnight UTC)
-// and which orgs get processed (plan-based at orchestrator level)
+// Accounts are filtered by plan-tier refresh interval (dataRefreshHours)
+// Free users sync every 48h, basic/pro every 24h, ultra every 12h, enterprise every 6h
+// Manual refreshes bypass the filter and sync everything
 
 /**
  * Process Project
@@ -137,13 +147,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Queue ALL active accounts (no time-based filtering)
-    // The "Last One Out" pattern means we process everything, then send one summary email
-    const accountsToRefresh = accountsSnapshot.docs;
-    
-    console.log(`      📝 Will queue ALL ${accountsToRefresh.length} active accounts`);
-    
-    console.log(`      🎯 Accounts to refresh: ${accountsToRefresh.length}`);
+    // Filter accounts by plan-tier refresh interval
+    const refreshIntervalHours = REFRESH_HOURS[planTier] || 48;
+    const now = Date.now();
+
+    const accountsToRefresh = isManualRefresh
+      ? accountsSnapshot.docs  // manual refresh always syncs everything
+      : accountsSnapshot.docs.filter(doc => {
+          const data = doc.data();
+          const lastRefreshed = data.lastRefreshed?.toDate();
+          if (!lastRefreshed) return true; // never synced — always include
+          const hoursSinceRefresh = (now - lastRefreshed.getTime()) / (1000 * 60 * 60);
+          return hoursSinceRefresh >= refreshIntervalHours;
+        });
+
+    console.log(`      📝 Will queue ${accountsToRefresh.length}/${accountsSnapshot.size} active accounts (plan: ${planTier}, interval: ${refreshIntervalHours}h${isManualRefresh ? ', MANUAL' : ''})`);
     
     if (accountsToRefresh.length === 0) {
       console.log(`      ✅ Project complete: No accounts need refresh\n`);
