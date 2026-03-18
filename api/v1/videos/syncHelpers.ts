@@ -4,8 +4,9 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { getBaseUrl } from '../../utils/base-url.js';
 
-const BASE_URL = 'https://www.viewtrack.app';
+const BASE_URL = getBaseUrl();
 
 // ─── Platform Detection ──────────────────────────────────
 

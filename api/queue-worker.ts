@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getBaseUrl } from './utils/base-url.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -61,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const db = initializeFirebase();
     const cronSecret = process.env.CRON_SECRET;
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     
     // Authenticate
     const authHeader = req.headers.authorization;

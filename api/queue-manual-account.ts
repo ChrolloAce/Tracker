@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
 import { JOB_PRIORITIES } from './constants/priorities.js';
+import { getBaseUrl } from './utils/base-url.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -113,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ [MANUAL-ACCOUNT] Job ${jobRef.id} queued with priority ${JOB_PRIORITIES.USER_INITIATED}`);
     console.log(`   📊 Account: @${accountData?.username} (${accountData?.platform})`);
     
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     const cronSecret = process.env.CRON_SECRET;
     
     // Check current queue capacity

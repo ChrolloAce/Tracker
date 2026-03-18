@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
 import { JOB_PRIORITIES } from './constants/priorities.js';
+import { getBaseUrl } from './utils/base-url.js';
 import { resolveTikTokUrl, isShortenedTikTokUrl } from './utils/resolve-tiktok-url.js';
 
 // Initialize Firebase Admin
@@ -99,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ [MANUAL-VIDEO] Job ${jobRef.id} queued with priority ${JOB_PRIORITIES.USER_INITIATED}`);
     console.log(`   📹 Video URL: ${resolvedUrl}${resolvedUrl !== url ? ` (resolved from ${url})` : ''}`);
     
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     const cronSecret = process.env.CRON_SECRET;
     
     // Check current queue capacity

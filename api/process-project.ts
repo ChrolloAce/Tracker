@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { JOB_PRIORITIES } from './constants/priorities.js';
+import { getBaseUrl } from './utils/base-url.js';
 
 // Refresh interval per plan tier (in hours)
 // Mirrors dataRefreshHours from src/types/subscription.ts
@@ -175,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Dispatch account sync jobs with ensured initiation
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     
     console.log(`      🚀 Starting dispatch of ${accountsToRefresh.length} accounts...`);
     
