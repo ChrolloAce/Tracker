@@ -49,30 +49,39 @@ async function listAccounts(
 ) {
   const { projectId, platform, limit = '50', offset = '0' } = req.query;
 
-  let query: FirebaseFirestore.Query = db
-    .collectionGroup('trackedAccounts')
-    .where('organizationId', '==', auth.organizationId);
-
   const targetProjectId = auth.projectId || projectId;
-  if (targetProjectId) {
-    query = query.where('projectId', '==', targetProjectId);
-  }
-
-  if (platform && typeof platform === 'string') {
-    query = query.where('platform', '==', platform);
-  }
-
   const limitNum = Math.min(parseInt(limit as string) || 50, 100);
   const offsetNum = parseInt(offset as string) || 0;
-  const snapshot = await query.limit(limitNum + offsetNum).get();
 
-  const accounts = snapshot.docs
-    .slice(offsetNum)
-    .slice(0, limitNum)
-    .map(doc => {
+  // Collect projects to query
+  const projectIds: string[] = [];
+  if (targetProjectId && typeof targetProjectId === 'string') {
+    projectIds.push(targetProjectId);
+  } else {
+    const projectsSnap = await db
+      .collection(COLL_ORGS).doc(auth.organizationId)
+      .collection(COLL_PROJECTS).get();
+    projectsSnap.docs.forEach(d => projectIds.push(d.id));
+  }
+
+  // Query each project's trackedAccounts (avoids collectionGroup composite index requirement)
+  const allAccounts: any[] = [];
+  for (const projId of projectIds) {
+    let query: FirebaseFirestore.Query = db
+      .collection(COLL_ORGS).doc(auth.organizationId)
+      .collection(COLL_PROJECTS).doc(projId)
+      .collection(COLL_ACCOUNTS);
+
+    if (platform && typeof platform === 'string') {
+      query = query.where('platform', '==', platform);
+    }
+
+    const snap = await query.get();
+    snap.docs.forEach(doc => {
       const data = doc.data();
-      return {
+      allAccounts.push({
         id: doc.id,
+        projectId: projId,
         username: data.username,
         platform: data.platform,
         profilePicture: data.profilePicture,
@@ -84,18 +93,21 @@ async function listAccounts(
         status: data.status,
         lastSyncedAt: data.lastSyncedAt?.toDate?.()?.toISOString(),
         createdAt: data.createdAt?.toDate?.()?.toISOString()
-      };
+      });
     });
+  }
+
+  const paginated = allAccounts.slice(offsetNum, offsetNum + limitNum);
 
   return res.status(200).json({
     success: true,
     data: {
-      accounts,
+      accounts: paginated,
       pagination: {
         limit: limitNum,
         offset: offsetNum,
-        total: snapshot.size,
-        hasMore: snapshot.size > offsetNum + limitNum
+        total: allAccounts.length,
+        hasMore: allAccounts.length > offsetNum + limitNum
       }
     }
   });

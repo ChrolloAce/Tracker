@@ -150,12 +150,18 @@ async function listVideosFromProject(
 ) {
   const { platform, status, limit = '50', offset = '0' } = req.query;
 
+  const limitNum = Math.min(parseInt(limit as string) || 50, 100);
+  const offsetNum = parseInt(offset as string) || 0;
+
+  // Build query — only use orderBy when there are no where clauses to avoid composite index issues
   let query: FirebaseFirestore.Query = db
     .collection('organizations')
     .doc(auth.organizationId)
     .collection('projects')
     .doc(projectId)
     .collection('videos');
+
+  const hasFilters = (platform && typeof platform === 'string') || (status && typeof status === 'string');
 
   if (platform && typeof platform === 'string') {
     query = query.where('platform', '==', platform);
@@ -164,45 +170,54 @@ async function listVideosFromProject(
     query = query.where('status', '==', status);
   }
 
-  query = query.orderBy('uploadDate', 'desc');
+  // Only use Firestore orderBy when no where filters are applied (avoids composite index requirement)
+  if (!hasFilters) {
+    query = query.orderBy('uploadDate', 'desc');
+  }
 
-  const limitNum = Math.min(parseInt(limit as string) || 50, 100);
-  const offsetNum = parseInt(offset as string) || 0;
-  const snapshot = await query.limit(limitNum + offsetNum).get();
+  const snapshot = await query.get();
 
-  const videos = snapshot.docs
-    .slice(offsetNum)
-    .slice(0, limitNum)
-    .map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        projectId,
-        url: data.url,
-        platform: data.platform,
-        thumbnail: data.thumbnail,
-        title: data.title,
-        caption: data.caption,
-        uploaderHandle: data.uploaderHandle,
-        views: data.views || 0,
-        likes: data.likes || 0,
-        comments: data.comments || 0,
-        shares: data.shares || 0,
-        status: data.status,
-        uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
-        lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString()
-      };
+  let allVideos = snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      projectId,
+      url: data.url,
+      platform: data.platform,
+      thumbnail: data.thumbnail,
+      title: data.title,
+      caption: data.caption,
+      uploaderHandle: data.uploaderHandle,
+      views: data.views || 0,
+      likes: data.likes || 0,
+      comments: data.comments || 0,
+      shares: data.shares || 0,
+      status: data.status,
+      uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
+      lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString()
+    };
+  });
+
+  // Sort client-side when filters are applied
+  if (hasFilters) {
+    allVideos.sort((a, b) => {
+      const dateA = a.uploadDate ? new Date(a.uploadDate).getTime() : 0;
+      const dateB = b.uploadDate ? new Date(b.uploadDate).getTime() : 0;
+      return dateB - dateA;
     });
+  }
+
+  const paginated = allVideos.slice(offsetNum, offsetNum + limitNum);
 
   return res.status(200).json({
     success: true,
     data: {
-      videos,
+      videos: paginated,
       pagination: {
         limit: limitNum,
         offset: offsetNum,
-        total: snapshot.size,
-        hasMore: snapshot.size > offsetNum + limitNum
+        total: allVideos.length,
+        hasMore: allVideos.length > offsetNum + limitNum
       }
     }
   });
