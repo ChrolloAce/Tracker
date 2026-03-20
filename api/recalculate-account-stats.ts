@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
-import { setCorsHeaders, handleCorsPreFlight } from './utils/cors.js';
-import { authenticateAndVerifyOrg } from './utils/auth.js';
+import { setCorsHeaders, handleCorsPreFlight, authenticateAndVerifyOrg } from './middleware/auth.js';
 
 function initializeFirebase() {
   if (require('firebase-admin').apps.length === 0) {
@@ -25,10 +24,10 @@ function initializeFirebase() {
  * Use this when account stats are out of sync.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCorsHeaders(res);
-  
-  if (req.method === 'OPTIONS') {
-    return handleCorsPreFlight(res);
+  setCorsHeaders(res, req);
+
+  if (handleCorsPreFlight(req, res)) {
+    return;
   }
   
   if (req.method !== 'POST') {

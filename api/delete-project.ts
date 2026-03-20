@@ -92,10 +92,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { orgId, projectId } = req.body;
 
     if (!orgId || !projectId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required fields: orgId, projectId' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: orgId, projectId'
       });
+    }
+
+    // Verify user is a member of the organization
+    const membershipSnapshot = await db
+      .collection('organizations')
+      .doc(orgId)
+      .collection('members')
+      .where('userId', '==', decodedToken.uid)
+      .where('status', '==', 'active')
+      .limit(1)
+      .get();
+
+    if (membershipSnapshot.empty) {
+      console.error(`❌ Access denied: User ${decodedToken.uid} is not a member of org ${orgId}`);
+      return res.status(403).json({ success: false, message: 'Access denied - you are not a member of this organization' });
     }
 
     const startTime = Date.now();

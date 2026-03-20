@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
+import { getFrontendUrl } from './utils/base-url.js';
 
 /**
  * Create a Stripe Checkout session
@@ -120,13 +121,68 @@ export default async function handler(
       }
     }
 
-    // Get base URL - fallback to Vercel URL if NEXT_PUBLIC_BASE_URL not set
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173');
-    
+    const baseUrl = getFrontendUrl();
     console.log('Using base URL:', baseUrl);
 
-    // Create Checkout Session
+    // ==================== UPGRADE/DOWNGRADE: Stripe Customer Portal ====================
+    // If the user already has an active subscription, send them to the
+    // portal's confirmation screen so they can see the proration breakdown
+    // and confirm the plan change themselves.
+    const subData = subDoc.exists ? subDoc.data() : null;
+    const existingSubscriptionId = subData?.stripeSubscriptionId;
+
+    if (existingSubscriptionId) {
+      try {
+        const existingSub = await stripe.subscriptions.retrieve(existingSubscriptionId);
+
+        if (existingSub.status === 'active' || existingSub.status === 'trialing') {
+          // Already on this price — nothing to do
+          if (existingSub.items.data[0].price.id === priceId) {
+            console.log('Already on this plan/price, no change needed');
+            return res.json({ alreadyCurrent: true });
+          }
+
+          console.log(`Redirecting to portal for plan change: ${existingSubscriptionId} → price ${priceId}`);
+
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${baseUrl}/settings?success=true`,
+            flow_data: {
+              type: 'subscription_update_confirm',
+              subscription_update_confirm: {
+                subscription: existingSubscriptionId,
+                items: [{
+                  id: existingSub.items.data[0].id,
+                  price: priceId,
+                  quantity: 1,
+                }],
+              },
+            },
+          });
+
+          console.log(`Portal session created for plan change: ${portalSession.id}`);
+          return res.json({ url: portalSession.url });
+        }
+
+        console.log(`Existing subscription ${existingSubscriptionId} is ${existingSub.status}, creating new checkout`);
+      } catch (subErr: any) {
+        // If the subscription exists but we hit a config error (e.g. portal not configured),
+        // do NOT fall through to a new checkout — that would create a duplicate subscription.
+        // Only fall through if the subscription itself is gone from Stripe (resource_missing).
+        const isNotFound = subErr.code === 'resource_missing' || subErr.statusCode === 404;
+        if (!isNotFound) {
+          console.error(`Plan change failed for subscription ${existingSubscriptionId}: ${subErr.message}`);
+          return res.status(400).json({
+            error: 'Unable to change plan',
+            message: subErr.message,
+          });
+        }
+        console.log(`Subscription ${existingSubscriptionId} no longer exists in Stripe, creating new checkout`);
+      }
+    }
+
+    // ==================== NEW SUBSCRIPTION: Stripe Checkout ====================
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',

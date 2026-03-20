@@ -15,6 +15,7 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { getAuth } from 'firebase/auth';
 import { 
   Organization, 
   OrgMember, 
@@ -481,18 +482,24 @@ class OrganizationService {
    * Delete an organization and all its data
    * This is a server-side operation to ensure proper cascading deletes
    */
-  static async deleteOrganization(organizationId: string, userId: string): Promise<void> {
+  static async deleteOrganization(organizationId: string, _userId?: string): Promise<void> {
     try {
       console.log(`🗑️  Deleting organization: ${organizationId}`);
       
+      const user = getAuth().currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      const token = await user.getIdToken();
+
       const response = await fetch('/api/delete-organization', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           organizationId,
-          userId
         })
       });
 

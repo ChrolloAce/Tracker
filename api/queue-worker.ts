@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getBaseUrl } from './utils/base-url.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -61,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const db = initializeFirebase();
     const cronSecret = process.env.CRON_SECRET;
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     
     // Authenticate
     const authHeader = req.headers.authorization;
@@ -149,7 +150,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Validate running jobs in parallel (check if they're actually still running)
     console.log(`\n🔍 Validating ${runningCount} running jobs...`);
     
-    const JOB_TIMEOUT_MS = 7 * 60 * 1000; // 7 minutes — exceeds sync-single-account maxDuration (5min) to avoid premature timeout
+    const JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes (matches sync-single-account maxDuration)
     const now = Date.now();
     let validatedCount = 0;
     let markedFailedCount = 0;
@@ -231,8 +232,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedFailedCount} failed`);
     
     // Calculate available slots for new jobs
-    const APIFY_CONCURRENCY_LIMIT = 10;
-    const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount - retriedCount;
+    const { APIFY_CONCURRENCY_LIMIT } = await import('./constants/priorities.js');
+    const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount;
     const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
     
     console.log(`\n📊 Capacity: ${actualRunningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);

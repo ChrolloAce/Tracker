@@ -7,6 +7,7 @@ import { ErrorNotificationService } from './services/ErrorNotificationService.js
 import { CleanupService } from './services/CleanupService.js';
 import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './utils/resolve-tiktok-url.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
+import { checkVideoLimit } from './utils/video-limits.js';
 // @ts-ignore - heic-convert has no types
 import convert from 'heic-convert';
 
@@ -62,7 +63,7 @@ interface VideoData {
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
-  setCorsHeaders(res);
+  setCorsHeaders(res, req);
   
   // Handle preflight requests
   if (handleCorsPreFlight(req, res)) {
@@ -124,8 +125,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let videoRef: FirebaseFirestore.DocumentReference | null = null;
 
   try {
-    // Check if videoId is actually a URL (new video) or a document ID (existing video)
+    // ==================== VIDEO LIMIT CHECK ====================
     const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
+    if (isUrl) {
+      const videoLimit = await checkVideoLimit(orgId);
+      console.log(`📊 Video limits - Current: ${videoLimit.currentCount}, Limit: ${videoLimit.limit}, Remaining: ${videoLimit.remaining}`);
+
+      if (!videoLimit.allowed) {
+        console.log(`❌ Video limit reached (${videoLimit.currentCount}/${videoLimit.limit}) for ${videoLimit.planTier} plan`);
+        if (jobId) {
+          await db.collection('syncQueue').doc(jobId).update({
+            status: 'failed', completedAt: Timestamp.now(),
+            error: `Video limit reached (${videoLimit.limit})`
+          });
+        }
+        return res.status(403).json({
+          error: 'Video limit reached',
+          message: `Your ${videoLimit.planTier} plan allows ${videoLimit.limit} videos. Upgrade for more.`,
+          currentCount: videoLimit.currentCount, limit: videoLimit.limit
+        });
+      }
+    }
+    // ==================== END VIDEO LIMIT CHECK ====================
+
+    // Check if videoId is actually a URL (new video) or a document ID (existing video)
     
     let video: FirebaseFirestore.DocumentData | undefined;
     let isNewVideo = false;

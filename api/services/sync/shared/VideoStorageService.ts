@@ -1,13 +1,13 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { ImageUploadService } from './ImageUploadService.js';
 
-// Helper: Timeout wrapper for thumbnail downloads (5 second max)
+// Helper: Timeout wrapper for thumbnail downloads
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
   let timeoutId: NodeJS.Timeout;
   const timeoutPromise = new Promise<T>((_, reject) => {
     timeoutId = setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs);
   });
-  
+
   try {
     const result = await Promise.race([promise, timeoutPromise]);
     clearTimeout(timeoutId!);
@@ -18,9 +18,14 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: 
   }
 }
 
+function isFirebaseStorageUrl(url: string | undefined | null): boolean {
+  if (!url) return false;
+  return url.includes('firebasestorage.googleapis.com') || url.includes('storage.googleapis.com');
+}
+
 /**
  * VideoStorageService
- * 
+ *
  * Responsibilities:
  * - Save videos to Firestore with deterministic IDs
  * - Upload thumbnails to Firebase Storage (if not already uploaded)
@@ -28,96 +33,161 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: 
  * - Handle batch writes (chunking)
  */
 export class VideoStorageService {
+
+  /**
+   * Process thumbnails in parallel batches.
+   * Skips videos that already have a Firebase thumbnail in Firestore.
+   * Returns a Map of videoDocId -> firebaseThumbnailUrl.
+   */
+  private static async processThumbnailsBatch(
+    videos: any[],
+    account: any,
+    orgId: string,
+    projectId: string,
+    db: FirebaseFirestore.Firestore,
+    existingDocs: Map<string, FirebaseFirestore.DocumentData>
+  ): Promise<Map<string, string>> {
+    const THUMBNAIL_TIMEOUT_MS = 8000;
+    const BATCH_SIZE = 5; // Parallel downloads per batch (conservative for CDN rate limits)
+    const thumbnailMap = new Map<string, string>();
+    const accountId = account.id;
+
+    // Separate videos into: already-have-thumbnail vs need-download
+    const needsDownload: Array<{ docId: string; video: any }> = [];
+
+    for (const video of videos) {
+      const videoDocId = `${account.platform}_${accountId}_${video.videoId}`;
+
+      // Already a Firebase URL from platform normalization? Use it directly.
+      if (isFirebaseStorageUrl(video.thumbnail)) {
+        thumbnailMap.set(videoDocId, video.thumbnail);
+        continue;
+      }
+
+      // Existing video with a Firebase thumbnail? Skip download entirely.
+      const existing = existingDocs.get(videoDocId);
+      if (existing && isFirebaseStorageUrl(existing.thumbnail)) {
+        thumbnailMap.set(videoDocId, existing.thumbnail);
+        continue;
+      }
+
+      // Has a CDN URL that needs downloading
+      if (video.thumbnail && video.thumbnail.startsWith('http')) {
+        needsDownload.push({ docId: videoDocId, video });
+      } else {
+        thumbnailMap.set(videoDocId, '');
+      }
+    }
+
+    if (needsDownload.length === 0) {
+      console.log(`    ⚡ [THUMBS] All ${videos.length} thumbnails resolved from cache — 0 downloads needed`);
+      return thumbnailMap;
+    }
+
+    console.log(`    📥 [THUMBS] ${needsDownload.length} thumbnails to download (${videos.length - needsDownload.length} skipped — already in Firebase)`);
+
+    // Process in parallel batches
+    for (let i = 0; i < needsDownload.length; i += BATCH_SIZE) {
+      const batch = needsDownload.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(needsDownload.length / BATCH_SIZE);
+
+      const results = await Promise.allSettled(
+        batch.map(({ video }) =>
+          withTimeout(
+            ImageUploadService.downloadAndUpload(
+              video.thumbnail,
+              orgId,
+              `${account.platform}_${video.videoId}_thumb.jpg`,
+              'thumbnails'
+            ),
+            THUMBNAIL_TIMEOUT_MS,
+            '' // Empty on timeout — CDN URLs expire
+          )
+        )
+      );
+
+      // Store results
+      let successCount = 0;
+      for (let j = 0; j < batch.length; j++) {
+        const result = results[j];
+        const url = result.status === 'fulfilled' ? result.value : '';
+        thumbnailMap.set(batch[j].docId, url);
+        if (url) successCount++;
+      }
+
+      console.log(`    📥 [THUMBS] Batch ${batchNum}/${totalBatches}: ${successCount}/${batch.length} succeeded`);
+    }
+
+    return thumbnailMap;
+  }
+
   /**
    * Save a batch of videos to Firestore
-   * 
-   * @param videos - Array of normalized video objects
-   * @param account - The tracked account object
-   * @param orgId - Organization ID
-   * @param projectId - Project ID
-   * @param db - Firestore database instance
-   * @returns Number of videos successfully processed
    */
   static async saveVideos(
     videos: any[],
     account: any,
     orgId: string,
     projectId: string,
-    db: FirebaseFirestore.Firestore
+    db: FirebaseFirestore.Firestore,
+    maxNewVideos?: number
   ): Promise<number> {
     let batch = db.batch();
     let savedCount = 0;
-    let batchOperations = 0; // Track operations in current batch
+    let newVideoCount = 0;
+    let batchOperations = 0;
     const accountId = account.id;
-    const BATCH_COMMIT_THRESHOLD = 20; // Commit every 20 videos (more frequent = safer)
-    const THUMBNAIL_TIMEOUT_MS = 8000; // 8 second timeout for thumbnail downloads
+    const BATCH_COMMIT_THRESHOLD = 20;
 
     console.log(`    📦 [SAVE] Starting to save ${videos.length} videos for @${account.username}...`);
 
-    for (const video of videos) {
-      // Download and upload thumbnail to Firebase Storage (REQUIRED - no fallback to direct URLs)
-      let firebaseThumbnailUrl = '';
-      
-      // Check if it's already a Firebase Storage URL to avoid re-uploading
-      const isFirebaseUrl = video.thumbnail && (
-        video.thumbnail.includes('firebasestorage.googleapis.com') || 
-        video.thumbnail.includes('storage.googleapis.com')
-      );
+    // ==================== PRE-FETCH existing docs in parallel ====================
+    // This replaces the sequential videoRef.get() inside the loop
+    const existingDocs = new Map<string, FirebaseFirestore.DocumentData>();
+    const docIds = videos.map(v => `${account.platform}_${accountId}_${v.videoId}`);
 
-      if (video.thumbnail && video.thumbnail.startsWith('http')) {
-        if (!isFirebaseUrl) {
-          try {
-            // Use timeout wrapper to prevent hanging on slow downloads
-            // IMPORTANT: On timeout/failure, use empty string - NEVER use CDN URLs (they expire!)
-            firebaseThumbnailUrl = await withTimeout(
-              ImageUploadService.downloadAndUpload(
-                video.thumbnail,
-                orgId,
-                `${account.platform}_${video.videoId}_thumb.jpg`,
-                'thumbnails'
-              ),
-              THUMBNAIL_TIMEOUT_MS,
-              '' // EMPTY on timeout - CDN URLs expire, don't save them!
-            );
-            
-            if (!firebaseThumbnailUrl) {
-              console.log(`    ⚠️ [${account.platform.toUpperCase()}] Thumbnail timeout for ${video.videoId}, leaving empty (CDN URLs expire)`);
-            }
-          } catch (thumbError) {
-            console.error(`    ❌ [${account.platform.toUpperCase()}] Thumbnail failed for ${video.videoId}:`, (thumbError as Error).message);
-            firebaseThumbnailUrl = ''; // EMPTY on error - CDN URLs expire, don't save them!
-          }
-        } else {
-          // Already a Firebase URL (e.g. from platform service)
-          firebaseThumbnailUrl = video.thumbnail;
+    // Firestore getAll supports up to 100 refs at a time
+    const videoRefs = docIds.map(id =>
+      db.collection('organizations').doc(orgId)
+        .collection('projects').doc(projectId)
+        .collection('videos').doc(id)
+    );
+
+    // Batch read in chunks of 100
+    for (let i = 0; i < videoRefs.length; i += 100) {
+      const chunk = videoRefs.slice(i, i + 100);
+      const snapshots = await db.getAll(...chunk);
+      for (const snap of snapshots) {
+        if (snap.exists) {
+          existingDocs.set(snap.id, snap.data()!);
         }
-      } else {
-        // No valid URL provided
-        firebaseThumbnailUrl = '';
       }
+    }
 
-      // ==================== DETERMINISTIC IDs + NO DUPLICATES ====================
-      // Use deterministic doc ID: {platform}_{accountId}_{videoId}
-      // This prevents race conditions - if 2 jobs try to create same video, only one succeeds
+    console.log(`    📋 [SAVE] Pre-fetched ${existingDocs.size} existing videos (${videos.length - existingDocs.size} new)`);
+
+    // ==================== PARALLEL THUMBNAIL PROCESSING ====================
+    const thumbnailMap = await this.processThumbnailsBatch(
+      videos, account, orgId, projectId, db, existingDocs
+    );
+
+    // ==================== FIRESTORE BATCH WRITES ====================
+    for (const video of videos) {
       const videoDocId = `${account.platform}_${accountId}_${video.videoId}`;
       const videoRef = db
-        .collection('organizations')
-        .doc(orgId)
-        .collection('projects')
-        .doc(projectId)
-        .collection('videos')
-        .doc(videoDocId); // DETERMINISTIC ID
+        .collection('organizations').doc(orgId)
+        .collection('projects').doc(projectId)
+        .collection('videos').doc(videoDocId);
 
+      const firebaseThumbnailUrl = thumbnailMap.get(videoDocId) || '';
       const snapshotTime = Timestamp.now();
       const isManualTrigger = account.syncRequestedBy ? true : false;
-
-      // Check if video already exists (fast doc.get instead of query)
-      const existingVideo = await videoRef.get();
       const isRefreshOnly = video._isRefreshOnly === true;
-        
-      if (existingVideo.exists) {
-        // VIDEO EXISTS - Update metrics only (and thumbnail if we have a new one)
-        const existingData = existingVideo.data() || {};
+      const existingData = existingDocs.get(videoDocId);
+
+      if (existingData) {
+        // VIDEO EXISTS - Update metrics only
         const updateData: any = {
           views: video.views || 0,
           likes: video.likes || 0,
@@ -126,37 +196,24 @@ export class VideoStorageService {
           saves: video.saves || 0,
           lastRefreshed: snapshotTime
         };
-        
-        // Backfill uploaderHandle for old docs missing it
+
         if (!existingData.uploaderHandle) {
           updateData.uploaderHandle = video.accountUsername || account.username;
           updateData.uploader = video.accountDisplayName || account.username;
         }
-        
-        // Update thumbnail only if we have a new valid one
+
         if (firebaseThumbnailUrl) {
           updateData.thumbnail = firebaseThumbnailUrl;
         }
-        
-        // For non-refresh videos, also update title/date if provided
-        // (Refresh-only videos should NEVER overwrite title/date)
+
         if (!isRefreshOnly) {
-          if (video.videoTitle) {
-            updateData.videoTitle = video.videoTitle;
-          }
-          if (video.uploadDate) {
-            updateData.uploadDate = video.uploadDate;
-          }
-          if (video.media) { // For Twitter slideshows
-            updateData.media = video.media;
-          }
+          if (video.videoTitle) updateData.videoTitle = video.videoTitle;
+          if (video.uploadDate) updateData.uploadDate = video.uploadDate;
+          if (video.media) updateData.media = video.media;
         }
-        
+
         batch.update(videoRef, updateData);
 
-        // ==================== CREATE REFRESH SNAPSHOT ====================
-        // New architecture (REFRESH → DISCOVERY) prevents duplicate snapshots naturally
-        // No deduplication check needed!
         const snapshotRef = videoRef.collection('snapshots').doc();
         batch.set(snapshotRef, {
           id: snapshotRef.id,
@@ -174,21 +231,20 @@ export class VideoStorageService {
         console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
       } else {
         // Video doesn't exist
-        
         if (isRefreshOnly) {
-          // CRITICAL: Refresh-only videos should NEVER create new entries
-          // If video doesn't exist, it was probably deleted - skip it
           console.log(`    ⏭️  Skipping refresh-only video ${video.videoId} - doesn't exist in DB (likely deleted)`);
-          continue; // Skip to next video
+          continue;
         }
-        
-        // NEW VIDEO - Create with initial snapshot (only for discovery, not refresh)
-        // Remove internal flags before saving
+
+        if (typeof maxNewVideos === 'number' && newVideoCount >= maxNewVideos) {
+          console.log(`    ⏭️  Skipping new video ${video.videoId} — plan video limit reached (${newVideoCount}/${maxNewVideos})`);
+          continue;
+        }
+
         const { _isRefreshOnly, ...cleanVideoData } = video;
-        
+
         batch.set(videoRef, {
           ...cleanVideoData,
-          // Map normalized fields → frontend-expected fields
           uploaderHandle: video.accountUsername || account.username,
           uploader: video.accountDisplayName || account.username,
           thumbnail: firebaseThumbnailUrl,
@@ -204,7 +260,6 @@ export class VideoStorageService {
           isSingular: false
         });
 
-        // Create initial snapshot (no deduplication needed for new videos)
         const snapshotRef = videoRef.collection('snapshots').doc();
         batch.set(snapshotRef, {
           id: snapshotRef.id,
@@ -221,13 +276,12 @@ export class VideoStorageService {
         });
 
         console.log(`    ✅ Created new video ${video.videoId} + initial snapshot`);
+        newVideoCount++;
       }
 
       savedCount++;
-      batchOperations += 2; // Each video = 1 update/set + 1 snapshot
+      batchOperations += 2;
 
-      // Commit more frequently to avoid losing work on timeout
-      // Firestore batch limit is 500, but we commit every 20 videos (40 operations) for safety
       if (batchOperations >= BATCH_COMMIT_THRESHOLD * 2) {
         try {
           await batch.commit();
@@ -236,7 +290,6 @@ export class VideoStorageService {
           batchOperations = 0;
         } catch (commitError) {
           console.error(`    ❌ Batch commit failed:`, (commitError as Error).message);
-          // Continue with new batch - don't lose remaining videos
           batch = db.batch();
           batchOperations = 0;
         }
@@ -259,4 +312,3 @@ export class VideoStorageService {
     return savedCount;
   }
 }
-

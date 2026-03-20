@@ -1,0 +1,445 @@
+================================================================================
+VIEWTRACK — FULL ARCHITECTURE & API REFERENCE
+================================================================================
+Last updated: March 2026
+Purpose: Reference for building custom APIs to replace third-party services
+
+
+================================================================================
+1. WHAT VIEWTRACK DOES
+================================================================================
+
+ViewTrack is a social media analytics platform. Users track accounts and videos
+across TikTok, Instagram, YouTube, and Twitter/X. It:
+
+  - Tracks social media accounts (followers, profile data)
+  - Discovers new videos from tracked accounts automatically
+  - Tracks individual videos (views, likes, comments, shares, saves over time)
+  - Creates metric snapshots over time for growth analytics
+  - Provides link tracking (short URLs with click analytics)
+  - Manages creator teams with payouts and contracts
+  - Runs campaigns with leaderboards and goals
+  - Sends email reports when data refreshes complete
+  - Has a public API (v1) for programmatic access
+
+Stack: React (Vite) frontend, Vercel serverless API, Firebase (Firestore +
+Storage + Auth), Apify for scraping, YouTube Data API v3, Stripe billing.
+
+
+================================================================================
+2. EXTERNAL APIs — THE EXPENSIVE ONES (APIFY)
+================================================================================
+
+Apify is the #1 cost driver. Every scrape = Apify credits.
+All actors use RESIDENTIAL proxies (the expensive kind).
+
+--- TIKTOK ---
+
+  Actor: apidojo/tiktok-scraper-api  (aka apidojo~tiktok-scraper-api)
+  Used for:
+    - Fetching video data from TikTok URLs (single video processing)
+    - Discovering new videos from TikTok accounts (account sync)
+    - Refreshing existing video metrics
+    - Fetching account profile data (followers, avatar)
+  Input:
+    {
+      startUrls: ["https://www.tiktok.com/@username" OR "https://www.tiktok.com/@user/video/123"],
+      maxItems: 1-100,
+      proxy: { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] }
+    }
+  Returns: Array of video objects with:
+    - id, title, views, likes, comments, shares, bookmarks
+    - channel: { username, name, avatar, followers, verified }
+    - video: { cover, thumbnail, url, duration }
+    - uploadedAt, postPage, hashtags, song info
+  PROBLEM: When fetching single videos, channel.followers is often NULL
+           and avatar URLs are CDN (expire). That's why we added the
+           separate account profile fetch.
+
+  Actor: clockworks~tiktok-scraper
+  Used for:
+    - Legacy TikTok profile/video scraping (client-side)
+    - Profile picture fetching
+    - Some refresh flows
+  Input:
+    {
+      profiles: ["https://www.tiktok.com/@username"],
+      proxy: { useApifyProxy: true }
+    }
+
+--- INSTAGRAM ---
+
+  Actor: hpix~ig-reels-scraper
+  Used for:
+    - Fetching Instagram reels/posts data
+    - Video discovery from accounts
+    - Refreshing video metrics
+    - Single video processing
+  Input:
+    {
+      post_urls: ["https://www.instagram.com/reel/xxx/"],
+      target: "reels_only",
+      reels_count: 12,
+      include_raw_data: true,
+      proxy: {
+        useApifyProxy: true,
+        apifyProxyGroups: ["RESIDENTIAL"],
+        apifyProxyCountry: "US"
+      }
+    }
+  Returns: Video data with owner info (username, follower count, profile pic)
+
+  Actor: apify~instagram-profile-scraper
+  Used for:
+    - Fetching complete Instagram profile data (followers, bio, pfp)
+    - Called when creating an account from a video submission
+  Input:
+    {
+      usernames: ["username"],
+      proxyConfiguration: {
+        useApifyProxy: true,
+        apifyProxyGroups: ["RESIDENTIAL"],
+        apifyProxyCountry: "US"
+      }
+    }
+  Returns: Profile with followersCount, fullName, profilePicUrl, verified
+
+  Actor: scraper-engine~instagram-reels-scraper
+  Used for:
+    - Alternative Instagram reels discovery
+    - Account refresh flows
+
+--- TWITTER/X ---
+
+  Actor: apidojo~tweet-scraper  (aka apidojo/tweet-scraper)
+  Used for:
+    - Fetching tweet/video data from Twitter URLs
+    - Discovering new tweets from accounts
+    - Refreshing tweet metrics
+  Input:
+    {
+      startUrls: ["https://x.com/user/status/123"],  // OR
+      handles: ["username"],
+      maxItems: 1-100,
+      proxy: { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] }
+    }
+  Returns: Tweets with:
+    - id, text, viewCount, likeCount, replyCount, retweetCount
+    - author: { userName, name, profilePicture, coverPicture, followers }
+    - media: [{ url }], createdAt
+
+--- SUMMARY OF APIFY COST ---
+
+  Every single API call to Apify costs credits. The main costs:
+  1. RESIDENTIAL proxy usage (most expensive proxy tier)
+  2. Actor compute time
+  3. Dataset storage
+
+  Biggest cost centers:
+  - Account discovery (fetches up to 100 videos per account)
+  - Video refresh (re-fetches metrics for all tracked videos)
+  - Single video processing (1 call per video submitted)
+  - Instagram profile scraping (separate actor call per account)
+
+
+================================================================================
+3. YOUTUBE DATA API v3 (FREE-ISH)
+================================================================================
+
+YouTube uses the official API, NOT Apify. Free up to 10,000 units/day.
+
+  Env: YOUTUBE_API_KEY
+
+  Endpoints used:
+
+  1. GET /youtube/v3/videos?part=snippet,statistics,contentDetails&id={videoId}
+     - Fetches video details (title, description, thumbnails, view/like counts)
+     - Used for: single video processing, video refresh
+
+  2. GET /youtube/v3/channels?part=snippet,statistics&id={channelId}
+     - Fetches channel info (name, thumbnail, subscriber count)
+     - Used for: account profile data
+
+  3. GET /youtube/v3/channels?part=snippet&forHandle={handle}
+     - Resolves YouTube handle to channel ID
+     - Used for: account tracking setup
+
+  4. GET /youtube/v3/search?part=snippet&channelId={id}&type=video&order=date
+     - Searches channel videos (optionally filtered by videoDuration)
+     - Used for: video discovery (shorts vs long-form filtering)
+     - videoDuration=short → Shorts only
+     - videoDuration=medium,long → Long-form only
+
+  5. GET /youtube/v3/playlistItems?part=snippet,contentDetails&playlistId={uploadsPlaylistId}
+     - Alternative video listing via uploads playlist
+
+
+================================================================================
+4. EMAIL — RESEND API
+================================================================================
+
+  Env: RESEND_API_KEY
+  API: POST https://api.resend.com/emails
+  From: ViewTrack <team@viewtrack.app>
+
+  Emails sent:
+  1. Batch video processed    — when all videos in a batch finish
+  2. Refresh summary          — after org-wide sync completes (delta metrics)
+  3. Team invitation          — invite team members
+  4. Creator invitation       — invite creators to portal
+  5. Error notification       — admin alerts on sync failures
+
+
+================================================================================
+5. FIREBASE SERVICES
+================================================================================
+
+  Project: trackview-6a3a5
+  Storage bucket: trackview-6a3a5.firebasestorage.app
+
+  Services:
+  - Firestore: Main database (orgs, projects, accounts, videos, snapshots, links)
+  - Firebase Auth: User authentication (Google, email)
+  - Firebase Storage: Profile pictures, video thumbnails (permanent URLs)
+  - Firebase Admin SDK: Server-side operations in Vercel functions
+
+  Env vars:
+    FIREBASE_PROJECT_ID
+    FIREBASE_CLIENT_EMAIL
+    FIREBASE_PRIVATE_KEY
+    FIREBASE_STORAGE_BUCKET
+
+
+================================================================================
+6. BILLING — STRIPE + APPLE
+================================================================================
+
+  Stripe:
+    STRIPE_SECRET_KEY
+    STRIPE_WEBHOOK_SECRET
+    VITE_STRIPE_PUBLISHABLE_KEY
+    Price IDs for Basic/Pro/Ultra monthly and yearly
+
+  Apple:
+    RevenueCat API (api.revenuecat.com/v1) — subscriber data
+    Superwall API (api.superwall.com/v1) — paywall analytics
+    Apple App Store Connect API — sales reports
+    Apple StoreKit API — in-app purchase verification
+
+
+================================================================================
+7. PROXY CONFIGURATION
+================================================================================
+
+  ALL Apify scraping uses RESIDENTIAL proxies:
+    {
+      useApifyProxy: true,
+      apifyProxyGroups: ["RESIDENTIAL"],
+      apifyProxyCountry: "US"   // Instagram always, others sometimes
+    }
+
+  Residential proxies are the most expensive tier but required because:
+  - Instagram blocks datacenter IPs aggressively
+  - TikTok rate-limits datacenter IPs
+  - Twitter/X detects and blocks non-residential traffic
+
+  Image proxies (server-side):
+  - /api/image-proxy — proxies Instagram/TikTok images to avoid CORS
+  - /api/apify-proxy — proxies Apify API calls from browser (CORS)
+
+
+================================================================================
+8. SYNC / REFRESH ARCHITECTURE
+================================================================================
+
+  Cron jobs (vercel.json):
+  - cron-orchestrator: runs daily at 17:00 UTC (noon EST)
+  - queue-worker: runs every minute
+
+  Flow:
+  1. Orchestrator creates sync sessions per org
+  2. Each account gets a job in syncQueue collection
+  3. Queue worker picks pending jobs (max 10 concurrent, Apify limit ~6)
+  4. Jobs dispatched to:
+     - sync-single-account.ts (account discovery + refresh)
+     - process-single-video.ts (manual video processing)
+     - refresh-account.ts (video metric refresh)
+  5. Each job updates account/video docs in Firestore
+  6. Last account in session triggers summary email
+
+  Job priorities:
+  - USER_INITIATED: 100 (manual add — processed first)
+  - MANUAL_REFRESH: 50
+  - SCHEDULED: 5 (cron-triggered)
+
+  Sync strategies per account:
+  - progressive: discover new videos + refresh existing
+  - refresh_only: only update existing video metrics
+  - discovery_only: only find new videos
+
+
+================================================================================
+9. DATA MODEL (FIRESTORE)
+================================================================================
+
+  organizations/{orgId}
+    /members/{userId}           — role, status, joinedAt
+    /billing/subscription       — plan, status, limits
+    /projects/{projectId}
+      /trackedAccounts/{accountId}  — username, platform, followers, pfp
+      /videos/{videoId}             — url, views, likes, shares, saves
+        /snapshots/{snapshotId}     — point-in-time metrics
+      /trackedLinks/{linkId}        — shortId, destination, clicks
+        /clicks/{clickId}           — device, browser, geo, referrer
+      /creators/{creatorId}         — linked accounts, payouts
+      /creatorLinks/{linkId}        — creator ↔ account mapping
+      /campaigns/{campaignId}       — goals, compensation, participants
+
+  users/{userId}                — email, defaultOrgId, plan
+  syncQueue/{jobId}             — type, status, priority, orgId
+  videoBatches/{batchId}        — totalVideos, completedVideos
+
+
+================================================================================
+10. SUBSCRIPTION LIMITS
+================================================================================
+
+  Plan        Videos    Accounts    Links    Refresh   Team Seats
+  ─────────   ───────   ─────────   ──────   ────────  ──────────
+  Free        5         Unlimited   1        48h       1
+  Basic       150       Unlimited   10       24h       2
+  Pro         1,000     Unlimited   100      24h       5
+  Ultra       5,000     Unlimited   Unlimited 12h      15
+  Enterprise  Unlimited Unlimited   Unlimited 6h       Unlimited
+
+
+================================================================================
+11. ALL ENVIRONMENT VARIABLES
+================================================================================
+
+  # Apify (scraping)
+  APIFY_TOKEN=...
+  VITE_APIFY_TOKEN=...              # client fallback (avoid using)
+
+  # YouTube
+  YOUTUBE_API_KEY=...
+
+  # Email
+  RESEND_API_KEY=...
+
+  # Firebase Admin
+  FIREBASE_PROJECT_ID=trackview-6a3a5
+  FIREBASE_CLIENT_EMAIL=...
+  FIREBASE_PRIVATE_KEY=...
+  FIREBASE_STORAGE_BUCKET=trackview-6a3a5.firebasestorage.app
+  FIREBASE_SERVICE_ACCOUNT_KEY=...  # base64 (some scripts)
+
+  # Stripe
+  STRIPE_SECRET_KEY=...
+  STRIPE_WEBHOOK_SECRET=...
+  VITE_STRIPE_PUBLISHABLE_KEY=...
+  VITE_STRIPE_BASIC_MONTHLY=...
+  VITE_STRIPE_BASIC_YEARLY=...
+  VITE_STRIPE_PRO_MONTHLY=...
+  VITE_STRIPE_PRO_YEARLY=...
+  VITE_STRIPE_ULTRA_MONTHLY=...
+  VITE_STRIPE_ULTRA_YEARLY=...
+  STRIPE_BASIC_MONTHLY=...
+  STRIPE_BASIC_YEARLY=...
+  STRIPE_PRO_MONTHLY=...
+  STRIPE_PRO_YEARLY=...
+  STRIPE_ULTRA_MONTHLY=...
+  STRIPE_ULTRA_YEARLY=...
+
+  # Auth / Cron
+  CRON_SECRET=...
+
+  # Optional
+  ADMIN_EMAIL=ernesto@maktubtechnologies.com
+  VITE_INSTAGRAM_SESSION_ID=...
+
+
+================================================================================
+12. WHAT TO BUILD YOUR OWN APIs FOR (COST SAVINGS)
+================================================================================
+
+  HIGHEST IMPACT (replace Apify):
+
+  1. TikTok Scraper
+     - Input: TikTok profile URL or video URL
+     - Output: Video list with metrics + channel profile data
+     - Needs: Residential proxies, anti-bot bypass, cookie management
+     - Current cost: ~$0.50-2.00 per 100 videos via Apify
+
+  2. Instagram Scraper
+     - Input: Instagram profile URL or reel URL
+     - Output: Reels with metrics + profile data (followers, pfp)
+     - Needs: Residential proxies (US), Instagram session cookies
+     - Current cost: ~$0.50-2.00 per 100 reels via Apify
+     - NOTE: Instagram is the hardest to scrape (aggressive blocking)
+
+  3. Twitter/X Scraper
+     - Input: Twitter handle or tweet URL
+     - Output: Tweets with metrics + author profile data
+     - Needs: Residential proxies, auth tokens
+     - Current cost: ~$0.30-1.00 per 100 tweets via Apify
+
+  ALREADY FREE/CHEAP (keep as-is):
+
+  4. YouTube Data API v3
+     - Already free (10,000 units/day)
+     - Only costs if you exceed quota (then $0.003 per unit)
+
+  5. Firebase
+     - Free tier is generous
+     - Firestore: 50K reads/20K writes per day free
+     - Storage: 5GB free
+
+  WHAT YOUR CUSTOM APIs NEED TO RETURN:
+
+  For videos:
+    {
+      id: string,
+      url: string,
+      thumbnail_url: string,
+      caption: string,
+      username: string,
+      views: number,
+      likes: number,
+      comments: number,
+      shares: number,
+      saves: number,         // bookmarks
+      upload_date: string,
+      profile_pic_url: string,
+      display_name: string,
+      follower_count: number,
+      verified: boolean
+    }
+
+  For account profiles:
+    {
+      username: string,
+      display_name: string,
+      avatar_url: string,
+      follower_count: number,
+      following_count: number,
+      video_count: number,
+      verified: boolean,
+      bio: string
+    }
+
+  KEY REQUIREMENTS FOR CUSTOM SCRAPERS:
+  - Must use residential proxies (datacenter IPs get blocked instantly)
+  - Must handle rate limiting and retries
+  - Must handle anti-bot challenges (captchas, fingerprinting)
+  - Must rotate user agents
+  - Must manage cookies/sessions (especially Instagram)
+  - Response time: ideally <30s per request (Vercel function timeout)
+  - For TikTok: handle shortened URLs (vm.tiktok.com, vt.tiktok.com)
+  - For Instagram: handle both /reel/ and /p/ URL formats
+  - For Twitter: handle both x.com and twitter.com domains
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================

@@ -10,8 +10,10 @@ import { initializeFirebase } from '../../utils/firebase-admin.js';
 import { withApiAuth } from '../../middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 
+import { getBaseUrl } from '../../utils/base-url.js';
+
 const JOB_PRIORITY_USER_INITIATED = 100;
-const BASE_URL = 'https://www.viewtrack.app';
+const BASE_URL = getBaseUrl();
 const DEFAULT_MAX_VIDEOS = 10;
 const COLL_ORGS = 'organizations';
 const COLL_PROJECTS = 'projects';
@@ -47,30 +49,39 @@ async function listAccounts(
 ) {
   const { projectId, platform, limit = '50', offset = '0' } = req.query;
 
-  let query: FirebaseFirestore.Query = db
-    .collectionGroup('trackedAccounts')
-    .where('organizationId', '==', auth.organizationId);
-
   const targetProjectId = auth.projectId || projectId;
-  if (targetProjectId) {
-    query = query.where('projectId', '==', targetProjectId);
-  }
-
-  if (platform && typeof platform === 'string') {
-    query = query.where('platform', '==', platform);
-  }
-
   const limitNum = Math.min(parseInt(limit as string) || 50, 100);
   const offsetNum = parseInt(offset as string) || 0;
-  const snapshot = await query.limit(limitNum + offsetNum).get();
 
-  const accounts = snapshot.docs
-    .slice(offsetNum)
-    .slice(0, limitNum)
-    .map(doc => {
+  // Collect projects to query
+  const projectIds: string[] = [];
+  if (targetProjectId && typeof targetProjectId === 'string') {
+    projectIds.push(targetProjectId);
+  } else {
+    const projectsSnap = await db
+      .collection(COLL_ORGS).doc(auth.organizationId)
+      .collection(COLL_PROJECTS).get();
+    projectsSnap.docs.forEach(d => projectIds.push(d.id));
+  }
+
+  // Query each project's trackedAccounts (avoids collectionGroup composite index requirement)
+  const allAccounts: any[] = [];
+  for (const projId of projectIds) {
+    let query: FirebaseFirestore.Query = db
+      .collection(COLL_ORGS).doc(auth.organizationId)
+      .collection(COLL_PROJECTS).doc(projId)
+      .collection(COLL_ACCOUNTS);
+
+    if (platform && typeof platform === 'string') {
+      query = query.where('platform', '==', platform);
+    }
+
+    const snap = await query.get();
+    snap.docs.forEach(doc => {
       const data = doc.data();
-      return {
+      allAccounts.push({
         id: doc.id,
+        projectId: projId,
         username: data.username,
         platform: data.platform,
         profilePicture: data.profilePicture,
@@ -82,18 +93,21 @@ async function listAccounts(
         status: data.status,
         lastSyncedAt: data.lastSyncedAt?.toDate?.()?.toISOString(),
         createdAt: data.createdAt?.toDate?.()?.toISOString()
-      };
+      });
     });
+  }
+
+  const paginated = allAccounts.slice(offsetNum, offsetNum + limitNum);
 
   return res.status(200).json({
     success: true,
     data: {
-      accounts,
+      accounts: paginated,
       pagination: {
         limit: limitNum,
         offset: offsetNum,
-        total: snapshot.size,
-        hasMore: snapshot.size > offsetNum + limitNum
+        total: allAccounts.length,
+        hasMore: allAccounts.length > offsetNum + limitNum
       }
     }
   });
@@ -175,10 +189,16 @@ async function triggerRediscovery(
   const accountData = existingDoc.data();
   console.log(`🔄 [API] Account @${username} already exists (${accountId}), triggering re-discovery`);
 
-  // Update maxVideos if caller wants more
+  // Ensure creatorType is 'automatic' so discovery finds new videos,
+  // and update maxVideos if caller wants more
+  const updates: Record<string, any> = {
+    creatorType: 'automatic',
+    updatedAt: Timestamp.now()
+  };
   if (videoLimit > (accountData.maxVideos || 0)) {
-    await existingDoc.ref.update({ maxVideos: videoLimit, updatedAt: Timestamp.now() });
+    updates.maxVideos = videoLimit;
   }
+  await existingDoc.ref.update(updates);
 
   // Create sync job + dispatch
   const { jobId, processingStatus } = await createSyncJobAndDispatch(

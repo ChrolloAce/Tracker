@@ -52,15 +52,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Verify webhook authorization
+  const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || authHeader !== `Bearer ${webhookSecret}`) {
+      console.warn('RevenueCat webhook received with invalid authorization');
+      return res.status(401).json({ error: 'Unauthorized - invalid webhook secret' });
+    }
+  } else {
+    console.warn('REVENUECAT_WEBHOOK_SECRET not configured - webhook verification disabled');
+  }
+
+  // Validate payload structure
+  if (!req.body || typeof req.body !== 'object' || !req.body.event) {
+    return res.status(400).json({ error: 'Invalid webhook payload' });
+  }
+
   try {
     const webhookData = req.body as RevenueCatWebhookEvent;
-    
-    if (!webhookData || !webhookData.event) {
-      return res.status(400).json({ error: 'Invalid webhook payload' });
-    }
-
     const { event } = webhookData;
-    
+
     console.log('Received RevenueCat webhook:', {
       type: event.type,
       app_user_id: event.app_user_id,

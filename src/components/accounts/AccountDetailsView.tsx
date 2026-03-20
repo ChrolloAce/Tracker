@@ -15,7 +15,7 @@ import { formatNumber, formatDate } from '../../utils/formatters';
 interface AccountDetailsViewProps {
   selectedAccount: TrackedAccount;
   loading: boolean;
-  accountVideos: AccountVideo[]; // Filtered by date/rules/dev test2345
+  accountVideos: AccountVideo[]; // Filtered by date/rules
   allAccountVideos: AccountVideo[]; // All videos for this account
   accountVideosSnapshots: Map<string, VideoSnapshot[]>;
   dateFilter: DateFilterType;

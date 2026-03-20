@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Heart, MessageCircle, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Heart, MessageCircle, Play } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ProxiedImage } from './ProxiedImage';
 
@@ -27,6 +27,23 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isBlurred, setIsBlurred] = useState(() => {
+    try {
+      const saved = localStorage.getItem('videoSliderBlurred');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const toggleBlur = () => {
+    setIsBlurred(prev => {
+      const newVal = !prev;
+      localStorage.setItem('videoSliderBlurred', String(newVal));
+      return newVal;
+    });
+  };
 
   // Sort videos by views (highest first) and limit
   const sortedVideos = [...videos]
@@ -87,7 +104,29 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
   }
 
   return (
-    <div className="relative group">
+    <div
+      className="relative group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Blur Toggle Button - always visible when blurred, hover-only otherwise */}
+      {(isHovered || isBlurred) && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleBlur();
+          }}
+          className="absolute top-3 right-3 z-30 p-2 bg-black/60 hover:bg-black/80 rounded-lg transition-all duration-200 border border-white/10"
+          title={isBlurred ? 'Show videos' : 'Blur videos'}
+        >
+          {isBlurred ? (
+            <EyeOff className="w-5 h-5 text-gray-400 hover:text-white" />
+          ) : (
+            <Eye className="w-5 h-5 text-gray-400 hover:text-white" />
+          )}
+        </button>
+      )}
+
       {/* Left Arrow */}
       {canScrollLeft && (
         <button
@@ -122,6 +161,7 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
             platformIcon={getPlatformIcon(video.platform)}
             formatNumber={formatNumber}
             onClick={() => onVideoClick?.(video)}
+            isBlurred={isBlurred}
           />
         ))}
       </div>
@@ -142,7 +182,8 @@ const VideoCard: React.FC<{
   platformIcon: string | null;
   formatNumber: (num: number) => string;
   onClick?: () => void;
-}> = ({ video, platformIcon, formatNumber, onClick }) => {
+  isBlurred?: boolean;
+}> = ({ video, platformIcon, formatNumber, onClick, isBlurred }) => {
   const [imageError, setImageError] = useState(false);
 
   return (
@@ -236,6 +277,11 @@ const VideoCard: React.FC<{
             {video.caption || video.title || 'No caption'}
           </p>
         </div>
+
+        {/* Blur Overlay - per card */}
+        {isBlurred && (
+          <div className="absolute inset-0 z-10 rounded-2xl" style={{ backdropFilter: 'blur(6px) saturate(1.2)' }} />
+        )}
       </div>
     </div>
   );

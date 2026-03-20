@@ -35,7 +35,12 @@ class StripeService {
         throw new Error(data.error || `Server error: ${response.status}`);
       }
 
-      // Redirect to Stripe Checkout
+      // Already on this exact plan+cycle — nothing to do
+      if (data.alreadyCurrent) {
+        return;
+      }
+
+      // Redirect to Stripe (Checkout for new subs, Customer Portal for upgrades/downgrades)
       if (data.url) {
         window.location.href = data.url;
       } else {

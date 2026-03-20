@@ -1123,6 +1123,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           
           setTrackedAccounts(accounts || []);
           setSubmissions(submissions || []);
+          setTotalVideosInOrg((submissions || []).length);
+          setTotalAccountsInOrg((accounts || []).length);
           setAllRules(rules || []);
           setSelectedRuleIds(filteredCachedRuleIds);
           setLinks(cachedLinks || []);
