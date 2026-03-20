@@ -17,10 +17,11 @@ import VideosPage from './pages/VideosPage';
 import LinksPage from './pages/LinksPage';
 import CreatorsPage from './pages/CreatorsPage';
 import CampaignsPage from './pages/CampaignsPage';
-import ExtensionPage from './pages/ExtensionPage';
+// Hidden for MVP
+// import ExtensionPage from './pages/ExtensionPage';
 import SettingsPageWrapper from './pages/SettingsPageWrapper';
-import IntegrationsPage from './pages/IntegrationsPage';
-import RevenuePage from './pages/RevenuePage';
+// import IntegrationsPage from './pages/IntegrationsPage';
+// import RevenuePage from './pages/RevenuePage';
 import TeamMembersPage from './pages/TeamMembersPage';
 import LinkRedirect from './components/LinkRedirect';
 import ContractSigningPage from './pages/ContractSigningPage';
