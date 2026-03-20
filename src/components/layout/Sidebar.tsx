@@ -186,27 +186,28 @@ const Sidebar: React.FC<SidebarProps> = ({
           },
         ]
       },
-      {
-        id: 'integrations-section',
-        label: 'Integrations',
-        items: [
-          {
-            id: 'revenue',
-            label: 'Revenue',
-            icon: DollarSign,
-            href: `${baseHref}/revenue`,
-            comingSoon: 'Dec 5'
-      },
-      {
-        id: 'extension',
-            label: 'Extensions',
-        icon: Puzzle,
-        href: `${baseHref}/extension`,
-        locked: true,
-            comingSoon: 'Dec 5'
-      },
-        ]
-      },
+      // Hidden for MVP — uncomment when ready to ship
+      // {
+      //   id: 'integrations-section',
+      //   label: 'Integrations',
+      //   items: [
+      //     {
+      //       id: 'revenue',
+      //       label: 'Revenue',
+      //       icon: DollarSign,
+      //       href: `${baseHref}/revenue`,
+      //       comingSoon: 'Dec 5'
+      //     },
+      //     {
+      //       id: 'extension',
+      //       label: 'Extensions',
+      //       icon: Puzzle,
+      //       href: `${baseHref}/extension`,
+      //       locked: true,
+      //       comingSoon: 'Dec 5'
+      //     },
+      //   ]
+      // },
     ];
 
     // Filter items based on permissions

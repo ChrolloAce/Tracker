@@ -384,15 +384,15 @@ function App() {
       />
 
       {/* API Management Page (Super Admin) */}
-      <Route 
-        path="/api-management" 
+      <Route
+        path="/api-management"
         element={
           !user ? (
             <Navigate to="/login" replace />
           ) : (
             <ApiManagementPage />
           )
-        } 
+        }
       />
 
       {/* Refresh Monitor Page (Super Admin) */}
@@ -498,18 +498,8 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/extension" 
-        element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/" replace />
-          ) : (
-            <ExtensionPage />
-          )
-        } 
-      />
+      {/* Hidden for MVP — redirect to dashboard */}
+      <Route path="/extension" element={<Navigate to="/" replace />} />
 
       <Route 
         path="/viral" 
@@ -537,31 +527,9 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/integrations" 
-        element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : currentOrgId ? (
-            <IntegrationsPage />
-          ) : (
-            <Navigate to="/create-organization" replace />
-          )
-        } 
-      />
-
-      <Route 
-        path="/revenue" 
-        element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : currentOrgId ? (
-            <RevenuePage />
-          ) : (
-            <Navigate to="/create-organization" replace />
-          )
-        } 
-      />
+      {/* Hidden for MVP — redirect to dashboard */}
+      <Route path="/integrations" element={<Navigate to="/" replace />} />
+      <Route path="/revenue" element={<Navigate to="/" replace />} />
 
       <Route 
         path="/team" 
