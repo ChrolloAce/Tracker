@@ -21,14 +21,15 @@ export default async function handler(
     // Initialize Firebase Admin
     const { initializeApp, cert, getApps } = await import('firebase-admin/app');
     const { getFirestore } = await import('firebase-admin/firestore');
+    const { getAuth } = await import('firebase-admin/auth');
 
     if (getApps().length === 0) {
       let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-      
+
       if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
         privateKey = privateKey.slice(1, -1);
       }
-      
+
       privateKey = privateKey.replace(/\\n/g, '\n');
 
       const serviceAccount = {
@@ -43,6 +44,36 @@ export default async function handler(
     }
 
     const db = getFirestore();
+
+    // Verify authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized - Missing token' });
+    }
+
+    const token = authHeader.substring(7);
+    let decodedToken;
+    try {
+      decodedToken = await getAuth().verifyIdToken(token);
+    } catch (error) {
+      console.error('❌ Token verification failed:', error);
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    // Verify user is a member of the organization they're querying
+    const membershipSnapshot = await db
+      .collection('organizations')
+      .doc(orgId)
+      .collection('members')
+      .where('userId', '==', decodedToken.uid)
+      .where('status', '==', 'active')
+      .limit(1)
+      .get();
+
+    if (membershipSnapshot.empty) {
+      console.error(`❌ Access denied: User ${decodedToken.uid} is not a member of org ${orgId}`);
+      return res.status(403).json({ error: 'Forbidden - You are not a member of this organization' });
+    }
 
     // Get subscription document
     const subDoc = await db
@@ -89,9 +120,8 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('Error checking subscription:', error);
-    return res.status(500).json({ 
-      error: error.message,
-      stack: error.stack
+    return res.status(500).json({
+      error: error.message || 'Internal server error'
     });
   }
 }

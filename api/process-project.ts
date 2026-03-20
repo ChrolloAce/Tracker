@@ -2,6 +2,17 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { JOB_PRIORITIES } from './constants/priorities.js';
+import { getBaseUrl } from './utils/base-url.js';
+
+// Refresh interval per plan tier (in hours)
+// Mirrors dataRefreshHours from src/types/subscription.ts
+const REFRESH_HOURS: Record<string, number> = {
+  free: 48,
+  basic: 24,
+  pro: 24,
+  ultra: 12,
+  enterprise: 6
+};
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -26,9 +37,9 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-// Note: We queue ALL active accounts every time (no time-based filtering)
-// The orchestrator controls when refreshes happen (noon/midnight UTC)
-// and which orgs get processed (plan-based at orchestrator level)
+// Accounts are filtered by plan-tier refresh interval (dataRefreshHours)
+// Free users sync every 48h, basic/pro every 24h, ultra every 12h, enterprise every 6h
+// Manual refreshes bypass the filter and sync everything
 
 /**
  * Process Project
@@ -137,13 +148,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Queue ALL active accounts (no time-based filtering)
-    // The "Last One Out" pattern means we process everything, then send one summary email
-    const accountsToRefresh = accountsSnapshot.docs;
-    
-    console.log(`      📝 Will queue ALL ${accountsToRefresh.length} active accounts`);
-    
-    console.log(`      🎯 Accounts to refresh: ${accountsToRefresh.length}`);
+    // Filter accounts by plan-tier refresh interval
+    const refreshIntervalHours = REFRESH_HOURS[planTier] || 48;
+    const now = Date.now();
+
+    const accountsToRefresh = isManualRefresh
+      ? accountsSnapshot.docs  // manual refresh always syncs everything
+      : accountsSnapshot.docs.filter(doc => {
+          const data = doc.data();
+          const lastRefreshed = data.lastRefreshed?.toDate();
+          if (!lastRefreshed) return true; // never synced — always include
+          const hoursSinceRefresh = (now - lastRefreshed.getTime()) / (1000 * 60 * 60);
+          return hoursSinceRefresh >= refreshIntervalHours;
+        });
+
+    console.log(`      📝 Will queue ${accountsToRefresh.length}/${accountsSnapshot.size} active accounts (plan: ${planTier}, interval: ${refreshIntervalHours}h${isManualRefresh ? ', MANUAL' : ''})`);
     
     if (accountsToRefresh.length === 0) {
       console.log(`      ✅ Project complete: No accounts need refresh\n`);
@@ -157,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Dispatch account sync jobs with ensured initiation
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     
     console.log(`      🚀 Starting dispatch of ${accountsToRefresh.length} accounts...`);
     
@@ -286,7 +305,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      📋 Total jobs tracked: ${jobIds.length}`);
     
     // Conditional dispatch based on manual vs scheduled refresh
-    const APIFY_CONCURRENCY_LIMIT = 6;
+    const { APIFY_CONCURRENCY_LIMIT } = await import('./constants/priorities.js');
     let immediatelyDispatched = 0;
     
     if (isManualRefresh) {

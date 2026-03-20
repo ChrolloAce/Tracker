@@ -215,7 +215,18 @@ const SubscriptionPage: React.FC = () => {
                       : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                   }`}
                 >
-                  {isCurrentPlan ? 'Current Plan' : loading ? 'Loading...' : plan.id === 'free' ? 'Free Plan' : 'Select Plan'}
+                  {isCurrentPlan
+                      ? 'Current Plan'
+                      : loading
+                      ? 'Loading...'
+                      : plan.id === 'free'
+                      ? 'Free Plan'
+                      : currentPlan !== 'free' && currentPlan !== plan.id
+                      ? (['free', 'basic', 'pro', 'ultra', 'enterprise'].indexOf(plan.id) >
+                         ['free', 'basic', 'pro', 'ultra', 'enterprise'].indexOf(currentPlan)
+                          ? 'Upgrade'
+                          : 'Downgrade')
+                      : 'Select Plan'}
                 </button>
 
                 {/* Features */}

@@ -19,15 +19,16 @@ import {
 } from '../../types/firestore';
 import { VideoSnapshot } from '../../types/index';
 import AdminService from '../AdminService';
+import { SUBSCRIPTION_PLANS, PlanTier } from '../../types/subscription';
 
 /**
  * VideosDataService
- * 
+ *
  * Handles all video and snapshot operations in Firestore.
  * Manages videos within the project scope: organizations/{orgId}/projects/{projectId}/videos
  */
 export class VideosDataService {
-  
+
   /**
    * Add a video to a project
    * Admin users bypass video limits
@@ -40,18 +41,26 @@ export class VideosDataService {
   ): Promise<string> {
     // ✅ CHECK VIDEO LIMITS BEFORE ADDING (admins bypass)
     const isAdmin = await AdminService.shouldBypassLimits(userId);
-    
+
     if (!isAdmin) {
-    const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
-    const usage = usageDoc.data();
-    const currentVideos = usage?.trackedVideos || 0;
-    const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
-    
-    if (currentVideos >= videoLimit) {
-      throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+    // Get the plan limit from the subscription document
+    const subDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'subscription'));
+    const planTier: PlanTier = (subDoc.data()?.planTier as PlanTier) || 'free';
+    const planLimit = SUBSCRIPTION_PLANS[planTier]?.features?.maxVideos ?? 5;
+
+    // Count actual videos across all projects for an accurate check
+    const projectsSnap = await getDocs(collection(db, 'organizations', orgId, 'projects'));
+    let totalVideos = 0;
+    for (const proj of projectsSnap.docs) {
+      const videosSnap = await getDocs(collection(db, 'organizations', orgId, 'projects', proj.id, 'videos'));
+      totalVideos += videosSnap.size;
     }
-    
-    console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${videoLimit - currentVideos}`);
+
+    if (planLimit !== -1 && totalVideos >= planLimit) {
+      throw new Error(`Video limit reached (${totalVideos}/${planLimit}). Please upgrade your plan to add more videos.`);
+    }
+
+    console.log(`📊 Video limits - Current: ${totalVideos}, Limit: ${planLimit}, Available: ${planLimit === -1 ? 'unlimited' : planLimit - totalVideos}`);
     } else {
       console.log(`🔓 Admin user ${userId} bypassing video limit check`);
     }
@@ -235,16 +244,23 @@ export class VideosDataService {
       console.log(`💾 Syncing ${videos.length} videos to project ${projectId} for account ${accountId}`);
       
       // ✅ CHECK VIDEO LIMITS
-      const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
-      const usage = usageDoc.data();
-      const currentVideos = usage?.trackedVideos || 0;
-      const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
-      const availableSpace = videoLimit - currentVideos;
-      
-      console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
-      
-      if (availableSpace <= 0) {
-        throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+      const subDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'subscription'));
+      const syncPlanTier: PlanTier = (subDoc.data()?.planTier as PlanTier) || 'free';
+      const syncPlanLimit = SUBSCRIPTION_PLANS[syncPlanTier]?.features?.maxVideos ?? 5;
+
+      // Count actual videos across all projects
+      const allProjectsSnap = await getDocs(collection(db, 'organizations', orgId, 'projects'));
+      let currentVideoTotal = 0;
+      for (const proj of allProjectsSnap.docs) {
+        const vSnap = await getDocs(collection(db, 'organizations', orgId, 'projects', proj.id, 'videos'));
+        currentVideoTotal += vSnap.size;
+      }
+      const availableSpace = syncPlanLimit === -1 ? Infinity : syncPlanLimit - currentVideoTotal;
+
+      console.log(`📊 Video limits - Current: ${currentVideoTotal}, Limit: ${syncPlanLimit}, Available: ${availableSpace}`);
+
+      if (syncPlanLimit !== -1 && availableSpace <= 0) {
+        throw new Error(`Video limit reached (${syncPlanLimit}). Please upgrade your plan to add more videos.`);
       }
       
       // Process in batches of 500 (Firestore limit)

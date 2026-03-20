@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { getBaseUrl } from './utils/base-url.js';
 
 /**
  * Trigger Orchestrator API
@@ -14,8 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('🚀 Triggering orchestrator...');
 
-    // Always use production URL to avoid auth issues with preview deployments
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
 
     const cronSecret = process.env.CRON_SECRET;
     

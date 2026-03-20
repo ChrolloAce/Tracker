@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { getBaseUrl } from './utils/base-url.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -220,7 +221,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`  📝 Created session: ${sessionRef.id}`);
     
     // Dispatch project jobs - collect all promises to ensure they all fire
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
     const dispatchPromises: Promise<void>[] = [];
     
     console.log(`\n  🚀 Starting project dispatches...`);

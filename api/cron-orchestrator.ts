@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getBaseUrl } from './utils/base-url.js';
 
 // Initialize Firebase Admin (with better error handling)
 function initializeFirebase() {
@@ -136,8 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`⏰ Scheduled cron (once daily at 17:00 UTC / Noon EST) - processing ALL organizations\n`);
     }
 
-    // Always use production URL
-    const baseUrl = 'https://www.viewtrack.app';
+    const baseUrl = getBaseUrl();
 
     // Get all organizations
     const orgsSnapshot = await db.collection('organizations').get();

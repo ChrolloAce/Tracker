@@ -48,7 +48,7 @@ export default async function handler(
   const startTime = Date.now();
   
   // Set CORS headers
-  setCorsHeaders(res);
+  setCorsHeaders(res, req);
   
   // Handle preflight requests
   if (handleCorsPreFlight(req, res)) {

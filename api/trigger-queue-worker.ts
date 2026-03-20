@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { getBaseUrl } from './utils/base-url.js';
 
 /**
  * Manual trigger for queue-worker
@@ -6,7 +7,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cronSecret = process.env.CRON_SECRET;
-  const baseUrl = 'https://www.viewtrack.app';
+  const baseUrl = getBaseUrl();
   
   console.log(`🔔 Manual trigger: Calling queue-worker...`);
   

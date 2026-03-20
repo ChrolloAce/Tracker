@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
+import { getFrontendUrl } from './utils/base-url.js';
 
 /**
  * Create a Stripe Customer Portal session
@@ -78,9 +79,7 @@ export default async function handler(
 
     console.log('Found customer:', customerId);
 
-    // Get base URL - fallback to Vercel URL if NEXT_PUBLIC_BASE_URL not set
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173');
+    const baseUrl = getFrontendUrl();
 
     // Create portal session
     const session = await stripe.billingPortal.sessions.create({

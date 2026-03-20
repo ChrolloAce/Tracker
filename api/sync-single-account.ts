@@ -13,9 +13,52 @@ import { TikTokSyncService } from './services/sync/tiktok/TikTokSyncService.js';
 import { YoutubeSyncService } from './services/sync/youtube/YoutubeSyncService.js';
 import { TwitterSyncService } from './services/sync/twitter/TwitterSyncService.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
+import { checkVideoLimit } from './utils/video-limits.js';
 
 // Initialize Firebase Admin
 const { db } = initializeFirebase();
+
+/**
+ * Filter video IDs by age for the refresh phase.
+ * Recent videos (≤30 days) refresh every sync.
+ * Mid-age videos (31-90 days) refresh weekly (Sundays).
+ * Archival videos (90+ days) refresh monthly (1st of month).
+ * Manual refreshes bypass the filter entirely.
+ */
+const REFRESH_BATCH_CAP = 50; // Max videos per Apify refresh call
+
+function partitionVideosByAge(
+  videoDocs: Array<{ videoId: string; uploadDate?: any }>,
+  isManualRefresh: boolean
+): string[] {
+  if (isManualRefresh) {
+    return videoDocs.map(v => v.videoId);
+  }
+
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const today = new Date();
+
+  const filtered = videoDocs.filter(v => {
+    const uploadDate = v.uploadDate?.toDate?.() || v.uploadDate;
+    if (!uploadDate) return true; // no date = assume recent, always include
+
+    const ageInDays = (now - new Date(uploadDate).getTime()) / DAY_MS;
+
+    if (ageInDays <= 30) return true;                   // recent: always refresh
+    if (ageInDays <= 90) return today.getDay() === 0;   // mid-age: Sundays only
+    return today.getDate() === 1;                        // archival: 1st of month only
+  });
+
+  // Sort newest first, cap at 50 to prevent Apify timeout
+  filtered.sort((a, b) => {
+    const dateA = a.uploadDate?.toDate?.() || a.uploadDate || new Date(0);
+    const dateB = b.uploadDate?.toDate?.() || b.uploadDate || new Date(0);
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+
+  return filtered.slice(0, REFRESH_BATCH_CAP).map(v => v.videoId);
+}
 
 /**
  * Sync Single Account - Immediately processes one account
@@ -27,7 +70,7 @@ export default async function handler(
   res: VercelResponse
 ) {
   // Set CORS headers
-  setCorsHeaders(res);
+  setCorsHeaders(res, req);
   
   // Handle preflight requests
   if (handleCorsPreFlight(req, res)) {
@@ -193,6 +236,19 @@ export default async function handler(
     const maxVideos = account.maxVideos || 100;
     console.log(`📊 Will scrape up to ${maxVideos} videos for @${account.username}`);
 
+    // ==================== VIDEO LIMIT ENFORCEMENT ====================
+    // Use real Firestore count (not the stale subscription.usage.videos counter)
+    const videoLimitResult = await checkVideoLimit(orgId);
+
+    const orgPlanTier = videoLimitResult.planTier;
+    const planVideoLimit = videoLimitResult.limit;
+    const currentVideoCount = videoLimitResult.currentCount;
+    const hasVideoCapacity = videoLimitResult.allowed;
+    const remainingCapacity = videoLimitResult.remaining;
+
+    console.log(`📊 Video limit: ${currentVideoCount}/${planVideoLimit === -1 ? '∞' : planVideoLimit} (${orgPlanTier} plan, ${remainingCapacity === Infinity ? '∞' : remainingCapacity} remaining)`);
+    // ==================== END VIDEO LIMIT ENFORCEMENT ====================
+
     // Update to syncing status (check account still exists first)
     try {
       const accountCheckDoc = await accountRef.get();
@@ -249,7 +305,7 @@ export default async function handler(
         
         const tiktokVideos: any[] = [];
         
-        // Get existing video IDs
+        // Get existing video IDs with upload dates for age-based filtering
         const existingVideosSnapshot = await db
           .collection('organizations')
           .doc(orgId)
@@ -258,21 +314,29 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'tiktok')
-          .select('videoId')
+          .select('videoId', 'uploadDate')
           .get();
-        
-        const existingVideoIds = new Set(
-          existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-        );
-        
+
+        const allExistingVideos = existingVideosSnapshot.docs
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+          .filter(v => v.videoId);
+
+        // Full set for discovery deduplication
+        const existingVideoIds = new Set(allExistingVideos.map(v => v.videoId));
+
+        // Age-filtered set for refresh (manual syncs refresh everything)
+        const isManualRefresh = !isCronRequest;
+        const idsToRefresh = partitionVideosByAge(allExistingVideos, isManualRefresh);
+
         console.log(`📊 Found ${existingVideoIds.size} existing TikTok videos in database`);
-        
+        console.log(`📊 Refresh filter: ${idsToRefresh.length}/${allExistingVideos.length} videos (recent + scheduled older)`);
+
         // ==================== PHASE 1: REFRESH EXISTING VIDEOS ====================
         // Always run refresh FIRST for any account with existing videos
-        if (existingVideoIds.size > 0) {
-          console.log(`\n🔄 [TIKTOK PHASE 1] Refreshing ${existingVideoIds.size} existing videos...`);
+        if (idsToRefresh.length > 0) {
+          console.log(`\n🔄 [TIKTOK PHASE 1] Refreshing ${idsToRefresh.length} existing videos...`);
           try {
-            const refreshedVideos = await TikTokSyncService.refresh(account, orgId, Array.from(existingVideoIds));
+            const refreshedVideos = await TikTokSyncService.refresh(account, orgId, idsToRefresh);
             
             // Mark ALL refreshed videos with flag to prevent duplication
             const markedRefreshedVideos = refreshedVideos.map((v: any) => ({
@@ -288,8 +352,10 @@ export default async function handler(
         }
         
         // ==================== PHASE 2: DISCOVER NEW VIDEOS ====================
-        // Only run discovery for automatic accounts (static accounts skip this)
-        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+        // Only run discovery for automatic accounts with video capacity
+        if (!hasVideoCapacity) {
+          console.log(`\n⏭️  [TIKTOK PHASE 2] Skipping discovery — video limit reached (${currentVideoCount}/${planVideoLimit})`);
+        } else if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
           console.log(`\n🔍 [TIKTOK PHASE 2] Discovering new videos...`);
           
           // For first-time syncs, pass EMPTY set (fetch all up to limit)
@@ -297,13 +363,16 @@ export default async function handler(
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
           
+          // Cap discovery at remaining plan capacity so we don't fetch more than we can store
+          const tiktokDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} videos`);
+            console.log(`   🆕 First-time sync - will fetch up to ${tiktokDiscoveryLimit} videos (capped by plan)`);
         } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
-          
-          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+
+          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, tiktokDiscoveryLimit);
           const newVideos = result.videos;
           
           console.log(`   ✅ Discovered ${newVideos.length} NEW videos`);
@@ -395,20 +464,26 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'youtube')
-          .select('videoId')
+          .select('videoId', 'uploadDate')
           .get();
 
-        const existingVideoIds = new Set(
-          existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-        );
+        const allExistingVideos = existingVideosSnapshot.docs
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+          .filter(v => v.videoId);
+
+        const existingVideoIds = new Set(allExistingVideos.map(v => v.videoId));
+
+        const isManualRefresh = !isCronRequest;
+        const idsToRefresh = partitionVideosByAge(allExistingVideos, isManualRefresh);
 
         console.log(`📊 Found ${existingVideoIds.size} existing YouTube videos in database`);
+        console.log(`📊 Refresh filter: ${idsToRefresh.length}/${allExistingVideos.length} videos (recent + scheduled older)`);
 
         // ==================== PHASE 1: REFRESH EXISTING VIDEOS ====================
-        if (existingVideoIds.size > 0) {
-          console.log(`\n🔄 [YOUTUBE PHASE 1] Refreshing ${existingVideoIds.size} existing videos...`);
+        if (idsToRefresh.length > 0) {
+          console.log(`\n🔄 [YOUTUBE PHASE 1] Refreshing ${idsToRefresh.length} existing videos...`);
           try {
-            const refreshedVideos = await YoutubeSyncService.refresh(account, orgId, Array.from(existingVideoIds));
+            const refreshedVideos = await YoutubeSyncService.refresh(account, orgId, idsToRefresh);
 
             const markedRefreshedVideos = refreshedVideos.map((v: any) => ({
               ...v,
@@ -423,19 +498,24 @@ export default async function handler(
         }
 
         // ==================== PHASE 2: DISCOVER NEW VIDEOS ====================
-        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+        if (!hasVideoCapacity) {
+          console.log(`\n⏭️  [YOUTUBE PHASE 2] Skipping discovery — video limit reached (${currentVideoCount}/${planVideoLimit})`);
+        } else if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
           console.log(`\n🔍 [YOUTUBE PHASE 2] Discovering new videos (type: ${ytVideoType})...`);
 
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
 
+          // Cap discovery at remaining plan capacity
+          const ytDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} videos`);
+            console.log(`   🆕 First-time sync - will fetch up to ${ytDiscoveryLimit} videos (capped by plan)`);
           } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
 
-          const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+          const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, ytDiscoveryLimit);
           const newVideos = result.videos;
 
           console.log(`   ✅ Discovered ${newVideos.length} NEW videos`);
@@ -546,7 +626,7 @@ export default async function handler(
       
       const tweets: any[] = [];
       
-      // Get existing tweet IDs
+      // Get existing tweet IDs with upload dates for age-based filtering
       const existingTweetsSnapshot = await db
         .collection('organizations')
         .doc(orgId)
@@ -555,21 +635,27 @@ export default async function handler(
         .collection('videos')
         .where('trackedAccountId', '==', accountId)
         .where('platform', '==', 'twitter')
-        .select('videoId')
+        .select('videoId', 'uploadDate')
         .get();
-      
-      const existingTweetIds = new Set(
-        existingTweetsSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-      );
-      
+
+      const allExistingTweets = existingTweetsSnapshot.docs
+        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+        .filter(v => v.videoId);
+
+      const existingTweetIds = new Set(allExistingTweets.map(v => v.videoId));
+
+      const isManualRefresh = !isCronRequest;
+      const tweetIdsToRefresh = partitionVideosByAge(allExistingTweets, isManualRefresh);
+
       console.log(`📊 Found ${existingTweetIds.size} existing tweets in database`);
-      
+      console.log(`📊 Refresh filter: ${tweetIdsToRefresh.length}/${allExistingTweets.length} tweets (recent + scheduled older)`);
+
       // ==================== PHASE 1: REFRESH EXISTING TWEETS ====================
       // Always run refresh FIRST for any account with existing tweets
-      if (existingTweetIds.size > 0) {
-        console.log(`\n🔄 [TWITTER PHASE 1] Refreshing ${existingTweetIds.size} existing tweets...`);
+      if (tweetIdsToRefresh.length > 0) {
+        console.log(`\n🔄 [TWITTER PHASE 1] Refreshing ${tweetIdsToRefresh.length} existing tweets...`);
         try {
-          const refreshedTweets = await TwitterSyncService.refresh(account, orgId, Array.from(existingTweetIds));
+          const refreshedTweets = await TwitterSyncService.refresh(account, orgId, tweetIdsToRefresh);
           
           // Mark ALL refreshed tweets with flag to prevent duplication
           const markedRefreshedTweets = refreshedTweets.map((v: any) => ({
@@ -585,8 +671,9 @@ export default async function handler(
       }
       
       // ==================== PHASE 2: DISCOVER NEW TWEETS ====================
-      // Only run discovery for automatic accounts (static accounts skip this)
-      if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+      if (!hasVideoCapacity) {
+        console.log(`\n⏭️  [TWITTER PHASE 2] Skipping discovery — video limit reached (${currentVideoCount}/${planVideoLimit})`);
+      } else if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
         console.log(`\n🔍 [TWITTER PHASE 2] Discovering new tweets...`);
         
         // For first-time syncs, pass EMPTY set (fetch all up to limit)
@@ -594,13 +681,16 @@ export default async function handler(
         const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
         const tweetsToCheck = isFirstTimeSync ? new Set<string>() : existingTweetIds;
         
+        // Cap discovery at remaining plan capacity
+        const twitterDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
         if (isFirstTimeSync) {
-          console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} tweets`);
+          console.log(`   🆕 First-time sync - will fetch up to ${twitterDiscoveryLimit} tweets (capped by plan)`);
         } else {
           console.log(`   🔄 Regular sync - will stop at first duplicate`);
         }
-        
-        const newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, maxVideos);
+
+        const newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, twitterDiscoveryLimit);
         
         console.log(`   ✅ Discovered ${newTweets.length} NEW tweets`);
         
@@ -653,7 +743,7 @@ export default async function handler(
         
         let instagramItems: any[] = [];
         
-        // Get existing video IDs
+        // Get existing video IDs with upload dates for age-based filtering
         const existingVideosSnapshot = await db
           .collection('organizations')
           .doc(orgId)
@@ -662,22 +752,30 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'instagram')
-          .select('videoId')
+          .select('videoId', 'uploadDate')
           .get();
-        
-        const existingVideoIds = new Set(
-          existingVideosSnapshot.docs.map(doc => doc.data().videoId).filter(Boolean)
-        );
-        
+
+        const allExistingVideos = existingVideosSnapshot.docs
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+          .filter(v => v.videoId);
+
+        // Full set for discovery deduplication
+        const existingVideoIds = new Set(allExistingVideos.map(v => v.videoId));
+
+        // Age-filtered set for refresh
+        const isManualRefresh = !isCronRequest;
+        const idsToRefresh = partitionVideosByAge(allExistingVideos, isManualRefresh);
+
         console.log(`📊 Found ${existingVideoIds.size} existing Instagram reels in database`);
-        
+        console.log(`📊 Refresh filter: ${idsToRefresh.length}/${allExistingVideos.length} reels (recent + scheduled older)`);
+
         // ==================== PHASE 1: REFRESH EXISTING REELS ====================
         // Always run refresh FIRST for any account with existing videos
-        if (existingVideoIds.size > 0) {
-          console.log(`\n🔄 [INSTAGRAM PHASE 1] Refreshing ${existingVideoIds.size} existing reels...`);
-          
+        if (idsToRefresh.length > 0) {
+          console.log(`\n🔄 [INSTAGRAM PHASE 1] Refreshing ${idsToRefresh.length} existing reels...`);
+
           try {
-            const refreshedReels = await InstagramSyncService.refresh(account, orgId, Array.from(existingVideoIds));
+            const refreshedReels = await InstagramSyncService.refresh(account, orgId, idsToRefresh);
             
             let successCount = 0;
             let errorCount = 0;
@@ -738,8 +836,9 @@ export default async function handler(
         }
         
         // ==================== PHASE 2: DISCOVER NEW REELS ====================
-        // Only run discovery for automatic accounts (static accounts skip this)
-        if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
+        if (!hasVideoCapacity) {
+          console.log(`\n⏭️  [INSTAGRAM PHASE 2] Skipping discovery — video limit reached (${currentVideoCount}/${planVideoLimit})`);
+        } else if (syncStrategy !== 'refresh_only' && creatorType === 'automatic') {
           console.log(`\n🔍 [INSTAGRAM PHASE 2] Discovering new reels...`);
           
           // For first-time syncs, pass EMPTY set (fetch all up to limit)
@@ -747,13 +846,16 @@ export default async function handler(
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
           
+          // Cap discovery at remaining plan capacity
+          const igDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} reels`);
+            console.log(`   🆕 First-time sync - will fetch up to ${igDiscoveryLimit} reels (capped by plan)`);
           } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
-          
-          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+
+          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, igDiscoveryLimit);
           const newReels = result.videos;
           
           console.log(`   ✅ Discovered ${newReels.length} NEW reels`);
@@ -854,12 +956,14 @@ export default async function handler(
     });
 
     // Save videos to Firestore (using shared service)
+    // Pass remainingCapacity to prevent saving more new videos than the plan allows
     const savedCount = await VideoStorageService.saveVideos(
       videos,
       account,
-            orgId,
+      orgId,
       projectId,
-      db
+      db,
+      remainingCapacity === Infinity ? undefined : remainingCapacity
     );
 
     // Calculate and update account-level aggregated stats

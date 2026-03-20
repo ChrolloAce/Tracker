@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -53,13 +54,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const { organizationId, userId } = req.body;
+    // Verify authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, error: 'Unauthorized - Missing token' });
+    }
 
-    if (!organizationId || !userId) {
+    const token = authHeader.substring(7);
+    let decodedToken;
+    try {
+      decodedToken = await getAuth().verifyIdToken(token);
+      console.log(`🔐 Authenticated as: ${decodedToken.uid}`);
+    } catch (error) {
+      console.error('❌ Token verification failed:', error);
+      return res.status(401).json({ success: false, error: 'Unauthorized - Invalid token' });
+    }
+
+    const { organizationId } = req.body;
+    const userId = decodedToken.uid;
+
+    if (!organizationId) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: organizationId and userId'
+        error: 'Missing required field: organizationId'
       });
+    }
+
+    // Verify user is a member of the organization
+    const membershipSnapshot = await db
+      .collection('organizations')
+      .doc(organizationId)
+      .collection('members')
+      .where('userId', '==', userId)
+      .where('status', '==', 'active')
+      .limit(1)
+      .get();
+
+    if (membershipSnapshot.empty) {
+      console.error(`❌ Access denied: User ${userId} is not a member of org ${organizationId}`);
+      return res.status(403).json({ success: false, message: 'Access denied - you are not a member of this organization' });
     }
 
     console.log(`🗑️  Starting deletion of organization: ${organizationId} by user: ${userId}`);
@@ -149,12 +182,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`👨‍👩‍👧‍👦 Deleting ${membersSnapshot.size} members`);
     for (const memberDoc of membersSnapshot.docs) {
       // Remove organization from user's organizations array
-      const userId = memberDoc.id;
-      const userRef = db.collection('users').doc(userId);
-      await userRef.update({
+      const memberId = memberDoc.id;
+      const userRef = db.collection('users').doc(memberId);
+      try { await userRef.update({
         organizations: FieldValue.arrayRemove(organizationId)
-      });
-      
+      }); } catch (err) {
+        console.warn(`⚠️ Could not update user doc for member ${memberId}:`, err);
+      }
+
       await memberDoc.ref.delete();
       deletedCounts.members++;
     }

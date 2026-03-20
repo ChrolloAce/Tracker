@@ -147,6 +147,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   }, [validAccounts]);
 
   const handleSubmit = () => {
+    // Block submission if at video or account limit
+    if (usageLimits.isAtVideoLimit || usageLimits.isAtAccountLimit) {
+      setUrlError('You have reached your plan limit. Please upgrade to continue.');
+      return;
+    }
+
     // Process any remaining text in the input
     let allAccounts = [...accounts];
     if (inputValue.trim()) {
@@ -164,11 +170,16 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       return;
     }
 
+    // Clamp videoCount to remaining plan capacity
+    const clampedVideoCount = hasUnlimitedVideos
+      ? videoCount
+      : Math.min(videoCount, usageLimits.videosLeft);
+
     const accountsToAdd = valid.map(a => ({
       url: a.url,
       username: a.username!,
       platform: a.platform!,
-      videoCount,
+      videoCount: clampedVideoCount,
       ...(a.platform === 'youtube' ? { youtubeVideoType } : {})
     }));
 
@@ -181,7 +192,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   if (!isOpen) return null;
 
   const totalCount = validAccounts.length;
-  const hasUnlimitedAccess = usageLimits.videosLeft === 999999 || usageLimits.accountsLeft === 999999;
+  const hasUnlimitedVideos = usageLimits.videosLeft === 999999;
+  const hasUnlimitedAccounts = usageLimits.accountsLeft === 999999;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -267,7 +279,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </button>
               {showPresets && (
                 <div className="absolute left-0 mt-1 w-32 bg-[#1E1E20] border border-gray-700/50 rounded-lg shadow-xl z-10">
-                  {[10, 25, 50, 100, 250, 500, 1000, 2000].map((preset) => (
+                  {[10, 25, 50, 100, 250, 500, 1000, 2000]
+                    .filter((preset) => hasUnlimitedVideos || preset <= usageLimits.videosLeft)
+                    .map((preset) => (
                     <button
                       key={preset}
                       onClick={() => { setVideoCount(preset); setShowPresets(false); }}
@@ -278,6 +292,11 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                       {preset} videos
                     </button>
                   ))}
+                  {!hasUnlimitedVideos && usageLimits.videosLeft < 2000 && (
+                    <div className="px-3 py-2 text-[11px] text-gray-500 border-t border-gray-700/50">
+                      {usageLimits.videosLeft} videos remaining on your plan
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -343,21 +362,22 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         )}
 
         {/* Usage limit warnings */}
-        {!hasUnlimitedAccess && (() => {
+        {!(hasUnlimitedVideos && hasUnlimitedAccounts) && (() => {
           const totalVideosRequested = totalCount * videoCount;
           const accountsOverLimit = totalCount > usageLimits.accountsLeft;
           const videosOverLimit = totalVideosRequested > usageLimits.videosLeft;
           const accountsToAdd = Math.min(totalCount, usageLimits.accountsLeft);
           const videosToAdd = Math.min(totalVideosRequested, usageLimits.videosLeft);
 
-          if (usageLimits.isAtAccountLimit) {
+          if (usageLimits.isAtAccountLimit || usageLimits.isAtVideoLimit) {
+            const limitType = usageLimits.isAtAccountLimit ? 'Account' : 'Video';
             return (
               <div className="flex items-start gap-3 px-4 py-3 mb-4 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-red-300 mb-1">Account limit reached!</p>
+                  <p className="text-sm font-medium text-red-300 mb-1">{limitType} limit reached!</p>
                   <p className="text-xs text-red-300/80 mb-2">
-                    You've reached your maximum of tracked accounts. Upgrade to add more.
+                    You've reached your maximum of tracked {limitType.toLowerCase()}s. Upgrade to add more.
                   </p>
                   <button
                     onClick={() => navigate('/subscription')}
@@ -407,10 +427,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </div>
           <button
             onClick={handleSubmit}
-            disabled={usageLimits.isAtAccountLimit || (validAccounts.length === 0 && !inputValue.trim())}
+            disabled={usageLimits.isAtAccountLimit || usageLimits.isAtVideoLimit || (validAccounts.length === 0 && !inputValue.trim())}
             className="px-5 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
           >
-            {usageLimits.isAtAccountLimit
+            {usageLimits.isAtAccountLimit || usageLimits.isAtVideoLimit
               ? 'Limit Reached'
               : totalCount > 0
                 ? `Track ${totalCount} Account${totalCount !== 1 ? 's' : ''}`

@@ -15,6 +15,7 @@ import {
   pollVideoUntilReady,
   formatVideoResponse,
 } from './syncHelpers.js';
+import { checkVideoLimit } from '../../utils/video-limits.js';
 
 const JOB_PRIORITY_USER_INITIATED = 100;
 
@@ -239,6 +240,20 @@ async function addVideo(
       error: { message: 'Unsupported platform. Use TikTok, Instagram, YouTube, or Twitter URLs', code: 'VALIDATION_ERROR' }
     });
   }
+
+  // ==================== VIDEO LIMIT CHECK ====================
+  const videoLimit = await checkVideoLimit(auth.organizationId);
+
+  if (!videoLimit.allowed) {
+    return res.status(403).json({
+      success: false,
+      error: {
+        message: `Video limit reached (${videoLimit.currentCount}/${videoLimit.limit}). Upgrade your plan for more.`,
+        code: 'VIDEO_LIMIT_REACHED'
+      }
+    });
+  }
+  // ==================== END VIDEO LIMIT CHECK ====================
 
   // Check duplicate
   const videosCol = db

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getBaseUrl } from '../utils/base-url.js';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -53,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Server configuration error - CRON_SECRET missing' });
   }
 
-  const baseUrl = 'https://www.viewtrack.app';
+  const baseUrl = getBaseUrl();
 
   try {
     // Check if org exists

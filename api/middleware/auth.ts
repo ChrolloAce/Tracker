@@ -86,17 +86,45 @@ export async function authenticateAndVerifyOrg(
 }
 
 /**
- * Set CORS headers for API routes
+ * Check if an origin is allowed for CORS
  */
-export function setCorsHeaders(res: VercelResponse, allowedOrigin: string = 'https://viewtrack.app') {
-  // In development, allow localhost
-  const origin = process.env.NODE_ENV === 'development' 
-    ? 'http://localhost:3000' 
-    : allowedOrigin;
-  
+function isAllowedOrigin(origin: string | undefined): string | null {
+  if (!origin) return null;
+
+  // Production domains
+  if (origin === 'https://viewtrack.app' || origin === 'https://www.viewtrack.app') {
+    return origin;
+  }
+
+  // Vercel preview deployments (e.g. tracker-abc123.vercel.app)
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) {
+    return origin;
+  }
+
+  // Local development
+  if (/^http:\/\/localhost(:\d+)?$/.test(origin)) {
+    return origin;
+  }
+
+  return null;
+}
+
+/**
+ * Set CORS headers for API routes
+ * Pass the request so the Origin header can be checked dynamically.
+ */
+export function setCorsHeaders(res: VercelResponse, req?: VercelRequest) {
+  const requestOrigin = req?.headers?.origin as string | undefined;
+  const allowed = isAllowedOrigin(requestOrigin);
+
+  // Use the matched origin so the browser accepts the response,
+  // or fall back to the production domain for non-browser callers.
+  const origin = allowed || 'https://viewtrack.app';
+
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 }
 
@@ -105,7 +133,7 @@ export function setCorsHeaders(res: VercelResponse, allowedOrigin: string = 'htt
  */
 export function handleCorsPreFlight(req: VercelRequest, res: VercelResponse): boolean {
   if (req.method === 'OPTIONS') {
-    setCorsHeaders(res);
+    setCorsHeaders(res, req);
     res.status(200).end();
     return true;
   }

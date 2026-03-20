@@ -1,5 +1,89 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// --- SSRF Protection ---
+
+const ALLOWED_DOMAIN_SUFFIXES = [
+  // Instagram / Facebook CDN
+  'instagram.com',
+  'cdninstagram.com',
+  'fbcdn.net',
+  // TikTok
+  'tiktok.com',
+  'tiktokcdn.com',
+  // YouTube
+  'youtube.com',
+  'ytimg.com',
+  'ggpht.com',
+  // Twitter / X
+  'twitter.com',
+  'x.com',
+  'twimg.com',
+  // Firebase
+  'firebasestorage.googleapis.com',
+];
+
+function isPrivateIP(hostname: string): boolean {
+  // IPv6 loopback / unspecified
+  if (hostname === '::1' || hostname === '::' || hostname === '[::1]' || hostname === '[::]') {
+    return true;
+  }
+
+  // Strip IPv6 brackets if present
+  const clean = hostname.replace(/^\[|\]$/g, '');
+
+  const parts = clean.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(p => isNaN(p))) {
+    // Not a dotted-quad IPv4 — allow DNS names through (they get checked by domain allowlist)
+    return false;
+  }
+
+  const [a, b] = parts;
+  if (a === 127) return true;                              // 127.0.0.0/8
+  if (a === 10) return true;                               // 10.0.0.0/8
+  if (a === 172 && b >= 16 && b <= 31) return true;        // 172.16.0.0/12
+  if (a === 192 && b === 168) return true;                 // 192.168.0.0/16
+  if (a === 169 && b === 254) return true;                 // 169.254.0.0/16 (link-local / cloud metadata)
+  if (a === 0 && parts.every(p => p === 0)) return true;   // 0.0.0.0
+
+  return false;
+}
+
+function isDomainAllowed(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  return ALLOWED_DOMAIN_SUFFIXES.some(
+    suffix => lower === suffix || lower.endsWith('.' + suffix)
+  );
+}
+
+/** Returns an error string if the URL should be blocked, or null if it's OK. */
+function validateImageUrl(raw: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return 'Invalid URL';
+  }
+
+  // Protocol check
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return 'Only http and https protocols are allowed';
+  }
+
+  // Block private / internal IPs
+  if (isPrivateIP(parsed.hostname)) {
+    return 'Access to internal addresses is not allowed';
+  }
+
+  // Domain allowlist
+  if (!isDomainAllowed(parsed.hostname)) {
+    return 'Domain not allowed';
+  }
+
+  return null;
+}
+
+// --- Handler ---
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,6 +104,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl is required' });
+    }
+
+    // SSRF protection: validate the URL before fetching
+    const urlError = validateImageUrl(imageUrl);
+    if (urlError) {
+      console.error(`🚫 Blocked image proxy request: ${urlError} — ${imageUrl}`);
+      return res.status(400).json({ error: urlError });
     }
 
     console.log(`📥 Proxy downloading image: ${identifier || 'unknown'}`);

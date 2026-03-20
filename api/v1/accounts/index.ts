@@ -10,8 +10,10 @@ import { initializeFirebase } from '../../utils/firebase-admin.js';
 import { withApiAuth } from '../../middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 
+import { getBaseUrl } from '../../utils/base-url.js';
+
 const JOB_PRIORITY_USER_INITIATED = 100;
-const BASE_URL = 'https://www.viewtrack.app';
+const BASE_URL = getBaseUrl();
 const DEFAULT_MAX_VIDEOS = 10;
 const COLL_ORGS = 'organizations';
 const COLL_PROJECTS = 'projects';

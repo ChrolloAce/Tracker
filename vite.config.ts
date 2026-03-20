@@ -9,6 +9,7 @@ export default defineConfig({
     watch: {
       ignored: ['**/api/**'], // Ignore Vercel serverless functions
     },
+    allowedHosts: ['viewtrack.covenantstudios.dev'],
     proxy: {
       '/api': {
         target: process.env.VITE_API_TARGET || 'http://localhost:3001',
