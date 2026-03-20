@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowRight, BookOpen } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import NavBar from '../components/NavBar';
 import FeaturesTimeline from '../components/FeaturesTimeline';
 import Footer from '../components/Footer';
-import { HeroWidget } from '../components/landing/HeroWidget';
+import IMessageChat from '../components/landing/iMessageChat';
 import StripeService from '../services/StripeService';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
@@ -64,34 +64,26 @@ const LandingPage: React.FC = () => {
             backgroundSize: '24px 24px'
           }}
         />
-        {/* Strong Fade to white at bottom for smooth transition - smaller on mobile */}
-        <div className="absolute z-20 inset-x-0 bottom-0 h-16 md:h-64 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="grid lg:grid-cols-12 gap-8 items-center min-h-[500px] md:min-h-[600px]">
             {/* Central Content Column */}
             <div className="lg:col-span-7 relative text-left">
-              {/* Supported Platforms - Simple Row */}
-              <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
-                <img src={instagramIcon} alt="Instagram" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
-                <img src={tiktokIcon} alt="TikTok" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
-                <img src={youtubeIcon} alt="YouTube" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
-                <img src={xLogo} alt="X" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
-              </div>
-
-              {/* Main Headline - Two Lines */}
-              <div className="space-y-1 md:space-y-2 mb-6 md:mb-8">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
-                  Social Media Analytics Tool
-                </h1>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
-                  for Creators & Brands
+              {/* Main Headline with inline platform icons */}
+              <div className="mb-6 md:mb-8">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-[#111111] leading-[1.2] tracking-tight">
+                  The <span className="text-[#0060CC]">#1 social media analytics Agent</span>{' '}that can track any video across{' '}
+                  <img src={tiktokIcon} alt="TikTok" className="inline-block h-7 sm:h-8 md:h-10 lg:h-12 w-7 sm:w-8 md:w-10 lg:w-12 object-contain align-middle mx-0.5" />
+                  <img src={instagramIcon} alt="Instagram" className="inline-block h-7 sm:h-8 md:h-10 lg:h-12 w-7 sm:w-8 md:w-10 lg:w-12 object-contain align-middle mx-0.5" />
+                  <img src={youtubeIcon} alt="YouTube" className="inline-block h-7 sm:h-8 md:h-10 lg:h-12 w-7 sm:w-8 md:w-10 lg:w-12 object-contain align-middle mx-0.5" />
+                  <img src={xLogo} alt="X" className="inline-block h-7 sm:h-8 md:h-10 lg:h-12 w-7 sm:w-8 md:w-10 lg:w-12 object-contain align-middle mx-0.5" />{' '}
+                  and self improve
                 </h1>
               </div>
 
               {/* Supporting Sentence */}
               <p className="text-base md:text-lg text-[#666666] mb-8 md:mb-10 tracking-wide max-w-2xl">
-                Our analytics dashboard shows which creators and content drive actual sales, helping you invest only in what works.
+                Track short-form video performance across every platform in one live dashboard and connect it to your AI agent so it learns from your viral posts and your competitors.
               </p>
 
               {/* CTA Buttons */}
@@ -106,13 +98,11 @@ const LandingPage: React.FC = () => {
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12" />
                 </button>
                 <button
-                  onClick={() => {
-                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={onGetStarted}
                   className="group relative w-full sm:w-auto px-8 md:px-9 py-3.5 md:py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-full border-2 border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 text-sm md:text-base overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    <BookOpen className="w-4 h-4" /> Learn more
+                    🦞 Add to Open Claw
                   </span>
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-black/5 to-transparent skew-x-12" />
                 </button>
@@ -120,13 +110,13 @@ const LandingPage: React.FC = () => {
 
               {/* Mobile Widget - Shows below CTA on mobile */}
               <div className="lg:hidden mt-8">
-                <HeroWidget />
+                <IMessageChat />
               </div>
             </div>
 
             {/* Right Column: Interactive Widget - Desktop only */}
             <div className="hidden lg:block lg:col-span-5 relative">
-              <HeroWidget />
+              <IMessageChat />
             </div>
           </div>
         </div>
