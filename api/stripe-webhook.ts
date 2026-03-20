@@ -367,11 +367,11 @@ async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscript
   
   await org.subRef.update({
     status: 'canceled',
-    planTier: 'basic', // Downgrade to basic
+    planTier: 'free',
     updatedAt: Timestamp.now(),
   });
 
-  console.log('✅ Subscription canceled');
+  console.log('✅ Subscription canceled, downgraded to free');
 }
 
 /**

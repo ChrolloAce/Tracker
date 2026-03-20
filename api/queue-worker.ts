@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Validate running jobs (check if they're actually still running)
     console.log(`\n🔍 Validating ${runningCount} running jobs...`);
     
-    const JOB_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes (reduced from 10)
+    const JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes (matches sync-single-account maxDuration)
     const now = Date.now();
     let validatedCount = 0;
     let markedFailedCount = 0;
