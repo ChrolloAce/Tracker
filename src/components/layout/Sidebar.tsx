@@ -9,12 +9,12 @@ import {
   ChevronUp,
   Link,
   Film,
-  Puzzle,
+  // Puzzle, // Hidden for MVP
   Trophy,
   X,
   LayoutDashboard,
   UserPlus,
-  DollarSign,
+  // DollarSign, // Hidden for MVP
   Lock,
   MessageCircle,
   Shield,
