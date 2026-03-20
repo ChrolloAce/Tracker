@@ -59,9 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const token = authHeader.substring(7);
-  
+
+  let decodedToken;
   try {
-    const decodedToken = await getAuth().verifyIdToken(token);
+    decodedToken = await getAuth().verifyIdToken(token);
     console.log(`🔐 Authenticated as: ${decodedToken.uid}`);
   } catch (error: any) {
     console.error('❌ Token verification failed:', error.message);
@@ -72,6 +73,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!orgId || !projectId || !videoId) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Verify user is a member of the organization
+  const membershipSnapshot = await db
+    .collection('organizations')
+    .doc(orgId)
+    .collection('members')
+    .where('userId', '==', decodedToken.uid)
+    .where('status', '==', 'active')
+    .limit(1)
+    .get();
+
+  if (membershipSnapshot.empty) {
+    console.error(`❌ Access denied: User ${decodedToken.uid} is not a member of org ${orgId}`);
+    return res.status(403).json({ success: false, message: 'Access denied - you are not a member of this organization' });
   }
 
   const startTime = Date.now();

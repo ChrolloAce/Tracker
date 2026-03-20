@@ -8,6 +8,22 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+// Simple in-memory deduplication cache for webhook events
+// Note: Won't survive cold starts on serverless, but handles rapid duplicate deliveries within the same instance
+const processedEvents = new Map<string, number>();
+const EVENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function isEventProcessed(eventId: string): boolean {
+  const now = Date.now();
+  // Clean old entries
+  for (const [id, timestamp] of processedEvents) {
+    if (now - timestamp > EVENT_CACHE_TTL) processedEvents.delete(id);
+  }
+  if (processedEvents.has(eventId)) return true;
+  processedEvents.set(eventId, now);
+  return false;
+}
+
 // Disable body parsing for webhook
 export const config = {
   api: {
@@ -42,6 +58,11 @@ export default async function handler(
   } catch (err: any) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+  }
+
+  if (isEventProcessed(event.id)) {
+    console.log(`⚠️ Duplicate event ${event.id} - skipping`);
+    return res.json({ received: true, duplicate: true });
   }
 
   try {
@@ -137,14 +158,25 @@ async function findOrgByCustomerId(db: any, customerId: string): Promise<{ orgId
  * Handle subscription creation/update
  */
 async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscription, Timestamp: any) {
-  const customerId = subscription.customer as string;
+  const customerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id;
+  if (!customerId) {
+    console.error('❌ No customer ID found on subscription:', subscription.id);
+    return;
+  }
   const subscriptionId = subscription.id;
-  
+
   const org = await findOrgByCustomerId(db, customerId);
   if (!org) return;
 
   // Get plan tier from price ID
-  const priceId = subscription.items.data[0].price.id;
+  const firstItem = subscription.items?.data?.[0];
+  if (!firstItem) {
+    console.error('❌ Subscription has no line items:', subscription.id);
+    return;
+  }
+  const priceId = firstItem.price.id;
   console.log(`🔍 Processing subscription update for customer ${customerId}, price ID: ${priceId}`);
   
   const planTier = getPlanTierFromPriceId(priceId);
@@ -360,8 +392,14 @@ async function activatePendingAccountsAfterPayment(db: any, orgId: string, Times
  * Handle subscription deletion
  */
 async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscription, Timestamp: any) {
-  const customerId = subscription.customer as string;
-  
+  const customerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id;
+  if (!customerId) {
+    console.error('❌ No customer ID found on subscription:', subscription.id);
+    return;
+  }
+
   const org = await findOrgByCustomerId(db, customerId);
   if (!org) return;
   
@@ -378,8 +416,14 @@ async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscript
  * Handle successful payment
  */
 async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice, Timestamp: any) {
-  const customerId = invoice.customer as string;
-  
+  const customerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id;
+  if (!customerId) {
+    console.error('❌ No customer ID found on invoice:', invoice.id);
+    return;
+  }
+
   const org = await findOrgByCustomerId(db, customerId);
   if (!org) return;
   
@@ -398,8 +442,14 @@ async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice, Timestam
  * Handle failed payment
  */
 async function handlePaymentFailed(db: any, invoice: Stripe.Invoice, Timestamp: any) {
-  const customerId = invoice.customer as string;
-  
+  const customerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id;
+  if (!customerId) {
+    console.error('❌ No customer ID found on invoice:', invoice.id);
+    return;
+  }
+
   const org = await findOrgByCustomerId(db, customerId);
   if (!org) return;
   

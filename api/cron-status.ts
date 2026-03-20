@@ -1,6 +1,12 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+
+// Super admin emails - only these users can access the cron status dashboard
+const SUPER_ADMIN_EMAILS = [
+  'ernesto@maktubtechnologies.com'
+];
 
 // Initialize Firebase Admin (same pattern as other API files)
 if (!getApps().length) {
@@ -39,6 +45,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         errorType: 'FIREBASE_INIT_ERROR',
         timestamp: new Date().toISOString()
       });
+    }
+
+    // Verify authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized - Missing token' });
+    }
+
+    const token = authHeader.substring(7);
+    let decodedToken;
+    try {
+      decodedToken = await getAuth().verifyIdToken(token);
+    } catch (error) {
+      console.error('❌ Token verification failed:', error);
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    // Verify user is a super admin
+    const userEmail = decodedToken.email?.toLowerCase();
+    if (!userEmail || !SUPER_ADMIN_EMAILS.includes(userEmail)) {
+      console.error(`❌ Access denied: ${userEmail} is not a super admin`);
+      return res.status(403).json({ error: 'Forbidden - Super admin access required' });
     }
 
     // Get all organizations
@@ -139,6 +167,13 @@ function getTimeSince(date: Date): string {
   
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function getTimeBadgeClass(time: string): string {
+  if (time === 'Never synced') return 'never';
+  if (time.includes('m') || time.includes('s')) return 'recent';
+  if (time.includes('h') && parseInt(time) < 24) return 'recent';
+  return 'old';
 }
 
 function generateDashboard(status: any): string {
@@ -371,8 +406,7 @@ function generateDashboard(status: any): string {
       }
       
       <div class="actions">
-        <a href="/api/trigger-orchestrator" class="btn" onclick="return confirm('Start background refresh now? This may take several minutes.')">🔄 Trigger Manual Refresh</a>
-        <a href="/api/cron-status" class="btn">🔃 Refresh Dashboard</a>
+        <p style="color: #999; font-size: 14px;">Use the admin dashboard to trigger refreshes and reload this page.</p>
       </div>
     </div>
   </div>

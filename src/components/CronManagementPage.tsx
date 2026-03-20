@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Play, RefreshCw, CheckCircle, XCircle, AlertCircle, Settings } from 'lucide-react';
+import { getAuth } from 'firebase/auth';
 
 const CronManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,17 @@ const CronManagementPage: React.FC = () => {
   const loadStatus = async () => {
     setLoading(true);
     try {
-      await fetch('/api/cron-status');
+      const user = getAuth().currentUser;
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+      const token = await user.getIdToken();
+      await fetch('/api/cron-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       // Just refresh the timestamp to show we checked
       setLastRefresh(new Date());
     } catch (error) {
@@ -178,15 +189,13 @@ const CronManagementPage: React.FC = () => {
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Quick Links</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <a
-              href="/api/cron-status"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl p-4 hover:from-purple-600/30 hover:to-blue-600/30 transition-colors"
+            <button
+              onClick={loadStatus}
+              className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl p-4 hover:from-purple-600/30 hover:to-blue-600/30 transition-colors text-left"
             >
               <div className="text-gray-900 dark:text-white font-semibold mb-1">📊 Status Dashboard</div>
               <div className="text-gray-400 text-sm">View detailed status of all accounts</div>
-            </a>
+            </button>
             <a
               href="/api/trigger-orchestrator"
               target="_blank"
