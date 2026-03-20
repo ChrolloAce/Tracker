@@ -189,10 +189,16 @@ async function triggerRediscovery(
   const accountData = existingDoc.data();
   console.log(`🔄 [API] Account @${username} already exists (${accountId}), triggering re-discovery`);
 
-  // Update maxVideos if caller wants more
+  // Ensure creatorType is 'automatic' so discovery finds new videos,
+  // and update maxVideos if caller wants more
+  const updates: Record<string, any> = {
+    creatorType: 'automatic',
+    updatedAt: Timestamp.now()
+  };
   if (videoLimit > (accountData.maxVideos || 0)) {
-    await existingDoc.ref.update({ maxVideos: videoLimit, updatedAt: Timestamp.now() });
+    updates.maxVideos = videoLimit;
   }
+  await existingDoc.ref.update(updates);
 
   // Create sync job + dispatch
   const { jobId, processingStatus } = await createSyncJobAndDispatch(
