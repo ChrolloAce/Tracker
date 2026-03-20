@@ -13,6 +13,7 @@ import { TikTokSyncService } from './services/sync/tiktok/TikTokSyncService.js';
 import { YoutubeSyncService } from './services/sync/youtube/YoutubeSyncService.js';
 import { TwitterSyncService } from './services/sync/twitter/TwitterSyncService.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
+import { checkVideoLimit } from './utils/video-limits.js';
 
 // Initialize Firebase Admin
 const { db } = initializeFirebase();
@@ -69,7 +70,7 @@ export default async function handler(
   res: VercelResponse
 ) {
   // Set CORS headers
-  setCorsHeaders(res);
+  setCorsHeaders(res, req);
   
   // Handle preflight requests
   if (handleCorsPreFlight(req, res)) {
@@ -236,20 +237,14 @@ export default async function handler(
     console.log(`📊 Will scrape up to ${maxVideos} videos for @${account.username}`);
 
     // ==================== VIDEO LIMIT ENFORCEMENT ====================
-    // Check if org has capacity for new videos (plan limits)
-    const PLAN_MAX_VIDEOS: Record<string, number> = {
-      free: 5, basic: 150, pro: 1000, ultra: 5000, enterprise: -1
-    };
-    const subscriptionDoc = await db.collection('organizations').doc(orgId)
-      .collection('billing').doc('subscription').get();
-    const orgPlanTier = subscriptionDoc.data()?.planTier || 'free';
-    const planVideoLimit = PLAN_MAX_VIDEOS[orgPlanTier] ?? 5;
+    // Use real Firestore count (not the stale subscription.usage.videos counter)
+    const videoLimitResult = await checkVideoLimit(orgId);
 
-    // Get current video count from usage tracking
-    const currentVideoCount = subscriptionDoc.data()?.usage?.videos ?? 0;
-
-    const hasVideoCapacity = planVideoLimit === -1 || currentVideoCount < planVideoLimit;
-    const remainingCapacity = planVideoLimit === -1 ? Infinity : Math.max(0, planVideoLimit - currentVideoCount);
+    const orgPlanTier = videoLimitResult.planTier;
+    const planVideoLimit = videoLimitResult.limit;
+    const currentVideoCount = videoLimitResult.currentCount;
+    const hasVideoCapacity = videoLimitResult.allowed;
+    const remainingCapacity = videoLimitResult.remaining;
 
     console.log(`📊 Video limit: ${currentVideoCount}/${planVideoLimit === -1 ? '∞' : planVideoLimit} (${orgPlanTier} plan, ${remainingCapacity === Infinity ? '∞' : remainingCapacity} remaining)`);
     // ==================== END VIDEO LIMIT ENFORCEMENT ====================
@@ -368,13 +363,16 @@ export default async function handler(
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
           
+          // Cap discovery at remaining plan capacity so we don't fetch more than we can store
+          const tiktokDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} videos`);
+            console.log(`   🆕 First-time sync - will fetch up to ${tiktokDiscoveryLimit} videos (capped by plan)`);
         } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
-          
-          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+
+          const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, tiktokDiscoveryLimit);
           const newVideos = result.videos;
           
           console.log(`   ✅ Discovered ${newVideos.length} NEW videos`);
@@ -508,13 +506,16 @@ export default async function handler(
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
 
+          // Cap discovery at remaining plan capacity
+          const ytDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} videos`);
+            console.log(`   🆕 First-time sync - will fetch up to ${ytDiscoveryLimit} videos (capped by plan)`);
           } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
 
-          const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+          const result = await YoutubeSyncService.discovery(account, orgId, videosToCheck, ytDiscoveryLimit);
           const newVideos = result.videos;
 
           console.log(`   ✅ Discovered ${newVideos.length} NEW videos`);
@@ -680,13 +681,16 @@ export default async function handler(
         const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
         const tweetsToCheck = isFirstTimeSync ? new Set<string>() : existingTweetIds;
         
+        // Cap discovery at remaining plan capacity
+        const twitterDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
         if (isFirstTimeSync) {
-          console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} tweets`);
+          console.log(`   🆕 First-time sync - will fetch up to ${twitterDiscoveryLimit} tweets (capped by plan)`);
         } else {
           console.log(`   🔄 Regular sync - will stop at first duplicate`);
         }
-        
-        const newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, maxVideos);
+
+        const newTweets = await TwitterSyncService.discovery(account, orgId, tweetsToCheck, twitterDiscoveryLimit);
         
         console.log(`   ✅ Discovered ${newTweets.length} NEW tweets`);
         
@@ -842,13 +846,16 @@ export default async function handler(
           const isFirstTimeSync = !account.lastSynced || account.totalVideos === 0;
           const videosToCheck = isFirstTimeSync ? new Set<string>() : existingVideoIds;
           
+          // Cap discovery at remaining plan capacity
+          const igDiscoveryLimit = remainingCapacity === Infinity ? maxVideos : Math.min(maxVideos, remainingCapacity);
+
           if (isFirstTimeSync) {
-            console.log(`   🆕 First-time sync - will fetch ALL ${maxVideos} reels`);
+            console.log(`   🆕 First-time sync - will fetch up to ${igDiscoveryLimit} reels (capped by plan)`);
           } else {
             console.log(`   🔄 Regular sync - will stop at first duplicate`);
           }
-          
-          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, maxVideos);
+
+          const result = await InstagramSyncService.discovery(account, orgId, videosToCheck, igDiscoveryLimit);
           const newReels = result.videos;
           
           console.log(`   ✅ Discovered ${newReels.length} NEW reels`);

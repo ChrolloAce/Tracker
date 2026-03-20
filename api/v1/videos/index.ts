@@ -15,6 +15,7 @@ import {
   pollVideoUntilReady,
   formatVideoResponse,
 } from './syncHelpers.js';
+import { checkVideoLimit } from '../../utils/video-limits.js';
 
 const JOB_PRIORITY_USER_INITIATED = 100;
 
@@ -241,20 +242,13 @@ async function addVideo(
   }
 
   // ==================== VIDEO LIMIT CHECK ====================
-  const PLAN_MAX_VIDEOS: Record<string, number> = {
-    free: 5, basic: 150, pro: 1000, ultra: 5000, enterprise: -1
-  };
-  const subDoc = await db.collection('organizations').doc(auth.organizationId)
-    .collection('billing').doc('subscription').get();
-  const planTier = subDoc.data()?.planTier || 'free';
-  const planLimit = PLAN_MAX_VIDEOS[planTier] ?? 5;
-  const currentCount = subDoc.data()?.usage?.videos ?? 0;
+  const videoLimit = await checkVideoLimit(auth.organizationId);
 
-  if (planLimit !== -1 && currentCount >= planLimit) {
+  if (!videoLimit.allowed) {
     return res.status(403).json({
       success: false,
       error: {
-        message: `Video limit reached (${currentCount}/${planLimit}). Upgrade your plan for more.`,
+        message: `Video limit reached (${videoLimit.currentCount}/${videoLimit.limit}). Upgrade your plan for more.`,
         code: 'VIDEO_LIMIT_REACHED'
       }
     });

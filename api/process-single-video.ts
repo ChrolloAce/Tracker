@@ -7,6 +7,7 @@ import { ErrorNotificationService } from './services/ErrorNotificationService.js
 import { CleanupService } from './services/CleanupService.js';
 import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './utils/resolve-tiktok-url.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
+import { checkVideoLimit } from './utils/video-limits.js';
 // @ts-ignore - heic-convert has no types
 import convert from 'heic-convert';
 
@@ -62,7 +63,7 @@ interface VideoData {
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
-  setCorsHeaders(res);
+  setCorsHeaders(res, req);
   
   // Handle preflight requests
   if (handleCorsPreFlight(req, res)) {
@@ -127,28 +128,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ==================== VIDEO LIMIT CHECK ====================
     const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
     if (isUrl) {
-      // New video — check plan limit before processing
-      const PLAN_MAX_VIDEOS: Record<string, number> = {
-        free: 5, basic: 150, pro: 1000, ultra: 5000, enterprise: -1
-      };
-      const subDoc = await db.collection('organizations').doc(orgId)
-        .collection('billing').doc('subscription').get();
-      const planTier = subDoc.data()?.planTier || 'free';
-      const planLimit = PLAN_MAX_VIDEOS[planTier] ?? 5;
-      const currentCount = subDoc.data()?.usage?.videos ?? 0;
+      const videoLimit = await checkVideoLimit(orgId);
+      console.log(`📊 Video limits - Current: ${videoLimit.currentCount}, Limit: ${videoLimit.limit}, Remaining: ${videoLimit.remaining}`);
 
-      if (planLimit !== -1 && currentCount >= planLimit) {
-        console.log(`❌ Video limit reached (${currentCount}/${planLimit}) for ${planTier} plan`);
+      if (!videoLimit.allowed) {
+        console.log(`❌ Video limit reached (${videoLimit.currentCount}/${videoLimit.limit}) for ${videoLimit.planTier} plan`);
         if (jobId) {
           await db.collection('syncQueue').doc(jobId).update({
             status: 'failed', completedAt: Timestamp.now(),
-            error: `Video limit reached (${planLimit})`
+            error: `Video limit reached (${videoLimit.limit})`
           });
         }
         return res.status(403).json({
           error: 'Video limit reached',
-          message: `Your ${planTier} plan allows ${planLimit} videos. Upgrade for more.`,
-          currentCount, limit: planLimit
+          message: `Your ${videoLimit.planTier} plan allows ${videoLimit.limit} videos. Upgrade for more.`,
+          currentCount: videoLimit.currentCount, limit: videoLimit.limit
         });
       }
     }

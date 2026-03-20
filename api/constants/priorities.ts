@@ -39,3 +39,10 @@ export const JOB_PRIORITIES = {
 
 export type JobPriority = typeof JOB_PRIORITIES[keyof typeof JOB_PRIORITIES];
 
+/**
+ * Max concurrent Apify actor runs.
+ * Apify Scale plan allows 128 concurrent runs.
+ * 25 gives us fast throughput while leaving headroom.
+ */
+export const APIFY_CONCURRENCY_LIMIT = 25;
+

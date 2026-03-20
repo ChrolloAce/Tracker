@@ -194,7 +194,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Validated ${validatedCount} running jobs, marked ${markedFailedCount} failed`);
     
     // Calculate available slots for new jobs
-    const APIFY_CONCURRENCY_LIMIT = 10;
+    const { APIFY_CONCURRENCY_LIMIT } = await import('./constants/priorities.js');
     const actualRunningCount = runningCount - markedFailedCount - accountDeletedCount;
     const availableSlots = APIFY_CONCURRENCY_LIMIT - actualRunningCount;
     

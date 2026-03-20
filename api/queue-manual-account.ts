@@ -4,6 +4,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
 import { JOB_PRIORITIES } from './constants/priorities.js';
 import { getBaseUrl } from './utils/base-url.js';
+import { checkVideoLimit } from './utils/video-limits.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -40,10 +41,10 @@ function initializeFirebase() {
  * Called when user manually adds an account and expects immediate scraping.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCorsHeaders(res);
-  
-  if (req.method === 'OPTIONS') {
-    return handleCorsPreFlight(res);
+  setCorsHeaders(res, req);
+
+  if (handleCorsPreFlight(req, res)) {
+    return;
   }
   
   if (req.method !== 'POST') {
@@ -66,7 +67,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { user } = await authenticateAndVerifyOrg(req, orgId);
     console.log(`🔒 Authenticated user ${user.userId} for manual account queue`);
 
-    
+    // ==================== VIDEO LIMIT CHECK ====================
+    const videoLimit = await checkVideoLimit(orgId);
+    console.log(`📊 Video limits - Current: ${videoLimit.currentCount}, Limit: ${videoLimit.limit}, Remaining: ${videoLimit.remaining}`);
+
+    if (!videoLimit.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: 'VIDEO_LIMIT_REACHED',
+        message: `Your ${videoLimit.planTier} plan allows ${videoLimit.limit} videos. You currently have ${videoLimit.currentCount}. Upgrade your plan to add more.`,
+        currentCount: videoLimit.currentCount,
+        limit: videoLimit.limit,
+        planTier: videoLimit.planTier,
+      });
+    }
+    // ==================== END VIDEO LIMIT CHECK ====================
+
     console.log(`🚀 [MANUAL-ACCOUNT] Queueing high-priority sync for account: ${accountId}`);
     
     // Get account details
@@ -120,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check current queue capacity
     const runningJobs = await db.collection('syncQueue').where('status', '==', 'running').get();
     const runningCount = runningJobs.size;
-    const APIFY_CONCURRENCY_LIMIT = 6;
+    const { APIFY_CONCURRENCY_LIMIT } = await import('./constants/priorities.js');
     const availableSlots = APIFY_CONCURRENCY_LIMIT - runningCount;
     
     console.log(`   📊 Queue capacity: ${runningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);
@@ -147,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Dispatch timeout')), 500)
+          setTimeout(() => reject(new Error('Dispatch timeout')), 5000)
         );
         
         // Race between dispatch and timeout
