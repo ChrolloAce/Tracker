@@ -996,8 +996,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // One-time data loading (no real-time listeners)
   useEffect(() => {
-    if (!user || !currentOrgId || !currentProjectId) {
-      // Reset loading states when context is missing
+    console.log('🚨 DATA LOAD EFFECT:', { user: !!user, isDemoMode, currentOrgId, currentProjectId });
+    if ((!user && !isDemoMode) || !currentOrgId || !currentProjectId) {
+      console.log('⛔ SKIPPING DATA LOAD:', { user: !!user, isDemoMode, currentOrgId, currentProjectId });
+      // Reset loading states when context is missing (allow demo mode without user)
       setRulesLoadedFromFirebase(false);
       setDataLoadedFromFirebase(false);
       setLoadingDashboard(false);
@@ -1088,7 +1090,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
     // 🎯 CREATORS: Skip loading ALL organization data - they only need campaigns
     // Also skip if role not loaded yet to prevent unnecessary cache loading
-    if (userRole === 'creator' || userRole === '') {
+    // BUT allow demo mode to proceed regardless of role
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       if (userRole === 'creator') {
         console.log('🎯 Creator role detected - skipping organization data load');
         setRulesLoadedFromFirebase(true);
@@ -1111,8 +1114,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         const { accounts, submissions, rules, selectedRuleIds: cachedRuleIds, links: cachedLinks, linkClicks: cachedClicks, timestamp } = JSON.parse(cached);
         const cacheAge = Date.now() - timestamp;
         
-        // Use cache if less than 5 minutes old
-        if (cacheAge < 5 * 60 * 1000) {
+        // Use cache if less than 5 minutes old (30 minutes for demo)
+        const maxCacheAge = isDemoMode ? 30 * 60 * 1000 : 5 * 60 * 1000;
+        if (cacheAge < maxCacheAge) {
           // CRITICAL: Filter cached rule IDs to only include rules that exist in this project
           const validCachedRuleIds = new Set((rules || []).map((r: TrackingRule) => r.id));
           const filteredCachedRuleIds = (cachedRuleIds || []).filter((id: string) => validCachedRuleIds.has(id));
@@ -1143,35 +1147,49 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     
     // Load ALL data in TRUE PARALLEL for maximum speed!
     (async () => {
+      console.log('🚀 Starting Parallel Firebase load...');
       console.time('🚀 Parallel Firebase load');
-      
+
     try {
       // PHASE 1: Load ALL top-level collections in parallel
-      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.all([
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore query timeout after 15s')), 15000)
+      );
+
+      const dataPromise = Promise.all([
         // 1. Accounts
         getDocs(query(
           collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts'),
           orderBy('dateAdded', 'desc')
-        )),
+        )).then(r => { console.log('✅ Accounts loaded:', r.size); return r; }),
         
         // 2. Videos
-        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 }),
-        
+        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 })
+          .then(r => { console.log('✅ Videos loaded:', r.length); return r; }),
+
         // 3. Rules
-        getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules')),
-        
+        getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules'))
+          .then(r => { console.log('✅ Rules loaded:', r.size); return r; }),
+
         // 4. Links
-        FirestoreDataService.getLinks(currentOrgId, currentProjectId),
-        
+        FirestoreDataService.getLinks(currentOrgId, currentProjectId)
+          .then(r => { console.log('✅ Links loaded:', r.length); return r; }),
+
         // 5. Link Clicks (OPTIMIZED!)
-        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId),
-        
+        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId)
+          .then(r => { console.log('✅ Clicks loaded:', r.length); return r; }),
+
         // 6. Revenue Integrations
-        RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId),
-        
-        // 7. User Preferences
-        getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid))
+        RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId)
+          .then(r => { console.log('✅ Integrations loaded:', r.length); return r; }),
+
+        // 7. User Preferences (skip in demo mode - no user)
+        user?.uid
+          ? getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid))
+          : Promise.resolve(null)
       ]);
+
+      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.race([dataPromise, timeoutPromise]) as any;
       
       // Process accounts
       const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
@@ -1235,7 +1253,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         ...doc.data()
       })) as TrackingRule[];
       
-      const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
+      const savedSelectedRuleIds = userPrefsDoc?.exists?.() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
       const validRuleIds = new Set(rules.map(r => r.id));
       const filteredSelectedRuleIds = savedSelectedRuleIds.filter((id: string) => validRuleIds.has(id));
       
@@ -1283,8 +1301,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           console.error('Cache save error:', error);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to load data:', error);
+      document.title = `ERROR: ${error?.message || error}`;
       setDataLoadedFromFirebase(true);
       setRulesLoadedFromFirebase(true);
       setLoadingDashboard(false);
@@ -2428,25 +2447,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {/* Main Content - Blur when paywall active */}
       <div className={showPaywall ? 'filter blur-sm pointer-events-none' : ''}>
       
-      {/* Demo Banner - Shows at top if demo account */}
-      {isDemoOrg && (
-        <div className={clsx(
-          'fixed top-0 right-0 z-30 transition-all duration-300',
-          {
-            'left-64': !isSidebarCollapsed,
-            'left-16': isSidebarCollapsed,
-          }
-        )}>
-          <DemoBanner />
-        </div>
-      )}
-      
       {/* Account Filter Banner - Shows when filtering by specific account (only when 1 account selected AND on dashboard tab) */}
       {activeTab === 'dashboard' && selectedAccountIds.length === 1 && (() => {
         const filteredAccount = trackedAccounts.find(acc => acc.id === selectedAccountIds[0]);
         if (!filteredAccount) return null;
         
-        const topOffset = isDemoOrg ? 'top-[60px]' : 'top-0';
+        const topOffset = 'top-0';
         
         return (
           <div className={clsx(
@@ -2566,10 +2572,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         {
           'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
           'left-0 md:left-16': isSidebarCollapsed,
-          'top-0': !isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1),
-          'top-[60px]': isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Push down if demo banner is showing
-          'top-[128px]': isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for both banners (60px demo + 68px account)
-          'top-[68px]': !isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for account banner only
+          'top-0': activeTab !== 'dashboard' || selectedAccountIds.length !== 1,
+          'top-[68px]': activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for account banner
         }
       )}>
         <div className="flex items-center justify-between w-full gap-2 md:gap-4">
@@ -2635,7 +2639,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </button>
           )}
           {activeTab === 'dashboard' && (
-            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+            <div data-spotlight="filters" className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
               {!isEditingLayout ? (
                 <>
                   {/* Mobile Filter Button - Shows on small screens, opens modal */}
@@ -3107,10 +3111,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <main className={clsx(
         'overflow-auto min-h-screen transition-all duration-300',
         {
-          'pt-16 md:pt-24': !isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Default top padding
-          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Extra padding when demo banner is showing
-          'pt-[9rem] md:pt-[10rem]': !isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for account banner
-          'pt-[10rem] md:pt-[11rem]': isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for both banners
+          'pt-16 md:pt-24': activeTab !== 'dashboard' || selectedAccountIds.length !== 1, // Default top padding
+          'pt-[9rem] md:pt-[10rem]': activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for account banner
           'ml-0 md:ml-64': !isSidebarCollapsed, // No left margin on mobile
           'ml-0 md:ml-16': isSidebarCollapsed,
         }
@@ -3214,6 +3216,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     switch (sectionId) {
                       case 'kpi-cards':
                         return (
+                          <div data-spotlight="kpi-cards">
                           <KPICards 
                             submissions={filteredSubmissions}
                             allSubmissions={submissionsWithoutDateFilter}
@@ -3243,15 +3246,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             }}
                             onToggleCard={handleToggleCard}
                           />
+                          </div>
                         );
                       case 'video-slider':
                         console.log('🎬 VideoSlider section rendering with', combinedSubmissions.length, 'filtered videos');
                         return (
+                          <div data-spotlight="video-slider">
                           <VideoSliderSection
                             videos={combinedSubmissions}
                             maxVideos={20}
                             onVideoClick={handleVideoClick}
                           />
+                          </div>
                         );
                       case 'top-performers':
                         {
