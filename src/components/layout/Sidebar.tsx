@@ -72,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMobileToggle
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations'])); // Start with sections expanded
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations', 'openclaw-section'])); // Start with sections expanded
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
@@ -187,6 +187,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         ]
       },
       {
+        id: 'openclaw-section',
+        label: 'Open Claw',
+        items: [
+          {
+            id: 'openclaw-keys',
+            label: 'API Keys',
+            icon: Key,
+            href: `${baseHref}/openclaw`,
+          },
+        ]
+      },
+      {
         id: 'integrations-section',
         label: 'Integrations',
         items: [
@@ -196,15 +208,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             icon: DollarSign,
             href: `${baseHref}/revenue`,
             comingSoon: 'Dec 5'
-      },
-      {
-        id: 'extension',
+          },
+          {
+            id: 'extension',
             label: 'Extensions',
-        icon: Puzzle,
-        href: `${baseHref}/extension`,
-        locked: true,
+            icon: Puzzle,
+            href: `${baseHref}/extension`,
+            locked: true,
             comingSoon: 'Dec 5'
-      },
+          },
         ]
       },
     ];
@@ -378,6 +390,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
       <NavLink
         to={item.href}
+        data-spotlight={`nav-${item.id}`}
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
@@ -492,7 +505,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {!isDemoMode && <ProjectSwitcher isCollapsed={isCollapsed} />}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+      <nav data-spotlight="sidebar-nav" className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
         {/* Dashboard - Standalone at top */}
         {dashboardItem && <NavItemComponent item={dashboardItem} />}
 
@@ -507,6 +520,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div key={section.id} className="space-y-1">
               {/* Section Header */}
               <button
+                data-section-id={section.id}
                 onClick={() => toggleSection(section.id)}
                 className={clsx(
                   'w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors rounded-md',

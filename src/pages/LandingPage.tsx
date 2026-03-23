@@ -19,7 +19,7 @@ const LandingPage: React.FC = () => {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   const onGetStarted = () => {
-    navigate('/login');
+    navigate('/demo/dashboard');
   };
 
   const handleSelectPlan = async (plan: 'basic' | 'pro' | 'ultra') => {
