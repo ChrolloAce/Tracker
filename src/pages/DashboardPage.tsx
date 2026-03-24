@@ -535,27 +535,27 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       }
 
       // Check if super admin / admin - NEVER show paywall for admins
-      const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
-      if (shouldBypass) {
-        console.log('🔓 Admin user - paywall bypassed');
-        setShowPaywall(false);
-        return;
+      try {
+        const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
+        if (shouldBypass) {
+          setPlanTier('admin');
+          setShowPaywall(false);
+          return;
+        }
+      } catch {
+        // If admin check fails, don't block
       }
-      
+
       if (!currentOrgId) return;
-      
+
       try {
         const tier = await SubscriptionService.getPlanTier(currentOrgId);
-        
-        console.log('💳 Plan tier:', tier, 'Tab:', activeTab);
-        
-        // Store tier but never show full-page paywall
-        // Paywall only triggers on specific actions
-        console.log('💳 Plan tier:', tier);
         setPlanTier(tier);
         setShowPaywall(false);
-      } catch (error) {
-        console.error('Failed to check subscription:', error);
+      } catch {
+        // If subscription check fails, assume paid (don't block)
+        setPlanTier('unknown');
+        setShowPaywall(false);
       }
     };
     
