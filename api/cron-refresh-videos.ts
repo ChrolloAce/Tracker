@@ -1311,28 +1311,36 @@ async function refreshTwitterVideosBatch(
   projectId: string,
   videoDocs: any[]
 ): Promise<number> {
-  // Twitter API can handle multiple tweet IDs at once
+  // Build individual tweet URLs — startUrls is the supported input for fetching specific tweets
   const validVideos = videoDocs.filter(doc => doc.data().videoId);
   const tweetIds = validVideos.map(doc => doc.data().videoId);
-  
+
   const missingIdCount = videoDocs.length - validVideos.length;
   if (missingIdCount > 0) {
     console.warn(`    ⚠️ [TWITTER] ${missingIdCount} videos missing videoId - skipping`);
   }
-  
+
   if (tweetIds.length === 0) {
     console.error(`    ❌ [TWITTER] No valid tweet IDs found in ${videoDocs.length} videos`);
     return 0;
   }
 
   console.log(`    🔄 [TWITTER] Batch refreshing ${tweetIds.length} tweets (${missingIdCount} skipped)...`);
-  
+
   try {
+    // Use uploaderHandle from video docs for proper URL format (actor requires username in path)
+    const uploaderHandle = validVideos[0]?.data()?.uploaderHandle || validVideos[0]?.data()?.accountUsername || 'i';
+    const tweetUrls = tweetIds.map(id => `https://x.com/${uploaderHandle}/status/${id}`);
     const result = await runApifyActor({
       actorId: 'apidojo/tweet-scraper',
       input: {
-        tweetIds: tweetIds,
-        sort: 'Latest'
+        startUrls: tweetUrls,
+        maxItems: tweetUrls.length,
+        sort: 'Latest',
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
+        }
       }
     });
 

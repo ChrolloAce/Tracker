@@ -23,10 +23,11 @@ interface TrackedLinksPageProps {
   projectId?: string;
   linkFilter?: string;
   onLinksLoad?: (links: TrackedLink[]) => void;
+  onRequiresPaidPlan?: (context: string) => boolean;
 }
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
-  ({ organizationId, projectId, linkFilter: propLinkFilter = 'all', onLinksLoad, dateFilter = 'last30days', customDateRange }, ref) => {
+  ({ organizationId, projectId, linkFilter: propLinkFilter = 'all', onLinksLoad, dateFilter = 'last30days', customDateRange, onRequiresPaidPlan }, ref) => {
     const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
     const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
@@ -49,6 +50,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
   useImperativeHandle(ref, () => ({
       openCreateModal: () => {
+        if (onRequiresPaidPlan?.('to create tracking links')) return;
         setShowCreateModal(true);
       },
       refreshData: async () => {

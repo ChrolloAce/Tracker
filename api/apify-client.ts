@@ -77,17 +77,21 @@ export async function runApifyActor(options: ApifyRunOptions): Promise<ApifyResp
     ? actorId.replace('/', '~') 
     : actorId;
   
-  // Check if this is an Instagram actor (needs special handling)
-  const isInstagram = normalizedActorId.includes('instagram');
-  
+  // Check if this actor needs retry logic (Instagram, TikTok, Twitter scrapers)
+  // These scrapers are prone to transient 403s, proxy errors, and rate limits
+  const needsRetry = normalizedActorId.includes('instagram')
+    || normalizedActorId.includes('ig-reels')
+    || normalizedActorId.includes('tiktok')
+    || normalizedActorId.includes('tweet');
+
   console.log('🔄 Direct Apify call:', {
     actorId: normalizedActorId,
     inputKeys: Object.keys(input || {}),
-    isInstagram
+    needsRetry
   });
-  
+
   try {
-    // Wrap Instagram calls in retry logic
+    // Wrap scraper calls in retry logic
     const executeCall = async () => {
     // Try run-sync-get-dataset-items first (fastest)
     const syncUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
@@ -152,8 +156,8 @@ export async function runApifyActor(options: ApifyRunOptions): Promise<ApifyResp
     };
     };
     
-    // Use retry logic for Instagram, direct call for others
-    if (isInstagram) {
+    // Use retry logic for scrapers prone to transient failures
+    if (needsRetry) {
       return await retryWithBackoff(executeCall, 3, 2000);
     } else {
       return await executeCall();

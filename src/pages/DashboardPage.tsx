@@ -49,6 +49,7 @@ import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import ViralContentPage from '../components/ViralContentPage';
+import ApiManagementPage from './ApiManagementPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import SuperAdminService from '../services/SuperAdminService';
 import AdminService from '../services/AdminService';
@@ -243,7 +244,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // Subscription & Paywall State
   const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallContext, setPaywallContext] = useState<string>('');
+  const [planTier, setPlanTier] = useState<string>('free');
   const [isDemoOrg, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
+
+  // Check if user needs to pay before performing an action
+  const requiresPaidPlan = (context: string): boolean => {
+    if (isDemoMode || planTier !== 'free') return false;
+    setPaywallContext(context);
+    setShowPaywall(true);
+    return true;
+  };
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
@@ -334,9 +345,25 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         break;
       case 'last90days':
       case 'ytd':
-      case 'all':
         autoGranularity = 'month';
         break;
+      case 'all': {
+        // Smart granularity for "All Time": check actual data spread
+        // If data spans less than 60 days, use daily/weekly instead of monthly
+        const videos = submissions || [];
+        if (videos.length > 0) {
+          const dates = videos
+            .map(v => (v.uploadDate || v.dateSubmitted)?.getTime?.() || 0)
+            .filter(d => d > 0);
+          if (dates.length > 0) {
+            const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24);
+            if (span <= 14) autoGranularity = 'day';
+            else if (span <= 60) autoGranularity = 'week';
+            else autoGranularity = 'month';
+          }
+        }
+        break;
+      }
       case 'custom':
         if (customDateRange) {
           const daysDiff = Math.ceil(
@@ -360,7 +387,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     
     return autoGranularity;
-  }, [dateFilter, customDateRange, manualGranularity]);
+  }, [dateFilter, customDateRange, manualGranularity, submissions]);
   
   // Day Videos Modal state (for account clicks from race chart)
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
@@ -521,10 +548,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         
         console.log('💳 Plan tier:', tier, 'Tab:', activeTab);
         
-        // Show paywall if free plan and NOT on settings tab
-        const shouldShowPaywall = tier === 'free' && activeTab !== 'settings';
-        console.log('🚧 Show paywall?', shouldShowPaywall);
-        setShowPaywall(shouldShowPaywall);
+        // Store tier but never show full-page paywall
+        // Paywall only triggers on specific actions
+        console.log('💳 Plan tier:', tier);
+        setPlanTier(tier);
+        setShowPaywall(false);
       } catch (error) {
         console.error('Failed to check subscription:', error);
       }
@@ -749,6 +777,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // Load usage limits for account tracking
   useEffect(() => {
+    if (isDemoMode) return;
     const loadUsageLimits = async () => {
       if (!currentOrgId) return;
       
@@ -812,10 +841,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Only save after initial load to avoid overwriting on mount
   useEffect(() => {
     // 🎯 CREATORS: Skip rule saving (check BEFORE any logs)
-    if (userRole === 'creator' || userRole === '') {
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       return;
     }
-    
+
     console.log('💾 Save effect triggered:', {
       hasUser: !!user,
       hasOrg: !!currentOrgId,
@@ -880,10 +909,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Debug: Log when rules or selectedRuleIds change
   useEffect(() => {
     // 🎯 CREATORS: Skip debug logs (check BEFORE any logs)
-    if (userRole === 'creator' || userRole === '') {
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       return;
     }
-    
+
     console.log('🔄 Rules or selection changed:');
     console.log('  - Selected Rule IDs:', selectedRuleIds);
     console.log('  - Available Rules:', allRules.length);
@@ -996,8 +1025,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // One-time data loading (no real-time listeners)
   useEffect(() => {
-    if (!user || !currentOrgId || !currentProjectId) {
-      // Reset loading states when context is missing
+    console.log('🚨 DATA LOAD EFFECT:', { user: !!user, isDemoMode, currentOrgId, currentProjectId });
+    if ((!user && !isDemoMode) || !currentOrgId || !currentProjectId) {
+      console.log('⛔ SKIPPING DATA LOAD:', { user: !!user, isDemoMode, currentOrgId, currentProjectId });
+      // Reset loading states when context is missing (allow demo mode without user)
       setRulesLoadedFromFirebase(false);
       setDataLoadedFromFirebase(false);
       setLoadingDashboard(false);
@@ -1088,7 +1119,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
     // 🎯 CREATORS: Skip loading ALL organization data - they only need campaigns
     // Also skip if role not loaded yet to prevent unnecessary cache loading
-    if (userRole === 'creator' || userRole === '') {
+    // BUT allow demo mode to proceed regardless of role
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       if (userRole === 'creator') {
         console.log('🎯 Creator role detected - skipping organization data load');
         setRulesLoadedFromFirebase(true);
@@ -1111,8 +1143,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         const { accounts, submissions, rules, selectedRuleIds: cachedRuleIds, links: cachedLinks, linkClicks: cachedClicks, timestamp } = JSON.parse(cached);
         const cacheAge = Date.now() - timestamp;
         
-        // Use cache if less than 5 minutes old
-        if (cacheAge < 5 * 60 * 1000) {
+        // Use cache if less than 5 minutes old (30 minutes for demo)
+        const maxCacheAge = isDemoMode ? 30 * 60 * 1000 : 5 * 60 * 1000;
+        if (cacheAge < maxCacheAge) {
           // CRITICAL: Filter cached rule IDs to only include rules that exist in this project
           const validCachedRuleIds = new Set((rules || []).map((r: TrackingRule) => r.id));
           const filteredCachedRuleIds = (cachedRuleIds || []).filter((id: string) => validCachedRuleIds.has(id));
@@ -1143,35 +1176,49 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     
     // Load ALL data in TRUE PARALLEL for maximum speed!
     (async () => {
+      console.log('🚀 Starting Parallel Firebase load...');
       console.time('🚀 Parallel Firebase load');
-      
+
     try {
       // PHASE 1: Load ALL top-level collections in parallel
-      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.all([
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore query timeout after 15s')), 15000)
+      );
+
+      const dataPromise = Promise.all([
         // 1. Accounts
         getDocs(query(
           collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts'),
           orderBy('dateAdded', 'desc')
-        )),
+        )).then(r => { console.log('✅ Accounts loaded:', r.size); return r; }),
         
         // 2. Videos
-        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 }),
-        
+        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 })
+          .then(r => { console.log('✅ Videos loaded:', r.length); return r; }),
+
         // 3. Rules
-        getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules')),
-        
+        getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules'))
+          .then(r => { console.log('✅ Rules loaded:', r.size); return r; }),
+
         // 4. Links
-        FirestoreDataService.getLinks(currentOrgId, currentProjectId),
-        
+        FirestoreDataService.getLinks(currentOrgId, currentProjectId)
+          .then(r => { console.log('✅ Links loaded:', r.length); return r; }),
+
         // 5. Link Clicks (OPTIMIZED!)
-        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId),
-        
+        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId)
+          .then(r => { console.log('✅ Clicks loaded:', r.length); return r; }),
+
         // 6. Revenue Integrations
-        RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId),
-        
-        // 7. User Preferences
-        getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid))
+        RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId)
+          .then(r => { console.log('✅ Integrations loaded:', r.length); return r; }),
+
+        // 7. User Preferences (skip in demo mode - no user)
+        user?.uid
+          ? getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid))
+          : Promise.resolve(null)
       ]);
+
+      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.race([dataPromise, timeoutPromise]) as any;
       
       // Process accounts
       const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
@@ -1183,12 +1230,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       
       // PHASE 2: Load video snapshots (depends on videoIds from phase 1)
-      const videoIds = videoDocs.map(v => v.id);
-      const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
-        currentOrgId, 
-        currentProjectId, 
-        videoIds
-      );
+      let snapshotsMap: Map<string, any[]>;
+      if (isDemoMode) {
+        snapshotsMap = new Map();
+      } else {
+        const videoIds = videoDocs.map(v => v.id);
+        snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
+          currentOrgId,
+          currentProjectId,
+          videoIds
+        );
+      }
       
       // Process videos (videoDocs already filtered for deleted videos)
       const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
@@ -1235,7 +1287,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         ...doc.data()
       })) as TrackingRule[];
       
-      const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
+      const savedSelectedRuleIds = userPrefsDoc?.exists?.() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
       const validRuleIds = new Set(rules.map(r => r.id));
       const filteredSelectedRuleIds = savedSelectedRuleIds.filter((id: string) => validRuleIds.has(id));
       
@@ -1266,25 +1318,31 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       console.timeEnd('🚀 Parallel Firebase load');
       console.log('✅ All data loaded in parallel!');
       
-      // Cache everything including links and clicks!
+      // Cache data (stripped down to fit localStorage ~5MB limit)
       if (!hasCached) {
         try {
+          // Strip snapshots from submissions (largest payload) and limit to 100 most recent
+          const strippedSubmissions = allSubmissions
+            .sort((a: any, b: any) => (b.created_at || 0) - (a.created_at || 0))
+            .slice(0, 100)
+            .map(({ snapshots, ...rest }: any) => rest);
+
           localStorage.setItem(cacheKey, JSON.stringify({
             accounts,
-            submissions: allSubmissions,
+            submissions: strippedSubmissions,
             rules,
             selectedRuleIds: filteredSelectedRuleIds,
             links: allLinks,
-            linkClicks: allClicks,
             timestamp: Date.now()
           }));
-          console.log('💾 Dashboard cached (including links & clicks)');
+          console.log(`💾 Dashboard cached (${strippedSubmissions.length} submissions, no snapshots, no linkClicks)`);
         } catch (error) {
           console.error('Cache save error:', error);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to load data:', error);
+      document.title = `ERROR: ${error?.message || error}`;
       setDataLoadedFromFirebase(true);
       setRulesLoadedFromFirebase(true);
       setLoadingDashboard(false);
@@ -1478,6 +1536,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       if (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') {
         setIsTypeSelectorOpen(true);
       } else if (activeTab === 'analytics') {
+        if (requiresPaidPlan('to create tracking links')) return;
         trackedLinksPageRef.current?.openCreateModal();
       } else if (activeTab === 'campaigns') {
         navigate('/campaigns/create');
@@ -1506,8 +1565,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   const submissionsWithoutDateFilter = useMemo(() => {
     // 🎯 CREATORS: Skip all video filtering calculations
-    // Also skip if role not loaded yet (userRole === '')
-    if (userRole === 'creator' || userRole === '') {
+    // Also skip if role not loaded yet (userRole === '') — but allow demo mode
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       return [];
     }
     
@@ -1611,8 +1670,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
     // 🎯 CREATORS: Skip all date filtering calculations
-    // Also skip if role not loaded yet (userRole === '')
-    if (userRole === 'creator' || userRole === '') {
+    // Also skip if role not loaded yet (userRole === '') — but allow demo mode
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       return [];
     }
     
@@ -1640,7 +1699,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // Strict filter for "New Videos" table - only videos UPLOADED in the period (not just refreshed)
   const strictFilteredSubmissions = useMemo(() => {
-    if (userRole === 'creator' || userRole === '') {
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
       return [];
     }
     
@@ -1812,6 +1871,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
 
   const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[]) => {
+    if (requiresPaidPlan('to start tracking videos')) return;
     if (!user || !currentOrgId || !currentProjectId) {
       throw new Error('User not authenticated or no organization selected');
     }
@@ -1910,6 +1970,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   }, [user, currentOrgId, currentProjectId]);
 
   const handleAddAccounts = useCallback(async (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>) => {
+    if (requiresPaidPlan('to start tracking accounts')) return;
     if (!currentOrgId || !currentProjectId || !user) return;
 
     setIsAddAccountModalOpen(false);
@@ -2411,42 +2472,37 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         <div className="fixed inset-y-0 left-0 w-64 bg-black/30 backdrop-blur-sm z-40 pointer-events-none" />
       )}
 
-      {/* Paywall Overlay - Only covers main content area */}
+      {/* Paywall Overlay - Triggered on specific actions */}
       {showPaywall && (
-        <div 
-          className="fixed top-0 right-0 bottom-0 z-50 flex items-center justify-center p-6 transition-all duration-300"
-          style={{ left: isSidebarCollapsed ? '4rem' : '16rem' }}
-        >
-          {/* Blur Background */}
-          <div className="absolute inset-0 bg-[#0A0A0A]/90 backdrop-blur-lg"></div>
-
-          {/* Pricing Cards */}
-          <PaywallOverlay isActive={true} />
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/35 backdrop-blur-2xl" />
+          <div className="relative z-10 min-h-full flex flex-col items-center justify-start py-8 sm:py-12 px-4">
+            {/* Close button */}
+            <button
+              onClick={() => setShowPaywall(false)}
+              className="fixed top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors z-30"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            {paywallContext && (
+              <p className="text-sm mb-6 capitalize">Upgrade <span className="text-[#007BFF] font-semibold">{paywallContext}</span></p>
+            )}
+            <div className="w-full max-w-6xl">
+              <PaywallOverlay isActive={true} />
+            </div>
+          </div>
         </div>
       )}
 
       {/* Main Content - Blur when paywall active */}
       <div className={showPaywall ? 'filter blur-sm pointer-events-none' : ''}>
       
-      {/* Demo Banner - Shows at top if demo account */}
-      {isDemoOrg && (
-        <div className={clsx(
-          'fixed top-0 right-0 z-30 transition-all duration-300',
-          {
-            'left-64': !isSidebarCollapsed,
-            'left-16': isSidebarCollapsed,
-          }
-        )}>
-          <DemoBanner />
-        </div>
-      )}
-      
       {/* Account Filter Banner - Shows when filtering by specific account (only when 1 account selected AND on dashboard tab) */}
       {activeTab === 'dashboard' && selectedAccountIds.length === 1 && (() => {
         const filteredAccount = trackedAccounts.find(acc => acc.id === selectedAccountIds[0]);
         if (!filteredAccount) return null;
         
-        const topOffset = isDemoOrg ? 'top-[60px]' : 'top-0';
+        const topOffset = 'top-0';
         
         return (
           <div className={clsx(
@@ -2566,10 +2622,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         {
           'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
           'left-0 md:left-16': isSidebarCollapsed,
-          'top-0': !isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1),
-          'top-[60px]': isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Push down if demo banner is showing
-          'top-[128px]': isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for both banners (60px demo + 68px account)
-          'top-[68px]': !isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for account banner only
+          'top-0': activeTab !== 'dashboard' || selectedAccountIds.length !== 1,
+          'top-[68px]': activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for account banner
         }
       )}>
         <div className="flex items-center justify-between w-full gap-2 md:gap-4">
@@ -2603,6 +2657,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'campaigns' && 'Campaigns'}
                 {activeTab === 'viral' && 'Viral Content'}
+                {activeTab === 'openclaw' && 'Open Claw'}
                 {activeTab === 'extension' && 'Extension'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
@@ -2635,7 +2690,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </button>
           )}
           {activeTab === 'dashboard' && (
-            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+            <div data-spotlight="filters" className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
               {!isEditingLayout ? (
                 <>
                   {/* Mobile Filter Button - Shows on small screens, opens modal */}
@@ -3104,13 +3159,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       </header>
 
       {/* Main Content with dynamic margins for sidebar and header */}
-      <main className={clsx(
+      <main data-spotlight="main-content" className={clsx(
         'overflow-auto min-h-screen transition-all duration-300',
         {
-          'pt-16 md:pt-24': !isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Default top padding
-          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Extra padding when demo banner is showing
-          'pt-[9rem] md:pt-[10rem]': !isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for account banner
-          'pt-[10rem] md:pt-[11rem]': isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for both banners
+          'pt-16 md:pt-24': activeTab !== 'dashboard' || selectedAccountIds.length !== 1, // Default top padding
+          'pt-[9rem] md:pt-[10rem]': activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for account banner
           'ml-0 md:ml-64': !isSidebarCollapsed, // No left margin on mobile
           'ml-0 md:ml-16': isSidebarCollapsed,
         }
@@ -3214,6 +3267,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     switch (sectionId) {
                       case 'kpi-cards':
                         return (
+                          <div data-spotlight="kpi-cards">
                           <KPICards 
                             submissions={filteredSubmissions}
                             allSubmissions={submissionsWithoutDateFilter}
@@ -3243,15 +3297,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             }}
                             onToggleCard={handleToggleCard}
                           />
+                          </div>
                         );
                       case 'video-slider':
                         console.log('🎬 VideoSlider section rendering with', combinedSubmissions.length, 'filtered videos');
                         return (
+                          <div data-spotlight="video-slider">
                           <VideoSliderSection
                             videos={combinedSubmissions}
                             maxVideos={20}
                             onVideoClick={handleVideoClick}
                           />
+                          </div>
                         );
                       case 'top-performers':
                         {
@@ -3418,7 +3475,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Accounts Tab */}
           {activeTab === 'accounts' && (
-            (!tabDataReady.accounts || isInitialLoading) ? (
+            <div data-spotlight="content-accounts">
+            {(!isDemoMode && (!tabDataReady.accounts || isInitialLoading)) ? (
               <div className="space-y-4">
                 {/* Loading skeleton for accounts */}
                 <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -3455,12 +3513,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               creatorFilterId={creatorFilterId}
               isDemoMode={isDemoMode}
             />
-            )
-          )}
+            )}
+          </div>)}
 
           {/* Videos Tab */}
           {activeTab === 'videos' && (
-            (!tabDataReady.videos || isInitialLoading) ? (
+            <div data-spotlight="content-videos">
+            {(!isDemoMode && (!tabDataReady.videos || isInitialLoading)) ? (
               <div className="space-y-4">
                 {/* Loading skeleton for videos */}
                 <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -3516,8 +3575,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}
               />
-            )
-          )}
+            )}
+          </div>)}
 
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
@@ -3538,8 +3597,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Tracked Links Tab */}
           {activeTab === 'analytics' && (
-            <TrackedLinksPage 
-              ref={trackedLinksPageRef} 
+            <TrackedLinksPage
+              ref={trackedLinksPageRef}
               linkClicks={linkClicks}
               dateFilter={linksDateFilter}
               customDateRange={linksCustomDateRange}
@@ -3547,12 +3606,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               projectId={currentProjectId || undefined}
               linkFilter={linkFilter}
               onLinksLoad={(links) => setAllLinks(links)}
+              onRequiresPaidPlan={requiresPaidPlan}
             />
           )}
 
           {/* Creators Tab */}
           {activeTab === 'creators' && (
-            <CreatorsManagementPage dateFilter={creatorsDateFilter} />
+            <div data-spotlight="content-creators">
+              <CreatorsManagementPage dateFilter={creatorsDateFilter} organizationId={currentOrgId} projectId={currentProjectId} onRequiresPaidPlan={requiresPaidPlan} />
+            </div>
           )}
 
           {/* Campaigns Tab */}
@@ -3561,10 +3623,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
 
           {/* Viral Content Tab */}
-          {activeTab === 'viral' && <ViralContentPage />}
+          {activeTab === 'viral' && <div data-spotlight="content-viral"><ViralContentPage onRequiresPaidPlan={planTier === 'free' && !isDemoMode ? requiresPaidPlan : undefined} /></div>}
+
+          {/* Open Claw - API Keys Tab */}
+          {activeTab === 'openclaw' && (
+            <div data-spotlight="content-openclaw">
+              <ApiManagementPage onRequiresPaidPlan={requiresPaidPlan} />
+            </div>
+          )}
 
           {/* Team Members Tab */}
-          {activeTab === 'team' && <TeamManagementPage />}
+          {activeTab === 'team' && <TeamManagementPage onRequiresPaidPlan={requiresPaidPlan} />}
 
           {/* Revenue Tab */}
           {activeTab === 'revenue' && (
@@ -3575,7 +3644,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral', 'openclaw'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
@@ -4246,10 +4315,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             if (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') {
               setIsTypeSelectorOpen(true);
             } else if (activeTab === 'analytics') {
+              if (requiresPaidPlan('to create tracking links')) return;
               trackedLinksPageRef.current?.openCreateModal();
             } else if (activeTab === 'campaigns') {
               navigate('/campaigns/create');
             } else if (activeTab === 'team') {
+              if (requiresPaidPlan('to invite team members')) return;
               const event = new CustomEvent('openInviteModal');
               window.dispatchEvent(event);
             }

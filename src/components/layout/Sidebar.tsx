@@ -9,12 +9,11 @@ import {
   ChevronUp,
   Link,
   Film,
-  // Puzzle, // Hidden for MVP
-  Trophy,
+  Puzzle,
   X,
   LayoutDashboard,
   UserPlus,
-  // DollarSign, // Hidden for MVP
+  DollarSign,
   Lock,
   MessageCircle,
   Shield,
@@ -72,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMobileToggle
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations'])); // Start with sections expanded
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations', 'openclaw-section'])); // Start with sections expanded
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
@@ -113,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Creators item (standalone, right under Dashboard)
   const creatorsItem: NavItem | null = useMemo(() => {
-    if (permissionsLoading || can.accessTab('creators')) {
+    if (isDemoMode || permissionsLoading || can.accessTab('creators')) {
       return {
         id: 'creators',
         label: userRole === 'creator' ? 'Payouts' : 'Creators',
@@ -122,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       };
     }
     return null;
-  }, [can, permissionsLoading, baseHref, userRole]);
+  }, [can, permissionsLoading, baseHref, userRole, isDemoMode]);
 
   // Navigation sections with dropdown
   const navigationSections: NavSection[] = useMemo(() => {
@@ -160,12 +159,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'manage',
         label: 'Manage',
         items: [
-      {
-        id: 'campaigns',
-        label: 'Campaigns',
-        icon: Trophy,
-        href: `${baseHref}/campaigns`,
-          },
           {
             id: 'team',
             label: 'Team Members',
@@ -186,28 +179,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           },
         ]
       },
-      // Hidden for MVP — uncomment when ready to ship
-      // {
-      //   id: 'integrations-section',
-      //   label: 'Integrations',
-      //   items: [
-      //     {
-      //       id: 'revenue',
-      //       label: 'Revenue',
-      //       icon: DollarSign,
-      //       href: `${baseHref}/revenue`,
-      //       comingSoon: 'Dec 5'
-      //     },
-      //     {
-      //       id: 'extension',
-      //       label: 'Extensions',
-      //       icon: Puzzle,
-      //       href: `${baseHref}/extension`,
-      //       locked: true,
-      //       comingSoon: 'Dec 5'
-      //     },
-      //   ]
-      // },
+      {
+        id: 'openclaw-section',
+        label: 'Open Claw',
+        items: [
+          {
+            id: 'openclaw-keys',
+            label: 'API Keys',
+            icon: Key,
+            href: `${baseHref}/openclaw`,
+          },
+        ]
+      },
     ];
 
     // Filter items based on permissions
@@ -219,7 +202,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'analytics') return can.accessTab('trackedLinks');
           if (item.id === 'extension') return can.accessTab('extension');
           if (item.id === 'creators') return can.accessTab('creators');
-          if (item.id === 'campaigns') return can.accessTab('campaigns');
           if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
           if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
@@ -247,7 +229,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         section.items = section.items.filter(item => 
           item.id !== 'team' && 
           item.id !== 'revenue' && 
-          item.id !== 'campaigns' &&
           item.id !== 'accounts' &&
           item.id !== 'videos' &&
           item.id !== 'analytics' &&
@@ -379,6 +360,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
       <NavLink
         to={item.href}
+        data-spotlight={`nav-${item.id}`}
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
@@ -493,7 +475,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {!isDemoMode && <ProjectSwitcher isCollapsed={isCollapsed} />}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+      <nav data-spotlight="sidebar-nav" className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
         {/* Dashboard - Standalone at top */}
         {dashboardItem && <NavItemComponent item={dashboardItem} />}
 
@@ -508,6 +490,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div key={section.id} className="space-y-1">
               {/* Section Header */}
               <button
+                data-section-id={section.id}
                 onClick={() => toggleSection(section.id)}
                 className={clsx(
                   'w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors rounded-md',

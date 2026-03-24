@@ -38,9 +38,11 @@ export default defineConfig({
     },
     minify: 'esbuild',
   },
-  // Remove all console logs in production builds
-  esbuild: {
-    drop: ['console', 'debugger'],
-    pure: ['console.log', 'console.info', 'console.debug'],
-  },
+  // Remove all console logs in production builds only
+  ...(process.env.NODE_ENV === 'production' ? {
+    esbuild: {
+      drop: ['console', 'debugger'],
+      pure: ['console.log', 'console.info', 'console.debug'],
+    },
+  } : {}),
 })

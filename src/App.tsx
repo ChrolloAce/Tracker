@@ -40,6 +40,7 @@ import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import ApiDocsPage from './pages/ApiDocsPage';
 import ApiManagementPage from './pages/ApiManagementPage';
 import ViralPage from './pages/ViralPage';
+import OpenClawPage from './pages/OpenClawPage';
 import { useEffect, useState } from 'react';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -345,13 +346,11 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/create-organization" 
+      <Route
+        path="/create-organization"
         element={
           loading ? (
             <LoadingSkeleton />
-          ) : !user ? (
-            <Navigate to="/login" replace />
           ) : currentOrgId ? (
             <Navigate to="/dashboard" replace />
           ) : (
@@ -512,10 +511,23 @@ function App() {
           ) : (
             <ViralPage />
           )
-        } 
+        }
       />
 
-      <Route 
+      <Route
+        path="/openclaw"
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/" replace />
+          ) : (
+            <OpenClawPage />
+          )
+        }
+      />
+
+      <Route
         path="/settings" 
         element={
           !user ? (

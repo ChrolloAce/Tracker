@@ -18,12 +18,7 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { label: 'Home', href: '#hero' },
-    { label: 'Features', href: '#features' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'FAQs', href: '#faq' },
-  ];
+  const navLinks: { label: string; href: string }[] = [];
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${isScrolled ? 'pt-4' : 'pt-8'}`}>
@@ -78,42 +73,8 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
             </button>
 
             {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
-              aria-label="Toggle menu"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-5 h-5 text-gray-700" />
-              ) : (
-                <Menu className="w-5 h-5 text-gray-700" />
-              )}
-            </button>
           </div>
         </nav>
-
-        {/* Mobile Menu Dropdown */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-4 right-4 mt-2 bg-white/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-xl overflow-hidden">
-            <ul className="py-3">
-              {navLinks.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsMobileMenuOpen(false);
-                      document.querySelector(link.href)?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="block px-6 py-3 text-gray-700 hover:bg-white/50 hover:text-black transition-colors font-medium cursor-pointer"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

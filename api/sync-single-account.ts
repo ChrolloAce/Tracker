@@ -20,6 +20,7 @@ const { db } = initializeFirebase();
 
 /**
  * Filter video IDs by age for the refresh phase.
+ * Videos with < 2 non-initial snapshots ALWAYS refresh (so charts can render).
  * Recent videos (≤30 days) refresh every sync.
  * Mid-age videos (31-90 days) refresh weekly (Sundays).
  * Archival videos (90+ days) refresh monthly (1st of month).
@@ -28,7 +29,7 @@ const { db } = initializeFirebase();
 const REFRESH_BATCH_CAP = 50; // Max videos per Apify refresh call
 
 function partitionVideosByAge(
-  videoDocs: Array<{ videoId: string; uploadDate?: any }>,
+  videoDocs: Array<{ videoId: string; uploadDate?: any; snapshotCount?: number }>,
   isManualRefresh: boolean
 ): string[] {
   if (isManualRefresh) {
@@ -40,6 +41,10 @@ function partitionVideosByAge(
   const today = new Date();
 
   const filtered = videoDocs.filter(v => {
+    // Always include videos that don't have enough snapshots for charts to render
+    // Charts require >= 2 non-initial snapshots to display a trend
+    if (v.snapshotCount === undefined || v.snapshotCount < 2) return true;
+
     const uploadDate = v.uploadDate?.toDate?.() || v.uploadDate;
     if (!uploadDate) return true; // no date = assume recent, always include
 
@@ -315,11 +320,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'tiktok')
-          .select('videoId', 'uploadDate')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
           .filter(v => v.videoId);
 
         // Full set for discovery deduplication
@@ -469,11 +474,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'youtube')
-          .select('videoId', 'uploadDate')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
           .filter(v => v.videoId);
 
         const existingVideoIds = new Set(allExistingVideos.map(v => v.videoId));
@@ -644,11 +649,11 @@ export default async function handler(
         .collection('videos')
         .where('trackedAccountId', '==', accountId)
         .where('platform', '==', 'twitter')
-        .select('videoId', 'uploadDate')
+        .select('videoId', 'uploadDate', 'refreshSnapshotCount')
         .get();
 
       const allExistingTweets = existingTweetsSnapshot.docs
-        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
         .filter(v => v.videoId);
 
       const existingTweetIds = new Set(allExistingTweets.map(v => v.videoId));
@@ -765,11 +770,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'instagram')
-          .select('videoId', 'uploadDate')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
           .filter(v => v.videoId);
 
         // Full set for discovery deduplication
@@ -1013,6 +1018,64 @@ export default async function handler(
       console.log(`✅ Updated account stats: ${totalVideos} videos, ${totalViews.toLocaleString()} views, ${totalLikes.toLocaleString()} likes`);
     } catch (statsError: any) {
       console.error(`❌ Failed to update account stats (non-critical):`, statsError.message);
+    }
+
+    // If we synced 0 videos but the account has existing tracked content,
+    // treat this as a soft error — the scraper likely failed silently
+    if (savedCount === 0 && account.totalVideos > 0) {
+      console.warn(`⚠️ [SYNC-ACCOUNT] Synced 0 videos for @${account.username} which has ${account.totalVideos} tracked videos — likely scraper failure`);
+      await accountRef.update({
+        syncStatus: 'completed',
+        lastSyncAt: Timestamp.now(),
+        lastSynced: Timestamp.now(),
+        lastSyncError: `Scraper returned 0 results for account with ${account.totalVideos} tracked videos`,
+        syncProgress: {
+          current: 100,
+          total: 100,
+          message: `Warning: synced 0 videos (expected ${account.totalVideos})`
+        }
+      });
+
+      // Re-queue the job for retry if it exists and hasn't exceeded max attempts
+      if (jobId) {
+        try {
+          const jobDoc = await db.collection('syncQueue').doc(jobId).get();
+          const jobData = jobDoc.data();
+          if (jobData) {
+            const attempts = jobData.attempts || 0;
+            const maxAttempts = jobData.maxAttempts || 3;
+            if (attempts + 1 < maxAttempts) {
+              await db.collection('syncQueue').doc(jobId).update({
+                status: 'pending',
+                attempts: attempts + 1,
+                error: `Synced 0 videos — retrying (attempt ${attempts + 1}/${maxAttempts})`,
+                startedAt: null
+              });
+              console.log(`   🔄 Job ${jobId} re-queued for retry (attempt ${attempts + 1}/${maxAttempts})`);
+            } else {
+              await db.collection('syncQueue').doc(jobId).update({
+                status: 'failed',
+                completedAt: Timestamp.now(),
+                attempts: attempts + 1,
+                error: `Synced 0 videos after ${maxAttempts} attempts`
+              });
+              console.log(`   ❌ Job ${jobId} marked as failed (max retries exceeded)`);
+            }
+          }
+        } catch (jobError: any) {
+          console.warn(`   ⚠️ Failed to update job status:`, jobError.message);
+        }
+      }
+
+      await LockService.releaseLock(accountRef, lockKey);
+
+      return res.status(200).json({
+        success: true,
+        message: `Warning: synced 0 videos for account with ${account.totalVideos} tracked videos`,
+        videosCount: 0,
+        username: account.username,
+        warning: 'scraper_empty_result'
+      });
     }
 
     // Mark as completed (but first check if account still exists)
