@@ -34,7 +34,7 @@ export interface ApiKey {
   revokedBy?: string;
 }
 
-export type ApiKeyScope = 
+export type ApiKeyScope =
   | 'accounts:read'
   | 'accounts:write'
   | 'videos:read'
@@ -42,7 +42,8 @@ export type ApiKeyScope =
   | 'analytics:read'
   | 'projects:read'
   | 'projects:write'
-  | 'organizations:read';
+  | 'organizations:read'
+  | 'viral:write';
 
 export interface ApiKeyCreateRequest {
   name: string;
