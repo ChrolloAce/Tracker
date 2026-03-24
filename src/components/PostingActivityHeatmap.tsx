@@ -224,31 +224,28 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   const handleMouseEnter = (dayData: DayData, e: React.MouseEvent) => {
     setHoveredDay(dayData);
     const rect = (e.target as HTMLElement).getBoundingClientRect();
-    
-    // Edge detection for tooltip
-    const tooltipWidth = 400; // Width of tooltip
-    const tooltipHeight = 500; // Max height of tooltip
-    const viewportWidth = window.innerWidth;
-    
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Center tooltip horizontally on the cell
     let x = rect.left + rect.width / 2;
-    let y = rect.top - 10;
-    
-    // Check right edge
-    if (x + tooltipWidth / 2 > viewportWidth) {
-      x = viewportWidth - tooltipWidth / 2 - 20; // 20px padding from edge
+
+    // Position tooltip ABOVE the cell (bottom of tooltip aligns above cell)
+    // We estimate tooltip height; actual height set via transform below
+    let y = rect.top - 16;
+    let showBelow = false;
+
+    // If not enough space above, show below
+    if (y < 300) {
+      y = rect.bottom + 16;
+      showBelow = true;
     }
-    
-    // Check left edge
-    if (x - tooltipWidth / 2 < 0) {
-      x = tooltipWidth / 2 + 20; // 20px padding from edge
-    }
-    
-    // Check top edge (flip to bottom if needed)
-    if (y - tooltipHeight < 0) {
-      y = rect.bottom + 10; // Show below instead
-    }
-    
-    setTooltipPosition({ x, y });
+
+    // Clamp horizontal
+    if (x + 200 > vw) x = vw - 220;
+    if (x - 200 < 0) x = 220;
+
+    setTooltipPosition({ x, y: showBelow ? y : y });
   };
 
   const handleMouseLeave = () => {
@@ -344,13 +341,15 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       {hoveredDay && hoveredDay.count > 0 && createPortal(
         <div 
           className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
-          style={{ 
+          style={{
             position: 'fixed',
-            left: `${tooltipPosition.x - 200}px`, // Center by subtracting half width
+            left: `${tooltipPosition.x - 200}px`,
             top: `${tooltipPosition.y}px`,
+            transform: tooltipPosition.y < 400 ? 'none' : 'translateY(-100%)',
             zIndex: 999999999,
             width: '400px',
-            maxHeight: '500px',
+            maxHeight: '400px',
+            overflow: 'auto',
             pointerEvents: 'none'
           }}
         >

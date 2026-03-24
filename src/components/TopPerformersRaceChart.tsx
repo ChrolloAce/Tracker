@@ -1055,10 +1055,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
       {/* Video Tooltip */}
       {hoveredVideo && createPortal(
         <div
-          className="absolute z-[9999] pointer-events-none"
+          className="fixed z-[9999] pointer-events-none"
           style={{
-            left: `${hoveredVideo.x}px`,
-            top: `${hoveredVideo.y + 20}px`,
+            left: `${Math.min(hoveredVideo.x, window.innerWidth - 340)}px`,
+            top: `${Math.min(hoveredVideo.y + 16, window.innerHeight - 300)}px`,
             transform: 'translateX(-50%)'
           }}
         >
@@ -1195,10 +1195,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
       {/* Account Tooltip */}
       {hoveredAccount && createPortal(
         <div
-          className="absolute z-[9999] pointer-events-none"
+          className="fixed z-[9999] pointer-events-none"
           style={{
-            left: `${hoveredAccount.x}px`,
-            top: `${hoveredAccount.y + 20}px`,
+            left: `${Math.min(hoveredAccount.x, window.innerWidth - 340)}px`,
+            top: `${Math.min(hoveredAccount.y + 16, window.innerHeight - 300)}px`,
             transform: 'translateX(-50%)'
           }}
         >

@@ -5,6 +5,7 @@ interface ApiEndpoint {
   name: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
+  params?: { name: string; type: string; required?: boolean; description: string }[];
 }
 
 interface ApiSection {
@@ -42,6 +43,38 @@ const ApiDocsPage: React.FC = () => {
       isOpen: false,
       endpoints: [
         { name: 'Get analytics overview', method: 'GET', path: '/v1/analytics/overview' },
+      ]
+    },
+    {
+      title: 'Viral Content',
+      isOpen: false,
+      endpoints: [
+        {
+          name: 'List viral videos',
+          method: 'GET',
+          path: '/v1/viral',
+          params: [
+            { name: 'platform', type: 'string', description: 'Filter by platform: tiktok, instagram, youtube' },
+            { name: 'category', type: 'string', description: 'Filter by content category' },
+            { name: 'contentType', type: 'string', description: 'Filter by type: video or slideshow' },
+            { name: 'tags', type: 'string', description: 'Comma-separated tags to filter by' },
+            { name: 'search', type: 'string', description: 'Search title, description, or creator handle' },
+            { name: 'minViews', type: 'number', description: 'Minimum view count' },
+            { name: 'maxViews', type: 'number', description: 'Maximum view count' },
+            { name: 'sortBy', type: 'string', description: 'Sort field: views, likes, comments, shares, saves, uploadDate, addedAt. Default: views' },
+            { name: 'sortOrder', type: 'string', description: 'Sort direction: asc or desc. Default: desc' },
+            { name: 'limit', type: 'number', description: 'Results per page (1-100). Default: 20' },
+            { name: 'offset', type: 'number', description: 'Number of results to skip. Default: 0' },
+          ],
+        },
+        {
+          name: 'Get viral video by ID',
+          method: 'GET',
+          path: '/v1/viral/{id}',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'The viral video ID' },
+          ],
+        },
       ]
     },
     {
@@ -304,6 +337,14 @@ data = JSON.parse(response.body)`
                           <span className="text-red-400 text-xs">required</span>
                           <span className="text-gray-400 flex-1">Your API key for authentication</span>
                         </div>
+                        {endpoint.params?.map((p, pi) => (
+                          <div key={pi} className="flex items-start gap-4">
+                            <code className="text-purple-400 font-mono">{p.name}</code>
+                            <span className="text-gray-500">{p.type}</span>
+                            {p.required && <span className="text-red-400 text-xs">required</span>}
+                            <span className="text-gray-400 flex-1">{p.description}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
