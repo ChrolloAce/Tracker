@@ -50,12 +50,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNum
             <StatIcon icon={<Eye className="w-3.5 h-3.5" />} value={formatNumber(video.views)} />
             <StatIcon icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(video.likes)} />
             <StatIcon icon={<MessageCircle className="w-3.5 h-3.5" />} value={formatNumber(video.comments)} />
-            {video.shares > 0 && (
-              <StatIcon icon={<Share2 className="w-3.5 h-3.5" />} value={formatNumber(video.shares)} />
-            )}
-            {video.saves > 0 && (
-              <StatIcon icon={<Bookmark className="w-3.5 h-3.5" />} value={formatNumber(video.saves)} />
-            )}
           </div>
 
           {/* ── Bottom overlay: creator + caption ── */}
