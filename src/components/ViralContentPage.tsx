@@ -87,7 +87,7 @@ const getPlatformIcon = (platform: string, className = 'w-4 h-4') => {
   }
 };
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 24;
 
 // ─── Main Page ────────────────────────────────────────────
 
@@ -373,7 +373,7 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
         </div>
       ) : (
         <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {pageVideos.map((video, index) => {
               const globalIndex = startIdx + index;
               const isBlurred = !!onRequiresPaidPlan && globalIndex >= FREE_VISIBLE_COUNT;
