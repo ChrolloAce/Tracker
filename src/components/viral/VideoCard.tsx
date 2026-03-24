@@ -46,15 +46,15 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNum
           </div>
 
           {/* ── Right sidebar: TikTok-style metrics ── */}
-          <div className="absolute right-2 bottom-24 flex flex-col items-center gap-4">
-            <StatIcon icon={<Eye className="w-5 h-5" />} value={formatNumber(video.views)} />
-            <StatIcon icon={<Heart className="w-5 h-5" />} value={formatNumber(video.likes)} />
-            <StatIcon icon={<MessageCircle className="w-5 h-5" />} value={formatNumber(video.comments)} />
+          <div className="absolute right-1.5 bottom-24 flex flex-col items-center gap-2.5">
+            <StatIcon icon={<Eye className="w-3.5 h-3.5" />} value={formatNumber(video.views)} />
+            <StatIcon icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(video.likes)} />
+            <StatIcon icon={<MessageCircle className="w-3.5 h-3.5" />} value={formatNumber(video.comments)} />
             {video.shares > 0 && (
-              <StatIcon icon={<Share2 className="w-5 h-5" />} value={formatNumber(video.shares)} />
+              <StatIcon icon={<Share2 className="w-3.5 h-3.5" />} value={formatNumber(video.shares)} />
             )}
             {video.saves > 0 && (
-              <StatIcon icon={<Bookmark className="w-5 h-5" />} value={formatNumber(video.saves)} />
+              <StatIcon icon={<Bookmark className="w-3.5 h-3.5" />} value={formatNumber(video.saves)} />
             )}
           </div>
 
@@ -120,9 +120,9 @@ interface StatIconProps {
 }
 
 const StatIcon: React.FC<StatIconProps> = ({ icon, value }) => (
-  <div className="flex flex-col items-center gap-0.5">
+  <div className="flex flex-col items-center gap-0">
     <div className="text-white drop-shadow-lg">{icon}</div>
-    <span className="text-[11px] font-semibold text-white drop-shadow-lg">{value}</span>
+    <span className="text-[9px] font-semibold text-white drop-shadow-lg">{value}</span>
   </div>
 );
 
