@@ -38,6 +38,10 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
   const isLastStep = currentStep === steps.length - 1;
   const isCentered = step?.target === 'center';
 
+  // Refs to always have latest handlers in event listeners
+  const handleNextRef = useRef<() => void>(() => {});
+  const onSkipRef = useRef<() => void>(() => {});
+
   // Lock scrolling and navigation when spotlight is active
   useEffect(() => {
     if (!isActive) {
@@ -46,38 +50,27 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
     }
 
     scrollLockRef.current = true;
-
-    // Block scroll
     document.body.style.overflow = 'hidden';
 
-    // Block keyboard navigation
     const handleKeydown = (e: KeyboardEvent) => {
-      // Allow Escape to skip
       if (e.key === 'Escape') {
-        onSkip();
+        onSkipRef.current();
         return;
       }
-      // Allow Enter/Space to advance
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        handleNext();
+        handleNextRef.current();
         return;
       }
-      // Block Tab and arrow keys
       if (['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
       }
     };
 
-    // Block click on links/buttons behind overlay
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Allow clicks on our spotlight UI
       if (target.closest('[data-spotlight-ui]')) return;
-      // Block everything else
-      if (!target.closest('[data-spotlight-ui]')) {
-        e.stopPropagation();
-      }
+      e.stopPropagation();
     };
 
     document.addEventListener('keydown', handleKeydown);
@@ -208,6 +201,10 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
     setIsAnimating(true);
     setCurrentStep(prev => prev + 1);
   };
+
+  // Keep refs up to date
+  handleNextRef.current = handleNext;
+  onSkipRef.current = onSkip;
 
   const handleBack = () => {
     if (currentStep > 0) {
