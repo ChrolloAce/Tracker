@@ -145,14 +145,15 @@ export class VideoStorageService {
     // ==================== PRE-FETCH existing docs in parallel ====================
     // This replaces the sequential videoRef.get() inside the loop
     const existingDocs = new Map<string, FirebaseFirestore.DocumentData>();
+    // Maps legacy auto-generated doc IDs to deterministic IDs for lookup
+    const legacyDocIdMap = new Map<string, string>();
     const docIds = videos.map(v => `${account.platform}_${accountId}_${v.videoId}`);
 
     // Firestore getAll supports up to 100 refs at a time
-    const videoRefs = docIds.map(id =>
-      db.collection('organizations').doc(orgId)
-        .collection('projects').doc(projectId)
-        .collection('videos').doc(id)
-    );
+    const videosCollection = db.collection('organizations').doc(orgId)
+      .collection('projects').doc(projectId)
+      .collection('videos');
+    const videoRefs = docIds.map(id => videosCollection.doc(id));
 
     // Batch read in chunks of 100
     for (let i = 0; i < videoRefs.length; i += 100) {
@@ -162,6 +163,34 @@ export class VideoStorageService {
         if (snap.exists) {
           existingDocs.set(snap.id, snap.data()!);
         }
+      }
+    }
+
+    // If some videos weren't found by deterministic ID, check for legacy auto-generated IDs
+    // (videos created before the Nov 2025 refactor have random Firestore doc IDs)
+    const missingVideoIds = videos
+      .filter(v => !existingDocs.has(`${account.platform}_${accountId}_${v.videoId}`))
+      .filter(v => v._isRefreshOnly) // Only matters for refresh — new videos get new IDs
+      .map(v => v.videoId);
+
+    if (missingVideoIds.length > 0) {
+      console.log(`    🔍 [SAVE] Looking up ${missingVideoIds.length} videos by videoId (legacy doc IDs)...`);
+      // Query by videoId field to find legacy docs
+      for (let i = 0; i < missingVideoIds.length; i += 10) {
+        const batch = missingVideoIds.slice(i, i + 10);
+        const legacyQuery = await videosCollection
+          .where('videoId', 'in', batch)
+          .where('trackedAccountId', '==', accountId)
+          .get();
+        for (const doc of legacyQuery.docs) {
+          const data = doc.data();
+          const deterministicId = `${account.platform}_${accountId}_${data.videoId}`;
+          existingDocs.set(deterministicId, data);
+          legacyDocIdMap.set(deterministicId, doc.id);
+        }
+      }
+      if (legacyDocIdMap.size > 0) {
+        console.log(`    ✅ [SAVE] Found ${legacyDocIdMap.size} videos with legacy doc IDs`);
       }
     }
 
@@ -175,10 +204,12 @@ export class VideoStorageService {
     // ==================== FIRESTORE BATCH WRITES ====================
     for (const video of videos) {
       const videoDocId = `${account.platform}_${accountId}_${video.videoId}`;
+      // Use the legacy doc ID if this video was created with an auto-generated ID
+      const actualDocId = legacyDocIdMap.get(videoDocId) || videoDocId;
       const videoRef = db
         .collection('organizations').doc(orgId)
         .collection('projects').doc(projectId)
-        .collection('videos').doc(videoDocId);
+        .collection('videos').doc(actualDocId);
 
       const firebaseThumbnailUrl = thumbnailMap.get(videoDocId) || '';
       const snapshotTime = Timestamp.now();
@@ -211,6 +242,9 @@ export class VideoStorageService {
           if (video.uploadDate) updateData.uploadDate = video.uploadDate;
           if (video.media) updateData.media = video.media;
         }
+
+        // Track refresh snapshot count for age-filter bypass (videos with < 2 always refresh)
+        updateData.refreshSnapshotCount = FieldValue.increment(1);
 
         batch.update(videoRef, updateData);
 
@@ -255,6 +289,7 @@ export class VideoStorageService {
           dateAdded: snapshotTime,
           addedBy: account.syncRequestedBy || account.addedBy || 'system',
           lastRefreshed: snapshotTime,
+          refreshSnapshotCount: 0,
           status: 'active',
           isRead: false,
           isSingular: false

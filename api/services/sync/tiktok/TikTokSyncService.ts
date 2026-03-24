@@ -182,13 +182,13 @@ export class TikTokSyncService {
       const refreshInput: any = {
         startUrls: videoUrls,
         maxItems: videoUrls.length,
-        includeSearchKeywords: false
+        includeSearchKeywords: false,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
+        }
       };
-      
-      // Only include location if it's a valid string (API rejects null)
-      // Location should be ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'CA')
-      // Omit if not needed
-      
+
       const data = await runApifyActor({
         actorId: 'apidojo/tiktok-scraper-api',
         input: refreshInput
