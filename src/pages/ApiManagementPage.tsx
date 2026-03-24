@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Key,
   Plus,
@@ -8,7 +7,6 @@ import {
   Trash2,
   Shield,
   AlertTriangle,
-  ArrowLeft,
   Eye,
   EyeOff,
   RefreshCw,
@@ -35,7 +33,6 @@ const ALL_SCOPES: { value: ApiKeyScope; label: string; group: string }[] = [
 
 const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boolean }> = ({ onRequiresPaidPlan }) => {
   const { user, currentOrgId } = useAuth();
-  const navigate = useNavigate();
   const [keys, setKeys] = useState<ApiKeyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +57,8 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
           createdAt: new Date('2026-01-15').toISOString(),
           lastUsedAt: new Date('2026-03-23').toISOString(),
           isActive: true,
+          status: 'active',
+          usageCount: 12847,
         } as any,
         {
           id: 'demo-key-2',
@@ -69,6 +68,8 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
           createdAt: new Date('2026-02-20').toISOString(),
           lastUsedAt: new Date('2026-03-24').toISOString(),
           isActive: true,
+          status: 'active',
+          usageCount: 34219,
         } as any,
       ]);
       setLoading(false);
