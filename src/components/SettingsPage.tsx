@@ -575,7 +575,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'notifications', label: 'Notifications', icon: Bell },
-              { id: 'api-keys', label: 'API Keys', icon: Key },
             ]
             .filter(tab => {
               // Hide billing and API keys tabs for creators
@@ -1013,24 +1012,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
             </div>
           )}
 
-          {/* API Keys Tab */}
-          {activeTab === 'api-keys' && currentOrgId && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">API Keys</h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Create and manage API keys for programmatic access to ViewTrack.
-                  <a href="/api-docs" className="text-purple-400 hover:text-purple-300 ml-2">
-                    View API Documentation →
-                  </a>
-                </p>
-              </div>
-
-              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                <ApiKeysManager organizationId={currentOrgId} />
-              </div>
-            </div>
-          )}
 
 
         </div>
