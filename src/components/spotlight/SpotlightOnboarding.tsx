@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import Lottie from 'lottie-react';
+import robotAnimation from './robot.json';
 
 export interface SpotlightStep {
   target: string; // CSS selector, or 'center' for centered modal
@@ -9,6 +11,8 @@ export interface SpotlightStep {
   padding?: number;
   ctaLabel?: string;
   expandSection?: string; // CSS selector of a section header to click/expand before highlighting
+  onEnter?: () => void; // called when this step becomes active (e.g. to navigate to a tab)
+  delay?: number; // ms to wait after onEnter before positioning (for page transitions)
 }
 
 interface SpotlightOnboardingProps {
@@ -25,7 +29,7 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
   onSkip,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number; right: number; bottom: number } | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [isAnimating, setIsAnimating] = useState(true);
   const scrollLockRef = useRef(false);
@@ -44,7 +48,6 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
     scrollLockRef.current = true;
 
     // Block scroll
-    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     // Block keyboard navigation
@@ -81,7 +84,7 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
     document.addEventListener('click', handleClick, true);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = '';
       document.removeEventListener('keydown', handleKeydown);
       document.removeEventListener('click', handleClick, true);
     };
@@ -98,14 +101,38 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
     const el = document.querySelector(step.target);
     if (!el) return;
 
-    const rect = el.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Clamp to visible viewport
+    const rect = {
+      top: Math.max(r.top, 0),
+      left: Math.max(r.left, 0),
+      right: Math.min(r.right, vw),
+      bottom: Math.min(r.bottom, vh),
+      width: Math.min(r.right, vw) - Math.max(r.left, 0),
+      height: Math.min(r.bottom, vh) - Math.max(r.top, 0),
+    };
     setTargetRect(rect);
 
     const padding = step.padding ?? 8;
-    const tooltipWidth = 360;
-    const tooltipHeight = 180;
-    const gap = 16;
-    const pos = step.position || 'bottom';
+    const tooltipWidth = Math.min(360, vw - 32);
+    const gap = vw < 640 ? 8 : 16;
+
+    const tooltipEl = document.querySelector('[data-spotlight-tooltip]') as HTMLElement;
+    const tooltipHeight = tooltipEl?.offsetHeight || 180;
+
+    // Auto-pick position that fits
+    const preferred = step.position || 'bottom';
+    const fits: Record<string, boolean> = {
+      bottom: rect.bottom + padding + gap + tooltipHeight < vh - 16,
+      top: rect.top - padding - gap - tooltipHeight > 16,
+      right: rect.right + padding + gap + tooltipWidth < vw - 16,
+      left: rect.left - padding - gap - tooltipWidth > 16,
+    };
+    const opposite: Record<string, string> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+    const pos = fits[preferred] ? preferred : fits[opposite[preferred]] ? opposite[preferred] : fits.bottom ? 'bottom' : fits.right ? 'right' : 'bottom';
 
     let top = 0;
     let left = 0;
@@ -129,23 +156,26 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
         break;
     }
 
-    if (left < 16) left = 16;
-    if (left + tooltipWidth > window.innerWidth - 16) left = window.innerWidth - tooltipWidth - 16;
-    if (top < 16) top = 16;
-    if (top + tooltipHeight > window.innerHeight - 16) top = window.innerHeight - tooltipHeight - 16;
+    // Clamp tooltip to viewport
+    left = Math.max(16, Math.min(left, vw - tooltipWidth - 16));
+    top = Math.max(16, Math.min(top, vh - tooltipHeight - 16));
 
     setTooltipPos({ top, left });
   }, [step]);
 
-  // Expand sidebar sections if needed, then position
+  // Run onEnter, expand sections, then position
   useEffect(() => {
     if (!isActive || !step) return;
+
+    // Call onEnter if defined (e.g. navigate to a tab)
+    if (step.onEnter) {
+      step.onEnter();
+    }
 
     // If step needs a section expanded first, click it
     if (step.expandSection) {
       const sectionBtn = document.querySelector(step.expandSection) as HTMLElement;
       if (sectionBtn) {
-        // Check if the section's items are hidden (collapsed)
         const parentDiv = sectionBtn.closest('[class*="space-y"]');
         const itemsContainer = parentDiv?.querySelector('.space-y-1.pl-2');
         if (!itemsContainer) {
@@ -154,10 +184,13 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
       }
     }
 
+    const delay = step.delay || 100;
     const timer = setTimeout(() => {
       updatePosition();
       setIsAnimating(false);
-    }, 200);
+      // Re-measure after tooltip renders to get accurate height
+      requestAnimationFrame(() => updatePosition());
+    }, delay);
 
     window.addEventListener('resize', updatePosition);
 
@@ -203,7 +236,7 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
                 rx={12}
                 ry={12}
                 fill="black"
-                style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                style={{ transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
               />
             )}
           </mask>
@@ -226,7 +259,7 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
             top: targetRect.top - padding,
             width: targetRect.width + padding * 2,
             height: targetRect.height + padding * 2,
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             border: '1.5px solid rgba(255, 255, 255, 0.15)',
             boxShadow: '0 0 20px rgba(0, 123, 255, 0.15)',
           }}
@@ -237,26 +270,36 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
       <div
         data-spotlight-ui
         className={isCentered
-          ? 'fixed inset-0 flex items-center justify-center pointer-events-auto'
-          : 'absolute pointer-events-auto'
+          ? 'fixed inset-0 flex items-center justify-center pointer-events-auto px-4'
+          : 'fixed pointer-events-auto px-4 sm:px-0'
         }
         style={isCentered ? {} : {
           top: tooltipPos.top,
-          left: tooltipPos.left,
+          left: Math.max(8, tooltipPos.left),
+          right: 'auto',
+          maxWidth: 'calc(100vw - 16px)',
         }}
       >
         <div
+          className="w-full"
           style={{
-            width: isCentered ? 420 : 360,
+            maxWidth: isCentered ? 420 : 360,
             opacity: isAnimating ? 0 : 1,
             transform: isAnimating ? 'translateY(10px) scale(0.98)' : 'translateY(0) scale(1)',
-            transition: 'opacity 0.35s ease, transform 0.35s ease',
+            transition: 'opacity 0.15s ease, transform 0.15s ease',
           }}
         >
-          <div
-            className="rounded-2xl shadow-2xl"
+          <div className="relative">
+            {/* Robot peeking behind card — top left */}
+            <div className="absolute -top-6 -left-5 w-14 h-14 pointer-events-none hidden sm:block" style={{ zIndex: 0 }}>
+              <Lottie animationData={robotAnimation} loop />
+            </div>
+            <div
+              data-spotlight-tooltip
+              className="rounded-2xl shadow-2xl"
+              style={{ position: 'relative', zIndex: 1 }}
             style={{
-              padding: isCentered ? 28 : 20,
+              padding: isCentered ? 24 : 16,
               background: isCentered
                 ? 'linear-gradient(135deg, #0D0D0D 0%, #141414 100%)'
                 : '#111111',
@@ -286,18 +329,15 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
             </div>
 
             {/* Content */}
-            <h3
-              className="text-white font-semibold tracking-tight mb-1.5"
-              style={{ fontSize: isCentered ? 18 : 15 }}
-            >
+            <h3 className="text-white font-semibold tracking-tight mb-1.5 text-sm sm:text-[15px]">
               {step.title}
             </h3>
-            <p
-              className="text-white/45 leading-relaxed mb-5"
-              style={{ fontSize: isCentered ? 14 : 13 }}
-            >
-              {step.description}
-            </p>
+            {step.description && (
+              <p
+                className="text-white/60 leading-relaxed mb-4 sm:mb-5 text-xs sm:text-[13px] [&>strong]:text-white [&>strong]:font-medium"
+                dangerouslySetInnerHTML={{ __html: step.description }}
+              />
+            )}
 
             {/* Actions */}
             <div className="flex items-center justify-between">
@@ -305,31 +345,25 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
                 {currentStep > 0 && (
                   <button
                     onClick={handleBack}
-                    className="px-3 py-1.5 text-[13px] text-white/35 hover:text-white/60 transition-colors rounded-lg hover:bg-white/5"
+                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-[13px] text-white/35 hover:text-white/60 transition-colors rounded-lg hover:bg-white/5"
                   >
                     Back
                   </button>
                 )}
-                <button
-                  onClick={onSkip}
-                  className="px-3 py-1.5 text-[13px] text-white/25 hover:text-white/45 transition-colors rounded-lg hover:bg-white/5"
-                >
-                  Skip
-                </button>
               </div>
               <button
                 onClick={handleNext}
-                className="text-white font-semibold rounded-lg transition-all duration-200 hover:brightness-110"
+                className="group text-white font-semibold rounded-lg transition-all duration-200 hover:brightness-110 flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 text-xs sm:text-[13px]"
                 style={{
-                  padding: isCentered ? '10px 28px' : '8px 20px',
-                  fontSize: isCentered ? 14 : 13,
                   background: 'linear-gradient(135deg, #007BFF 0%, #2583FF 100%)',
                   boxShadow: '0 2px 12px rgba(0, 123, 255, 0.25)',
                 }}
               >
                 {step.ctaLabel || (isLastStep ? 'Get Started' : 'Next')}
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
               </button>
             </div>
+          </div>
           </div>
         </div>
       </div>

@@ -37,7 +37,7 @@ const ALL_SCOPES: { value: ApiKeyScope; label: string; group: string }[] = [
 
 // ─── Page ─────────────────────────────────────────────────
 
-const ApiManagementPage: React.FC = () => {
+const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boolean }> = ({ onRequiresPaidPlan }) => {
   const { user, currentOrgId } = useAuth();
   const navigate = useNavigate();
   const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
@@ -50,10 +50,6 @@ const ApiManagementPage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyResult, setNewKeyResult] = useState<ApiKeyCreateResponse | null>(null);
 
-  // Super admin guard
-  useEffect(() => {
-    if (!isSuperAdmin) navigate('/dashboard');
-  }, [isSuperAdmin, navigate]);
 
   const orgId = currentOrgId || '';
 
@@ -72,10 +68,8 @@ const ApiManagementPage: React.FC = () => {
   }, [orgId]);
 
   useEffect(() => {
-    if (isSuperAdmin && orgId) loadKeys();
-  }, [isSuperAdmin, orgId, loadKeys]);
-
-  if (!isSuperAdmin) return null;
+    if (orgId) loadKeys();
+  }, [orgId, loadKeys]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative">
@@ -85,12 +79,14 @@ const ApiManagementPage: React.FC = () => {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg transition-all">
             <ArrowLeft className="w-5 h-5 text-gray-400" />
           </button>
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl flex items-center justify-center border border-emerald-500/20">
-            <Key className="w-5 h-5 text-emerald-400" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold text-white">API Management</h1>
-            <p className="text-sm text-gray-500">Create and manage API keys for the ViewTrack API</p>
+            <p className="text-sm text-gray-500">
+              Create and manage API keys.{' '}
+              <a href="/api-docs" className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors">
+                Explore our docs to get started
+              </a>
+            </p>
           </div>
         </div>
 
@@ -111,7 +107,7 @@ const ApiManagementPage: React.FC = () => {
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
-              onClick={() => { setShowCreate(true); setNewKeyResult(null); }}
+              onClick={() => { if (onRequiresPaidPlan?.('to bring your self-learning agent to life')) return; setShowCreate(true); setNewKeyResult(null); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-medium text-white transition-all"
             >
               <Plus className="w-4 h-4" /> Generate Key
@@ -132,7 +128,7 @@ const ApiManagementPage: React.FC = () => {
             <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
           </div>
         ) : keys.length === 0 ? (
-          <EmptyState onGenerate={() => setShowCreate(true)} />
+          <EmptyState onGenerate={() => { if (onRequiresPaidPlan?.('to bring your self-learning agent to life')) return; setShowCreate(true); }} />
         ) : (
           <KeysTable keys={keys} orgId={orgId} onRevoked={loadKeys} />
         )}

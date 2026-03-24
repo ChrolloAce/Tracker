@@ -18,12 +18,7 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { label: 'Home', href: '#hero' },
-    { label: 'Features', href: '#features' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'FAQs', href: '#faq' },
-  ];
+  const navLinks: { label: string; href: string }[] = [];
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${isScrolled ? 'pt-4' : 'pt-8'}`}>

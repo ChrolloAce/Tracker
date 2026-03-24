@@ -226,6 +226,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (userOrgs.length === 0) {
+            // Check if there's a pending org from the create-organization flow
+            const pendingOrgRaw = localStorage.getItem('pendingOrg');
+            if (pendingOrgRaw) {
+              try {
+                const pendingOrg = JSON.parse(pendingOrgRaw);
+                console.log('🏗️ Creating org from pending data:', pendingOrg.orgName);
+
+                // Create the organization
+                const newOrgId = await OrganizationService.createOrganization(
+                  user.uid,
+                  {
+                    name: pendingOrg.orgName,
+                    email: user.email!,
+                    displayName: user.displayName || pendingOrg.yourName,
+                  }
+                );
+
+                // Create the first project with the same name
+                const newProjectId = await ProjectService.createProject(
+                  newOrgId,
+                  user.uid,
+                  { name: pendingOrg.orgName }
+                );
+
+                // If they uploaded a logo image, it's in sessionStorage
+                const pendingLogo = sessionStorage.getItem('pendingOrgLogo');
+                if (pendingLogo) {
+                  try {
+                    const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
+                    const { storage } = await import('../services/firebase');
+                    const logoRef = ref(storage, `users/${user.uid}/org-logos/${newOrgId}.jpg`);
+                    await uploadString(logoRef, pendingLogo, 'data_url');
+                    const logoUrl = await getDownloadURL(logoRef);
+                    const orgRef = doc(db, 'organizations', newOrgId);
+                    await setDoc(orgRef, { logoUrl }, { merge: true });
+                    console.log('✅ Org logo uploaded:', logoUrl);
+                  } catch (logoErr) {
+                    console.error('⚠️ Failed to upload org logo:', logoErr);
+                  }
+                  sessionStorage.removeItem('pendingOrgLogo');
+                }
+
+                // Clean up
+                localStorage.removeItem('pendingOrg');
+
+                console.log('✅ Org created:', newOrgId, 'Project:', newProjectId);
+                setCurrentOrgId(newOrgId);
+                setCurrentProjectId(newProjectId);
+                setUserRole('owner');
+                setLoading(false);
+                return;
+              } catch (err) {
+                console.error('❌ Failed to create org from pending data:', err);
+                localStorage.removeItem('pendingOrg');
+              }
+            }
+
             console.log('❌ User has no organizations');
             setCurrentOrgId(null);
             setCurrentProjectId(null);

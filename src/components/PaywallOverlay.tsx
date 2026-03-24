@@ -32,17 +32,6 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
   return (
       <div className="relative z-10 max-w-6xl w-full mx-auto">
         <div className="text-center mb-8">
-          {/* Demo Button - Minimalistic with subtle pulse */}
-          <div className="mb-8 flex flex-col items-center gap-3">
-            <button
-              onClick={() => navigate('/demo/dashboard')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-lg transition-all animate-pulse-subtle"
-            >
-              <Eye className="w-4 h-4" />
-              <span>View Demo Organization</span>
-            </button>
-          </div>
-          
           <h2 className="text-4xl font-bold text-white mb-2">Choose Your Plan</h2>
           <p className="text-gray-400 text-lg">Unlock full access to ViewTrack</p>
         </div>

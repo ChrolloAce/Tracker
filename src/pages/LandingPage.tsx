@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight } from 'lucide-react';
 import NavBar from '../components/NavBar';
-import FeaturesTimeline from '../components/FeaturesTimeline';
 import Footer from '../components/Footer';
-import IMessageChat from '../components/landing/iMessageChat';
-import StripeService from '../services/StripeService';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
 import tiktokIcon from '/TiktokLogo.png';
@@ -16,42 +12,13 @@ import dashboardPreview from '/LANDINGPAGE-PHOOTS/TrackView.png';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, currentOrgId } = useAuth();
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   const onGetStarted = () => {
     navigate('/demo/dashboard');
   };
 
-  const handleSelectPlan = async (plan: 'basic' | 'pro' | 'ultra') => {
-    // If not logged in, go to login first
-    if (!user) {
-      localStorage.setItem('selectedPlan', plan);
-      navigate('/login');
-      return;
-    }
-
-    // If logged in but no org, go to onboarding
-    if (!currentOrgId) {
-      localStorage.setItem('selectedPlan', plan);
-      navigate('/create-organization');
-      return;
-    }
-
-    // If logged in with org, create checkout session
-    setLoadingPlan(plan);
-    try {
-      await StripeService.createCheckoutSession(currentOrgId, plan, 'monthly');
-      // Redirect happens automatically inside the service
-    } catch (error) {
-      console.error('Failed to create checkout session:', error);
-      alert('Failed to start checkout. Please try again.');
-      setLoadingPlan(null);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#FAFAFB]">
+    <div className="min-h-screen bg-white">
       {/* Fixed Glassmorphism Navigation */}
       <NavBar logo={viewtrackLogo} onGetStarted={onGetStarted} />
 
@@ -79,12 +46,12 @@ const LandingPage: React.FC = () => {
 
             {/* Main Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#111111] leading-[1.15] tracking-tight mb-6">
-              One dashboard for <span className="text-[#0060CC]">all your video analytics</span>
+              The first <span className="text-[#007BFF]">agentic social media analytics tool</span>
             </h1>
 
             {/* Supporting Copy */}
             <p className="text-base md:text-lg lg:text-xl text-[#666666] mb-8 md:mb-10 max-w-2xl mx-auto leading-relaxed">
-              Track views, engagement, and growth across TikTok, Instagram, YouTube, and X in real time. Connect Open Claw so your AI agent learns from every post — yours and your competitors'.
+              Track any video, manage your creators, and hook it up to your agent so it self-improves based on data.
             </p>
 
             {/* CTA Buttons */}
@@ -120,336 +87,13 @@ const LandingPage: React.FC = () => {
               />
             </div>
             {/* Gradient fade at bottom */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FAFAFB] to-transparent" />
-          </div>
-
-          {/* Value Props Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mt-12 md:mt-16 max-w-4xl mx-auto">
-            {[
-              { label: 'Platforms', value: '4+', sub: 'TikTok, IG, YT, X' },
-              { label: 'Metrics', value: 'Real-time', sub: 'Views, likes, shares' },
-              { label: 'Setup', value: '2 min', sub: 'Add any account' },
-              { label: 'Open Claw', value: 'AI-powered', sub: 'Self-improving agent' },
-            ].map((item) => (
-              <div key={item.label} className="text-center p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
-                <div className="text-xl md:text-2xl font-bold text-[#111111]">{item.value}</div>
-                <div className="text-xs md:text-sm text-[#999999] mt-0.5">{item.sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">Your analytics command center</h2>
-          <p className="text-center text-gray-500 mb-12 md:mb-16 max-w-2xl mx-auto">Track any creator or competitor. See what's working. Let your AI agent learn from the data.</p>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">📊</span>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Live Dashboard</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">KPIs, trends, top performers, and engagement heatmaps — all updating in real time across every platform.</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🔍</span>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Track Anyone</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">Add any public account — yours or a competitor's. We auto-sync every video with views, likes, comments, and shares.</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🦞</span>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Open Claw Integration</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">Connect your API key and let your AI agent self-improve based on what's going viral — for you and your competitors.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* Features Timeline */}
-      <div id="features">
-        <FeaturesTimeline />
-      </div>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-12 md:py-20 px-4 md:px-6 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-10 md:mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4 px-4">Social Media Analytics Platform Pricing</h2>
-            <p className="text-lg md:text-xl text-gray-600 px-4">Start small and scale your analytics software as you scale your brand</p>
-          </div>
-          
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto">
-            {/* Basic Plan */}
-            <div className="bg-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow flex flex-col sm:col-span-2 lg:col-span-1">
-              <div className="mb-5 md:mb-6">
-                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Basic</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl md:text-5xl font-bold text-gray-900">$24</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-              </div>
-              <ul className="space-y-2.5 md:space-y-3 mb-6 md:mb-8 flex-grow">
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Unlimited accounts</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Up to 150 videos</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>24-hour data refresh</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Creator portals <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Contract management <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>2 team seats</span>
-                </li>
-              </ul>
-              <button
-                onClick={() => handleSelectPlan('basic')}
-                disabled={loadingPlan === 'basic'}
-                data-fast-goal="landing_pricing_basic_monthly"
-                data-fast-goal-plan="basic"
-                data-fast-goal-billing-cycle="monthly"
-                data-fast-goal-price="24"
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50"
-              >
-                {loadingPlan === 'basic' ? 'Loading...' : 'Get Started'}
-              </button>
-            </div>
-
-            {/* Pro Plan */}
-            <div className="bg-white rounded-2xl p-6 md:p-8 border-2 border-[#2282FF] hover:shadow-lg transition-shadow relative flex flex-col sm:col-span-2 lg:col-span-1">
-              <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 px-3 md:px-4 py-1 bg-[#2282FF] text-white text-xs md:text-sm font-bold rounded-full whitespace-nowrap">
-                Popular
-              </div>
-              <div className="mb-5 md:mb-6">
-                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Pro</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl md:text-5xl font-bold text-gray-900">$79</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-              </div>
-              <ul className="space-y-2.5 md:space-y-3 mb-6 md:mb-8 flex-grow">
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Unlimited accounts</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Up to 1,000 videos</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>24-hour data refresh</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Revenue tracking</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Creator campaigns <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Creator portals <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Contract management <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>5 team seats</span>
-                </li>
-              </ul>
-              <button
-                onClick={() => handleSelectPlan('pro')}
-                disabled={loadingPlan === 'pro'}
-                data-fast-goal="landing_pricing_pro_monthly"
-                data-fast-goal-plan="pro"
-                data-fast-goal-billing-cycle="monthly"
-                data-fast-goal-price="79"
-                className="w-full px-6 py-3 bg-[#2282FF] hover:bg-[#1b6dd9] text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50 shadow-lg shadow-[#2282FF]/20"
-              >
-                {loadingPlan === 'pro' ? 'Loading...' : 'Get Started'}
-              </button>
-            </div>
-
-            {/* Ultra Plan */}
-            <div className="bg-white rounded-2xl p-6 md:p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow flex flex-col sm:col-span-2 lg:col-span-1">
-              <div className="mb-5 md:mb-6">
-                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">Ultra</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl md:text-5xl font-bold text-gray-900">$199</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-              </div>
-              <ul className="space-y-2.5 md:space-y-3 mb-6 md:mb-8 flex-grow">
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Unlimited accounts</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Up to 5,000 videos</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>12-hour data refresh</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Revenue tracking</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Creator portals <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Contract management <span className="ml-2 text-[10px] font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap">Coming Dec 5 2025</span></span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Everything in Pro</span>
-                </li>
-                <li className="flex items-center gap-2 text-sm md:text-base text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>15 team seats</span>
-                </li>
-              </ul>
-              <button
-                onClick={() => handleSelectPlan('ultra')}
-                disabled={loadingPlan === 'ultra'}
-                data-fast-goal="landing_pricing_ultra_monthly"
-                data-fast-goal-plan="ultra"
-                data-fast-goal-billing-cycle="monthly"
-                data-fast-goal-price="199"
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50"
-              >
-                {loadingPlan === 'ultra' ? 'Loading...' : 'Get Started'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-
-      {/* FAQ Section */}
-      <section id="faq" className="py-12 md:py-20 px-4 md:px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Social Media Analytics Tool FAQ</h2>
-            <p className="text-lg md:text-xl text-gray-600">Common Questions About Our Analytics Platform</p>
-            <p className="text-sm md:text-base text-gray-500 mt-1 md:mt-2">We're here to help you get the most out of ViewTrack</p>
-          </div>
-
-          <div className="space-y-3 md:space-y-4">
-            {[
-              {
-                question: "What is ViewTrack?",
-                answer: "ViewTrack is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
-              },
-              {
-                question: "Who is ViewTrack for?",
-                answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
-              },
-              {
-                question: "How does ViewTrack help optimize marketing ROI?",
-                answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
-              },
-              {
-                question: "What platforms can I track content from?",
-                answer: "Currently we support Instagram, TikTok, and YouTube. We automatically sync your content and provide unified analytics across all platforms."
-              },
-              {
-                question: "How easy is it to set up and add accounts?",
-                answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
-              },
-              {
-                question: "What kind of analytics does ViewTrack provide?",
-                answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
-              }
-            ].map((faq, index) => (
-              <details key={index} className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 hover:shadow-md transition-shadow group">
-                <summary className="font-semibold text-sm md:text-base text-gray-900 cursor-pointer list-none flex items-center justify-between">
-                  <span>{faq.question}</span>
-                  <span className="text-gray-400 group-open:rotate-180 transition-transform text-xs md:text-sm">▼</span>
-                </summary>
-                <p className="mt-3 md:mt-4 text-sm md:text-base text-gray-600 leading-relaxed">{faq.answer}</p>
-              </details>
-            ))}
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
           </div>
 
         </div>
       </section>
 
       <Footer />
-
     </div>
   );
 };
