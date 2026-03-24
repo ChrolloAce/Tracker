@@ -90,15 +90,6 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
           </div>
         </div>
 
-        {/* Quick Reference */}
-        <ApiQuickReference />
-
-        {/* Full API Documentation */}
-        <ApiDocumentation />
-
-        {/* API Playground */}
-        <ApiPlayground />
-
         {/* Actions */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-white">API Keys</h2>

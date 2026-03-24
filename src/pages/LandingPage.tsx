@@ -70,24 +70,27 @@ const LandingPage: React.FC = () => {
                 className="group relative w-full sm:w-auto px-8 md:px-9 py-3.5 md:py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-full border-2 border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 text-sm md:text-base overflow-hidden"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  🦞 Add to Open Claw
+                  <img src="/openclaw.webp" alt="Open Claw" className="w-5 h-5 rounded-full object-cover" /> Add to Open Claw
                 </span>
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-black/5 to-transparent skew-x-12" />
               </button>
             </div>
           </div>
 
-          {/* Dashboard Preview */}
+          {/* Dashboard Video Preview */}
           <div className="relative max-w-5xl mx-auto">
             <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/10 border border-gray-200">
-              <img
-                src={dashboardPreview}
-                alt="ViewTrack Dashboard"
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
                 className="w-full"
-              />
+                poster={dashboardPreview}
+              >
+                <source src="/viewtrack-demo.mp4" type="video/mp4" />
+              </video>
             </div>
-            {/* Gradient fade at bottom */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
           </div>
 
         </div>

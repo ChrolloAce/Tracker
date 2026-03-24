@@ -3623,7 +3623,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
 
           {/* Viral Content Tab */}
-          {activeTab === 'viral' && <div data-spotlight="content-viral"><ViralContentPage onRequiresPaidPlan={requiresPaidPlan} /></div>}
+          {activeTab === 'viral' && <div data-spotlight="content-viral"><ViralContentPage onRequiresPaidPlan={planTier === 'free' && !isDemoMode ? requiresPaidPlan : undefined} /></div>}
 
           {/* Open Claw - API Keys Tab */}
           {activeTab === 'openclaw' && (
