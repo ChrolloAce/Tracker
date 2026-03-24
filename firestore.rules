@@ -744,7 +744,7 @@ service cloud.firestore {
     // Curated viral content — any signed-in user can browse,
     // writes happen exclusively via Admin SDK (seed endpoint).
     match /viralContent/{videoId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if false;
     }
     

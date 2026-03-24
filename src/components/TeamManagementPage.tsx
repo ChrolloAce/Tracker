@@ -4,17 +4,20 @@ import InviteTeamMemberModal from './InviteTeamMemberModal';
 import TeamMembersTable from './TeamMembersTable';
 import PendingInvitationsPage from './PendingInvitationsPage';
 
-const TeamManagementPage: React.FC = () => {
+const TeamManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boolean }> = ({ onRequiresPaidPlan }) => {
   const [activeTab, setActiveTab] = useState<'members' | 'invitations'>('members');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Listen for invite modal trigger from Settings page
   useEffect(() => {
-    const handleOpenInviteModal = () => setShowInviteModal(true);
+    const handleOpenInviteModal = () => {
+      if (onRequiresPaidPlan?.('to invite team members')) return;
+      setShowInviteModal(true);
+    };
     window.addEventListener('openInviteModal', handleOpenInviteModal);
     return () => window.removeEventListener('openInviteModal', handleOpenInviteModal);
-  }, []);
+  }, [onRequiresPaidPlan]);
 
   const handleInviteSuccess = () => {
     setShowInviteModal(false);
@@ -54,8 +57,8 @@ const TeamManagementPage: React.FC = () => {
           </button>
         </div>
 
-        <button 
-          onClick={() => setShowInviteModal(true)}
+        <button
+          onClick={() => { if (onRequiresPaidPlan?.('to invite team members')) return; setShowInviteModal(true); }}
           className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors"
                 >
           <Plus className="w-4 h-4" />

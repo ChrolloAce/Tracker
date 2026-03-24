@@ -93,7 +93,9 @@ const PAGE_SIZE = 12;
 
 type OpenDropdown = 'none' | 'filters' | 'sort';
 
-const ViralContentPage: React.FC = () => {
+const FREE_VISIBLE_COUNT = 4;
+
+const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boolean }> = ({ onRequiresPaidPlan }) => {
   const { user } = useAuth();
   const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
 
@@ -107,26 +109,32 @@ const ViralContentPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
-  const [sortBy, setSortBy] = useState<SortOption>('recently_added');
+  const [sortBy, setSortBy] = useState<SortOption>('most_views');
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ── Fetch all videos once ──────────────────────────────
+  // ── Fetch first 12 immediately, then lazy-load the rest ──
   useEffect(() => {
     let cancelled = false;
     (async () => {
-    setLoading(true);
+      setLoading(true);
       setError(null);
-    try {
-        const videos = await ViralContentService.fetchAll();
-        if (!cancelled) setAllVideos(videos);
+      try {
+        // Load first 12 for instant display
+        const first = await ViralContentService.fetchFirst(12);
+        if (!cancelled) {
+          setAllVideos(first);
+          setLoading(false);
+        }
+        // Then load the rest in the background
+        const all = await ViralContentService.fetchAll();
+        if (!cancelled) setAllVideos(all);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load content');
-    } finally {
         if (!cancelled) setLoading(false);
-    }
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -230,6 +238,7 @@ const ViralContentPage: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => { if (onRequiresPaidPlan?.('to discover viral content')) return; }}
             placeholder="Search content, creators, hashtags..."
             className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 text-sm"
           />
@@ -243,7 +252,7 @@ const ViralContentPage: React.FC = () => {
           {/* Filters dropdown */}
           <div className="relative">
             <button
-              onClick={() => toggleDropdown('filters')}
+              onClick={() => { if (onRequiresPaidPlan?.('to discover viral content')) return; toggleDropdown('filters'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
                 openDropdown === 'filters' || activeFilterCount > 0
                   ? 'bg-white/15 border-white/30 text-white'
@@ -307,7 +316,7 @@ const ViralContentPage: React.FC = () => {
           {/* Sort dropdown */}
           <div className="relative">
             <button
-              onClick={() => toggleDropdown('sort')}
+              onClick={() => { if (onRequiresPaidPlan?.('to discover viral content')) return; toggleDropdown('sort'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
                 openDropdown === 'sort' || sortBy !== 'recently_added'
                   ? 'bg-white/15 border-white/30 text-white'
@@ -365,14 +374,32 @@ const ViralContentPage: React.FC = () => {
       ) : (
         <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {pageVideos.map((video) => (
-            <VideoCard
-              key={video.id}
-              video={video}
-              getPlatformIcon={getPlatformIcon}
-              formatNumber={formatNumber}
-            />
-          ))}
+            {pageVideos.map((video, index) => {
+              const globalIndex = startIdx + index;
+              const isBlurred = !!onRequiresPaidPlan && globalIndex >= FREE_VISIBLE_COUNT;
+              return isBlurred ? (
+                <div
+                  key={video.id}
+                  className="relative cursor-pointer select-none"
+                  onClick={() => onRequiresPaidPlan('to discover viral content')}
+                >
+                  <div className="pointer-events-none" style={{ filter: 'blur(8px)' }}>
+                    <VideoCard
+                      video={video}
+                      getPlatformIcon={getPlatformIcon}
+                      formatNumber={formatNumber}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <VideoCard
+                  key={video.id}
+                  video={video}
+                  getPlatformIcon={getPlatformIcon}
+                  formatNumber={formatNumber}
+                />
+              );
+            })}
         </div>
 
           {/* Pagination */}

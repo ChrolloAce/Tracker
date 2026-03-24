@@ -1,129 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import viewtrackLogo from '/Viewtrack Logo Black.png';
+import { useSearchParams } from 'react-router-dom';
 import TeamInvitationService from '../services/TeamInvitationService';
+import ViralContentService from '../services/ViralContentService';
 
 const LoginPage: React.FC = () => {
-  const { user, signInWithGoogle, loading: authLoading, currentOrgId, currentProjectId } = useAuth();
+  const { user, signInWithGoogle, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-  
-  // Get invite parameters from URL
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const [mounted, setMounted] = useState(false);
+
   const inviteId = searchParams.get('invite');
   const orgId = searchParams.get('org');
 
-  // Track login page visit with DataFast
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     (window as any)?.datafast?.("login_page_view");
+  }, []);
+
+  // Load viral thumbnails for background
+  useEffect(() => {
+    ViralContentService.fetchFirst(40).then(videos => {
+      setThumbnails(videos.map(v => (v as any).thumbnailUrl || (v as any).thumbnail || '').filter(Boolean));
+    }).catch(() => {});
   }, []);
 
   // Check if we just came back from Google redirect
   useEffect(() => {
     const justRedirected = sessionStorage.getItem('justCompletedGoogleRedirect');
-    
-    // If we just completed a Google redirect AND have a user, show loading screen
     if (justRedirected === 'true' && user) {
-      console.log('🔄 Just returned from Google - showing loading screen');
       setIsProcessingAuth(true);
-      
-      // If user exists and auth is done loading, we're about to navigate
-      if (!authLoading) {
-        console.log('🔄 Auth complete, processing navigation...');
-        // Keep showing loading screen until we navigate
-        // The navigation will clear the flag
-      }
-    } else if (justRedirected === 'true' && !user && !authLoading) {
-      // Flag is set but no user - clear the stale flag
-      console.log('⚠️ Stale redirect flag detected, clearing...');
-      sessionStorage.removeItem('justCompletedGoogleRedirect');
-      setIsProcessingAuth(false);
-    } else if (user && authLoading) {
-      // Normal case: user exists but still loading
-      console.log('🔄 Processing authentication...');
-      setIsProcessingAuth(true);
-    } else if (!user && !authLoading) {
-      // No user and not loading - hide processing screen
-      setIsProcessingAuth(false);
     }
-  }, [user, authLoading, currentOrgId]);
+  }, [user]);
 
-  // Handle navigation after successful authentication (non-invite flow)
+  // Auto-accept invitation if user is logged in with invite params
   useEffect(() => {
-    // Skip if processing invitation or still loading auth
-    if (processingInvite || inviteId) {
-      console.log('⏳ Skipping navigation - processing invite or invite flow');
-      return;
-    }
-    
-    // Wait for auth to finish loading
-    if (authLoading) {
-      console.log('⏳ Auth still loading...');
-      return;
-    }
-    
-    // If user is authenticated and auth has finished loading
-    if (user && !authLoading) {
-      console.log('✅ User authenticated on login page, checking org/project status...', {
-        userId: user.uid,
-        email: user.email,
-        currentOrgId,
-        currentProjectId,
-        hasOrg: !!currentOrgId,
-        hasProject: !!currentProjectId
-      });
-      
-      // Check if user has organization and project
-      if (currentOrgId && currentProjectId) {
-        console.log('✅ User has org and project - navigating to dashboard');
-        sessionStorage.removeItem('justCompletedGoogleRedirect');
-        navigate('/dashboard', { replace: true });
-      } else {
-        console.log('📝 User needs onboarding - navigating to smooth setup flow');
-        sessionStorage.removeItem('justCompletedGoogleRedirect');
-        navigate('/onboarding', { replace: true });
-      }
-    } else if (!user && !authLoading) {
-      console.log('ℹ️ No user on login page - this is normal');
-    }
-  }, [user, authLoading, currentOrgId, currentProjectId, processingInvite, inviteId, navigate]);
-
-  // Auto-accept invitation when user is authenticated
-  useEffect(() => {
+    if (!user || !inviteId || !orgId || processingInvite) return;
     const autoAcceptInvitation = async () => {
-      // Check if we have invite parameters and an authenticated user
-      if (!user || !inviteId || !orgId || processingInvite) return;
-      
       setProcessingInvite(true);
       setError('');
-
       try {
-        // Auto-accept the invitation
-        await TeamInvitationService.acceptInvitation(
-          inviteId,
-          orgId,
-          user.uid,
-          user.email!,
-          user.displayName || undefined
-        );
-
-        
-        // Give Firebase time to propagate the changes
+        await TeamInvitationService.acceptInvitation(inviteId, orgId, user.uid, user.email!, user.displayName || undefined);
         await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Redirect to dashboard - the AuthContext will handle setting the right org/project
         window.location.href = '/dashboard';
       } catch (err: any) {
-        console.error('❌ Failed to accept invitation:', err);
         setError(err.message || 'Failed to accept invitation. Please try again.');
         setProcessingInvite(false);
       }
     };
-
     autoAcceptInvitation();
   }, [user, inviteId, orgId, processingInvite]);
 
@@ -132,23 +64,14 @@ const LoginPage: React.FC = () => {
     setSigningIn(true);
     setIsProcessingAuth(true);
     try {
-      console.log('🔵 Initiating Google sign-in...');
       await signInWithGoogle();
-      // User will be redirected to Google, then back to the app
-      // AuthContext will handle the redirect result
-      console.log('✅ Google sign-in redirect initiated...');
-      // Keep loading state - don't set to false as user is being redirected
     } catch (err: any) {
-      console.error('❌ Google sign-in error:', err);
-      const errorMessage = err.message || 'Google sign-in failed';
-      setError(errorMessage);
+      setError(err.message || 'Google sign-in failed');
       setSigningIn(false);
       setIsProcessingAuth(false);
     }
   };
 
-
-  // Show loading state if processing invitation - just spinning circle
   if (processingInvite) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -158,77 +81,90 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Grid - Increased Visibility */}
-      <div 
-        className="absolute inset-0 opacity-25"
-        style={{
-          backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }}
-      />
-        
-      {/* Centered Login Card - Dark Mode */}
-      <div className="relative z-10 w-full max-w-md bg-[#09090B] rounded-2xl shadow-2xl p-8 sm:p-10 border border-white/10">
-          {/* Logo & Branding */}
-        <div className="mb-8 flex justify-center">
-          <img src={viewtrackLogo} alt="ViewTrack" className="h-8 w-auto invert" />
-          </div>
-
-          {/* Title & Subtitle */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">
-            {inviteId ? 'Join the Team' : 'Welcome to ViewTrack'}
+    <div
+      className="min-h-screen bg-[#F8F9FB] flex transition-opacity duration-500 ease-out"
+      style={{ opacity: mounted ? 1 : 0 }}
+    >
+      {/* Left side — Login form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12">
+        <div className="max-w-md w-full mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-snug">
+            Log in to <span className="text-[#007BFF]">ViewTrack</span>
           </h1>
-          <p className="text-gray-400">
-            {inviteId 
-              ? 'Sign in with Google to accept your invitation' 
-              : 'Sign in to continue to your dashboard'
-            }
-          </p>
-        </div>
+          <p className="text-gray-500 text-sm mb-10">Sign in to access your dashboard</p>
 
           {error && (
-          <div className="mb-6 p-3 bg-red-900/20 border border-red-800/50 rounded-lg text-center">
-            <p className="text-sm text-red-400">{error}</p>
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl text-center">
+              <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
           {inviteId && !error && (
-          <div className="mb-6 p-3 bg-blue-900/20 border border-blue-800/50 rounded-lg text-center">
-            <p className="text-sm text-blue-400">
-              🎉 You've been invited! Sign in to join.
-              </p>
+            <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-xl text-center">
+              <p className="text-sm text-blue-600">You've been invited! Sign in to join.</p>
             </div>
           )}
 
-        {/* Google Sign-In Button - White for Contrast */}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={signingIn || authLoading}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white text-black font-semibold rounded-xl hover:bg-gray-200 hover:shadow-lg transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:shadow-none group"
-            >
-          {signingIn || authLoading ? (
-            <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-          ) : (
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#000" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#000" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#000" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#000" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-          )}
-          <span>{signingIn || authLoading ? 'Signing in...' : 'Continue with Google'}</span>
-            </button>
-        
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={signingIn || authLoading}
+            className="w-full py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all text-sm flex items-center justify-center gap-3 disabled:opacity-50 border border-gray-200 shadow-sm"
+          >
+            {signingIn || authLoading ? (
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+            ) : (
+              <>
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+              </>
+            )}
+          </button>
+
+          <p className="text-gray-400 text-xs mt-8">
+            Don't have an account? <a href="/create-organization" className="text-[#007BFF] hover:underline">Create workspace</a>
           </p>
         </div>
       </div>
 
-      {/* Authentication Processing Overlay - Just spinning circle */}
+      {/* Right side — Scrolling video grid */}
+      <div className="hidden lg:block w-1/2 relative overflow-hidden">
+        <style>{`
+          @keyframes scrollUp { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+          @keyframes scrollDown { from { transform: translateY(-50%); } to { transform: translateY(0); } }
+        `}</style>
+        <div className="absolute inset-0">
+          <div className="flex gap-2 h-full">
+            {[0, 1, 2, 3, 4].map(col => {
+              const colThumbs = thumbnails.slice(col * 8, col * 8 + 8);
+              const doubled = [...colThumbs, ...colThumbs];
+              const direction = col % 2 === 0 ? 'scrollUp' : 'scrollDown';
+              const duration = 25 + col * 5;
+              return (
+                <div key={col} className="flex-1 overflow-hidden">
+                  <div
+                    className="flex flex-col gap-2"
+                    style={{ animation: `${direction} ${duration}s linear infinite` }}
+                  >
+                    {doubled.map((thumb, i) => (
+                      <div key={i} className="aspect-[9/16] rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                        <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="absolute inset-0 bg-black/60" />
+      </div>
+
+      {/* Auth processing overlay */}
       {(isProcessingAuth || signingIn) && (
         <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center">
           <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />

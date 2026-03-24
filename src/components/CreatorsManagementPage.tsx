@@ -30,6 +30,7 @@ interface CreatorsManagementPageProps {
   dateFilter?: DateFilterType;
   organizationId?: string;
   projectId?: string;
+  onRequiresPaidPlan?: (context: string) => boolean;
 }
 
 /**
@@ -37,7 +38,7 @@ interface CreatorsManagementPageProps {
  * Admin interface to manage creators, link accounts, and track payouts
  */
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
-  const { dateFilter = 'all', organizationId, projectId } = props;
+  const { dateFilter = 'all', organizationId, projectId, onRequiresPaidPlan } = props;
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   const currentOrgId = organizationId || authOrgId;
@@ -89,17 +90,18 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           !(document.activeElement instanceof HTMLInputElement) && 
           !(document.activeElement instanceof HTMLTextAreaElement)) {
         e.preventDefault();
+        if (onRequiresPaidPlan?.('to add creators')) return;
         setShowInviteModal(true);
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [showInviteModal]);
+  }, [showInviteModal, onRequiresPaidPlan]);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    openInviteModal: () => setShowInviteModal(true),
+    openInviteModal: () => { if (onRequiresPaidPlan?.('to add creators')) return; setShowInviteModal(true); },
     refreshData: async () => {
       await loadData();
     }
@@ -319,7 +321,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           actions={[
             {
               label: 'Invite Creator',
-              onClick: () => setShowInviteModal(true),
+              onClick: () => { if (onRequiresPaidPlan?.('to add creators')) return; setShowInviteModal(true); },
               icon: UserPlus,
               primary: true
             }
@@ -432,7 +434,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
           {/* Floating Action Button - Add Creator (only on Accounts tab) */}
           <button
-            onClick={() => setShowInviteModal(true)}
+            onClick={() => { if (onRequiresPaidPlan?.('to add creators')) return; setShowInviteModal(true); }}
             className="fixed bottom-8 right-8 flex items-center justify-center p-4 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
             title="Add Creator (Space)"
           >

@@ -10,7 +10,6 @@ import {
   Link,
   Film,
   Puzzle,
-  Trophy,
   X,
   LayoutDashboard,
   UserPlus,
@@ -113,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Creators item (standalone, right under Dashboard)
   const creatorsItem: NavItem | null = useMemo(() => {
-    if (permissionsLoading || can.accessTab('creators')) {
+    if (isDemoMode || permissionsLoading || can.accessTab('creators')) {
       return {
         id: 'creators',
         label: userRole === 'creator' ? 'Payouts' : 'Creators',
@@ -122,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       };
     }
     return null;
-  }, [can, permissionsLoading, baseHref, userRole]);
+  }, [can, permissionsLoading, baseHref, userRole, isDemoMode]);
 
   // Navigation sections with dropdown
   const navigationSections: NavSection[] = useMemo(() => {
@@ -160,12 +159,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'manage',
         label: 'Manage',
         items: [
-      {
-        id: 'campaigns',
-        label: 'Campaigns',
-        icon: Trophy,
-        href: `${baseHref}/campaigns`,
-          },
           {
             id: 'team',
             label: 'Team Members',
@@ -198,27 +191,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           },
         ]
       },
-      {
-        id: 'integrations-section',
-        label: 'Integrations',
-        items: [
-          {
-            id: 'revenue',
-            label: 'Revenue',
-            icon: DollarSign,
-            href: `${baseHref}/revenue`,
-            comingSoon: 'Dec 5'
-          },
-          {
-            id: 'extension',
-            label: 'Extensions',
-            icon: Puzzle,
-            href: `${baseHref}/extension`,
-            locked: true,
-            comingSoon: 'Dec 5'
-          },
-        ]
-      },
     ];
 
     // Filter items based on permissions
@@ -230,7 +202,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'analytics') return can.accessTab('trackedLinks');
           if (item.id === 'extension') return can.accessTab('extension');
           if (item.id === 'creators') return can.accessTab('creators');
-          if (item.id === 'campaigns') return can.accessTab('campaigns');
           if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
           if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
@@ -258,7 +229,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         section.items = section.items.filter(item => 
           item.id !== 'team' && 
           item.id !== 'revenue' && 
-          item.id !== 'campaigns' &&
           item.id !== 'accounts' &&
           item.id !== 'videos' &&
           item.id !== 'analytics' &&

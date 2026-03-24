@@ -124,80 +124,91 @@ class LinkClicksService {
         console.error('Error loading from new location:', error);
       }
       
-      // 2. ONLY check OLD location if new location is empty (backward compatibility)
-      // This prevents the expensive N+1 query problem
+      // 2. ONLY check OLD location if new location is empty AND project has links (backward compatibility)
+      // Skip the expensive N+1 per-link query when:
+      //   - New location already has data (migration complete), OR
+      //   - Project has no links at all (nothing to query, e.g. demo/new projects)
+      // The old-location migration should be fully complete by now, so this path
+      // is kept only as a safety net for edge cases.
       if (clicks.length === 0) {
-        console.log('⚠️ No clicks in new location, checking old location (slow)...');
+        console.log('⚠️ No clicks in new location, checking if old location fallback is needed...');
         try {
           const linksSnapshot = await getDocs(
             collection(db, 'organizations', orgId, 'projects', projectId, 'links')
           );
-          
-          // Process old clicks in parallel instead of sequentially
-          const oldClicksPromises = linksSnapshot.docs.map(async (linkDoc) => {
-            const linkData = linkDoc.data();
-            
-            const oldClicksQuery = maxClicks > 0
-              ? query(
-                  collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
-                  orderBy('timestamp', 'desc'),
-                  limit(Math.ceil(maxClicks / linksSnapshot.docs.length))
-                )
-              : query(
-                  collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
-                  orderBy('timestamp', 'desc')
-                );
-                
-            const oldClicksSnapshot = await getDocs(oldClicksQuery);
-            
-            return oldClicksSnapshot.docs.map(clickDoc => {
-              const clickData = clickDoc.data();
-              return {
-                id: `old_${clickDoc.id}`, // Prefix to avoid ID collisions
-                linkId: linkDoc.id,
-                linkTitle: linkData.title || 'Untitled Link',
-                linkUrl: linkData.originalUrl || '',
-                shortCode: linkData.shortCode || '',
-                timestamp: clickData.timestamp?.toDate() || new Date(),
-                userAgent: clickData.userAgent || 'Unknown',
-                deviceType: clickData.deviceType || 'desktop',
-                browser: clickData.browser || 'Unknown',
-                browserVersion: clickData.browserVersion,
-                os: clickData.os || 'Unknown',
-                osVersion: clickData.osVersion,
-                referrer: clickData.referrer || 'Direct',
-                referrerDomain: clickData.referrerDomain,
-                accountHandle: clickData.accountHandle,
-                accountProfilePicture: clickData.accountProfilePicture,
-                accountPlatform: clickData.accountPlatform,
-                // Enhanced tracking
-                country: clickData.country,
-                countryCode: clickData.countryCode,
-                city: clickData.city,
-                region: clickData.region,
-                isp: clickData.isp,
-                organization: clickData.organization,
-                platform: clickData.platform,
-                isBot: clickData.isBot,
-                botType: clickData.botType,
-                utmSource: clickData.utmSource,
-                utmMedium: clickData.utmMedium,
-                utmCampaign: clickData.utmCampaign,
-                utmTerm: clickData.utmTerm,
-                utmContent: clickData.utmContent,
-                queryParams: clickData.queryParams,
-                language: clickData.language,
-                timezone: clickData.timezone,
-              } as LinkClick;
+
+          // If there are no links, there can be no old clicks — return early
+          if (linksSnapshot.docs.length === 0) {
+            console.log('⚡ No links found in project, skipping old location fallback');
+          } else {
+            console.log(`🔍 Found ${linksSnapshot.docs.length} links, checking old click locations...`);
+
+            // Process old clicks in parallel instead of sequentially
+            const oldClicksPromises = linksSnapshot.docs.map(async (linkDoc) => {
+              const linkData = linkDoc.data();
+
+              const oldClicksQuery = maxClicks > 0
+                ? query(
+                    collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
+                    orderBy('timestamp', 'desc'),
+                    limit(Math.ceil(maxClicks / linksSnapshot.docs.length))
+                  )
+                : query(
+                    collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
+                    orderBy('timestamp', 'desc')
+                  );
+
+              const oldClicksSnapshot = await getDocs(oldClicksQuery);
+
+              return oldClicksSnapshot.docs.map(clickDoc => {
+                const clickData = clickDoc.data();
+                return {
+                  id: `old_${clickDoc.id}`, // Prefix to avoid ID collisions
+                  linkId: linkDoc.id,
+                  linkTitle: linkData.title || 'Untitled Link',
+                  linkUrl: linkData.originalUrl || '',
+                  shortCode: linkData.shortCode || '',
+                  timestamp: clickData.timestamp?.toDate() || new Date(),
+                  userAgent: clickData.userAgent || 'Unknown',
+                  deviceType: clickData.deviceType || 'desktop',
+                  browser: clickData.browser || 'Unknown',
+                  browserVersion: clickData.browserVersion,
+                  os: clickData.os || 'Unknown',
+                  osVersion: clickData.osVersion,
+                  referrer: clickData.referrer || 'Direct',
+                  referrerDomain: clickData.referrerDomain,
+                  accountHandle: clickData.accountHandle,
+                  accountProfilePicture: clickData.accountProfilePicture,
+                  accountPlatform: clickData.accountPlatform,
+                  // Enhanced tracking
+                  country: clickData.country,
+                  countryCode: clickData.countryCode,
+                  city: clickData.city,
+                  region: clickData.region,
+                  isp: clickData.isp,
+                  organization: clickData.organization,
+                  platform: clickData.platform,
+                  isBot: clickData.isBot,
+                  botType: clickData.botType,
+                  utmSource: clickData.utmSource,
+                  utmMedium: clickData.utmMedium,
+                  utmCampaign: clickData.utmCampaign,
+                  utmTerm: clickData.utmTerm,
+                  utmContent: clickData.utmContent,
+                  queryParams: clickData.queryParams,
+                  language: clickData.language,
+                  timezone: clickData.timezone,
+                } as LinkClick;
+              });
             });
-          });
-          
-          const oldClicksArrays = await Promise.all(oldClicksPromises);
-          oldClicksArrays.forEach(clicksArray => {
-            clicks.push(...clicksArray);
-          });
-          
-          console.log(`✅ Loaded ${clicks.length} clicks from old location`);
+
+            const oldClicksArrays = await Promise.all(oldClicksPromises);
+            oldClicksArrays.forEach(clicksArray => {
+              clicks.push(...clicksArray);
+            });
+
+            console.log(`✅ Loaded ${clicks.length} clicks from old location`);
+          }
         } catch (error) {
           console.error('Error loading from old location:', error);
         }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
+
+const DEMO_ORG_ID = 'Vx2UpxGCV3uD8Xj2ioX4';
 
 interface UnreadCounts {
   videos: number;
@@ -24,7 +26,15 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
 
   useEffect(() => {
     console.log('🔄 useUnreadCounts effect triggered', { orgId, projectId });
-    
+
+    // Skip Firestore listeners in demo mode when there's no authenticated user
+    if ((!orgId || orgId === DEMO_ORG_ID) && !auth.currentUser) {
+      console.log('⚠️ Demo mode with no auth user, returning zeros');
+      setUnreadCounts({ videos: 0, accounts: 0 });
+      setLoading({ videos: false, accounts: false });
+      return;
+    }
+
     if (!orgId || !projectId) {
       console.log('⚠️ No orgId or projectId, resetting counts');
       setUnreadCounts({ videos: 0, accounts: 0 });

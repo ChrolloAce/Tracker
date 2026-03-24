@@ -135,14 +135,76 @@ export function useCreatorsData(
   };
 
   // ── Data Loader ────────────────────────────────────────────────────
+  const DEMO_ORG_ID = 'Vx2UpxGCV3uD8Xj2ioX4';
+  const isDemoOrg = orgId === DEMO_ORG_ID;
+
   const loadData = async () => {
-    if (!orgId || !projectId || !userId) return;
+    if (!orgId || !projectId) return;
+
+    // Demo mode: inject fake creators immediately
+    if (isDemoOrg) {
+      const demoCreators: OrgMember[] = [
+        {
+          userId: 'demo-ernesto',
+          displayName: 'Ernesto Lopez',
+          email: 'ernesto@viewtrack.app',
+          photoURL: '/demo-ernesto.jpg',
+          joinedAt: new Date('2025-09-15'),
+          role: 'creator',
+          status: 'active',
+        } as any,
+        {
+          userId: 'demo-mau',
+          displayName: 'Mau Baron',
+          email: 'mau@viewtrack.app',
+          photoURL: '/demo-mau.jpg',
+          joinedAt: new Date('2025-10-02'),
+          role: 'creator',
+          status: 'active',
+        } as any,
+      ];
+      setCreators(demoCreators);
+      setIsAdmin(true);
+      const profilesMap = new Map<string, Creator>();
+      profilesMap.set('demo-ernesto', {
+        id: 'demo-ernesto',
+        displayName: 'Ernesto Lopez',
+        email: 'ernesto@viewtrack.app',
+        photoURL: '/demo-ernesto.jpg',
+        platforms: [
+          { platform: 'tiktok', username: 'ernestosoftware' },
+          { platform: 'instagram', username: 'ernestosoftware' },
+          { platform: 'youtube', username: 'ernestosoftware' },
+          { platform: 'twitter', username: 'ernestosoftware' },
+        ],
+        linkedAccounts: 4,
+      } as any);
+      profilesMap.set('demo-mau', {
+        id: 'demo-mau',
+        displayName: 'Mau Baron',
+        email: 'mau@viewtrack.app',
+        photoURL: '/demo-mau.jpg',
+        platforms: [
+          { platform: 'tiktok', username: 'maubaron' },
+          { platform: 'youtube', username: 'maubaron' },
+          { platform: 'instagram', username: 'maubaron' },
+        ],
+        linkedAccounts: 3,
+      } as any);
+      setCreatorProfiles(profilesMap);
+      setCalculatedEarnings(new Map([['demo-ernesto', 4250], ['demo-mau', 7800]]));
+      setVideoCounts(new Map([['demo-ernesto', 34], ['demo-mau', 52]]));
+      setCreatorTotalViews(new Map([['demo-ernesto', 2400000], ['demo-mau', 5100000]]));
+      setPendingInvitations([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
       const [role, creatorProfilesList, membersData, invitesData, projectAccounts, allCreatorLinksSnapshot] =
         await Promise.all([
-          OrganizationService.getUserRole(orgId, userId),
+          userId ? OrganizationService.getUserRole(orgId, userId) : Promise.resolve('admin'),
           CreatorLinksService.getAllCreators(orgId, projectId),
           OrganizationService.getOrgMembers(orgId),
           TeamInvitationService.getOrgInvitations(orgId),
