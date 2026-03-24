@@ -245,16 +245,25 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallContext, setPaywallContext] = useState<string>('');
   const [planTier, setPlanTier] = useState<string | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
   const [, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
 
   // Check if user needs to pay before performing an action
-  // Only blocks when we've confirmed the plan is 'free'
-  // null = still loading, don't block
+  // Blocks free users. Lets paid users through. Waits if still loading.
   const requiresPaidPlan = (context: string): boolean => {
-    if (isDemoMode || planTier === null || planTier !== 'free') return false;
-    setPaywallContext(context);
-    setShowPaywall(true);
-    return true;
+    // Demo mode: never block
+    if (isDemoMode) return false;
+    // Plan loaded and NOT free: let through
+    if (planLoaded && planTier !== 'free') return false;
+    // Plan loaded and IS free: block
+    if (planLoaded && planTier === 'free') {
+      setPaywallContext(context);
+      setShowPaywall(true);
+      return true;
+    }
+    // Plan not loaded yet but user exists: let through (don't block while loading)
+    if (!planLoaded && user) return false;
+    return false;
   };
 
   // State
@@ -512,24 +521,27 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       // Skip paywall check if in demo mode (public /demo page)
       if (isDemoMode) {
-        console.log('🎭 Demo mode active - paywall disabled');
         setIsDemoOrg(true);
+        setPlanTier('demo');
+        setPlanLoaded(true);
         setShowPaywall(false);
         return;
       }
-      
+
       if (!user) {
-        // No user means we're on public demo route - disable paywall
+        setPlanTier('demo');
+        setPlanLoaded(true);
         setShowPaywall(false);
         return;
       }
-      
+
       // Check if demo user - NEVER show paywall for demo account
       const isDemo = DemoOrgService.isDemoUser(user.email);
       setIsDemoOrg(isDemo);
-      
+
       if (isDemo) {
-        console.log('🎭 Demo user logged in - paywall permanently disabled');
+        setPlanTier('demo');
+        setPlanLoaded(true);
         setShowPaywall(false);
         return;
       }
@@ -539,11 +551,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         const shouldBypass = await AdminService.shouldBypassLimits(user.uid);
         if (shouldBypass) {
           setPlanTier('admin');
+          setPlanLoaded(true);
           setShowPaywall(false);
           return;
         }
       } catch {
-        // If admin check fails, don't block
+        // If admin check fails, assume paid
+        setPlanTier('unknown');
+        setPlanLoaded(true);
       }
 
       if (!currentOrgId) return;
@@ -551,10 +566,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       try {
         const tier = await SubscriptionService.getPlanTier(currentOrgId);
         setPlanTier(tier);
+        setPlanLoaded(true);
         setShowPaywall(false);
       } catch {
         // If subscription check fails, assume paid (don't block)
         setPlanTier('unknown');
+        setPlanLoaded(true);
         setShowPaywall(false);
       }
     };
