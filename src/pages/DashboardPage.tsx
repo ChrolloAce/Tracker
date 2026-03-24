@@ -249,22 +249,26 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
 
   // Check if user needs to pay before performing an action
-  // Blocks free users. Lets paid users through. Waits if still loading.
-  const requiresPaidPlan = (context: string): boolean => {
+  // Uses a ref so useCallback handlers always get the latest check
+  const planTierRef = useRef<string | null>(null);
+  const planLoadedRef = useRef(false);
+  planTierRef.current = planTier;
+  planLoadedRef.current = planLoaded;
+
+  const requiresPaidPlan = useCallback((context: string): boolean => {
+    const tier = planTierRef.current;
+    const loaded = planLoadedRef.current;
     // Demo mode: never block
     if (isDemoMode) return false;
-    // Plan loaded and NOT free: let through
-    if (planLoaded && planTier !== 'free') return false;
     // Plan loaded and IS free: block
-    if (planLoaded && planTier === 'free') {
+    if (loaded && tier === 'free') {
       setPaywallContext(context);
       setShowPaywall(true);
       return true;
     }
-    // Plan not loaded yet but user exists: let through (don't block while loading)
-    if (!planLoaded && user) return false;
+    // Everything else: let through
     return false;
-  };
+  }, [isDemoMode]);
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
