@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield, Key } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -15,7 +15,6 @@ import UsageTrackingService from '../services/UsageTrackingService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
-import ApiKeysManager from './ApiKeysManager';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue' | 'api-keys';
 
