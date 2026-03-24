@@ -129,6 +129,9 @@
     "api/v1/videos/[id].ts": {
       "maxDuration": 60
     },
+    "api/transcribe-video.ts": {
+      "maxDuration": 120
+    },
     "api/v1/accounts/index.ts": {
       "maxDuration": 60
     },

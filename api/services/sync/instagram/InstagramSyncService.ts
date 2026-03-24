@@ -313,7 +313,8 @@ export class InstagramSyncService {
       shares: 0, // Instagram API doesn't provide share count
       saves: 0, // Instagram doesn't expose saves via scraping
       caption: reel.caption || '',
-      duration: reel.videoDuration || 0
+      duration: reel.videoDuration || 0,
+      mediaUrl: reel.videoUrl || reel.video_url || reel.video_versions?.[0]?.url || reel.contentUrl || '',
     };
   }
 }

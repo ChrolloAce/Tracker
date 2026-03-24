@@ -296,7 +296,8 @@ export class TikTokSyncService {
       shares: video.shares || video.shareCount || 0,
       saves: video.bookmarks || video.collectCount || 0,
       caption: video.title || video.text || '',
-      duration: video.video?.duration || video.videoMeta?.duration || 0
+      duration: video.video?.duration || video.videoMeta?.duration || 0,
+      mediaUrl: video.video?.playAddr || video.video?.downloadAddr || video.videoUrl || video.contentUrl || video.playAddr || '',
     };
   }
 }

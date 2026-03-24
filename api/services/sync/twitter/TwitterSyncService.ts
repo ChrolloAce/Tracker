@@ -257,7 +257,14 @@ export class TwitterSyncService {
       shares: tweet.retweetCount || tweet.retweets || 0,
       saves: tweet.bookmarkCount || tweet.bookmarks || 0,
       caption: tweet.text || '',
-      duration: 0 // Twitter doesn't provide video duration easily
+      duration: 0, // Twitter doesn't provide video duration easily
+      mediaUrl: (() => {
+        // Extract highest quality video variant
+        const media = tweet.extendedEntities?.media?.[0];
+        const variants = media?.video_info?.variants?.filter((v: any) => v.content_type === 'video/mp4') || [];
+        const best = variants.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+        return best?.url || media?.video_url || tweet.video_url || '';
+      })(),
     };
   }
 }

@@ -55,6 +55,7 @@ interface VideoData {
   display_name?: string;
   follower_count?: number;
   verified?: boolean;
+  media_url?: string; // Direct video file URL for transcription (Whisper API)
 }
 
 /**
@@ -715,6 +716,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       updateData.url = videoData.url;
       console.log(`✅ [TIKTOK] Updated video URL to proper post link: ${videoData.url}`);
     }
+
+    // 🎙️ Save direct media URL for transcription (Whisper API)
+    if (videoData.media_url) {
+      updateData.mediaUrl = videoData.media_url;
+      console.log(`🎙️ [${video.platform.toUpperCase()}] Saved media URL for transcription`);
+    }
     
     await videoRef.update(updateData);
 
@@ -1071,6 +1078,11 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       console.warn(`⚠️ [TIKTOK] No follower data available from TikTok API - this is normal for some accounts`);
     }
     
+    // 🎙️ MEDIA URL for transcription: try multiple TikTok fields
+    const mediaFileUrl = video.playAddr || video.downloadAddr || rawData.videoUrl || rawData.video_url
+      || rawData.contentUrl || rawData.playAddr || rawData.downloadAddr || '';
+    if (mediaFileUrl) console.log(`🎙️ [TIKTOK] Media URL found: ${mediaFileUrl.substring(0, 80)}...`);
+
     return {
       id: videoId,
       url: videoUrl,
@@ -1083,6 +1095,7 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       share_count: rawData.shares || 0,
       save_count: rawData.bookmarks || 0, // ✅ ADD BOOKMARKS
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
+      media_url: mediaFileUrl || undefined,
       profile_pic_url: (() => {
         // Check known locations first (fast path)
         const knownAvatar = channel.avatar || channel.avatarLarger || channel.avatarMedium || channel.avatarThumb || channel.avatar_url 
@@ -1162,6 +1175,11 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     console.log(`👥 [INSTAGRAM] Followers extracted: ${followerCount} (from owner.edge_followed_by.count)`);
     console.log(`✨ [INSTAGRAM] Complete profile data: @${username} (${displayName}) - ${followerCount} followers`);
     
+    // 🎙️ MEDIA URL for transcription: try multiple Instagram fields
+    const igMediaUrl = rawData.video_url || rawData.videoUrl || rawData.raw_data?.video_url
+      || rawData.raw_data?.video_versions?.[0]?.url || rawData.contentUrl || '';
+    if (igMediaUrl) console.log(`🎙️ [INSTAGRAM] Media URL found: ${igMediaUrl.substring(0, 80)}...`);
+
     return {
       id: rawData.id || rawData.code || '',
       thumbnail_url: thumbnailUrl,
@@ -1174,7 +1192,8 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       timestamp: rawData.taken_at ? new Date(rawData.taken_at * 1000).toISOString() : new Date().toISOString(),
       profile_pic_url: profilePicUrl,
       display_name: displayName,
-      follower_count: followerCount
+      follower_count: followerCount,
+      media_url: igMediaUrl || undefined,
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
@@ -1238,6 +1257,13 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       }
     }
     
+    // 🎙️ MEDIA URL for transcription: extract highest quality video variant from Twitter
+    const twitterMedia = rawData.extendedEntities?.media?.[0] || rawData.media?.[0];
+    const videoVariants = twitterMedia?.video_info?.variants?.filter((v: any) => v.content_type === 'video/mp4') || [];
+    const bestVariant = videoVariants.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+    const twitterMediaUrl = bestVariant?.url || twitterMedia?.video_url || rawData.video_url || '';
+    if (twitterMediaUrl) console.log(`🎙️ [TWITTER] Media URL found: ${twitterMediaUrl.substring(0, 80)}...`);
+
     return {
       id: rawData.id || '',
       thumbnail_url: rawData.media?.[0]?.url || rawData.extendedEntities?.media?.[0]?.media_url_https || '',
@@ -1251,7 +1277,8 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       profile_pic_url: rawData.author?.profilePicture || '',
       cover_pic_url: rawData.author?.coverPicture || '', // ✅ EXTRACT COVER/BANNER IMAGE
       display_name: rawData.author?.name || username,
-      follower_count: rawData.author?.followers || 0
+      follower_count: rawData.author?.followers || 0,
+      media_url: twitterMediaUrl || undefined,
     };
   }
   

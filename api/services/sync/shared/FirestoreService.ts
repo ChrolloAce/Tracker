@@ -114,6 +114,7 @@ export class FirestoreService {
       saves: number;
       caption: string;
       duration: number;
+      mediaUrl?: string;
     },
     addedBy: string = 'system'
   ) {
@@ -131,7 +132,7 @@ export class FirestoreService {
     
     if (videoDoc.exists) {
       // Video exists - update it
-      await videoRef.update({
+      const updateFields: any = {
         videoTitle: videoData.videoTitle,
         thumbnail: videoData.thumbnail,
         accountDisplayName: videoData.accountDisplayName,
@@ -143,7 +144,9 @@ export class FirestoreService {
         caption: videoData.caption,
         duration: videoData.duration,
         lastRefreshedAt: Timestamp.now()
-      });
+      };
+      if (videoData.mediaUrl) updateFields.mediaUrl = videoData.mediaUrl;
+      await videoRef.update(updateFields);
       
       return { ref: videoRef, isNew: false };
     } else {
@@ -165,6 +168,7 @@ export class FirestoreService {
         saves: videoData.saves,
         caption: videoData.caption,
         duration: videoData.duration,
+        ...(videoData.mediaUrl ? { mediaUrl: videoData.mediaUrl } : {}),
         dateAdded: Timestamp.now(),
         lastRefreshedAt: Timestamp.now(),
         addedBy: addedBy,
