@@ -361,8 +361,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </div>
         )}
 
-        {/* Usage limit warnings */}
-        {!(hasUnlimitedVideos && hasUnlimitedAccounts) && (() => {
+        {/* Usage limit warnings — hidden, paywall handles gatekeeping */}
+        {false && !(hasUnlimitedVideos && hasUnlimitedAccounts) && (() => {
           const totalVideosRequested = totalCount * videoCount;
           const accountsOverLimit = totalCount > usageLimits.accountsLeft;
           const videosOverLimit = totalVideosRequested > usageLimits.videosLeft;
