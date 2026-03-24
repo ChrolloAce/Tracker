@@ -98,12 +98,13 @@ async function handler(
     const sortDir = (sortOrder as string)?.toLowerCase() === 'asc' ? 'asc' : 'desc';
     query = query.orderBy(sortField, sortDir as FirebaseFirestore.OrderByDirection);
 
-    // Fetch with extra for offset-based pagination
-    const fetchLimit = offsetNum + limitNum;
+    // When searching, fetch more docs since search is client-side
+    const hasClientFilters = search || tags || minViews || maxViews;
+    const fetchLimit = hasClientFilters ? 500 : offsetNum + limitNum;
     query = query.limit(fetchLimit);
 
     const snapshot = await query.get();
-    const allDocs = snapshot.docs.slice(offsetNum);
+    const allDocs = snapshot.docs;
 
     let videos = allDocs.map((doc) => {
       const d = doc.data();
@@ -151,16 +152,22 @@ async function handler(
       );
     }
 
-    // Search (title, description, uploaderHandle)
+    // Search (title, description, uploaderHandle, tags, category)
     if (search && typeof search === 'string') {
       const q = search.toLowerCase();
       videos = videos.filter(
         (v) =>
           v.title?.toLowerCase().includes(q) ||
           v.description?.toLowerCase().includes(q) ||
-          v.uploaderHandle?.toLowerCase().includes(q)
+          v.uploaderHandle?.toLowerCase().includes(q) ||
+          v.category?.toLowerCase().includes(q) ||
+          v.tags?.some((t: string) => t.toLowerCase().includes(q))
       );
     }
+
+    // Apply pagination AFTER client-side filters
+    const totalFiltered = videos.length;
+    videos = videos.slice(offsetNum, offsetNum + limitNum);
 
     return res.status(200).json({
       success: true,
@@ -169,9 +176,9 @@ async function handler(
         pagination: {
           limit: limitNum,
           offset: offsetNum,
-          total: snapshot.size,
+          total: totalFiltered,
           returned: videos.length,
-          hasMore: snapshot.size >= fetchLimit,
+          hasMore: offsetNum + limitNum < totalFiltered,
         },
       },
     });
