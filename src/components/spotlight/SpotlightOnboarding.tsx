@@ -297,8 +297,9 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
             <div
               data-spotlight-tooltip
               className="rounded-2xl shadow-2xl"
-              style={{ position: 'relative', zIndex: 1 }}
-            style={{
+              style={{
+                position: 'relative',
+                zIndex: 1,
               padding: isCentered ? 24 : 16,
               background: isCentered
                 ? 'linear-gradient(135deg, #0D0D0D 0%, #141414 100%)'

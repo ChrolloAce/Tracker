@@ -41,7 +41,6 @@ import TeamManagementPage from '../components/TeamManagementPage';
 import SelectCreatorModal from '../components/SelectCreatorModal';
 import BulkAssignCreatorModal from '../components/BulkAssignCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
-import DemoBanner from '../components/DemoBanner';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
@@ -246,7 +245,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallContext, setPaywallContext] = useState<string>('');
   const [planTier, setPlanTier] = useState<string>('free');
-  const [isDemoOrg, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
+  const [, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
 
   // Check if user needs to pay before performing an action
   const requiresPaidPlan = (context: string): boolean => {
@@ -1221,7 +1220,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.race([dataPromise, timeoutPromise]) as any;
       
       // Process accounts
-      const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
+      const accounts: TrackedAccount[] = accountsSnapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       } as TrackedAccount));
@@ -1234,7 +1233,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       if (isDemoMode) {
         snapshotsMap = new Map();
       } else {
-        const videoIds = videoDocs.map(v => v.id);
+        const videoIds = videoDocs.map((v: any) => v.id);
         snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
           currentOrgId,
           currentProjectId,
@@ -1243,7 +1242,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       }
       
       // Process videos (videoDocs already filtered for deleted videos)
-      const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
+      const allSubmissions: VideoSubmission[] = videoDocs.map((videoDoc: any) => {
         const video = videoDoc as any;
         const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
         const snapshots = snapshotsMap.get(video.id) || [];
@@ -1282,7 +1281,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setTotalVideosInOrg(allSubmissions.length);
     
       // Process rules
-      const rules = rulesSnapshot.docs.map(doc => ({
+      const rules = rulesSnapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as TrackingRule[];
@@ -1303,7 +1302,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setLinkClicks(allClicks);
       
       // Process revenue integrations
-      const enabledIntegrations = allIntegrations.filter(i => i.enabled);
+      const enabledIntegrations = allIntegrations.filter((i: any) => i.enabled);
       setRevenueIntegrations(enabledIntegrations);
       
       // Load revenue metrics if integrations exist
@@ -1439,10 +1438,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
           const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
           
-          const videoIds = videoDocs.map(v => v.id);
+          const videoIds = videoDocs.map((v: any) => v.id);
           const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(currentOrgId, currentProjectId, videoIds);
           
-          const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
+          const allSubmissions: VideoSubmission[] = videoDocs.map((videoDoc: any) => {
             const video = videoDoc as any;
             const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
             const snapshots = snapshotsMap.get(video.id) || [];
@@ -3613,7 +3612,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Creators Tab */}
           {activeTab === 'creators' && (
             <div data-spotlight="content-creators">
-              <CreatorsManagementPage dateFilter={creatorsDateFilter} organizationId={currentOrgId} projectId={currentProjectId} onRequiresPaidPlan={requiresPaidPlan} />
+              <CreatorsManagementPage dateFilter={creatorsDateFilter} organizationId={currentOrgId || undefined} projectId={currentProjectId || undefined} onRequiresPaidPlan={requiresPaidPlan} />
             </div>
           )}
 

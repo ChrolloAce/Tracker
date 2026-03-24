@@ -15,12 +15,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import SuperAdminService from '../services/SuperAdminService';
 import ApiKeyService from '../services/ApiKeyService';
 import type { ApiKeyResponse, ApiKeyCreateResponse, ApiKeyScope } from '../types/apiKeys';
-import ApiPlayground from '../components/api/ApiPlayground';
-import ApiQuickReference from '../components/api/ApiQuickReference';
-import ApiDocumentation from '../components/api/ApiDocumentation';
 
 // ─── Constants ────────────────────────────────────────────
 
@@ -40,8 +36,6 @@ const ALL_SCOPES: { value: ApiKeyScope; label: string; group: string }[] = [
 const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boolean }> = ({ onRequiresPaidPlan }) => {
   const { user, currentOrgId } = useAuth();
   const navigate = useNavigate();
-  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
-
   const [keys, setKeys] = useState<ApiKeyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +46,34 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
 
 
   const orgId = currentOrgId || '';
+  const isDemoMode = !user || orgId === 'Vx2UpxGCV3uD8Xj2ioX4' || !orgId;
 
   const loadKeys = useCallback(async () => {
+    if (isDemoMode) {
+      // Show fake keys in demo mode
+      setKeys([
+        {
+          id: 'demo-key-1',
+          name: 'Production Key',
+          prefix: 'vt_live_a3x',
+          scopes: ['videos:read', 'accounts:read', 'analytics:read'],
+          createdAt: new Date('2026-01-15').toISOString(),
+          lastUsedAt: new Date('2026-03-23').toISOString(),
+          isActive: true,
+        } as any,
+        {
+          id: 'demo-key-2',
+          name: 'Open Claw Agent',
+          prefix: 'vt_live_k8m',
+          scopes: ['videos:read', 'accounts:read', 'analytics:read', 'viral:read'],
+          createdAt: new Date('2026-02-20').toISOString(),
+          lastUsedAt: new Date('2026-03-24').toISOString(),
+          isActive: true,
+        } as any,
+      ]);
+      setLoading(false);
+      return;
+    }
     if (!orgId) { setLoading(false); return; }
     setLoading(true);
     setError(null);
@@ -65,29 +85,23 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, isDemoMode]);
 
   useEffect(() => {
-    if (orgId) loadKeys();
-  }, [orgId, loadKeys]);
+    loadKeys();
+  }, [loadKeys]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] relative">
-      <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="relative">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-2">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg transition-all">
-            <ArrowLeft className="w-5 h-5 text-gray-400" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">API Management</h1>
+        <div className="mb-6">
             <p className="text-sm text-gray-500">
               Create and manage API keys.{' '}
-              <a href="/api-docs" className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors">
+              <a href="/api-docs" className="text-[#007BFF] hover:text-[#007BFF]/80 underline underline-offset-2 transition-colors">
                 Explore our docs to get started
               </a>
             </p>
-          </div>
         </div>
 
         {/* Actions */}

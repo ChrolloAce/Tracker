@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
 
 interface NavBarProps {
   logo: string;
@@ -7,7 +6,6 @@ interface NavBarProps {
 }
 
 const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {

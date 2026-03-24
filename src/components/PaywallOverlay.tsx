@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Eye } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
