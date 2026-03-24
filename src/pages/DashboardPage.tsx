@@ -244,12 +244,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Subscription & Paywall State
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallContext, setPaywallContext] = useState<string>('');
-  const [planTier, setPlanTier] = useState<string>('free');
+  const [planTier, setPlanTier] = useState<string | null>(null);
   const [, setIsDemoOrg] = useState(isDemoMode); // Only true for actual demo, NOT view-as mode
 
   // Check if user needs to pay before performing an action
+  // Only blocks when we've confirmed the plan is 'free'
+  // null = still loading, don't block
   const requiresPaidPlan = (context: string): boolean => {
-    if (isDemoMode || planTier !== 'free') return false;
+    if (isDemoMode || planTier === null || planTier !== 'free') return false;
     setPaywallContext(context);
     setShowPaywall(true);
     return true;
