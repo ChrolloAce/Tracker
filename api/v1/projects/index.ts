@@ -211,4 +211,8 @@ async function createProject(
 
 // ─── Export ──────────────────────────────────────────────
 
-export default withApiAuth(['projects:read'], handler);
+// Dynamic scopes based on method: POST requires write, GET requires read
+export default async function routeHandler(req: VercelRequest, res: VercelResponse) {
+  const scopes = req.method === 'POST' ? ['projects:write'] : ['projects:read'];
+  return withApiAuth(scopes as any, handler)(req, res);
+}

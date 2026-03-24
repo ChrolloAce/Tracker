@@ -14,7 +14,6 @@ import {
   Eye
 } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
-import messagingCampaignAnimation from '../../public/lottie/Messaging Campaign.json';
 
 interface CampaignsManagementPageProps {
   selectedStatus?: 'all' | CampaignStatus;
@@ -36,10 +35,17 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 }) => {
   const { currentOrgId: authOrgId, currentProjectId: authProjectId, user } = useAuth();
   const navigate = useNavigate();
-  
+
   // Use props if provided (for demo mode), otherwise use auth
   const currentOrgId = organizationId || authOrgId;
   const currentProjectId = projectId || authProjectId;
+
+  // Lazy load animation data
+  const [messagingCampaignAnimation, setMessagingCampaignAnimation] = useState<any>(null);
+  useEffect(() => {
+    import('../../public/lottie/Messaging Campaign.json').then(module => setMessagingCampaignAnimation(module.default));
+  }, []);
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreator, setIsCreator] = useState(false);

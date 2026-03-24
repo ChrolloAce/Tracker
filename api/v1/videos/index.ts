@@ -107,6 +107,7 @@ async function listVideos(
         comments: data.comments || 0,
         shares: data.shares || 0,
         status: data.status,
+        transcriptStatus: data.transcriptStatus || 'none',
         uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
         lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString()
       });
@@ -193,6 +194,7 @@ async function listVideosFromProject(
       comments: data.comments || 0,
       shares: data.shares || 0,
       status: data.status,
+      transcriptStatus: data.transcriptStatus || 'none',
       uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
       lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString()
     };
@@ -387,4 +389,8 @@ async function addVideo(
 
 // ─── Export ──────────────────────────────────────────────
 
-export default withApiAuth(['videos:read'], handler);
+// Dynamic scopes based on method: POST requires write, GET requires read
+export default async function routeHandler(req: VercelRequest, res: VercelResponse) {
+  const scopes = req.method === 'POST' ? ['videos:write'] : ['videos:read'];
+  return withApiAuth(scopes as any, handler)(req, res);
+}

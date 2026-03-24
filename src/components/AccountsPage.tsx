@@ -20,7 +20,6 @@ import { ExportVideosModal } from './ExportVideosModal';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Toast } from './ui/Toast';
 import { BlurEmptyState } from './ui/BlurEmptyState';
-import profileAnimation from '../../public/lottie/Target Audience.json';
 import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
 import CreateLinkModal from './CreateLinkModal';
@@ -62,6 +61,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
     const navigate = useNavigate();
     const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
+
+    // Lazy load animation data
+    const [profileAnimation, setProfileAnimation] = useState<any>(null);
+    useEffect(() => {
+      import('../../public/lottie/Target Audience.json').then(module => setProfileAnimation(module.default));
+    }, []);
     
     // Use Hook
     const {

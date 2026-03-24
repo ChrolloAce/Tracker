@@ -193,11 +193,11 @@ export function handleApiError(res: VercelResponse, error: unknown): void {
     return res.status(error.statusCode).json(response);
   }
   
-  const message = error instanceof Error ? error.message : 'Internal server error';
+  // Never expose internal error details to API consumers
   return res.status(500).json({
     success: false,
     error: {
-      message,
+      message: 'Internal server error',
       code: 'INTERNAL_ERROR'
     }
   });

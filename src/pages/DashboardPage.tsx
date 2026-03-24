@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -62,8 +62,9 @@ import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission, InstagramVideoData } from '../types';
 import DateFilterService from '../services/DateFilterService';
 import ThemeService from '../services/ThemeService';
-import profileAnimation from '../../public/lottie/Profile.json';
-import videoMaterialAnimation from '../../public/lottie/Posting Picture.json';
+// Lottie animation JSON loaded lazily to reduce initial bundle size
+let _profileAnimation: any = null;
+let _videoMaterialAnimation: any = null;
 import FirestoreDataService from '../services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
@@ -87,7 +88,7 @@ interface DateRange {
 }
 
 // Skeleton Loader Component for fast loading UX
-const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) => (
+const DashboardSkeleton: React.FC<{ height?: string }> = memo(({ height = 'h-96' }) => (
   <div className={`${height} bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse`}>
     <div className="p-6 space-y-4">
       <div className="h-6 bg-white/5 rounded w-1/4"></div>
@@ -99,7 +100,81 @@ const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) =
       </div>
     </div>
   </div>
-);
+));
+
+// Skeleton for KPI cards — matches the real KPI card grid layout
+const KPICardsSkeleton: React.FC = memo(() => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+    {Array.from({ length: 8 }).map((_, i) => (
+      <div
+        key={i}
+        className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-5 animate-pulse"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+        <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+      </div>
+    ))}
+  </div>
+));
+
+// Skeleton for chart/top-performers sections — a simple rectangular placeholder
+const ChartSkeleton: React.FC<{ height?: string }> = memo(({ height = 'h-80' }) => (
+  <div className={`${height} bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 animate-pulse`}>
+    <div className="p-6">
+      <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+      <div className="h-3 w-64 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
+      <div className="flex items-end space-x-2" style={{ height: 'calc(100% - 80px)' }}>
+        {[45, 70, 55, 85, 40, 65, 50].map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t"
+            style={{ height: `${h}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+));
+
+// Skeleton for the video slider section
+const VideoSliderSkeleton: React.FC = memo(() => (
+  <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-6 animate-pulse">
+    <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+    <div className="flex space-x-4 overflow-hidden">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex-shrink-0 w-40 md:w-48">
+          <div className="aspect-[9/16] bg-gray-200 dark:bg-gray-700 rounded-xl mb-2" />
+          <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded mb-1" />
+          <div className="h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+      ))}
+    </div>
+  </div>
+));
+
+// Skeleton for the video table section
+const VideoTableSkeleton: React.FC = memo(() => (
+  <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-6 animate-pulse">
+    <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center space-x-4">
+          <div className="w-16 h-10 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="flex-1">
+            <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
+            <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded" />
+          </div>
+          <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+      ))}
+    </div>
+  </div>
+));
 
 // Helper function to generate table header based on date filter
 const getVideoTableHeader = (dateFilter: DateFilterType): string => {
@@ -270,6 +345,24 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return false;
   }, [isDemoMode]);
 
+  // Lazily load Lottie animation JSON to reduce initial bundle size
+  const [profileAnimation, setProfileAnimation] = useState<any>(_profileAnimation);
+  const [videoMaterialAnimation, setVideoMaterialAnimation] = useState<any>(_videoMaterialAnimation);
+  useEffect(() => {
+    if (!_videoMaterialAnimation) {
+      import('../../public/lottie/Posting Picture.json').then(m => {
+        _videoMaterialAnimation = m.default;
+        setVideoMaterialAnimation(m.default);
+      });
+    }
+    if (!_profileAnimation) {
+      import('../../public/lottie/Profile.json').then(m => {
+        _profileAnimation = m.default;
+        setProfileAnimation(m.default);
+      });
+    }
+  }, []);
+
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
@@ -309,6 +402,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   
   // Loading/pending state for immediate UI feedback
   const [loadingDashboard, setLoadingDashboard] = useState(true);
+  // dataFullyLoaded: true ONLY after ALL video data is fetched and submissions state is set
+  // Used to show skeleton placeholders for KPI cards and charts until data is ready
+  const [dataFullyLoaded, setDataFullyLoaded] = useState(false);
   const [pendingVideos, setPendingVideos] = useState<VideoSubmission[]>([]);
   const [pendingAccounts, setPendingAccounts] = useState<TrackedAccount[]>([]);
   const [dateFilter, setDateFilter] = useState<DateFilterType>(() => {
@@ -1047,6 +1143,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // One-time data loading (no real-time listeners)
   useEffect(() => {
+    // Guard against stale fetches when user switches projects rapidly.
+    // When the effect re-runs (deps change), cleanup sets cancelled=true so
+    // the old async IIFE stops writing to state.
+    let cancelled = false;
+
     console.log('🚨 DATA LOAD EFFECT:', { user: !!user, isDemoMode, currentOrgId, currentProjectId });
     if ((!user && !isDemoMode) || !currentOrgId || !currentProjectId) {
       console.log('⛔ SKIPPING DATA LOAD:', { user: !!user, isDemoMode, currentOrgId, currentProjectId });
@@ -1054,7 +1155,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setRulesLoadedFromFirebase(false);
       setDataLoadedFromFirebase(false);
       setLoadingDashboard(false);
-      return;
+      setDataFullyLoaded(false);
+      return () => { cancelled = true; };
     }
 
     // 🔐 SUPER ADMIN VIEW-AS MODE: Use pre-fetched data from API
@@ -1122,7 +1224,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setRulesLoadedFromFirebase(true);
       setDataLoadedFromFirebase(true);
       setLoadingDashboard(false);
-      
+      setDataFullyLoaded(true);
+
       // Debug: Count total snapshots
       const totalSnapshots = processedVideos.reduce((sum, v) => sum + (v.snapshots?.length || 0), 0);
       console.log(`✅ View-As loaded: ${processedVideos.length} videos, ${processedAccounts.length} accounts, ${processedLinks.length} links`);
@@ -1133,11 +1236,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         console.log(`   Sample: First video has ${firstVideo.snapshots?.length || 0} snapshots`);
         console.log(`   Latest: views=${firstSnapshot.views}, timestamp=${firstSnapshot.timestamp}`);
       }
-      return;
+      return () => { cancelled = true; };
     }
 
     // Start loading - set loading state to true
     setLoadingDashboard(true);
+    setDataFullyLoaded(false);
 
     // 🎯 CREATORS: Skip loading ALL organization data - they only need campaigns
     // Also skip if role not loaded yet to prevent unnecessary cache loading
@@ -1148,8 +1252,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         setRulesLoadedFromFirebase(true);
         setDataLoadedFromFirebase(true);
         setLoadingDashboard(false);
+        setDataFullyLoaded(true);
       }
-      return;
+      return () => { cancelled = true; };
     }
     
     // Initialize theme
@@ -1187,6 +1292,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           setRulesLoadedFromFirebase(true);
           setDataLoadedFromFirebase(true);
           setLoadingDashboard(false);
+          // NOTE: Do NOT set dataFullyLoaded(true) here. Cache only stores ~100 videos,
+          // so KPI totals would flash incorrect values from the cached subset before
+          // Firebase loads the full dataset. Let KPI skeletons stay visible until
+          // Firebase data arrives. The cached submissions still populate the video table.
           hasCached = true;
           console.log(`⚡ Loaded from cache (${Math.round(cacheAge / 1000)}s old) - including ${cachedLinks?.length || 0} links & ${cachedClicks?.length || 0} clicks`);
         }
@@ -1198,6 +1307,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     
     // Load ALL data in TRUE PARALLEL for maximum speed!
     (async () => {
+      if (cancelled) return;
       console.log('🚀 Starting Parallel Firebase load...');
       console.time('🚀 Parallel Firebase load');
 
@@ -1215,7 +1325,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         )).then(r => { console.log('✅ Accounts loaded:', r.size); return r; }),
         
         // 2. Videos
-        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 })
+        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 10000 })
           .then(r => { console.log('✅ Videos loaded:', r.length); return r; }),
 
         // 3. Rules
@@ -1226,8 +1336,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         FirestoreDataService.getLinks(currentOrgId, currentProjectId)
           .then(r => { console.log('✅ Links loaded:', r.length); return r; }),
 
-        // 5. Link Clicks (OPTIMIZED!)
-        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId)
+        // 5. Link Clicks — fetch all (was 200, caused wrong KPI totals)
+        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId, 5000)
           .then(r => { console.log('✅ Clicks loaded:', r.length); return r; }),
 
         // 6. Revenue Integrations
@@ -1241,7 +1351,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       ]);
 
       const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.race([dataPromise, timeoutPromise]) as any;
-      
+
+      // Bail out if the effect was re-triggered (e.g. user switched projects)
+      if (cancelled) return;
+
       // Process accounts
       const accounts: TrackedAccount[] = accountsSnapshot.docs.map((doc: any) => ({
         id: doc.id,
@@ -1264,15 +1377,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         );
       }
       
+      // Bail out again after snapshot fetch (can be slow for large orgs)
+      if (cancelled) return;
+
       // Process videos (videoDocs already filtered for deleted videos)
       const allSubmissions: VideoSubmission[] = videoDocs.map((videoDoc: any) => {
         const video = videoDoc as any;
         const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
         const snapshots = snapshotsMap.get(video.id) || [];
-        
+
         const caption = video.caption || video.videoTitle || '';
         const title = video.videoTitle || video.caption || '';
-        
+
         return {
           id: video.id,
           url: video.videoUrl || video.url || '',
@@ -1337,6 +1453,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setRulesLoadedFromFirebase(true);
       setDataLoadedFromFirebase(true);
       setLoadingDashboard(false);
+      setDataFullyLoaded(true);
       console.timeEnd('🚀 Parallel Firebase load');
       console.log('✅ All data loaded in parallel!');
       
@@ -1363,15 +1480,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         }
       }
     } catch (error: any) {
+      if (cancelled) return;
       console.error('❌ Failed to load data:', error);
       document.title = `ERROR: ${error?.message || error}`;
       setDataLoadedFromFirebase(true);
       setRulesLoadedFromFirebase(true);
       setLoadingDashboard(false);
+      setDataFullyLoaded(true);
       console.timeEnd('🚀 Parallel Firebase load');
     }
-    
+
     })(); // End of async IIFE
+
+    return () => { cancelled = true; };
   }, [user, currentOrgId, currentProjectId, userRole, viewAsContext.isViewAsMode, viewAsContext.viewAsData]); // Reload when project changes, role is loaded, or view-as data changes!
 
   // Auto-sync revenue data when date filters change
@@ -1453,10 +1574,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       // If syncing count decreased (someone finished), reload videos
       if (previousSyncingCount > 0 && currentSyncingCount < previousSyncingCount) {
-        
+
         // Reload videos
         try {
-          const videoDocs = await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 });
+          setDataFullyLoaded(false);
+          const videoDocs = await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 10000 });
           
           const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
           const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
@@ -1498,8 +1620,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           });
           
           setSubmissions(allSubmissions);
+          setDataFullyLoaded(true);
         } catch (error) {
           console.error('❌ Failed to auto-refresh videos:', error);
+          setDataFullyLoaded(true);
         }
       }
       
@@ -3281,16 +3405,36 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   };
                   
                   const renderSectionContent = () => {
-                    // Show skeleton while data is loading
+                    // Show skeleton while INITIAL page/auth is loading (before any data)
                     if (!tabDataReady.dashboard || isInitialLoading) {
                       return <DashboardSkeleton height={sectionId === 'kpi-cards' ? 'h-48' : 'h-96'} />;
                     }
-                    
+
+                    // Show data-loading skeletons while ALL video data is being fetched
+                    // The page shell is visible, but KPI/chart sections show placeholders
+                    if (!dataFullyLoaded) {
+                      switch (sectionId) {
+                        case 'kpi-cards':
+                          return <KPICardsSkeleton />;
+                        case 'video-slider':
+                          return <VideoSliderSkeleton />;
+                        case 'top-performers':
+                          return <ChartSkeleton height="h-96" />;
+                        case 'posting-activity':
+                          return <ChartSkeleton height="h-80" />;
+                        case 'videos-table':
+                          return <VideoTableSkeleton />;
+                        default:
+                          // tracked-accounts and other sections show the generic skeleton
+                          return <DashboardSkeleton height="h-96" />;
+                      }
+                    }
+
                     switch (sectionId) {
                       case 'kpi-cards':
                         return (
                           <div data-spotlight="kpi-cards">
-                          <KPICards 
+                          <KPICards
                             submissions={filteredSubmissions}
                             allSubmissions={submissionsWithoutDateFilter}
                             linkClicks={filteredLinkClicks}
@@ -3347,7 +3491,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                                 // Store day and hour for filtering
                                 (window as any).__heatmapDayOfWeek = dayIndex;
                                 (window as any).__heatmapHourRange = { start: hour, end: hour + 1 };
-                                console.log('💾 Stored filters:', { 
+                                console.log('💾 Stored filters:', {
                                   dayOfWeek: (window as any).__heatmapDayOfWeek,
                                   hourRange: (window as any).__heatmapHourRange
                                 });
@@ -3365,7 +3509,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         }
                       case 'posting-activity':
                         return (
-                          <PostingActivityHeatmap 
+                          <PostingActivityHeatmap
                             submissions={filteredSubmissions}
                             onVideoClick={handleVideoClick}
                             dateFilter={dateFilter}
@@ -3810,6 +3954,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           // Show skeleton while data is loading
           if (isInitialLoading) {
             return <DashboardSkeleton height={sectionId === 'kpi-cards' ? 'h-48' : 'h-96'} />;
+          }
+
+          // Show data-loading skeletons while ALL video data is being fetched
+          if (!dataFullyLoaded) {
+            if (sectionId === 'kpi-cards') return <KPICardsSkeleton />;
+            if (sectionId === 'video-slider') return <VideoSliderSkeleton />;
+            if (sectionId === 'top-performers') return <ChartSkeleton height="h-96" />;
+            if (sectionId === 'posting-activity') return <ChartSkeleton height="h-80" />;
+            if (sectionId === 'videos-table') return <VideoTableSkeleton />;
+            return <DashboardSkeleton height="h-96" />;
           }
           
           // Render live preview of each section

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Flame, 
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  Flame,
   Search,
   SlidersHorizontal,
   ChevronDown,
@@ -9,7 +9,7 @@ import {
   ArrowUpDown,
   Loader2,
 } from 'lucide-react';
-import ViralContentService from '../services/ViralContentService';
+import ViralContentService, { PageFilters, SortField, SortDir } from '../services/ViralContentService';
 import { ViralVideo } from '../types/viralContent';
 import { useAuth } from '../contexts/AuthContext';
 import SuperAdminService from '../services/SuperAdminService';
@@ -89,6 +89,14 @@ const getPlatformIcon = (platform: string, className = 'w-4 h-4') => {
 
 const PAGE_SIZE = 20;
 
+/** Map UI sort options to Firestore sort field + direction */
+const SORT_TO_FIRESTORE: Record<SortOption, { sortField: SortField; sortDir: SortDir }> = {
+  recently_added: { sortField: 'order', sortDir: 'asc' },
+  latest_posted:  { sortField: 'uploadDate', sortDir: 'desc' },
+  most_views:     { sortField: 'views', sortDir: 'desc' },
+  most_likes:     { sortField: 'likes', sortDir: 'desc' },
+};
+
 // ─── Main Page ────────────────────────────────────────────
 
 type OpenDropdown = 'none' | 'filters' | 'sort';
@@ -99,10 +107,15 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
   const { user } = useAuth();
   const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
 
-  // All videos fetched once from Firestore
-  const [allVideos, setAllVideos] = useState<ViralVideo[]>([]);
+  // Current page data from the server (browse mode)
+  const [pageVideos, setPageVideos] = useState<ViralVideo[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Search mode: all docs fetched for client-side filtering
+  const [allVideos, setAllVideos] = useState<ViralVideo[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Filter / sort state
   const [selectedPlatform, setSelectedPlatform] = useState('all');
@@ -111,79 +124,186 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
   const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
   const [sortBy, setSortBy] = useState<SortOption>('most_views');
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchPage, setSearchPage] = useState(1);
 
-  // ── Fetch first 12 immediately, then lazy-load the rest ──
+  // Debounce ref for search
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce the search input
   useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
+
+  // Track filter key so we know when to reset pagination
+  const filterKeyRef = useRef('');
+
+  // Build the current filter key (changes when any filter/sort changes)
+  const filterKey = useMemo(() => {
+    const { sortField, sortDir } = SORT_TO_FIRESTORE[sortBy];
+    return [selectedPlatform, selectedCategory, contentTypeFilter, sortField, sortDir].join('|');
+  }, [selectedPlatform, selectedCategory, contentTypeFilter, sortBy]);
+
+  // Are we in search mode?
+  const isSearchMode = debouncedSearch.length > 0;
+
+  // Reset search page when search query or filters change
+  useEffect(() => {
+    setSearchPage(1);
+  }, [debouncedSearch, selectedPlatform, selectedCategory, contentTypeFilter, sortBy]);
+
+  // ── Fetch current page from server (browse mode only) ──
+  useEffect(() => {
+    // Skip server-side fetch when searching — search mode uses allVideos
+    if (isSearchMode) return;
+
     let cancelled = false;
+
+    // Detect if filters changed — if so, clear cache and reset to page 1
+    const filtersChanged = filterKeyRef.current !== '' && filterKeyRef.current !== filterKey;
+    filterKeyRef.current = filterKey;
+
+    if (filtersChanged) {
+      ViralContentService.clearCache();
+      // If not already on page 1, reset — the page change will re-trigger this effect.
+      // If already on page 1, fall through to fetch with the new filters immediately.
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+    }
+
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        // Load first 12 for instant display
-        const first = await ViralContentService.fetchFirst(12);
+        const { sortField, sortDir } = SORT_TO_FIRESTORE[sortBy];
+        const filters: PageFilters = {
+          platform: selectedPlatform,
+          category: selectedCategory,
+          contentType: contentTypeFilter,
+          sortField,
+          sortDir,
+        };
+        const result = await ViralContentService.fetchPage(currentPage, PAGE_SIZE, filters);
         if (!cancelled) {
-          setAllVideos(first);
+          setPageVideos(result.videos);
+          setTotalCount(result.totalCount);
           setLoading(false);
         }
-        // Then load the rest in the background
-        const all = await ViralContentService.fetchAll();
-        if (!cancelled) setAllVideos(all);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load content');
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load content');
+          setLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [currentPage, filterKey, selectedPlatform, selectedCategory, contentTypeFilter, sortBy, isSearchMode]);
 
-  // ── Filter + sort (runs on full dataset) ───────────────
-  const filteredVideos = useMemo(() => {
-    const q = searchQuery.toLowerCase();
+  // ── Fetch all docs for search mode ─────────────────────
+  useEffect(() => {
+    if (!isSearchMode) return;
 
-    let result = allVideos.filter((video) => {
-      const matchPlatform = selectedPlatform === 'all' || video.platform === selectedPlatform;
-      const matchCategory = selectedCategory === 'All' || video.category === selectedCategory;
-      const matchType = contentTypeFilter === 'all' || video.contentType === contentTypeFilter;
-      const matchSearch =
-        !q ||
-        video.title?.toLowerCase().includes(q) ||
-        video.uploaderHandle?.toLowerCase().includes(q) ||
-        video.description?.toLowerCase().includes(q) ||
-        video.tags?.some((t) => t.toLowerCase().includes(q));
-      return matchPlatform && matchCategory && matchType && matchSearch;
-    });
+    let cancelled = false;
 
-    // Sort
-    result = [...result];
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'most_views':    return (b.views || 0) - (a.views || 0);
-        case 'most_likes':    return (b.likes || 0) - (a.likes || 0);
-        case 'latest_posted': {
-          const dateA = a.uploadDate?.toDate?.() ?? new Date(0);
-          const dateB = b.uploadDate?.toDate?.() ?? new Date(0);
-          return dateB.getTime() - dateA.getTime();
+    // Only fetch if we haven't loaded allVideos yet
+    if (allVideos === null) {
+      setSearchLoading(true);
+      setError(null);
+      (async () => {
+        try {
+          const videos = await ViralContentService.fetchAllForSearch();
+          if (!cancelled) {
+            setAllVideos(videos);
+            setSearchLoading(false);
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : 'Failed to load content for search');
+            setSearchLoading(false);
+          }
         }
-        case 'recently_added':
-        default:              return (a.order || 0) - (b.order || 0);
-      }
+      })();
+    }
+
+    return () => { cancelled = true; };
+  }, [isSearchMode, allVideos]);
+
+  // ── Client-side filtered + sorted results (search mode) ─
+  const searchFilteredVideos = useMemo(() => {
+    if (!isSearchMode || !allVideos) return [];
+
+    const q = debouncedSearch.toLowerCase();
+
+    // Step 1: text search
+    let results = allVideos.filter((video) =>
+      video.title?.toLowerCase().includes(q) ||
+      video.uploaderHandle?.toLowerCase().includes(q) ||
+      video.description?.toLowerCase().includes(q) ||
+      video.tags?.some((t) => t.toLowerCase().includes(q)),
+    );
+
+    // Step 2: apply platform filter
+    if (selectedPlatform && selectedPlatform !== 'all') {
+      results = results.filter((v) => v.platform === selectedPlatform);
+    }
+
+    // Step 3: apply category filter
+    if (selectedCategory && selectedCategory !== 'All') {
+      results = results.filter((v) => v.category === selectedCategory);
+    }
+
+    // Step 4: apply content type filter
+    if (contentTypeFilter && contentTypeFilter !== 'all') {
+      results = results.filter((v) => v.contentType === contentTypeFilter);
+    }
+
+    // Step 5: apply sort
+    const { sortField, sortDir } = SORT_TO_FIRESTORE[sortBy];
+    results = [...results].sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      // Handle Firestore Timestamp objects (uploadDate)
+      const aComp = typeof aVal === 'object' && 'toMillis' in aVal ? (aVal as any).toMillis() : aVal;
+      const bComp = typeof bVal === 'object' && 'toMillis' in bVal ? (bVal as any).toMillis() : bVal;
+      if (aComp < bComp) return sortDir === 'asc' ? -1 : 1;
+      if (aComp > bComp) return sortDir === 'asc' ? 1 : -1;
+      return 0;
     });
 
-    return result;
-  }, [allVideos, selectedPlatform, selectedCategory, contentTypeFilter, searchQuery, sortBy]);
+    return results;
+  }, [allVideos, debouncedSearch, selectedPlatform, selectedCategory, contentTypeFilter, sortBy, isSearchMode]);
 
-  // Reset to page 1 whenever filters/search/sort change
-  useEffect(() => { setCurrentPage(1); }, [selectedPlatform, selectedCategory, contentTypeFilter, searchQuery, sortBy]);
+  // ── Choose which videos to display ─────────────────────
+  const displayVideos = useMemo(() => {
+    if (isSearchMode) {
+      // Client-side pagination of filtered search results
+      const start = (searchPage - 1) * PAGE_SIZE;
+      return searchFilteredVideos.slice(start, start + PAGE_SIZE);
+    }
+    return pageVideos;
+  }, [isSearchMode, searchFilteredVideos, searchPage, pageVideos]);
 
   // ── Pagination math ────────────────────────────────────
-  const totalFiltered = filteredVideos.length;
+  const totalFiltered = isSearchMode ? searchFilteredVideos.length : totalCount;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
+  const activePage = isSearchMode ? searchPage : currentPage;
+  const safePage = Math.min(activePage, totalPages);
   const startIdx = (safePage - 1) * PAGE_SIZE;
-  const pageVideos = filteredVideos.slice(startIdx, startIdx + PAGE_SIZE);
+  const isLoading = isSearchMode ? searchLoading : loading;
 
   const activeFilterCount =
     (selectedPlatform !== 'all' ? 1 : 0) +
@@ -197,7 +317,11 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
 
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages || page === safePage) return;
-    setCurrentPage(page);
+    if (isSearchMode) {
+      setSearchPage(page);
+    } else {
+      setCurrentPage(page);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -312,7 +436,7 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
       </div>
             )}
         </div>
-        
+
           {/* Sort dropdown */}
           <div className="relative">
             <button
@@ -355,18 +479,18 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
       )}
 
       {/* Content Grid */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
         </div>
-      ) : pageVideos.length === 0 ? (
+      ) : displayVideos.length === 0 ? (
         <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Flame className="w-8 h-8 text-gray-600" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">No viral content found</h3>
           <p className="text-gray-500 text-sm max-w-sm mx-auto">
-            {allVideos.length === 0
+            {totalFiltered === 0 && !debouncedSearch
               ? 'The viral library is empty. Use the admin seed tool above to import content.'
               : 'Try adjusting your filters or search to find content.'}
           </p>
@@ -374,7 +498,7 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
       ) : (
         <>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {pageVideos.map((video, index) => {
+            {displayVideos.map((video, index) => {
               const globalIndex = startIdx + index;
               const isBlurred = !!onRequiresPaidPlan && globalIndex >= FREE_VISIBLE_COUNT;
               return isBlurred ? (

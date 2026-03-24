@@ -98,11 +98,11 @@ export const useAccounts = ({
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   // Helper for dates
-  const toDate = (date: any): Date => {
+  const toDate = useCallback((date: any): Date => {
     if (!date) return new Date();
     if (date && typeof date.toDate === 'function') return date.toDate();
     return new Date(date);
-  };
+  }, []);
 
   // --- Effects ---
 
@@ -219,31 +219,49 @@ export const useAccounts = ({
     loadMetadata();
   }, [currentOrgId, currentProjectId, user, accounts.length, isDemoMode]);
 
-  // Load Creator Names + Photos for accounts
+  // Stable account IDs string to avoid re-running creator info on every snapshot
+  const accountIdsKey = useMemo(() => accounts.map(a => a.id).sort().join(','), [accounts]);
+
+  // Load Creator Names + Photos for accounts (parallelized)
   useEffect(() => {
+    if (isDemoMode) return;
+    if (!currentOrgId || !currentProjectId || accounts.length === 0) return;
+
+    let cancelled = false;
+
     const loadCreatorInfo = async () => {
-        if (isDemoMode) return; // Skip for demo
-        if (!currentOrgId || !currentProjectId || accounts.length === 0) return;
+        const results = await Promise.all(
+            accounts.map(async (acc) => {
+                try {
+                    const info = await CreatorLinksService.getCreatorInfoForAccount(currentOrgId, currentProjectId, acc.id);
+                    return { accountId: acc.id, info };
+                } catch {
+                    return { accountId: acc.id, info: null };
+                }
+            })
+        );
+
+        if (cancelled) return;
+
         const nameMap = new Map<string, string>();
         const photoMap = new Map<string, string>();
         const linked: string[] = [];
-        
-        for (const acc of accounts) {
-            try {
-                const info = await CreatorLinksService.getCreatorInfoForAccount(currentOrgId, currentProjectId, acc.id);
-                if (info) {
-                    nameMap.set(acc.id, info.name);
-                    if (info.photoURL) photoMap.set(acc.id, info.photoURL);
-                    linked.push(acc.id);
-                }
-            } catch {}
+
+        for (const { accountId, info } of results) {
+            if (info) {
+                nameMap.set(accountId, info.name);
+                if (info.photoURL) photoMap.set(accountId, info.photoURL);
+                linked.push(accountId);
+            }
         }
         setAccountCreatorNames(nameMap);
         setAccountCreatorPhotos(photoMap);
         setCreatorLinkedAccountIds(linked);
     };
     loadCreatorInfo();
-  }, [currentOrgId, currentProjectId, accounts, isDemoMode]);
+
+    return () => { cancelled = true; };
+  }, [currentOrgId, currentProjectId, accountIdsKey, isDemoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load Video Logic (extracted from AccountsPage)
   const loadAccountVideos = useCallback(async (accountId: string) => {
@@ -316,102 +334,115 @@ export const useAccounts = ({
     }
   }, [currentOrgId, currentProjectId, accounts, selectedRuleIds, dashboardRules, dateFilter, isDemoMode]);
 
-  // Calculate Stats & Filter Accounts
+  // Calculate Stats & Filter Accounts (parallelized video fetches)
   useEffect(() => {
-    const updateStats = async () => {
-        if (!accounts.length || (!isDemoMode && (!currentOrgId || !currentProjectId))) { 
-          setFilteredAccounts([]); 
-          return; 
+    let cancelled = false;
+
+    const computePostingFrequency = (videos: AccountVideo[]): string => {
+      const sortedVideos = [...videos]
+        .filter(v => v.uploadDate)
+        .sort((a, b) => {
+          const dateA = a.uploadDate && typeof (a.uploadDate as any).toDate === 'function'
+            ? (a.uploadDate as any).toDate().getTime()
+            : new Date(a.uploadDate!).getTime();
+          const dateB = b.uploadDate && typeof (b.uploadDate as any).toDate === 'function'
+            ? (b.uploadDate as any).toDate().getTime()
+            : new Date(b.uploadDate!).getTime();
+          return dateA - dateB;
+        });
+
+      if (sortedVideos.length >= 2) {
+        const intervals: number[] = [];
+        for (let i = 1; i < sortedVideos.length; i++) {
+          const prevDate = sortedVideos[i - 1].uploadDate && typeof (sortedVideos[i - 1].uploadDate as any).toDate === 'function'
+            ? (sortedVideos[i - 1].uploadDate as any).toDate()
+            : new Date(sortedVideos[i - 1].uploadDate!);
+          const currDate = sortedVideos[i].uploadDate && typeof (sortedVideos[i].uploadDate as any).toDate === 'function'
+            ? (sortedVideos[i].uploadDate as any).toDate()
+            : new Date(sortedVideos[i].uploadDate!);
+          const daysBetween = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+          intervals.push(daysBetween);
         }
-        
-        const results = await Promise.all(accounts.map(async (account) => {
+
+        const avgDaysBetweenPosts = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+
+        if (avgDaysBetweenPosts < 1) {
+          const postsPerDay = 1 / avgDaysBetweenPosts;
+          return `${postsPerDay.toFixed(1)}/day`;
+        } else if (avgDaysBetweenPosts < 7) {
+          return `every ${Math.round(avgDaysBetweenPosts)} days`;
+        } else if (avgDaysBetweenPosts < 30) {
+          const postsPerWeek = 7 / avgDaysBetweenPosts;
+          return `${postsPerWeek.toFixed(1)}/week`;
+        } else {
+          const postsPerMonth = 30 / avgDaysBetweenPosts;
+          return `${postsPerMonth.toFixed(1)}/month`;
+        }
+      } else if (sortedVideos.length === 1) {
+        return '1 video';
+      }
+      return '—';
+    };
+
+    const updateStats = async () => {
+        if (!accounts.length || (!isDemoMode && (!currentOrgId || !currentProjectId))) {
+          setFilteredAccounts([]);
+          return;
+        }
+
+        // Fetch all account videos in parallel (single Promise.all instead of sequential)
+        const allVideosMap = new Map<string, AccountVideo[]>();
+        if (!isDemoMode && currentOrgId && currentProjectId) {
+          const videoResults = await Promise.all(
+            accounts.map(async (account) => {
+              try {
+                const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId!, currentProjectId!, account.id);
+                return { accountId: account.id, videos };
+              } catch (error) {
+                console.error(`Failed to fetch videos for account ${account.id}:`, error);
+                return { accountId: account.id, videos: [] as AccountVideo[] };
+              }
+            })
+          );
+          if (cancelled) return;
+          for (const { accountId, videos } of videoResults) {
+            allVideosMap.set(accountId, videos);
+          }
+        }
+
+        if (cancelled) return;
+
+        const results = accounts.map((account) => {
             const totalViews = account.totalViews || 0;
             const totalLikes = account.totalLikes || 0;
             const totalComments = account.totalComments || 0;
             const totalShares = account.totalShares || 0;
             const totalVideos = account.totalVideos || 0;
-            
-            // Calculate engagement rate: (Likes + Comments + Shares) / Views * 100
-            const avgEngagementRate = totalViews > 0 
-              ? ((totalLikes + totalComments + totalShares) / totalViews) * 100 
+
+            const avgEngagementRate = totalViews > 0
+              ? ((totalLikes + totalComments + totalShares) / totalViews) * 100
               : 0;
-            
-            // Fetch videos to calculate posting frequency and top video
+
             let postingFrequency = '—';
             let highestViewedVideo: { title: string; views: number; videoId: string } | undefined = undefined;
-            
-            try {
-              let videos: AccountVideo[] = [];
-              if (!isDemoMode) {
-                videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId!, currentProjectId!, account.id);
+
+            const videos = allVideosMap.get(account.id) || [];
+
+            if (videos.length > 0) {
+              const topVideo = videos.reduce((max, v) =>
+                (v.views || 0) > (max.views || 0) ? v : max
+              );
+              if (topVideo && topVideo.views && topVideo.views > 0) {
+                highestViewedVideo = {
+                  title: topVideo.title || topVideo.caption || 'Untitled',
+                  views: topVideo.views,
+                  videoId: topVideo.videoId || topVideo.id || ''
+                };
               }
-              
-              // Find highest viewed video
-              if (videos.length > 0) {
-                const topVideo = videos.reduce((max, v) => 
-                  (v.views || 0) > (max.views || 0) ? v : max
-                );
-                if (topVideo && topVideo.views && topVideo.views > 0) {
-                  highestViewedVideo = {
-                    title: topVideo.title || topVideo.caption || 'Untitled',
-                    views: topVideo.views,
-                    videoId: topVideo.videoId || topVideo.id || ''
-                  };
-                }
-                
-                // Calculate ACTUAL posting frequency from video upload dates
-                const sortedVideos = [...videos]
-                  .filter(v => v.uploadDate)
-                  .sort((a, b) => {
-                    const dateA = a.uploadDate && typeof (a.uploadDate as any).toDate === 'function' 
-                      ? (a.uploadDate as any).toDate().getTime() 
-                      : new Date(a.uploadDate!).getTime();
-                    const dateB = b.uploadDate && typeof (b.uploadDate as any).toDate === 'function' 
-                      ? (b.uploadDate as any).toDate().getTime() 
-                      : new Date(b.uploadDate!).getTime();
-                    return dateA - dateB;
-                  });
-                
-                if (sortedVideos.length >= 2) {
-                  // Calculate average time between posts
-                  const intervals: number[] = [];
-                  for (let i = 1; i < sortedVideos.length; i++) {
-                    const prevDate = sortedVideos[i - 1].uploadDate && typeof (sortedVideos[i - 1].uploadDate as any).toDate === 'function'
-                      ? (sortedVideos[i - 1].uploadDate as any).toDate()
-                      : new Date(sortedVideos[i - 1].uploadDate!);
-                    const currDate = sortedVideos[i].uploadDate && typeof (sortedVideos[i].uploadDate as any).toDate === 'function'
-                      ? (sortedVideos[i].uploadDate as any).toDate()
-                      : new Date(sortedVideos[i].uploadDate!);
-                    const daysBetween = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-                    intervals.push(daysBetween);
-                  }
-                  
-                  const avgDaysBetweenPosts = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
-                  
-                  if (avgDaysBetweenPosts < 1) {
-                    // Multiple posts per day
-                    const postsPerDay = 1 / avgDaysBetweenPosts;
-                    postingFrequency = `${postsPerDay.toFixed(1)}/day`;
-                  } else if (avgDaysBetweenPosts < 7) {
-                    // Posts every few days
-                    postingFrequency = `every ${Math.round(avgDaysBetweenPosts)} days`;
-                  } else if (avgDaysBetweenPosts < 30) {
-                    // Weekly posting
-                    const postsPerWeek = 7 / avgDaysBetweenPosts;
-                    postingFrequency = `${postsPerWeek.toFixed(1)}/week`;
-                  } else {
-                    // Monthly or less
-                    const postsPerMonth = 30 / avgDaysBetweenPosts;
-                    postingFrequency = `${postsPerMonth.toFixed(1)}/month`;
-                  }
-                } else if (sortedVideos.length === 1) {
-                  postingFrequency = '1 video';
-                }
-              }
-            } catch (error) {
-              console.error(`Failed to fetch videos for account ${account.id}:`, error);
+
+              postingFrequency = computePostingFrequency(videos);
             }
-            
+
             const stats: AccountWithFilteredStats = {
                 ...account,
                 filteredTotalVideos: totalVideos,
@@ -425,10 +456,14 @@ export const useAccounts = ({
                 highestViewedVideo,
             };
             return stats;
-        }));
+        });
+
+        if (cancelled) return;
         setFilteredAccounts(results);
     };
     updateStats();
+
+    return () => { cancelled = true; };
   }, [accounts, dateFilter, selectedRuleIds, currentOrgId, currentProjectId, isDemoMode]);
 
   // Processed Accounts (Filtering & Sorting)

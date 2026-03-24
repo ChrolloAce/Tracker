@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 export const AnimatedNumber: React.FC<{ value: string | number; className?: string }> = React.memo(({ value, className }) => {
   const [displayValue, setDisplayValue] = useState(value);
   const prevValueRef = useRef(value);
-  const animationRef = useRef<NodeJS.Timeout | null>(null);
+  const animationRef = useRef<number | null>(null);
   const isAnimatingRef = useRef(false);
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export const AnimatedNumber: React.FC<{ value: string | number; className?: stri
 
     // Cancel any ongoing animation
     if (animationRef.current) {
-      clearInterval(animationRef.current);
+      cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
 
@@ -76,34 +76,37 @@ export const AnimatedNumber: React.FC<{ value: string | number; className?: stri
       return;
     }
 
-    // Start new animation
+    // Start new animation using requestAnimationFrame
     isAnimatingRef.current = true;
-    const duration = 300; // ms - faster animation
-    const steps = 15; // fewer steps for snappier feel
-    const stepValue = (current.numeric - previous.numeric) / steps;
-    const stepDuration = duration / steps;
-    let currentStep = 0;
+    const startTime = performance.now();
+    const duration = 300; // ms
+    const startNumeric = previous.numeric;
+    const endNumeric = current.numeric;
 
-    animationRef.current = setInterval(() => {
-      currentStep++;
-      if (currentStep >= steps) {
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic for smooth deceleration
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+      if (progress >= 1) {
         setDisplayValue(value);
-        if (animationRef.current) {
-          clearInterval(animationRef.current);
-          animationRef.current = null;
-        }
+        animationRef.current = null;
         prevValueRef.current = value;
         isAnimatingRef.current = false;
       } else {
-        const interpolated = previous.numeric + (stepValue * currentStep);
+        const interpolated = startNumeric + (endNumeric - startNumeric) * easedProgress;
         const rounded = current.suffix ? interpolated.toFixed(1) : Math.round(interpolated);
         setDisplayValue(`${current.prefix}${rounded}${current.suffix}`);
+        animationRef.current = requestAnimationFrame(animate);
       }
-    }, stepDuration);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationRef.current) {
-        clearInterval(animationRef.current);
+        cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
       }
       isAnimatingRef.current = false;

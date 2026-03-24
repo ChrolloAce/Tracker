@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, BarChart2, Activity, Info } from 'lucide-react';
 import { VideoSubmission } from '../types';
@@ -15,7 +15,7 @@ interface ComparisonGraphProps {
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 type ChartType = 'line' | 'area' | 'bar';
 
-const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week', dateRange, onVideoClick }) => {
+const ComparisonGraph = React.memo<ComparisonGraphProps>(({ submissions, granularity = 'week', dateRange, onVideoClick }) => {
   const [metric1, setMetric1] = useState<MetricType>('views');
   const [metric2, setMetric2] = useState<MetricType>('likes');
   const [chartType, setChartType] = useState<ChartType>('bar');
@@ -27,14 +27,14 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
   const [selectedDayVideos, setSelectedDayVideos] = useState<VideoSubmission[]>([]);
 
   // Format number for display
-  const formatNumber = (num: number): string => {
+  const formatNumber = useCallback((num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toFixed(0);
-  };
+  }, []);
 
   // Get metric value from video
-  const getMetricValue = (video: VideoSubmission, metric: MetricType): number => {
+  const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
     switch (metric) {
       case 'views':
         return video.views || 0;
@@ -52,10 +52,10 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       default:
         return 0;
     }
-  };
+  }, []);
 
   // Get metric label
-  const getMetricLabel = (metric: MetricType): string => {
+  const getMetricLabel = useCallback((metric: MetricType): string => {
     switch (metric) {
       case 'views': return 'Views';
       case 'likes': return 'Likes';
@@ -64,34 +64,34 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       case 'engagement': return 'Engagement %';
       case 'videos': return 'Video Count';
     }
-  };
+  }, []);
 
   // Handle clicking on a chart bar/point to see videos
-  const handleChartClick = (data: any) => {
+  const handleChartClick = useCallback((data: any) => {
     if (!data || !data.activePayload || !data.activePayload[0]) return;
-    
+
     const payload = data.activePayload[0].payload;
     const clickedDate = payload.date;
     const interval = payload.interval;
-    
+
     if (!interval) return;
-    
+
     // Filter videos for this interval
     const videosForInterval = submissions.filter(video => {
       const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
       return DataAggregationService.isDateInInterval(uploadDate, interval);
     });
-    
+
     console.log('📊 Clicked chart interval:', {
       date: clickedDate,
       intervalType: interval.intervalType,
       videosCount: videosForInterval.length
     });
-    
+
     setSelectedDate(clickedDate);
     setSelectedDayVideos(videosForInterval);
     setIsDayModalOpen(true);
-  };
+  }, [submissions]);
 
   // Aggregate data by selected granularity
   const chartData = useMemo(() => {
@@ -617,6 +617,8 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       )}
     </div>
   );
-};
+});
+
+ComparisonGraph.displayName = 'ComparisonGraph';
 
 export default ComparisonGraph;

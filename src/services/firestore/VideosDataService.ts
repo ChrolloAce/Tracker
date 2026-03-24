@@ -21,6 +21,10 @@ import { VideoSnapshot } from '../../types/index';
 import AdminService from '../AdminService';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../../types/subscription';
 
+// In-memory cache for org video counts to avoid redundant Firestore queries
+const videoCountCache = new Map<string, { count: number; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
+
 /**
  * VideosDataService
  *
@@ -28,6 +32,35 @@ import { SUBSCRIPTION_PLANS, PlanTier } from '../../types/subscription';
  * Manages videos within the project scope: organizations/{orgId}/projects/{projectId}/videos
  */
 export class VideosDataService {
+
+  /**
+   * Get total video count across all projects in an org, with caching.
+   * Uses Promise.all to parallelize per-project video count queries.
+   */
+  static async getOrgVideoCount(orgId: string): Promise<number> {
+    const cached = videoCountCache.get(orgId);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.count;
+    }
+
+    const allProjectsSnap = await getDocs(collection(db, 'organizations', orgId, 'projects'));
+    const counts = await Promise.all(
+      allProjectsSnap.docs.map(proj =>
+        getDocs(collection(db, 'organizations', orgId, 'projects', proj.id, 'videos'))
+      )
+    );
+    const total = counts.reduce((sum, snap) => sum + snap.size, 0);
+
+    videoCountCache.set(orgId, { count: total, timestamp: Date.now() });
+    return total;
+  }
+
+  /**
+   * Invalidate the cached video count for an org (call after adds/deletes).
+   */
+  static invalidateVideoCountCache(orgId: string): void {
+    videoCountCache.delete(orgId);
+  }
 
   /**
    * Add a video to a project
@@ -48,13 +81,8 @@ export class VideosDataService {
     const planTier: PlanTier = (subDoc.data()?.planTier as PlanTier) || 'free';
     const planLimit = SUBSCRIPTION_PLANS[planTier]?.features?.maxVideos ?? 5;
 
-    // Count actual videos across all projects for an accurate check
-    const projectsSnap = await getDocs(collection(db, 'organizations', orgId, 'projects'));
-    let totalVideos = 0;
-    for (const proj of projectsSnap.docs) {
-      const videosSnap = await getDocs(collection(db, 'organizations', orgId, 'projects', proj.id, 'videos'));
-      totalVideos += videosSnap.size;
-    }
+    // Count actual videos across all projects for an accurate check (cached + parallelized)
+    const totalVideos = await VideosDataService.getOrgVideoCount(orgId);
 
     if (planLimit !== -1 && totalVideos >= planLimit) {
       throw new Error(`Video limit reached (${totalVideos}/${planLimit}). Please upgrade your plan to add more videos.`);
@@ -99,6 +127,7 @@ export class VideosDataService {
     }
     
     await batch.commit();
+    VideosDataService.invalidateVideoCountCache(orgId);
     console.log(`✅ Added video ${videoRef.id} to project ${projectId}`);
     return videoRef.id;
   }
@@ -248,13 +277,8 @@ export class VideosDataService {
       const syncPlanTier: PlanTier = (subDoc.data()?.planTier as PlanTier) || 'free';
       const syncPlanLimit = SUBSCRIPTION_PLANS[syncPlanTier]?.features?.maxVideos ?? 5;
 
-      // Count actual videos across all projects
-      const allProjectsSnap = await getDocs(collection(db, 'organizations', orgId, 'projects'));
-      let currentVideoTotal = 0;
-      for (const proj of allProjectsSnap.docs) {
-        const vSnap = await getDocs(collection(db, 'organizations', orgId, 'projects', proj.id, 'videos'));
-        currentVideoTotal += vSnap.size;
-      }
+      // Count actual videos across all projects (cached + parallelized)
+      const currentVideoTotal = await VideosDataService.getOrgVideoCount(orgId);
       const availableSpace = syncPlanLimit === -1 ? Infinity : syncPlanLimit - currentVideoTotal;
 
       console.log(`📊 Video limits - Current: ${currentVideoTotal}, Limit: ${syncPlanLimit}, Available: ${availableSpace}`);
@@ -348,6 +372,7 @@ export class VideosDataService {
         console.log(`✅ Synced batch ${i / batchSize + 1} of ${Math.ceil(videos.length / batchSize)} (${newVideosAdded} new videos)`);
       }
       
+      VideosDataService.invalidateVideoCountCache(orgId);
       console.log(`✅ Successfully synced videos - ${newVideosAdded} new, ${videos.length - newVideosAdded} updated (total: ${videos.length})`);
     } catch (error) {
       console.error('❌ Failed to sync videos to Firestore:', error);
@@ -431,8 +456,9 @@ export class VideosDataService {
       }
       
       const result = await response.json();
+      VideosDataService.invalidateVideoCountCache(orgId);
       console.log(`✅ Video deleted successfully in ${result.duration}s (${result.snapshotsDeleted} snapshots removed)`);
-      
+
       } catch (error) {
       console.error('❌ Failed to delete video:', error);
       throw error;

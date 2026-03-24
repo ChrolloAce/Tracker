@@ -19,7 +19,6 @@ import CreatorPaymentPlanModal from './CreatorPaymentPlanModal';
 import CreatorActivitySection from './CreatorActivitySection';
 import CreatorsTable from './creators/CreatorsTable';
 import PendingInvitationsTable from './creators/PendingInvitationsTable';
-import userProfileAnimation from '../../public/lottie/User Profile.json';
 
 export interface CreatorsManagementPageRef {
   openInviteModal: () => void;
@@ -43,6 +42,12 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   
   const currentOrgId = organizationId || authOrgId;
   const currentProjectId = projectId || authProjectId;
+
+  // Lazy load animation data
+  const [userProfileAnimation, setUserProfileAnimation] = useState<any>(null);
+  useEffect(() => {
+    import('../../public/lottie/User Profile.json').then(module => setUserProfileAnimation(module.default));
+  }, []);
 
   // ─── Data from hook ──────────────────────────────────────────
   const {

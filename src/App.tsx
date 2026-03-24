@@ -1,73 +1,74 @@
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import EmailVerificationScreen from './components/EmailVerificationScreen';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import PreparingWorkspacePage from './pages/PreparingWorkspacePage';
-import DemoPage from './pages/DemoPage';
-import CreateOrganizationPage from './pages/CreateOrganizationPage';
-import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
-import DashboardPage from './pages/DashboardPage';
-import SuperAdminPage from './pages/SuperAdminPage';
-import ApifyMonitorPage from './pages/ApifyMonitorPage';
-import RefreshMonitorPage from './pages/RefreshMonitorPage';
-import ViewAsPage from './pages/ViewAsPage';
-import AccountsPage from './pages/AccountsPage';
-import VideosPage from './pages/VideosPage';
-import LinksPage from './pages/LinksPage';
-import CreatorsPage from './pages/CreatorsPage';
-import CampaignsPage from './pages/CampaignsPage';
-// Hidden for MVP
-// import ExtensionPage from './pages/ExtensionPage';
-import SettingsPageWrapper from './pages/SettingsPageWrapper';
-// import IntegrationsPage from './pages/IntegrationsPage';
-// import RevenuePage from './pages/RevenuePage';
-import TeamMembersPage from './pages/TeamMembersPage';
-import LinkRedirect from './components/LinkRedirect';
-import ContractSigningPage from './pages/ContractSigningPage';
-import ContractEditorPage from './pages/ContractEditorPage';
-import CreateContractPage from './pages/CreateContractPage';
-// import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper'; // DEPRECATED: Now using dashboard with filters
-import SubscriptionPage from './components/SubscriptionPage';
-import BillingManagementPage from './components/BillingManagementPage';
-import CampaignDetailsPage from './components/CampaignDetailsPage';
-import CreateCampaignPage from './pages/CreateCampaignPage';
-import EditCampaignPage from './pages/EditCampaignPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import SupportPage from './pages/SupportPage';
-import CreatorInvitationPage from './pages/CreatorInvitationPage';
-import ApiDocsPage from './pages/ApiDocsPage';
-import ApiManagementPage from './pages/ApiManagementPage';
-import ViralPage from './pages/ViralPage';
-import OpenClawPage from './pages/OpenClawPage';
-import { useEffect, useState } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import NotFoundPage from './pages/NotFoundPage';
 
-// SEO Pages
-import {
-  PricingPage,
-  FeaturesPage,
-  SolutionsPage,
-  ResourcesPage,
-  PlatformPage,
-  StartTrackingPage,
-  CampaignAnalyticsPage,
-  LinkTrackingPage,
-  CreatorPortalFeaturePage,
-  UnifiedKPIsPage,
-  AutoRefreshPage,
-  ContractsPage,
-  ChromeExtensionPage,
-  UGCCampaignsPage,
-  AppFoundersPage,
-  DTCBrandsPage,
-  AgenciesPage,
-  MarketingTeamsPage,
-  AnalyticsGuidePage,
-  ReportingTemplatePage,
-  UGCBriefTemplatePage
-} from './pages/seo';
+// Lazy-loaded page components (route-level code splitting)
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const PreparingWorkspacePage = lazy(() => import('./pages/PreparingWorkspacePage'));
+const DemoPage = lazy(() => import('./pages/DemoPage'));
+const CreateOrganizationPage = lazy(() => import('./pages/CreateOrganizationPage'));
+const OnboardingOrchestrator = lazy(() => import('./pages/OnboardingOrchestrator'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const SuperAdminPage = lazy(() => import('./pages/SuperAdminPage'));
+const ApifyMonitorPage = lazy(() => import('./pages/ApifyMonitorPage'));
+const RefreshMonitorPage = lazy(() => import('./pages/RefreshMonitorPage'));
+const ViewAsPage = lazy(() => import('./pages/ViewAsPage'));
+const AccountsPage = lazy(() => import('./pages/AccountsPage'));
+const VideosPage = lazy(() => import('./pages/VideosPage'));
+const LinksPage = lazy(() => import('./pages/LinksPage'));
+const CreatorsPage = lazy(() => import('./pages/CreatorsPage'));
+const CampaignsPage = lazy(() => import('./pages/CampaignsPage'));
+// Hidden for MVP
+// const ExtensionPage = lazy(() => import('./pages/ExtensionPage'));
+const SettingsPageWrapper = lazy(() => import('./pages/SettingsPageWrapper'));
+// const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
+// const RevenuePage = lazy(() => import('./pages/RevenuePage'));
+const TeamMembersPage = lazy(() => import('./pages/TeamMembersPage'));
+const LinkRedirect = lazy(() => import('./components/LinkRedirect'));
+const ContractSigningPage = lazy(() => import('./pages/ContractSigningPage'));
+const ContractEditorPage = lazy(() => import('./pages/ContractEditorPage'));
+const CreateContractPage = lazy(() => import('./pages/CreateContractPage'));
+// const CreatorDetailsPageWrapper = lazy(() => import('./pages/CreatorDetailsPageWrapper')); // DEPRECATED: Now using dashboard with filters
+const SubscriptionPage = lazy(() => import('./components/SubscriptionPage'));
+const BillingManagementPage = lazy(() => import('./components/BillingManagementPage'));
+const CampaignDetailsPage = lazy(() => import('./components/CampaignDetailsPage'));
+const CreateCampaignPage = lazy(() => import('./pages/CreateCampaignPage'));
+const EditCampaignPage = lazy(() => import('./pages/EditCampaignPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const SupportPage = lazy(() => import('./pages/SupportPage'));
+const CreatorInvitationPage = lazy(() => import('./pages/CreatorInvitationPage'));
+const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
+const ApiManagementPage = lazy(() => import('./pages/ApiManagementPage'));
+const ViralPage = lazy(() => import('./pages/ViralPage'));
+const OpenClawPage = lazy(() => import('./pages/OpenClawPage'));
+
+// SEO Pages (lazy-loaded)
+const PricingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PricingPage })));
+const FeaturesPage = lazy(() => import('./pages/seo').then(m => ({ default: m.FeaturesPage })));
+const SolutionsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.SolutionsPage })));
+const ResourcesPage = lazy(() => import('./pages/seo').then(m => ({ default: m.ResourcesPage })));
+const PlatformPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PlatformPage })));
+const StartTrackingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.StartTrackingPage })));
+const CampaignAnalyticsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.CampaignAnalyticsPage })));
+const LinkTrackingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.LinkTrackingPage })));
+const CreatorPortalFeaturePage = lazy(() => import('./pages/seo').then(m => ({ default: m.CreatorPortalFeaturePage })));
+const UnifiedKPIsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.UnifiedKPIsPage })));
+const AutoRefreshPage = lazy(() => import('./pages/seo').then(m => ({ default: m.AutoRefreshPage })));
+const ContractsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.ContractsPage })));
+const ChromeExtensionPage = lazy(() => import('./pages/seo').then(m => ({ default: m.ChromeExtensionPage })));
+const UGCCampaignsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.UGCCampaignsPage })));
+const AppFoundersPage = lazy(() => import('./pages/seo').then(m => ({ default: m.AppFoundersPage })));
+const DTCBrandsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.DTCBrandsPage })));
+const AgenciesPage = lazy(() => import('./pages/seo').then(m => ({ default: m.AgenciesPage })));
+const MarketingTeamsPage = lazy(() => import('./pages/seo').then(m => ({ default: m.MarketingTeamsPage })));
+const AnalyticsGuidePage = lazy(() => import('./pages/seo').then(m => ({ default: m.AnalyticsGuidePage })));
+const ReportingTemplatePage = lazy(() => import('./pages/seo').then(m => ({ default: m.ReportingTemplatePage })));
+const UGCBriefTemplatePage = lazy(() => import('./pages/seo').then(m => ({ default: m.UGCBriefTemplatePage })));
 
 // Loading skeleton component with timeout
 function LoadingSkeleton() {
@@ -165,6 +166,8 @@ function App() {
   }
 
   return (
+    <ErrorBoundary>
+    <Suspense fallback={<LoadingSkeleton />}>
     <Routes>
         {/* Public pages - NOT covered by maintenance */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -635,6 +638,8 @@ function App() {
 
       <Route path="*" element={<NotFoundPage type="404" />} />
     </Routes>
+    </Suspense>
+    </ErrorBoundary>
   );
 }
 

@@ -23,6 +23,8 @@ interface AuthContextType {
   currentProjectId: string | null;
   userRole: string | null;
   isAdmin: boolean;
+  planTier: string | null;
+  planLoaded: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
@@ -48,6 +50,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [planTier, setPlanTier] = useState<string | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
 
   useEffect(() => {
     // First check for redirect result, then set up auth state listener
@@ -153,8 +157,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      
+
       if (user) {
+        try {
         // ✅ Check if we're on an invitation page - if so, skip org/project loading
         // The invitation page will handle org membership after acceptance
         const isInvitationPage = window.location.pathname.startsWith('/invitations/');
@@ -166,13 +171,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(false);
           return;
         }
-        
+
         // Check custom email verification (skip for demo account and Google sign-ins)
         if (user.email !== '001ernestolopez@gmail.com' && user.providerData[0]?.providerId === 'password') {
           // Check if user has verified their email via our custom code system
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           const isVerified = userDoc.exists() && userDoc.data()?.emailVerified === true;
-          
+
           if (!isVerified) {
             console.log('⚠️ Email not verified for:', user.email);
             setUser(user);
@@ -184,22 +189,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         }
-        
-        // Create user account in Firestore if doesn't exist
-        await OrganizationService.createUserAccount(
-          user.uid, 
-          user.email!, 
-          user.displayName || undefined,
-          user.photoURL || undefined
-        );
-        
-        // FIRST: Always check if user has ANY organizations
+
+        // Run account creation, org fetch, and user account fetch in parallel.
+        // getUserAccount is speculative — we only use it if userOrgs > 0,
+        // but fetching it early avoids a sequential round-trip in the common case.
         console.log('🔍 Checking user organizations for:', user.uid);
-        const userOrgs = await OrganizationService.getUserOrganizations(user.uid);
+        const [, userOrgs, userAccount] = await Promise.all([
+          OrganizationService.createUserAccount(
+            user.uid,
+            user.email!,
+            user.displayName || undefined,
+            user.photoURL || undefined
+          ),
+          OrganizationService.getUserOrganizations(user.uid),
+          OrganizationService.getUserAccount(user.uid),
+        ]);
         console.log('📊 User has', userOrgs.length, 'organizations:', userOrgs.map(o => o.id));
-        
+
         let orgId: string | null = null;
-        
+
         if (userOrgs.length === 0) {
           // Auto-recovery: check if user was removed from an org they own
           console.log('🔄 No active orgs found — checking for removed memberships to auto-recover...');
@@ -291,10 +299,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         }
-        
-        // User has orgs! Get the default org or use first one
-        const userAccount = await OrganizationService.getUserAccount(user.uid);
-        
+
+        // User has orgs! Use the pre-fetched userAccount to determine default org.
         // Set admin status — Firestore field OR super admin email
         const isSuperAdminEmail = SUPER_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email?.toLowerCase() || '');
         const adminStatus = userAccount?.isAdmin === true || isSuperAdminEmail;
@@ -302,7 +308,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (adminStatus) {
           console.log('🔓 Admin user detected:', user.uid, isSuperAdminEmail ? '(super admin email)' : '(Firestore flag)');
         }
-        
+
+        // Cache the plan tier from the user account so downstream pages don't re-fetch
+        if (userAccount?.plan) {
+          setPlanTier(userAccount.plan);
+        }
+        setPlanLoaded(true);
+
         if (userAccount?.defaultOrgId && userOrgs.find(o => o.id === userAccount.defaultOrgId)) {
           // Use saved default org
           orgId = userAccount.defaultOrgId;
@@ -312,7 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           orgId = userOrgs[0].id;
           console.log('✅ Using first org as default:', orgId);
           await OrganizationService.setDefaultOrg(user.uid, orgId);
-          
+
           // Mark onboarding as complete if not already marked
           const org = await OrganizationService.getOrganization(orgId);
           if (org && !org.metadata?.onboardingCompletedAt) {
@@ -324,26 +336,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 onboardingCompletedAt: new Date().toISOString()
               }
             }, { merge: true });
+          }
         }
-        }
-        
+
         console.log('✅ Final org ID to use:', orgId);
         setCurrentOrgId(orgId);
-        
-        // Load user role FIRST (needed for project filtering)
+
+        // Load user role (needed for project filtering)
         const members = await OrganizationService.getOrgMembers(orgId);
         const member = members.find(m => m.userId === user.uid);
         const role = member?.role || null;
         setUserRole(role);
 
-        // Get or create default project (role-aware)
+        // Get or create default project (role-aware — depends on role, so must be sequential)
         const projectId = await loadOrCreateProject(orgId, user.uid, role);
         setCurrentProjectId(projectId);
+        } catch (error) {
+          console.error('❌ Failed to initialize user session:', error);
+          // Ensure loading clears so the user is not stuck on a loading screen forever.
+          // With orgId/projectId still null the app will redirect to onboarding or login,
+          // which is a safe degraded state rather than an infinite spinner.
+          setCurrentOrgId(null);
+          setCurrentProjectId(null);
+          setUserRole(null);
+        }
       } else {
         setCurrentOrgId(null);
         setCurrentProjectId(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -409,7 +430,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If it's a permission error and not the last attempt, wait and retry
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
           if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 3000)); // Increased to 3s
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 3s for faster recovery
             continue;
           }
           
@@ -519,6 +540,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
       setCurrentOrgId(null);
       setCurrentProjectId(null);
+      setPlanTier(null);
+      setPlanLoaded(false);
       
       // Clear any auth-related session flags
       sessionStorage.removeItem('justCompletedGoogleRedirect');
@@ -555,6 +578,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentProjectId,
     userRole,
     isAdmin,
+    planTier,
+    planLoaded,
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,

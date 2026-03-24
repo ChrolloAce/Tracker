@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import Lottie from 'lottie-react';
-import robotAnimation from './robot.json';
+
+// Lazy load Lottie component and animation data
+const LottieComponent = lazy(() => import('lottie-react'));
 
 export interface SpotlightStep {
   target: string; // CSS selector, or 'center' for centered modal
@@ -33,6 +34,12 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [isAnimating, setIsAnimating] = useState(true);
   const scrollLockRef = useRef(false);
+
+  // Lazy load animation data
+  const [robotAnimation, setRobotAnimation] = useState<any>(null);
+  useEffect(() => {
+    import('./robot.json').then(module => setRobotAnimation(module.default));
+  }, []);
 
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
@@ -289,7 +296,11 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
           <div className="relative">
             {/* Robot peeking behind card — top left */}
             <div className="absolute -top-6 -left-5 w-14 h-14 pointer-events-none hidden sm:block" style={{ zIndex: 0 }}>
-              <Lottie animationData={robotAnimation} loop />
+              {robotAnimation && (
+                <Suspense fallback={<div className="w-full h-full" />}>
+                  <LottieComponent animationData={robotAnimation} loop />
+                </Suspense>
+              )}
             </div>
             <div
               data-spotlight-tooltip

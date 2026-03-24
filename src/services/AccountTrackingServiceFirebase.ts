@@ -524,7 +524,7 @@ export class AccountTrackingServiceFirebase {
    */
   static async getAccountVideos(orgId: string, projectId: string, accountId: string): Promise<AccountVideo[]> {
     try {
-      const videos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
+      const videos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId, 1000);
       
       // Convert to AccountVideo format
       const mappedVideos = videos.map(v => {

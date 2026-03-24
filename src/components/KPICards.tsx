@@ -92,7 +92,7 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
     return map;
   }, [accounts]);
 
-  const handleCardClick = (metricId: string, metricLabel: string) => {
+  const handleCardClick = useCallback((metricId: string, metricLabel: string) => {
     // If it's link clicks and there are no links, trigger create link callback
     if (metricId === 'link-clicks' && linkClicks.length === 0 && onCreateLink) {
       onCreateLink();
@@ -348,7 +348,7 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       setDayModalMetric(metricLabel);
       setIsDayModalOpen(true);
     }
-  };
+  }, [submissions, allSubmissions, linkClicks, hoveredInterval, dateFilter, customRange, revenueIntegrations, revenueMetrics, navigate, onCreateLink, isEditMode]);
 
   // Use extracted card generation logic
   const kpiData = useMemo(() => {
@@ -389,6 +389,80 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
     return visibleCards;
   }, [kpiData, cardOrder, cardVisibility]);
 
+  // Memoize the expensive sparklineData mapping for the link-clicks card
+  const linkClicksSparklineMap = useMemo(() => {
+    const linkClicksCard = sortedCards.find(c => c.id === 'link-clicks');
+    if (!linkClicksCard?.sparklineData) return [];
+    return linkClicksCard.sparklineData.map(d => ({
+      timestamp: d.timestamp || Date.now(),
+      value: d.value,
+      clicks: linkClicks.filter(click => {
+        if (!d.timestamp) return false;
+        const clickDate = new Date(click.timestamp).setHours(0, 0, 0, 0);
+        const intervalDate = new Date(d.timestamp!).setHours(0, 0, 0, 0);
+        return clickDate === intervalDate;
+      })
+    }));
+  }, [sortedCards, linkClicks]);
+
+  // Memoize drag handlers to avoid creating new functions on each render
+  const handleDragStart = useCallback((cardId: string) => {
+    if (isEditMode) setDraggedCard(cardId);
+  }, [isEditMode]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedCard(null);
+    setDragOverCard(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, cardId: string) => {
+    if (isEditMode) {
+      e.preventDefault();
+      setDragOverCard(cardId);
+    }
+  }, [isEditMode]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverCard(null);
+  }, []);
+
+  const handleDrop = useCallback((cardId: string) => {
+    if (isEditMode && draggedCard && draggedCard !== cardId) {
+      const currentOrder = cardOrder.length > 0 ? cardOrder : kpiData.map(c => c.id);
+      const draggedIndex = currentOrder.indexOf(draggedCard);
+      const targetIndex = currentOrder.indexOf(cardId);
+
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const newOrder = [...currentOrder];
+        newOrder.splice(draggedIndex, 1);
+        newOrder.splice(targetIndex, 0, draggedCard);
+        onReorder?.(newOrder);
+      }
+    }
+    setDraggedCard(null);
+    setDragOverCard(null);
+  }, [isEditMode, draggedCard, cardOrder, kpiData, onReorder]);
+
+  const handleLinkClicksCardClick = useCallback((date: Date, clicks: LinkClick[]) => {
+    if (!isEditMode) {
+      setSelectedDayClicksDate(date);
+      setSelectedDayClicks(clicks);
+      setIsDayClicksModalOpen(true);
+    }
+  }, [isEditMode]);
+
+  const handleLinkClick = useCallback((shortCode: string) => {
+    const link = links.find(l => l.shortCode === shortCode);
+    if (link) {
+      setSelectedLink(link);
+      setIsLinkAnalyticsModalOpen(true);
+    }
+  }, [links]);
+
+  const handleIntervalHover = useCallback((interval: TimeInterval | null) => {
+    setHoveredInterval(interval);
+  }, []);
+
   return (
     <>
       <div className="grid gap-3 sm:gap-4 md:gap-5 xl:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
@@ -403,80 +477,32 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
                   growth={card.delta?.absoluteValue}
                   isIncreasing={card.delta?.isPositive ?? true}
                   icon={card.icon as any}
-                  sparklineData={card.sparklineData?.map(d => ({
-                    timestamp: d.timestamp || Date.now(),
-                    value: d.value,
-                    clicks: linkClicks.filter(click => {
-                      if (!d.timestamp) return false;
-                      const clickDate = new Date(click.timestamp).setHours(0, 0, 0, 0);
-                      const intervalDate = new Date(d.timestamp).setHours(0, 0, 0, 0);
-                      return clickDate === intervalDate;
-                    })
-                  })) || []}
+                  sparklineData={linkClicksSparklineMap}
                   links={links}
                   accounts={accountsMap}
                   isCensored={censoredCards[card.id] || false}
                   onToggleCensor={() => toggleCardCensor(card.id)}
-                  onClick={(date, clicks) => {
-                    if (!isEditMode) {
-                    setSelectedDayClicksDate(date);
-                    setSelectedDayClicks(clicks);
-                    setIsDayClicksModalOpen(true);
-                    }
-                  }}
-                  onLinkClick={(shortCode) => {
-                    const link = links.find(l => l.shortCode === shortCode);
-                    if (link) {
-                      setSelectedLink(link);
-                      setIsLinkAnalyticsModalOpen(true);
-                    }
-                  }}
+                  onClick={handleLinkClicksCardClick}
+                  onLinkClick={handleLinkClick}
                   isEditMode={isEditMode}
                   isDragging={draggedCard === card.id}
                   isDragOver={dragOverCard === card.id}
-                  onDragStart={() => {
-                    if (isEditMode) setDraggedCard(card.id);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedCard(null);
-                    setDragOverCard(null);
-                  }}
-                  onDragOver={(e) => {
-                    if (isEditMode) {
-                      e.preventDefault();
-                      setDragOverCard(card.id);
-                    }
-                  }}
-                  onDragLeave={() => {
-                    setDragOverCard(null);
-                  }}
-                  onDrop={() => {
-                    if (isEditMode && draggedCard && draggedCard !== card.id) {
-                      const currentOrder = cardOrder.length > 0 ? cardOrder : kpiData.map(c => c.id);
-                      const draggedIndex = currentOrder.indexOf(draggedCard);
-                      const targetIndex = currentOrder.indexOf(card.id);
-                      
-                      if (draggedIndex !== -1 && targetIndex !== -1) {
-                        const newOrder = [...currentOrder];
-                        newOrder.splice(draggedIndex, 1);
-                        newOrder.splice(targetIndex, 0, draggedCard);
-                        onReorder?.(newOrder);
-                      }
-                    }
-                    setDraggedCard(null);
-                    setDragOverCard(null);
-                  }}
+                  onDragStart={() => handleDragStart(card.id)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, card.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={() => handleDrop(card.id)}
                 />
               );
             }
             
             // Regular KPI card for all other metrics
             return (
-              <KPICard 
-                key={card.id} 
-                data={card} 
+              <KPICard
+                key={card.id}
+                data={card}
                 onClick={() => !isEditMode && handleCardClick(card.id, card.label)}
-                onIntervalHover={setHoveredInterval}
+                onIntervalHover={handleIntervalHover}
                 timePeriod={timePeriod}
                 submissions={submissions}
                 linkClicks={linkClicks}
@@ -487,38 +513,11 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
                 isDragOver={dragOverCard === card.id}
                 isCensored={censoredCards[card.id] || false}
                 onToggleCensor={() => toggleCardCensor(card.id)}
-                onDragStart={() => {
-                  if (isEditMode) setDraggedCard(card.id);
-                }}
-                onDragEnd={() => {
-                  setDraggedCard(null);
-                  setDragOverCard(null);
-                }}
-                onDragOver={(e) => {
-                  if (isEditMode) {
-                    e.preventDefault();
-                    setDragOverCard(card.id);
-                  }
-                }}
-                onDragLeave={() => {
-                  setDragOverCard(null);
-                }}
-                onDrop={() => {
-                  if (isEditMode && draggedCard && draggedCard !== card.id) {
-                    const currentOrder = cardOrder.length > 0 ? cardOrder : kpiData.map(c => c.id);
-                    const draggedIndex = currentOrder.indexOf(draggedCard);
-                    const targetIndex = currentOrder.indexOf(card.id);
-                    
-                    if (draggedIndex !== -1 && targetIndex !== -1) {
-                      const newOrder = [...currentOrder];
-                      newOrder.splice(draggedIndex, 1);
-                      newOrder.splice(targetIndex, 0, draggedCard);
-                      onReorder?.(newOrder);
-                    }
-                  }
-                  setDraggedCard(null);
-                  setDragOverCard(null);
-                }}
+                onDragStart={() => handleDragStart(card.id)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, card.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={() => handleDrop(card.id)}
               />
             );
           })}
@@ -637,6 +636,8 @@ const arePropsEqual = (prevProps: KPICardsProps, nextProps: KPICardsProps) => {
     prevProps.submissions === nextProps.submissions &&
     prevProps.allSubmissions === nextProps.allSubmissions &&
     prevProps.linkClicks === nextProps.linkClicks &&
+    prevProps.links === nextProps.links &&
+    prevProps.accounts === nextProps.accounts &&
     prevProps.dateFilter === nextProps.dateFilter &&
     prevProps.timePeriod === nextProps.timePeriod &&
     prevProps.granularity === nextProps.granularity &&
@@ -644,7 +645,8 @@ const arePropsEqual = (prevProps: KPICardsProps, nextProps: KPICardsProps) => {
     JSON.stringify(prevProps.customRange) === JSON.stringify(nextProps.customRange) &&
     JSON.stringify(prevProps.cardOrder) === JSON.stringify(nextProps.cardOrder) &&
     JSON.stringify(prevProps.cardVisibility) === JSON.stringify(nextProps.cardVisibility) &&
-    prevProps.revenueMetrics === nextProps.revenueMetrics
+    prevProps.revenueMetrics === nextProps.revenueMetrics &&
+    prevProps.revenueIntegrations === nextProps.revenueIntegrations
   );
 };
 

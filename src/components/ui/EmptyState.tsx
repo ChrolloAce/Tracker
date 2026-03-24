@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Info, LucideIcon } from 'lucide-react';
-import Lottie from 'lottie-react';
+
+// Lazy load Lottie component
+const LottieComponent = lazy(() => import('lottie-react'));
 
 interface EmptyStateAction {
   label: string;
@@ -32,7 +34,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {/* Animation or Icon */}
         {animation && (
           <div className="w-64 h-64 mx-auto mb-6">
-            <Lottie animationData={animation} loop={true} />
+            <Suspense fallback={<div className="w-full h-full" />}>
+              <LottieComponent animationData={animation} loop={true} />
+            </Suspense>
           </div>
         )}
 

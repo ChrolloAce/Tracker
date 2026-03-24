@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Eye,
   Heart,
@@ -15,20 +15,25 @@ interface VideoCardProps {
   formatNumber: (num: number) => string;
 }
 
-const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNumber }) => {
+const VideoCard = React.memo(function VideoCard({ video, getPlatformIcon, formatNumber }: VideoCardProps) {
   const [showPlayer, setShowPlayer] = useState(false);
 
   const contentBadgeLabel = video.contentType === 'slideshow' ? 'Slideshow' : 'Video';
+
+  const handleOpenPlayer = useCallback(() => setShowPlayer(true), []);
+  const handleClosePlayer = useCallback(() => setShowPlayer(false), []);
+  const handleLinkClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
   return (
     <>
       <div
         className="group relative bg-black rounded-2xl overflow-hidden border border-white/10 hover:border-white/25 transition-all cursor-pointer"
-        onClick={() => setShowPlayer(true)}
+        onClick={handleOpenPlayer}
       >
         {/* Full-bleed thumbnail */}
         <div className="relative aspect-[9/16]">
           <img
+            loading="lazy"
             src={video.thumbnail}
             alt={video.title}
             className="w-full h-full object-cover"
@@ -65,7 +70,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNum
                   href={video.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={handleLinkClick}
                   className="flex-shrink-0 text-white/60 hover:text-white transition-colors"
                   title="Open on TikTok"
                 >
@@ -98,11 +103,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, getPlatformIcon, formatNum
 
       {/* Video player modal */}
       {showPlayer && (
-        <VideoPlayerModal video={video} onClose={() => setShowPlayer(false)} />
+        <VideoPlayerModal video={video} onClose={handleClosePlayer} />
       )}
     </>
   );
-};
+});
 
 // ─── Small stat icon + count used in the right sidebar ────
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Eye, EyeOff, ChevronRight } from 'lucide-react';
 import { VideoSubmission } from '../../types';
 import { LinkClick } from '../../services/LinkClicksService';
@@ -36,30 +36,11 @@ export interface KPICardProps {
  * Individual KPI card with sparkline and interactive tooltip
  */
 
-const KPICard: React.FC<{ 
-  data: KPICardData; 
-  onClick?: () => void;
-  onIntervalHover?: (interval: TimeInterval | null) => void;
-  timePeriod?: TimePeriodType;
-  submissions?: VideoSubmission[];
-  linkClicks?: LinkClick[];
-  dateFilter?: DateFilterType;
-  customRange?: { startDate: Date; endDate: Date };
-  isEditMode?: boolean;
-  isDragging?: boolean;
-  isDragOver?: boolean;
-  isCensored?: boolean;
-  onToggleCensor?: () => void;
-  onDragStart?: () => void;
-  onDragEnd?: () => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDragLeave?: () => void;
-  onDrop?: () => void;
-}> = ({ 
-  data, 
-  onClick, 
-  onIntervalHover, 
-  submissions = [], 
+const KPICard = React.memo(function KPICard({
+  data,
+  onClick,
+  onIntervalHover,
+  submissions = [],
   linkClicks = [],
   dateFilter = 'all',
   customRange,
@@ -73,31 +54,36 @@ const KPICard: React.FC<{
   onDragOver,
   onDragLeave,
   onDrop
-}) => {
+}: KPICardProps) {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
-  const cardRef = React.useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [isHovered, setIsHovered] = useState(false);
-  
-  // Auto-close tooltip when mouse is outside the card
+
+  // Auto-close tooltip when mouse is outside the card (throttled)
   React.useEffect(() => {
     if (!tooltipData) return;
-    
+
+    let lastCall = 0;
     const handleGlobalMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastCall < 50) return;
+      lastCall = now;
+
       if (!cardRef.current) return;
-      
+
       const rect = cardRef.current.getBoundingClientRect();
-      const isOutside = 
-        e.clientX < rect.left || 
-        e.clientX > rect.right || 
-        e.clientY < rect.top || 
+      const isOutside =
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
         e.clientY > rect.bottom;
-      
+
       if (isOutside) {
         setTooltipData(null);
         if (onIntervalHover) onIntervalHover(null);
-        
+
         // Force clear any lingering recharts tooltips
         const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
         tooltips.forEach(tooltip => {
@@ -107,22 +93,22 @@ const KPICard: React.FC<{
         });
       }
     };
-    
+
     document.addEventListener('mousemove', handleGlobalMouseMove);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
     };
   }, [tooltipData, onIntervalHover]);
-  
-  const formatDeltaNumber = (num: number, isRevenue: boolean = false): string => {
+
+  const formatDeltaNumber = useCallback((num: number, isRevenue: boolean = false): string => {
     const absNum = Math.abs(num);
     if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
     if (absNum >= 1000) return `${(absNum / 1000).toFixed(1)}K`;
     // For revenue, format to 2 decimal places; for counts, use whole number
     if (isRevenue) return `$${absNum.toFixed(2)}`;
     return Math.round(absNum).toString();
-  };
+  }, []);
 
   // Determine colors based on trend (green for increase, red for decrease)
   const isIncreasing = data.isIncreasing !== undefined ? data.isIncreasing : true;
@@ -136,68 +122,89 @@ const KPICard: React.FC<{
 
   const Icon = data.icon;
 
+  const handleCardMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Disable tooltips in edit mode or when censored
+    if (isEditMode || isCensored) return;
+
+    if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
+
+    const cardRect = cardRef.current.getBoundingClientRect();
+
+    // Calculate X position within the card
+    const x = e.clientX - cardRect.left;
+    const percentage = x / cardRect.width;
+
+    // Clamp percentage between 0 and 1
+    const clampedPercentage = Math.max(0, Math.min(1, percentage));
+
+    // Get nearest data point
+    const dataIndex = Math.max(0, Math.min(
+      data.sparklineData.length - 1,
+      Math.round(clampedPercentage * (data.sparklineData.length - 1))
+    ));
+
+    const point = data.sparklineData[dataIndex];
+
+    if (point) {
+      // Calculate the SNAPPED X position based on the actual data point index
+      const snappedPercentage = dataIndex / (data.sparklineData.length - 1);
+      const snappedLineX = snappedPercentage * cardRect.width;
+
+      setTooltipData({
+        x: e.clientX,
+        y: e.clientY,
+        point: point,
+        lineX: snappedLineX // Snapped to data point, not mouse position
+      });
+
+      // Store the hovered interval so handleCardClick knows the full timeframe
+      if (point.interval && onIntervalHover) {
+        onIntervalHover(point.interval);
+      }
+    }
+  }, [isEditMode, isCensored, data.sparklineData, onIntervalHover]);
+
+  const handleCardMouseEnter = useCallback(() => setIsHovered(true), []);
+
+  const handleCardMouseLeave = useCallback(() => {
+    setIsHovered(false);
+    // Clear tooltip state
+    setTooltipData(null);
+    if (onIntervalHover) onIntervalHover(null);
+
+    // Force clear any lingering recharts tooltips
+    setTimeout(() => {
+      const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+      tooltips.forEach(tooltip => {
+        if (tooltip instanceof HTMLElement) {
+          tooltip.style.display = 'none';
+        }
+      });
+    }, 50);
+  }, [onIntervalHover]);
+
+  const handleToggleCensor = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleCensor) onToggleCensor();
+  }, [onToggleCensor]);
+
+  const handleChartMouseLeave = useCallback(() => {
+    // Force clear any lingering tooltips when mouse leaves chart area
+    const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+    tooltips.forEach(tooltip => {
+      if (tooltip instanceof HTMLElement) {
+        tooltip.style.display = 'none';
+      }
+    });
+  }, []);
+
   return (
-    <div 
+    <div
       ref={cardRef}
       onClick={onClick}
-      onMouseMove={(e) => {
-        // Disable tooltips in edit mode or when censored
-        if (isEditMode || isCensored) return;
-        
-        if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
-        
-        const cardRect = cardRef.current.getBoundingClientRect();
-        
-        // Calculate X position within the card
-        const x = e.clientX - cardRect.left;
-        const percentage = x / cardRect.width;
-        
-        // Clamp percentage between 0 and 1
-        const clampedPercentage = Math.max(0, Math.min(1, percentage));
-        
-        // Get nearest data point
-        const dataIndex = Math.max(0, Math.min(
-          data.sparklineData.length - 1,
-          Math.round(clampedPercentage * (data.sparklineData.length - 1))
-        ));
-        
-        const point = data.sparklineData[dataIndex];
-        
-        if (point) {
-          // Calculate the SNAPPED X position based on the actual data point index
-          const snappedPercentage = dataIndex / (data.sparklineData.length - 1);
-          const snappedLineX = snappedPercentage * cardRect.width;
-          
-          setTooltipData({
-            x: e.clientX,
-            y: e.clientY,
-            point: point,
-            lineX: snappedLineX // Snapped to data point, not mouse position
-          });
-          
-          // Store the hovered interval so handleCardClick knows the full timeframe
-          if (point.interval && onIntervalHover) {
-            onIntervalHover(point.interval);
-          }
-        }
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        // Clear tooltip state
-        setTooltipData(null);
-        if (onIntervalHover) onIntervalHover(null);
-        
-        // Force clear any lingering recharts tooltips
-        setTimeout(() => {
-          const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
-          tooltips.forEach(tooltip => {
-            if (tooltip instanceof HTMLElement) {
-              tooltip.style.display = 'none';
-            }
-          });
-        }, 50);
-      }}
+      onMouseMove={handleCardMouseMove}
+      onMouseEnter={handleCardMouseEnter}
+      onMouseLeave={handleCardMouseLeave}
       draggable={isEditMode}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -252,10 +259,7 @@ const KPICard: React.FC<{
       {/* Privacy Toggle - Eye icon (shows on hover, next to main icon) */}
       {isHovered && !isEditMode && onToggleCensor && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleCensor();
-          }}
+          onClick={handleToggleCensor}
           className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
           title={isCensored ? "Show data" : "Hide data"}
         >
@@ -348,15 +352,7 @@ const KPICard: React.FC<{
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
           }}
-          onMouseLeave={() => {
-            // Force clear any lingering tooltips when mouse leaves chart area
-            const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
-            tooltips.forEach(tooltip => {
-              if (tooltip instanceof HTMLElement) {
-                tooltip.style.display = 'none';
-              }
-            });
-          }}
+          onMouseLeave={handleChartMouseLeave}
         >
           {/* Atmospheric Gradient Overlay */}
           <div 
@@ -499,6 +495,8 @@ const KPICard: React.FC<{
       )}
     </div>
   );
-};
+});
+
+KPICard.displayName = 'KPICard';
 
 export default KPICard;

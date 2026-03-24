@@ -153,6 +153,7 @@ export function formatVideoResponse(
     saves: data.saves || 0,
     status: data.status,
     syncStatus: data.syncStatus || null,
+    transcriptStatus: data.transcriptStatus || 'none',
     uploadDate: data.uploadDate?.toDate?.()?.toISOString() || null,
     lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString() || null,
     createdAt: data.createdAt?.toDate?.()?.toISOString() || null,

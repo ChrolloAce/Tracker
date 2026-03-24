@@ -7,7 +7,7 @@ interface PostingActivityChartProps {
   submissions: VideoSubmission[];
 }
 
-const PostingActivityChart: React.FC<PostingActivityChartProps> = ({ submissions }) => {
+const PostingActivityChart = React.memo<PostingActivityChartProps>(({ submissions }) => {
   // Calculate posting activity by day
   const activityData = useMemo(() => {
     if (submissions.length === 0) return [];
@@ -171,7 +171,9 @@ const PostingActivityChart: React.FC<PostingActivityChartProps> = ({ submissions
       </div>
     </div>
   );
-};
+});
+
+PostingActivityChart.displayName = 'PostingActivityChart';
 
 export default PostingActivityChart;
 

@@ -156,22 +156,15 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
       grouped.get(key)!.push(point);
     });
 
-    // Aggregate grouped data (sum for totals, average for rates)
+    // Aggregate grouped data: use last point in each group (most recent cumulative value)
     const aggregated: ChartDataPoint[] = Array.from(grouped.entries()).map(([key, points]) => {
       const lastPoint = points[points.length - 1];
-      const isRate = selectedMetric === 'engagementRate';
-      
+
       return {
         ...lastPoint,
-        date: transformer === 'weekly' 
+        date: transformer === 'weekly'
           ? `Week of ${key}`
           : new Date(key + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        views: isRate ? lastPoint.views : points.reduce((sum, p) => sum + p.views, 0),
-        likes: isRate ? lastPoint.likes : points.reduce((sum, p) => sum + p.likes, 0),
-        comments: isRate ? lastPoint.comments : points.reduce((sum, p) => sum + p.comments, 0),
-        shares: isRate ? lastPoint.shares : points.reduce((sum, p) => sum + p.shares, 0),
-        saves: isRate ? lastPoint.saves : points.reduce((sum, p) => sum + p.saves, 0),
-        engagementRate: points.reduce((sum, p) => sum + p.engagementRate, 0) / points.length,
         timestamp: lastPoint.timestamp,
         snapshotIndex: points[0].snapshotIndex
       };
@@ -207,31 +200,23 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     return totalValue.toLocaleString();
   }, [totalValue, selectedMetric]);
 
-  // Custom tooltip - MATCH MiniTrendChart format exactly
+  // Custom tooltip - shows cumulative value at each snapshot point
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null;
 
     const dataPoint = payload[0].payload;
-    const dataIndex = transformedData.findIndex(d => d.timestamp === dataPoint.timestamp);
-    const isBaseline = dataIndex === 0;
     const value = dataPoint[selectedMetric];
-    
-    // Format EXACTLY like MiniTrendChart: use toLocaleString() with + prefix for growth
+
+    // Format the cumulative value
     let displayValue: string;
     if (selectedMetric === 'engagementRate') {
-      // Engagement rate shows as percentage
-      displayValue = isBaseline 
-        ? `${value.toFixed(1)}%`
-        : `+${value.toFixed(1)}%`;
+      displayValue = `${value.toFixed(1)}%`;
     } else {
-      // Other metrics show as numbers with comma separators
-      displayValue = isBaseline 
-        ? value.toLocaleString()
-        : `+${value.toLocaleString()}`;
+      displayValue = value.toLocaleString();
     }
-    
+
     return (
-      <div 
+      <div
         className="rounded-lg border border-white/10 shadow-xl p-3 min-w-[160px]"
         style={{ backgroundColor: 'rgba(18, 18, 20, 0.98)' }}
       >
@@ -239,12 +224,12 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div 
+              <div
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: '#3b82f6' }}
               />
               <span className="text-xs text-gray-400">
-                {isBaseline ? 'Baseline:' : 'Growth:'}
+                {currentMetric.label}:
               </span>
             </div>
             <span className="text-sm font-bold text-white">
@@ -286,7 +271,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             <TrendingUp className="w-4 h-4 text-gray-400" />
           </div>
           <h3 className="text-base font-semibold text-white">
-            Growth per Snapshot
+            Performance Over Time
           </h3>
         </div>
 
@@ -448,7 +433,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         {/* Total Amount Display - Above Chart */}
         <div className="absolute top-6 right-8 z-20 text-right">
           <div className="text-xs text-gray-500 mb-0.5 font-medium tracking-wide uppercase">
-            Total {currentMetric.label}
+            Current {currentMetric.label}
           </div>
           <div className="text-4xl font-bold tracking-tight text-white">
             {formattedTotal}

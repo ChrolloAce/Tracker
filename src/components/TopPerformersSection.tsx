@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import { Activity, Info } from 'lucide-react';
 import { VideoSubmission } from '../types';
@@ -29,7 +29,7 @@ interface TopPerformersSectionProps {
 
 type SubSectionId = 'top-videos' | 'top-accounts' | 'top-gainers' | 'posting-times' | 'top-creators' | 'top-platforms' | 'comparison';
 
-const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
+const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
   submissions,
   onVideoClick,
   onAccountClick,
@@ -82,6 +82,24 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
   // Info tooltip state
   const [showPostingTimesInfo, setShowPostingTimesInfo] = useState(false);
 
+  // Memoize heatmap data transformation
+  const heatmapData = useMemo(() => {
+    return submissions.map(video => ({
+      timestamp: video.uploadDate || video.dateSubmitted,
+      views: video.views,
+      likes: video.likes,
+      comments: video.comments,
+      shares: video.shares,
+      videos: [{
+        id: video.id,
+        title: video.title || video.caption || 'Untitled',
+        thumbnailUrl: video.thumbnail,
+        views: video.views,
+        uploaderHandle: video.uploaderHandle
+      }]
+    }));
+  }, [submissions]);
+
   // Save order to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('topPerformersSubsectionOrder', JSON.stringify(subsectionOrder));
@@ -99,15 +117,15 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
   }, [subsectionOrder, subsectionVisibility]);
 
   // Masonry breakpoint configuration
-  const breakpointColumns = {
+  const breakpointColumns = useMemo(() => ({
     default: 2,  // 2 columns by default
     1280: 2,     // 2 columns on xl screens
     1024: 2,     // 2 columns on lg screens
     768: 1,      // 1 column on md screens and below
-  };
+  }), []);
 
   // Create drag handlers for a subsection
-  const createDragHandlers = (id: SubSectionId) => ({
+  const createDragHandlers = useCallback((id: SubSectionId) => ({
     draggable: isEditMode,
     onDragStart: () => {
       if (isEditMode) {
@@ -145,10 +163,10 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
       setDraggedSection(null);
       setDragOverSection(null);
     }
-  });
+  }), [isEditMode, draggedSection, subsectionOrder]);
 
   // Get drag classes for visual feedback
-  const getDragClasses = (id: SubSectionId, baseClasses: string) => {
+  const getDragClasses = useCallback((id: SubSectionId, baseClasses: string) => {
     const isDragging = draggedSection === id;
     const isDragOver = dragOverSection === id;
     
@@ -159,7 +177,7 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
       ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50 scale-105' : ''}
       transition-all duration-300
     `;
-  };
+  }, [draggedSection, dragOverSection, isEditMode]);
 
   // Render a subsection
   const renderSubsection = (id: SubSectionId) => {
@@ -262,20 +280,7 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
             {/* Heatmap */}
             <div className="relative z-10">
               <HeatmapByHour
-                data={submissions.map(video => ({
-                  timestamp: video.uploadDate || video.dateSubmitted,
-                  views: video.views,
-                  likes: video.likes,
-                  comments: video.comments,
-                  shares: video.shares,
-                  videos: [{
-                    id: video.id,
-                    title: video.title || video.caption || 'Untitled',
-                    thumbnailUrl: video.thumbnail,
-                    views: video.views,
-                    uploaderHandle: video.uploaderHandle
-                  }]
-                }))}
+                data={heatmapData}
                 metric="views"
                 onCellClick={onHeatmapCellClick || (() => {})}
               />
@@ -419,6 +424,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
       )}
     </>
   );
-};
+});
+
+TopPerformersSection.displayName = 'TopPerformersSection';
 
 export default TopPerformersSection;

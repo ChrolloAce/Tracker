@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, Users, BarChart3, Download, Link as LinkIcon } from 'lucide-react';
-import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { MiniTrendChart } from './ui/MiniTrendChart';
@@ -11,7 +10,9 @@ import VideoPlayerModal from './VideoPlayerModal';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
-import videoMaterialAnimation from '../../public/lottie/Video Material.json';
+
+// Lazy load Lottie component
+const LottieComponent = lazy(() => import('lottie-react'));
 import { ProxiedImage } from './ProxiedImage';
 import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 import { ExportVideosModal } from './ExportVideosModal';
@@ -199,13 +200,19 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   trendPeriodDays = 7
 }) => {
   
+  // Lazy load animation data
+  const [videoMaterialAnimation, setVideoMaterialAnimation] = useState<any>(null);
+  useEffect(() => {
+    import('../../public/lottie/Video Material.json').then(module => setVideoMaterialAnimation(module.default));
+  }, []);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     const saved = localStorage.getItem('videoSubmissions_itemsPerPage');
     return saved ? Number(saved) : 10;
   });
-  
+
   const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted'>('views');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
@@ -1359,7 +1366,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       {submissions.length === 0 && (
         <div className="relative px-6 py-16 text-center z-10">
           <div className="w-64 h-64 mx-auto mb-6">
-            <Lottie animationData={videoMaterialAnimation} loop={true} />
+            {videoMaterialAnimation && (
+              <Suspense fallback={<div className="w-full h-full" />}>
+                <LottieComponent animationData={videoMaterialAnimation} loop={true} />
+              </Suspense>
+            )}
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No videos found</h3>
           <p className="text-gray-500 max-w-sm mx-auto">

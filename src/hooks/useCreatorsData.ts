@@ -56,7 +56,7 @@ export function useCreatorsData(
         try {
           return await FirestoreDataService.getVideos(orgId, projectId, {
             trackedAccountId: account.id,
-            limitCount: 100,
+            limitCount: 1000,
           });
         } catch {
           return [];
@@ -67,7 +67,7 @@ export function useCreatorsData(
 
       let directlySubmittedVideos: any[] = [];
       try {
-        const allProjectVideos = await FirestoreDataService.getVideos(orgId, projectId, { limitCount: 1000 });
+        const allProjectVideos = await FirestoreDataService.getVideos(orgId, projectId, { limitCount: 10000 });
         directlySubmittedVideos = allProjectVideos.filter((v: any) => v.addedBy === creatorId);
       } catch {
         /* noop */

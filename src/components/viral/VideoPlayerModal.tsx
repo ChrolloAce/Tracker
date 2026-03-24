@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   X,
   ExternalLink,
@@ -44,12 +44,20 @@ function formatDate(val: Timestamp | string | undefined): string {
   }
 }
 
+// ─── Inline style constants (extracted outside component) ─
+
+const embeddableModalStyle = { width: 400 } as const;
+const fallbackModalStyle = { width: 420 } as const;
+const iframeStyle = { height: 700 } as const;
+
 // ─── Component ───────────────────────────────────────────
 
-const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) => {
+const VideoPlayerModal = React.memo(function VideoPlayerModal({ video, onClose }: VideoPlayerModalProps) {
   const videoId = extractVideoId(video.url);
   const canEmbed = !!videoId;
   const embedUrl = videoId ? `https://www.tiktok.com/embed/v2/${videoId}` : null;
+
+  const handleInnerClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
   return (
     <div
@@ -58,8 +66,8 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) =
     >
       <div
         className="relative bg-[#0A0A0B] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-        style={{ width: canEmbed ? 400 : 420 }}
-        onClick={(e) => e.stopPropagation()}
+        style={canEmbed ? embeddableModalStyle : fallbackModalStyle}
+        onClick={handleInnerClick}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
@@ -94,7 +102,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) =
             <iframe
               src={embedUrl}
               className="w-full border-0"
-              style={{ height: 700 }}
+              style={iframeStyle}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
@@ -104,6 +112,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) =
               {/* Thumbnail hero */}
               <div className="relative">
                 <img
+                  loading="lazy"
                   src={video.thumbnail}
                   alt={video.title}
                   className="w-full aspect-[9/14] object-cover"
@@ -197,7 +206,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ video, onClose }) =
       </div>
     </div>
   );
-};
+});
 
 // ─── Stat cell used in the grid ──────────────────────────
 

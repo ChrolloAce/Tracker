@@ -358,6 +358,33 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   
   // Engagement rate (computed)
   engagementRate?: number;
+
+  // Transcription (populated on-demand via API)
+  transcript?: VideoTranscript | null;
+  transcriptStatus?: 'none' | 'pending' | 'processing' | 'completed' | 'failed' | 'unavailable';
+  transcriptRequestedAt?: Timestamp;
+  transcriptCompletedAt?: Timestamp;
+  transcriptProcessingStartedAt?: Timestamp;
+  transcriptError?: string;
+  transcriptRetryCount?: number;
+}
+
+/**
+ * Video transcript data
+ */
+export interface VideoTranscript {
+  text: string;
+  language: string;
+  source: 'platform_captions' | 'whisper' | 'manual';
+  segments?: TranscriptSegment[];
+  wordCount?: number;
+  generatedAt: Timestamp;
+}
+
+export interface TranscriptSegment {
+  start: number;   // seconds
+  end: number;     // seconds
+  text: string;
 }
 
 /**

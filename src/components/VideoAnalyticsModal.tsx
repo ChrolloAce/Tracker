@@ -174,21 +174,19 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
-    // Helper to create a data point with DELTA stats (change from previous snapshot)
-    const createDataPoint = (stats: any, timestamp: Date, snapshotIndex: number, previousStats?: any): ChartDataPoint => {
-      // If this is the first snapshot, use absolute values
-      // Otherwise, calculate delta from previous snapshot
-      const views = previousStats ? Math.max(0, stats.views - previousStats.views) : stats.views;
-      const likes = previousStats ? Math.max(0, stats.likes - previousStats.likes) : stats.likes;
-      const comments = previousStats ? Math.max(0, stats.comments - previousStats.comments) : stats.comments;
-      const shares = previousStats ? Math.max(0, (stats.shares || 0) - (previousStats.shares || 0)) : (stats.shares || 0);
-      const saves = previousStats ? Math.max(0, (stats.saves || 0) - (previousStats.saves || 0)) : (stats.saves || 0);
-      
+    // Helper to create a data point from absolute/cumulative stats
+    const createDataPoint = (stats: any, timestamp: Date, snapshotIndex: number): ChartDataPoint => {
+      const views = stats.views || 0;
+      const likes = stats.likes || 0;
+      const comments = stats.comments || 0;
+      const shares = stats.shares || 0;
+      const saves = stats.saves || 0;
+
       const totalEngagement = likes + comments + shares;
       const engagementRate = views > 0 ? (totalEngagement / views) * 100 : 0;
-      
+
       const formattedDate = timestamp.toLocaleString('en-US', {
-          month: 'short', 
+          month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit'
@@ -271,63 +269,23 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         });
       }
 
-    // Create data points - MATCH TrendCalculationService logic
-    // First point = BASELINE (absolute value), subsequent points = GROWTH (delta from previous)
+    // Create data points - each point shows CUMULATIVE totals at that snapshot time
+    // This ensures the chart line accurately reflects the actual metric values over time
     const data: ChartDataPoint[] = allSnapshots.map((snapshot, index) => {
       const timestamp = new Date(snapshot.capturedAt);
-      
-      const currentViews = snapshot.views || 0;
-      const currentLikes = snapshot.likes || 0;
-      const currentComments = snapshot.comments || 0;
-      const currentShares = snapshot.shares || 0;
-      const currentSaves = snapshot.saves || 0;
-      
-      let displayViews, displayLikes, displayComments, displayShares, displaySaves;
-      
-      if (index === 0) {
-        // FIRST SNAPSHOT: Show absolute baseline values (where we started)
-        displayViews = currentViews;
-        displayLikes = currentLikes;
-        displayComments = currentComments;
-        displayShares = currentShares;
-        displaySaves = currentSaves;
-        
-        console.log(`📈 Chart Point ${index + 1} (BASELINE):`, {
-          date: timestamp.toLocaleDateString(),
-          views: currentViews.toLocaleString(),
-          note: 'First snapshot - showing baseline values'
-        });
-      } else {
-        // SUBSEQUENT SNAPSHOTS: Show growth delta from previous
-        const previousSnapshot = allSnapshots[index - 1];
-        const prevViews = previousSnapshot.views || 0;
-        const prevLikes = previousSnapshot.likes || 0;
-        const prevComments = previousSnapshot.comments || 0;
-        const prevShares = previousSnapshot.shares || 0;
-        const prevSaves = previousSnapshot.saves || 0;
-        
-        displayViews = Math.max(0, currentViews - prevViews);
-        displayLikes = Math.max(0, currentLikes - prevLikes);
-        displayComments = Math.max(0, currentComments - prevComments);
-        displayShares = Math.max(0, currentShares - prevShares);
-        displaySaves = Math.max(0, currentSaves - prevSaves);
-        
-        console.log(`📈 Chart Point ${index + 1} (GROWTH):`, {
-          date: timestamp.toLocaleDateString(),
-          currentViews: currentViews.toLocaleString(),
-          prevViews: prevViews.toLocaleString(),
-          growth: displayViews.toLocaleString(),
-          calculation: `${currentViews.toLocaleString()} - ${prevViews.toLocaleString()} = +${displayViews.toLocaleString()}`,
-          WARNING: currentViews === prevViews ? '⚠️ NO GROWTH - Same values!' : '✅ Growth detected'
-        });
-      }
-      
-      // Calculate engagement rate based on the display values
-      const totalEngagement = displayLikes + displayComments + displayShares;
-      const engagementRate = displayViews > 0 ? (totalEngagement / displayViews) * 100 : 0;
-      
+
+      const cumulativeViews = snapshot.views || 0;
+      const cumulativeLikes = snapshot.likes || 0;
+      const cumulativeComments = snapshot.comments || 0;
+      const cumulativeShares = snapshot.shares || 0;
+      const cumulativeSaves = snapshot.saves || 0;
+
+      // Calculate engagement rate from cumulative values
+      const totalEngagement = cumulativeLikes + cumulativeComments + cumulativeShares;
+      const engagementRate = cumulativeViews > 0 ? (totalEngagement / cumulativeViews) * 100 : 0;
+
       const formattedDate = timestamp.toLocaleString('en-US', {
-          month: 'short', 
+          month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit'
@@ -335,18 +293,18 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
       return {
         date: formattedDate,
-        views: displayViews,
-        likes: displayLikes,
-        comments: displayComments,
-        shares: displayShares,
-        saves: displaySaves,
+        views: cumulativeViews,
+        likes: cumulativeLikes,
+        comments: cumulativeComments,
+        shares: cumulativeShares,
+        saves: cumulativeSaves,
         engagementRate,
         timestamp: timestamp.getTime(),
         snapshotIndex: index
       };
     });
-    
-    console.log('📊 Final chart data:', data.map(d => ({ date: d.date, views: d.views, likes: d.likes })));
+
+    console.log('📊 Final chart data (cumulative):', data.map(d => ({ date: d.date, views: d.views, likes: d.likes })));
     
     // If only one data point, duplicate it to create a flat line
     if (data.length === 1) {
@@ -356,32 +314,20 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return data;
   }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.saves, video?.snapshots]);
 
-  // Calculate cumulative totals - sum all deltas from chart data to match displayed values
+  // Get the latest cumulative totals from the last chart data point (most recent snapshot)
   const cumulativeTotals = useMemo(() => {
     if (!video || chartData.length === 0) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
-    
-    // Sum all the delta values from the chart data (this matches what's visually shown in the graph)
-    const views = chartData.reduce((sum, point) => sum + point.views, 0);
-    const likes = chartData.reduce((sum, point) => sum + point.likes, 0);
-    const comments = chartData.reduce((sum, point) => sum + point.comments, 0);
-    const shares = chartData.reduce((sum, point) => sum + point.shares, 0);
-    const saves = chartData.reduce((sum, point) => sum + point.saves, 0);
-    
-    console.log('📊 Cumulative Totals (sum of all deltas):', {
-      views: views.toLocaleString(),
-      likes: likes.toLocaleString(),
-      comments: comments.toLocaleString(),
-      shares: shares.toLocaleString(),
-      note: 'This should match the current video totals'
-    });
-    
+
+    // Since chart data now holds cumulative values, the last point has the current totals
+    const lastPoint = chartData[chartData.length - 1];
+
     return {
-      views,
-      likes,
-      comments,
-      shares,
-      saves,
-      engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
+      views: lastPoint.views,
+      likes: lastPoint.likes,
+      comments: lastPoint.comments,
+      shares: lastPoint.shares,
+      saves: lastPoint.saves,
+      engagementRate: lastPoint.engagementRate,
     };
   }, [chartData]);
 
