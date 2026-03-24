@@ -225,7 +225,6 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     setHoveredDay(dayData);
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     const vw = window.innerWidth;
-    const vh = window.innerHeight;
 
     // Center tooltip horizontally on the cell
     let x = rect.left + rect.width / 2;

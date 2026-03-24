@@ -4,8 +4,6 @@ import {
   Heart,
   MessageCircle,
   Play,
-  Bookmark,
-  Share2,
   ExternalLink,
 } from 'lucide-react';
 import { ViralVideo } from '../../types/viralContent';
