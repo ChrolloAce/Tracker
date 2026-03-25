@@ -96,6 +96,7 @@ Response:
         "comments": 200,
         "shares": 300,
         "status": "active",
+        "transcriptStatus": "completed",
         "uploadDate": "2025-06-15T12:00:00.000Z",
         "lastRefreshed": "2025-06-20T17:00:00.000Z"
       }
@@ -108,6 +109,9 @@ Response:
     }
   }
 }
+\`\`\`
+
+The \`transcriptStatus\` field on each video indicates whether a transcript is available. Possible values: \`none\`, \`processing\`, \`completed\`, \`failed\`, \`unavailable\`. To get the full transcript text, call GET /api/v1/videos/:id for that video.
 \`\`\`
 
 ---
@@ -215,7 +219,9 @@ Duplicate detection: If the URL is already tracked, returns 409 (async) or 200 w
 ---
 
 #### GET /api/v1/videos/:id
-Get full details for a single video including optional snapshot history.
+Get full details for a single video, including its transcript and optional snapshot history.
+
+**Automatic Transcription:** The first time you fetch a video through this endpoint, ViewTrack automatically generates a transcript. The API will wait up to 25 seconds for the transcript to complete before responding. For most videos (especially YouTube), the transcript is returned in the same response, so you get everything in a single call.
 
 Required scope: \`videos:read\`
 
@@ -225,7 +231,7 @@ Query parameters:
 | projectId         | string  | no       | Speeds up lookup if provided |
 | includeSnapshots  | boolean | no       | Set "true" to include metric snapshots history |
 
-Response:
+Response (with transcript ready):
 \`\`\`json
 {
   "success": true,
@@ -255,6 +261,18 @@ Response:
         "to": "2025-06-20T17:00:00.000Z"
       }
     },
+    "transcription": {
+      "status": "completed",
+      "transcript": "Hey everyone, welcome back to my channel. Today we are going to talk about...",
+      "language": "en",
+      "source": "platform_captions",
+      "segments": [
+        { "start": 0.0, "end": 1.8, "text": "Hey everyone, welcome back to my channel." },
+        { "start": 1.8, "end": 4.2, "text": "Today we are going to talk about..." }
+      ],
+      "wordCount": 342,
+      "completedAt": "2025-06-20T17:00:05.000Z"
+    },
     "status": "active",
     "syncStatus": "completed",
     "uploadDate": "2025-06-15T12:00:00.000Z",
@@ -273,6 +291,32 @@ Response:
   }
 }
 \`\`\`
+
+Response (transcript still processing):
+If the transcript takes longer than 25 seconds (rare, only for very long videos), the response includes a clear retry instruction:
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "id": "abc123",
+    "...": "...all other fields...",
+    "transcription": {
+      "status": "processing",
+      "transcript": null,
+      "retryAfterSeconds": 10,
+      "message": "Transcript is being generated. Retry this same request in 10 seconds."
+    }
+  }
+}
+\`\`\`
+
+**Transcription details:**
+- The \`transcription\` block is always present in the response, regardless of status.
+- The \`transcription.status\` field will be one of: \`completed\`, \`processing\`, \`failed\`, \`unavailable\`, \`none\`.
+- When \`status\` is \`completed\`, the \`transcript\` field contains the full text, \`language\` contains the detected language code, and \`segments\` contains timestamped text segments.
+- The \`source\` field indicates how the transcript was generated: \`platform_captions\` (free, from YouTube auto-captions) or \`whisper\` (OpenAI Whisper API for TikTok, Instagram, Twitter).
+- Transcripts are cached. The first request triggers transcription, and all subsequent requests return the cached transcript instantly.
+- YouTube videos use free platform captions when available. All other platforms use OpenAI Whisper for audio transcription.
 
 ---
 
@@ -649,7 +693,24 @@ Response:
    → Add individual videos
 \`\`\`
 
-### Workflow 4: Get analytics dashboard data
+### Workflow 4: Get a video transcript
+\`\`\`
+1. GET /api/v1/videos/:id
+   → The transcript is generated automatically on the first request.
+   → For most videos, the transcript is included in this same response.
+
+2. If transcription.status is "processing":
+   → Wait the number of seconds in retryAfterSeconds (usually 10).
+   → Call GET /api/v1/videos/:id again.
+   → The transcript will be ready.
+
+3. To find which videos already have transcripts:
+   → GET /api/v1/videos
+   → Check the transcriptStatus field on each video.
+   → Videos with transcriptStatus "completed" already have transcripts cached.
+\`\`\`
+
+### Workflow 5: Get analytics dashboard data
 \`\`\`
 1. GET /api/v1/analytics/overview?projectId=xxx
    → Full stats with platform breakdown, top performers, recent activity
@@ -687,6 +748,7 @@ Response:
 - Thumbnails and profile pictures are stored on Firebase Storage for permanent URLs.
 - The API processes videos using Apify scrapers. Processing time varies: TikTok ~30s, Instagram ~30-60s, YouTube ~15s, Twitter ~10s.
 - All timestamps are returned in ISO 8601 format (UTC).
+- **Automatic Transcription:** Every video fetched through the API is automatically transcribed. YouTube videos use free platform captions. TikTok, Instagram, and Twitter videos are transcribed using OpenAI Whisper. Transcripts are generated on the first GET request and cached for all future requests. The transcript includes the full text, detected language, and timestamped segments.
 `.trim();
 
 // ─── Component ──────────────────────────────────────────

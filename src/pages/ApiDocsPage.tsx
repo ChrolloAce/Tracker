@@ -34,7 +34,7 @@ const ApiDocsPage: React.FC = () => {
       endpoints: [
         { name: 'List all tracked videos', method: 'GET', path: '/v1/videos' },
         { name: 'Add video to track', method: 'POST', path: '/v1/videos' },
-        { name: 'Get video details', method: 'GET', path: '/v1/videos/{id}' },
+        { name: 'Get video details + transcript', method: 'GET', path: '/v1/videos/{id}' },
         { name: 'Delete tracked video', method: 'DELETE', path: '/v1/videos/{id}' },
       ]
     },

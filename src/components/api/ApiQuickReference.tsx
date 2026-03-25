@@ -24,7 +24,7 @@ const ApiQuickReference: React.FC = () => {
           <div className="space-y-2">
             <EndpointRow method="GET" path="/api/v1/videos" desc="List tracked videos" />
             <EndpointRow method="POST" path="/api/v1/videos" desc="Add video to track (sync: true to wait for data)" />
-            <EndpointRow method="GET" path="/api/v1/videos/:id" desc="Get video details + snapshots" />
+            <EndpointRow method="GET" path="/api/v1/videos/:id" desc="Get video details, transcript, and snapshots" />
             <EndpointRow method="GET" path="/api/v1/accounts" desc="List tracked accounts" />
             <EndpointRow method="POST" path="/api/v1/accounts" desc="Add account to track" />
             <EndpointRow method="GET" path="/api/v1/analytics/overview" desc="Full analytics overview" />
