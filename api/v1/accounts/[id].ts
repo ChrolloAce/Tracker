@@ -5,7 +5,7 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { initializeFirebase } from '../../utils/firebase-admin.js';
 import { withApiAuth, handleApiError, ApiAuthError } from '../../middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
@@ -30,12 +30,14 @@ async function handler(
   switch (req.method) {
     case 'GET':
       return await getAccount(req, res, auth, id);
+    case 'PATCH':
+      return await updateAccount(req, res, auth, id);
     case 'DELETE':
       return await deleteAccount(req, res, auth, id);
     default:
       return res.status(405).json({
         success: false,
-        error: { message: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' }
+        error: { message: 'Method not allowed. Use GET, PATCH, or DELETE.', code: 'METHOD_NOT_ALLOWED' }
       });
   }
 }
@@ -154,6 +156,65 @@ async function getAccount(
 }
 
 /**
+ * Update a tracked account
+ */
+async function updateAccount(
+  req: VercelRequest,
+  res: VercelResponse,
+  auth: AuthenticatedApiRequest,
+  accountId: string
+) {
+  const result = await findAccount(auth.organizationId, accountId, auth.projectId);
+
+  if (!result) {
+    return res.status(404).json({
+      success: false,
+      error: { message: 'Account not found', code: 'NOT_FOUND' }
+    });
+  }
+
+  const { maxVideos, accountType, displayName } = req.body;
+  const updates: Record<string, any> = { updatedAt: Timestamp.now() };
+
+  if (maxVideos !== undefined) {
+    const num = parseInt(maxVideos);
+    if (isNaN(num) || num < 1) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'maxVideos must be a positive number', code: 'VALIDATION_ERROR' }
+      });
+    }
+    updates.maxVideos = num;
+  }
+
+  if (accountType && ['my', 'competitor'].includes(accountType)) {
+    updates.accountType = accountType;
+  }
+
+  if (displayName && typeof displayName === 'string') {
+    updates.displayName = displayName.trim();
+  }
+
+  await result.doc.ref.update(updates);
+
+  const updatedDoc = await result.doc.ref.get();
+  const data = updatedDoc.data()!;
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      id: updatedDoc.id,
+      username: data.username,
+      platform: data.platform,
+      maxVideos: data.maxVideos,
+      accountType: data.accountType,
+      displayName: data.displayName,
+      updatedAt: data.updatedAt?.toDate?.()?.toISOString(),
+    }
+  });
+}
+
+/**
  * Delete a tracked account
  */
 async function deleteAccount(
@@ -180,8 +241,8 @@ async function deleteAccount(
   });
 }
 
-// GET requires accounts:read, DELETE requires accounts:write
+// GET requires accounts:read, PATCH/DELETE require accounts:write
 export default async function routeHandler(req: VercelRequest, res: VercelResponse) {
-  const scopes = req.method === 'DELETE' ? ['accounts:write'] : ['accounts:read'];
+  const scopes = (req.method === 'DELETE' || req.method === 'PATCH') ? ['accounts:write'] : ['accounts:read'];
   return withApiAuth(scopes as any, handler)(req, res);
 }

@@ -14,7 +14,7 @@ import { getBaseUrl } from '../../utils/base-url.js';
 
 const JOB_PRIORITY_USER_INITIATED = 100;
 const BASE_URL = getBaseUrl();
-const DEFAULT_MAX_VIDEOS = 10;
+const DEFAULT_MAX_VIDEOS = 100;
 const COLL_ORGS = 'organizations';
 const COLL_PROJECTS = 'projects';
 const COLL_ACCOUNTS = 'trackedAccounts';
@@ -145,7 +145,7 @@ async function addAccount(
     });
   }
 
-  const videoLimit = Math.min(Math.max(parseInt(maxVideos) || DEFAULT_MAX_VIDEOS, 1), 1000);
+  const videoLimit = Math.max(parseInt(maxVideos) || DEFAULT_MAX_VIDEOS, 1);
   const cleanUsername = username.toLowerCase().replace(/^@/, '');
 
   const accountsCol = db
