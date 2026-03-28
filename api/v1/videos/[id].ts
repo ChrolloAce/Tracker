@@ -14,6 +14,7 @@ import { initializeFirebase } from '../../utils/firebase-admin.js';
 import { withApiAuth } from '../../middleware/apiKeyAuth.js';
 import { getBaseUrl } from '../../utils/base-url.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
+import { formatVideoResponse } from './syncHelpers.js';
 
 initializeFirebase();
 const db = getFirestore();
@@ -267,13 +268,13 @@ async function getVideo(
   }
 
   // ─── Snapshots ──────────────────────────────────────────
-  const includeSnapshots = req.query.includeSnapshots === 'true';
+  const includeSnapshots = req.query.includeSnapshots !== 'false';
   let snapshots: any[] = [];
 
   if (includeSnapshots) {
     const snapshotsSnapshot = await doc.ref
       .collection('snapshots')
-      .orderBy('capturedAt', 'desc')
+      .orderBy('capturedAt', 'asc')
       .limit(100)
       .get();
 
@@ -281,11 +282,12 @@ async function getVideo(
       const sData = sDoc.data();
       return {
         id: sDoc.id,
-        views: sData.views,
-        likes: sData.likes,
-        comments: sData.comments,
-        shares: sData.shares,
-        capturedAt: sData.capturedAt?.toDate?.()?.toISOString()
+        views: sData.views ?? 0,
+        likes: sData.likes ?? 0,
+        comments: sData.comments ?? 0,
+        shares: sData.shares ?? 0,
+        saves: sData.saves ?? 0,
+        capturedAt: sData.capturedAt?.toDate?.()?.toISOString() ?? null
       };
     });
   }
@@ -310,18 +312,17 @@ async function getVideo(
     };
   }
 
+  // Build the base response using the shared formatter
+  const baseResponse = formatVideoResponse(doc.id, data, projectId);
+
   return res.status(200).json({
     success: true,
     data: {
-      id: doc.id,
-      projectId,
-      url: data.url,
-      platform: data.platform,
-      thumbnail: data.thumbnail,
-      title: data.title,
-      caption: data.caption,
-      uploaderHandle: data.uploaderHandle,
-      uploaderProfilePicture: data.uploaderProfilePicture,
+      ...baseResponse,
+      // Override snapshots with the fetched subcollection snapshots
+      snapshots: includeSnapshots ? snapshots : baseResponse.snapshots,
+      // Additional fields specific to the single-video endpoint
+      uploaderProfilePicture: data.uploaderProfilePicture || null,
       metrics: {
         views: data.views || 0,
         likes: data.likes || 0,
@@ -331,12 +332,7 @@ async function getVideo(
       },
       growth,
       transcription: buildTranscriptionResponse(data),
-      status: data.status,
-      syncStatus: data.syncStatus,
-      uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
-      lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString(),
-      createdAt: data.createdAt?.toDate?.()?.toISOString() || data.dateSubmitted?.toDate?.()?.toISOString(),
-      ...(includeSnapshots && { snapshots })
+      syncStatus: data.syncStatus || null,
     }
   });
 }

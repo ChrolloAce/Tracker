@@ -130,33 +130,106 @@ export async function pollVideoUntilReady(
 // ─── Response Formatting ─────────────────────────────────
 
 /**
- * Format a Firestore video document into a clean API response object.
+ * Extract the raw platform video ID from a Firestore doc ID or videoId field.
+ * Doc IDs follow the pattern: {platform}_{accountId}_{rawVideoId}
+ * The videoId field itself may already be the raw ID.
+ */
+function extractRawVideoId(docId: string, videoIdField?: string, platform?: string, username?: string): string {
+  // If videoIdField is set and doesn't contain the platform prefix pattern, use it directly
+  if (videoIdField && !videoIdField.startsWith('temp-')) {
+    return videoIdField;
+  }
+  // Try to strip the prefix from the doc ID: platform_username_rawId
+  if (platform && username) {
+    const prefix = `${platform}_${username}_`;
+    if (docId.startsWith(prefix)) {
+      return docId.slice(prefix.length);
+    }
+  }
+  // Fallback: try to get everything after the second underscore
+  const parts = docId.split('_');
+  if (parts.length >= 3) {
+    return parts.slice(2).join('_');
+  }
+  return docId;
+}
+
+/**
+ * Construct the video URL for a given platform, username, and raw video ID.
+ */
+function constructVideoUrl(platform: string, username: string, rawVideoId: string): string {
+  switch (platform) {
+    case 'tiktok':
+      return `https://tiktok.com/@${username}/video/${rawVideoId}`;
+    case 'instagram':
+      return `https://instagram.com/reel/${rawVideoId}`;
+    case 'youtube':
+      return `https://youtube.com/shorts/${rawVideoId}`;
+    case 'twitter':
+      return `https://x.com/${username}/status/${rawVideoId}`;
+    default:
+      return '';
+  }
+}
+
+/**
+ * Construct the account profile URL for a given platform and username.
+ */
+function constructAccountUrl(platform: string, username: string): string | null {
+  if (!username) return null;
+  switch (platform) {
+    case 'tiktok':
+      return `https://tiktok.com/@${username}`;
+    case 'instagram':
+      return `https://instagram.com/${username}`;
+    case 'youtube':
+      return `https://youtube.com/@${username}`;
+    case 'twitter':
+      return `https://x.com/${username}`;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Format a Firestore video document into a clean API response object
+ * with ALL available fields.
  */
 export function formatVideoResponse(
   id: string,
   data: FirebaseFirestore.DocumentData,
   projectId: string
 ) {
+  const platform = data.platform || '';
+  const username = data.uploaderHandle || data.accountUsername || '';
+  const rawVideoId = extractRawVideoId(id, data.videoId, platform, username);
+  const url = data.url || data.videoUrl || constructVideoUrl(platform, username, rawVideoId);
+
   return {
     id,
     projectId,
-    url: data.url,
-    platform: data.platform,
-    thumbnail: data.thumbnail || null,
-    title: data.title || null,
+    videoId: rawVideoId,
+    url,
+    platform,
+    title: data.videoTitle || data.title || null,
     caption: data.caption || data.description || null,
-    uploaderHandle: data.uploaderHandle || null,
+    thumbnail: data.thumbnail || null,
     views: data.views || 0,
     likes: data.likes || 0,
     comments: data.comments || 0,
     shares: data.shares || 0,
     saves: data.saves || 0,
-    status: data.status,
-    syncStatus: data.syncStatus || null,
-    transcriptStatus: data.transcriptStatus || 'none',
     uploadDate: data.uploadDate?.toDate?.()?.toISOString() || null,
+    duration: data.duration || null,
+    accountUsername: username || null,
+    accountDisplayName: data.uploader || data.accountDisplayName || username || null,
+    downloadUrl: data.mediaUrl || data.downloadUrl || null,
+    mediaUrl: data.mediaUrl || data.downloadUrl || null,
+    accountUrl: constructAccountUrl(platform, username),
+    status: data.status || null,
+    dateSubmitted: data.dateSubmitted?.toDate?.()?.toISOString() || data.dateAdded?.toDate?.()?.toISOString() || data.createdAt?.toDate?.()?.toISOString() || null,
     lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString() || null,
-    createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+    snapshots: data.snapshots || [],
   };
 }
 

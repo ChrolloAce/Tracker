@@ -92,25 +92,7 @@ async function listVideos(
     const videosSnapshot = await query.limit(100).get();
 
     videosSnapshot.docs.forEach(vDoc => {
-      const data = vDoc.data();
-      allVideos.push({
-        id: vDoc.id,
-        projectId: projectDoc.id,
-        url: data.url,
-        platform: data.platform,
-        thumbnail: data.thumbnail,
-        title: data.title,
-        caption: data.caption,
-        uploaderHandle: data.uploaderHandle,
-        views: data.views || 0,
-        likes: data.likes || 0,
-        comments: data.comments || 0,
-        shares: data.shares || 0,
-        status: data.status,
-        transcriptStatus: data.transcriptStatus || 'none',
-        uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
-        lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString()
-      });
+      allVideos.push(formatVideoResponse(vDoc.id, vDoc.data(), projectDoc.id));
     });
   }
 
@@ -179,25 +161,7 @@ async function listVideosFromProject(
   const snapshot = await query.get();
 
   let allVideos = snapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      projectId,
-      url: data.url,
-      platform: data.platform,
-      thumbnail: data.thumbnail,
-      title: data.title,
-      caption: data.caption,
-      uploaderHandle: data.uploaderHandle,
-      views: data.views || 0,
-      likes: data.likes || 0,
-      comments: data.comments || 0,
-      shares: data.shares || 0,
-      status: data.status,
-      transcriptStatus: data.transcriptStatus || 'none',
-      uploadDate: data.uploadDate?.toDate?.()?.toISOString(),
-      lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString()
-    };
+    return formatVideoResponse(doc.id, doc.data(), projectId);
   });
 
   // Sort client-side when filters are applied

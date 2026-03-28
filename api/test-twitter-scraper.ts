@@ -28,18 +28,11 @@ export default async function handler(
 
   try {
     const APIFY_TOKEN = process.env.APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
-    const actorId = 'apidojo~tweet-scraper';
-    
+    const actorId = 'gentle_cloud~twitter-tweets-scraper';
+
     const input = {
-      twitterHandles: [username],
-      maxItems: 5, // Just fetch 5 for testing
-      sort: 'Latest',
-      onlyImage: false,
-      onlyVideo: true, // ✅ ONLY fetch video tweets for testing
-      onlyQuote: false,
-      onlyVerifiedUsers: false,
-      onlyTwitterBlue: false,
-      includeSearchTerms: false,
+      start_urls: [{ url: `https://x.com/${username}` }],
+      result_count: "5",
     };
 
     console.log('📋 Request details:');

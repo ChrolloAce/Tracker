@@ -236,13 +236,11 @@ async function fetchYouTubeBatch(username: string, maxItems: number): Promise<an
 async function fetchTwitterBatch(username: string, maxItems: number): Promise<any[]> {
   try {
     const input = {
-      maxItems: maxItems,
-      twitterHandles: [username],
-      onlyVideo: true, // ✅ Correct field name: onlyVideo (not onlyVideos)
-      sort: 'Latest'
+      start_urls: [{ url: `https://x.com/${username}` }],
+      result_count: String(maxItems),
     };
-    
-    const response = await runApifyActor({ actorId: 'apidojo~tweet-scraper', input });
+
+    const response = await runApifyActor({ actorId: 'gentle_cloud~twitter-tweets-scraper', input });
     return response.items || [];
   } catch (error) {
     console.error(`❌ Failed to fetch Twitter batch:`, error);

@@ -26,19 +26,18 @@ export class TwitterSyncService {
   static async discovery(
     account: { username: string; id: string },
     orgId: string,
-    existingVideos: Map<string, any>,
+    existingVideos: Map<string, any> | Set<string>,
     limit: number = 10
   ): Promise<Array<any>> {
     console.log(`🔍 [TWITTER] Forward discovery - fetching ${limit} most recent tweets...`);
 
     try {
-      // Use advanced search to exclude retweets AND replies
-      // searchTerms: "from:username -filter:nativeretweets -filter:replies"
+      // Use gentle_cloud/twitter-tweets-scraper for account discovery
+      // Fetches all tweets from an account URL
       const scraperInput = {
-        searchTerms: [`from:${account.username} -filter:nativeretweets -filter:replies`],
-        maxItems: limit,
-        onlyVideo: false, // Include ALL tweets (text, images, videos)
-        onlyVerifiedUsers: false,
+        start_urls: [{ url: `https://x.com/${account.username}` }],
+        result_count: String(limit),
+        since_date: '2020-01-01',
         proxy: {
           useApifyProxy: true,
           apifyProxyGroups: ['RESIDENTIAL']
@@ -46,25 +45,34 @@ export class TwitterSyncService {
       };
 
       const data = await runApifyActor({
-        actorId: 'apidojo/tweet-scraper',
+        actorId: 'gentle_cloud/twitter-tweets-scraper',
         input: scraperInput
       });
 
-      const batch = data.items || [];
+      const rawBatch = data.items || [];
 
-      if (batch.length === 0) {
+      if (rawBatch.length === 0) {
         console.log(`    ⚠️ [TWITTER] No tweets returned`);
         return [];
       }
 
-      console.log(`    📦 [TWITTER] Fetched ${batch.length} tweets from Apify`);
+      // Deduplicate by tweet ID (scraper can return same tweets multiple times)
+      const seenIds = new Set<string>();
+      const batch = rawBatch.filter((tweet: any) => {
+        const id = tweet.id_str || tweet.id;
+        if (!id || seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+
+      console.log(`    📦 [TWITTER] Fetched ${rawBatch.length} tweets, ${batch.length} unique after dedup`);
 
       // Filter out existing tweets
       const newTweets: any[] = [];
       let foundDuplicate = false;
 
       for (const tweet of batch) {
-        const tweetId = tweet.id;
+        const tweetId = tweet.id_str || tweet.id;
         if (!tweetId) continue;
 
         if (existingVideos.has(tweetId)) {
@@ -86,7 +94,7 @@ export class TwitterSyncService {
           const normalized = this.normalizeVideoData(tweet, account);
           normalizedTweets.push(normalized);
         } catch (err: any) {
-          console.error(`    ❌ [TWITTER] Failed to normalize tweet ${tweet.id}:`, err.message);
+          console.error(`    ❌ [TWITTER] Failed to normalize tweet ${tweet.id_str || tweet.id}:`, err.message);
         }
       }
 
@@ -177,22 +185,42 @@ export class TwitterSyncService {
 
   /**
    * Get Twitter profile data
+   * Uses gentle_cloud/twitter-tweets-scraper to fetch 1 tweet and extract profile from it
    */
   static async getProfile(username: string): Promise<any> {
     console.log(`👤 [TWITTER] Fetching profile data for ${username}...`);
     try {
       const profileData = await runApifyActor({
-        actorId: 'apidojo/tweet-scraper',
+        actorId: 'gentle_cloud/twitter-tweets-scraper',
         input: {
-          twitterHandles: [username],
-          maxItems: 1,
-          onlyVerifiedUsers: false,
+          start_urls: [{ url: `https://x.com/${username}` }],
+          result_count: '1',
+          since_date: '2020-01-01',
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL']
+          }
         }
       });
 
       const firstTweet = profileData.items?.[0];
 
-      if (firstTweet?.author) {
+      if (!firstTweet) return null;
+
+      // Handle new format (gentle_cloud) - user data in tweet.user
+      if (firstTweet.user) {
+        const legacy = firstTweet.user.legacy || {};
+        return {
+          displayName: legacy.name || firstTweet.user.name || username,
+          followersCount: legacy.followers_count || 0,
+          followingCount: legacy.following_count || legacy.friends_count || 0,
+          isVerified: firstTweet.user.is_blue_verified || false,
+          profilePicUrl: firstTweet.user.avatar?.image_url || legacy.profile_image_url_https || ''
+        };
+      }
+
+      // Handle old format (apidojo) - author data
+      if (firstTweet.author) {
         return {
           displayName: firstTweet.author.name,
           followersCount: firstTweet.author.followers || 0,
@@ -201,6 +229,7 @@ export class TwitterSyncService {
           profilePicUrl: firstTweet.author.profilePicture
         };
       }
+
       return null;
     } catch (error: any) {
       console.error(`❌ [TWITTER] Profile fetch failed:`, error.message);
@@ -210,20 +239,38 @@ export class TwitterSyncService {
 
   /**
    * Normalize Twitter tweet data to standard format
+   * Handles both old format (apidojo/tweet-scraper) and new format (gentle_cloud/twitter-tweets-scraper)
    */
   private static normalizeVideoData(
     tweet: any,
     account: { username: string; id: string }
   ): any {
+    // Detect format: new format has id_str, old format has id
+    const isNewFormat = !!tweet.id_str;
+
+    // Extract tweet ID
+    const tweetId = tweet.id_str || tweet.id;
+
+    // Extract text
+    const tweetText = tweet.full_text || tweet.text || '';
+
     // Extract ALL media URLs (images/videos)
     let mediaUrls: string[] = [];
     let thumbnail = '';
 
-    if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
+    if (isNewFormat) {
+      // New format: entities.media or extended_entities.media
+      const mediaArray = tweet.extended_entities?.media || tweet.entities?.media || [];
+      mediaUrls = mediaArray
+        .map((m: any) => m.media_url_https || m.media_url)
+        .filter((url: string) => url);
+      thumbnail = mediaUrls[0] || '';
+    } else if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
+      // Old format: extendedEntities.media
       mediaUrls = tweet.extendedEntities.media
         .map((m: any) => m.media_url_https || m.media_url)
-        .filter((url: string) => url); // Get all media URLs
-      thumbnail = mediaUrls[0] || ''; // First image as thumbnail
+        .filter((url: string) => url);
+      thumbnail = mediaUrls[0] || '';
     } else if (tweet.photos && tweet.photos.length > 0) {
       mediaUrls = tweet.photos.filter((url: string) => url);
       thumbnail = mediaUrls[0] || '';
@@ -231,36 +278,52 @@ export class TwitterSyncService {
 
     // Parse upload date
     let uploadTimestamp: FirebaseFirestore.Timestamp;
-    if (tweet.createdAt) {
+    if (tweet.created_at) {
+      uploadTimestamp = Timestamp.fromDate(new Date(tweet.created_at));
+    } else if (tweet.createdAt) {
       uploadTimestamp = Timestamp.fromDate(new Date(tweet.createdAt));
-    } else if (tweet.created_at || tweet.timestamp) {
-      // Alternative date fields
-      uploadTimestamp = Timestamp.fromDate(new Date(tweet.created_at || tweet.timestamp));
+    } else if (tweet.timestamp) {
+      uploadTimestamp = Timestamp.fromDate(new Date(tweet.timestamp));
     } else {
-      console.warn(`    ⚠️ [TWITTER] Tweet ${tweet.id} missing createdAt - using current time as fallback`);
+      console.warn(`    ⚠️ [TWITTER] Tweet ${tweetId} missing date - using current time as fallback`);
       uploadTimestamp = Timestamp.now();
     }
 
+    // Extract display name from profile data
+    const displayName = tweet.user?.legacy?.name
+      || tweet.user?.name
+      || tweet.author?.name
+      || account.username;
+
+    // Extract profile picture URL
+    const profilePicUrl = tweet.user?.avatar?.image_url
+      || tweet.user?.legacy?.profile_image_url_https
+      || tweet.author?.profilePicture
+      || '';
+
     return {
-      videoId: tweet.id,
-      videoTitle: (tweet.text || '').substring(0, 100) || 'Untitled Tweet',
-      videoUrl: tweet.url || `https://twitter.com/${account.username}/status/${tweet.id}`,
+      videoId: tweetId,
+      videoTitle: tweetText.substring(0, 100) || 'Untitled Tweet',
+      videoUrl: tweet.url || `https://twitter.com/${account.username}/status/${tweetId}`,
       platform: 'twitter',
       thumbnail: thumbnail,
-      media: mediaUrls, // ✅ Store ALL media URLs for slideshow
+      media: mediaUrls,
       accountUsername: account.username,
-      accountDisplayName: tweet.author?.name || account.username,
+      accountDisplayName: displayName,
+      profilePicUrl: profilePicUrl,
       uploadDate: uploadTimestamp,
-      views: tweet.viewCount || tweet.views || 0,
-      likes: tweet.likeCount || tweet.favoriteCount || tweet.likes || 0,
-      comments: tweet.replyCount || tweet.replies || 0,
-      shares: tweet.retweetCount || tweet.retweets || 0,
-      saves: tweet.bookmarkCount || tweet.bookmarks || 0,
-      caption: tweet.text || '',
-      duration: 0, // Twitter doesn't provide video duration easily
+      views: (isNewFormat ? parseInt(tweet.views_count, 10) || 0 : null) ?? tweet.viewCount ?? tweet.views ?? 0,
+      likes: tweet.favorite_count ?? tweet.likeCount ?? tweet.favoriteCount ?? tweet.likes ?? 0,
+      comments: tweet.reply_count ?? tweet.replyCount ?? tweet.replies ?? 0,
+      shares: tweet.retweet_count ?? tweet.retweetCount ?? tweet.retweets ?? 0,
+      saves: tweet.bookmark_count ?? tweet.bookmarkCount ?? tweet.bookmarks ?? 0,
+      caption: tweetText,
+      duration: 0,
       mediaUrl: (() => {
-        // Extract highest quality video variant
-        const media = tweet.extendedEntities?.media?.[0];
+        // Extract highest quality video variant - handle both formats
+        const media = isNewFormat
+          ? (tweet.extended_entities?.media?.[0] || tweet.entities?.media?.[0])
+          : tweet.extendedEntities?.media?.[0];
         const variants = media?.video_info?.variants?.filter((v: any) => v.content_type === 'video/mp4') || [];
         const best = variants.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
         return best?.url || media?.video_url || tweet.video_url || '';

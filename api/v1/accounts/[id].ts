@@ -13,6 +13,16 @@ import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 initializeFirebase();
 const db = getFirestore();
 
+function buildAccountUrl(platform: string, username: string): string {
+  const platformUrls: Record<string, string> = {
+    tiktok: `https://tiktok.com/@${username}`,
+    instagram: `https://instagram.com/${username}`,
+    youtube: `https://youtube.com/channel/${username}`,
+    twitter: `https://x.com/${username}`,
+  };
+  return platformUrls[platform] || '';
+}
+
 async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -141,15 +151,23 @@ async function getAccount(
       id: doc.id,
       username: data.username,
       platform: data.platform,
-      profilePicture: data.profilePicture,
-      followerCount: data.followerCount,
+      displayName: data.displayName || data.username,
+      profilePicUrl: data.profilePicture || '',
+      followerCount: data.followerCount || 0,
+      followingCount: data.followingCount || 0,
+      isVerified: data.isVerified || false,
+      accountType: data.accountType || 'my',
+      accountUrl: buildAccountUrl(data.platform, data.username),
       totalVideos: data.totalVideos || 0,
       totalViews: data.totalViews || 0,
       totalLikes: data.totalLikes || 0,
       totalComments: data.totalComments || 0,
-      syncStatus: data.syncStatus,
-      lastSyncedAt: data.lastSyncedAt?.toDate?.()?.toISOString(),
-      createdAt: data.createdAt?.toDate?.()?.toISOString(),
+      syncStatus: data.syncStatus || null,
+      lastSynced: data.lastSyncedAt?.toDate?.()?.toISOString() || null,
+      lastRefreshed: data.lastRefreshed?.toDate?.()?.toISOString() || data.updatedAt?.toDate?.()?.toISOString() || null,
+      dateAdded: data.dateAdded?.toDate?.()?.toISOString() || data.createdAt?.toDate?.()?.toISOString() || null,
+      maxVideos: data.maxVideos || 100,
+      videoCount: data.videoCount || data.totalVideos || 0,
       ...(includeVideos && { videos })
     }
   });
