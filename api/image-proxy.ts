@@ -20,6 +20,7 @@ const ALLOWED_DOMAIN_SUFFIXES = [
   'twimg.com',
   // Firebase
   'firebasestorage.googleapis.com',
+  'storage.googleapis.com',
 ];
 
 function isPrivateIP(hostname: string): boolean {

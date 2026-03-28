@@ -214,6 +214,9 @@ export function formatVideoResponse(
     title: data.videoTitle || data.title || null,
     caption: data.caption || data.description || null,
     thumbnail: data.thumbnail || null,
+    thumbnailUrl: data.thumbnail
+      ? `https://www.viewtrack.app/api/image-proxy?url=${encodeURIComponent(data.thumbnail)}`
+      : null,
     views: data.views || 0,
     likes: data.likes || 0,
     comments: data.comments || 0,
