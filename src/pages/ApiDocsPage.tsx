@@ -22,9 +22,48 @@ const ApiDocsPage: React.FC = () => {
       title: 'Accounts',
       isOpen: true,
       endpoints: [
-        { name: 'List all tracked accounts', method: 'GET', path: '/v1/accounts' },
-        { name: 'Add tracked account', method: 'POST', path: '/v1/accounts' },
-        { name: 'Get account details', method: 'GET', path: '/v1/accounts/{id}' },
+        {
+          name: 'List all tracked accounts',
+          method: 'GET',
+          path: '/v1/accounts',
+          params: [
+            { name: 'projectId', type: 'string', description: 'Filter by project ID' },
+            { name: 'platform', type: 'string', description: 'Filter by platform: tiktok, instagram, youtube, twitter' },
+            { name: 'limit', type: 'number', description: 'Results per page (1-100). Default: 50' },
+            { name: 'offset', type: 'number', description: 'Number of results to skip. Default: 0' },
+          ],
+        },
+        {
+          name: 'Add tracked account',
+          method: 'POST',
+          path: '/v1/accounts',
+          params: [
+            { name: 'username', type: 'string', required: true, description: 'Account username (without @)' },
+            { name: 'platform', type: 'string', required: true, description: 'Platform: tiktok, instagram, youtube, twitter' },
+            { name: 'projectId', type: 'string', required: true, description: 'Project to add the account to' },
+            { name: 'maxVideos', type: 'number', description: 'Max videos to fetch. Default: 100, no upper limit' },
+          ],
+        },
+        {
+          name: 'Get account details',
+          method: 'GET',
+          path: '/v1/accounts/{id}',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Account ID' },
+            { name: 'includeVideos', type: 'boolean', description: 'Include tracked videos. Default: false' },
+          ],
+        },
+        {
+          name: 'Update account',
+          method: 'PATCH',
+          path: '/v1/accounts/{id}',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Account ID' },
+            { name: 'maxVideos', type: 'number', description: 'Update max videos to fetch' },
+            { name: 'accountType', type: 'string', description: 'Set to "my" or "competitor"' },
+            { name: 'displayName', type: 'string', description: 'Custom display name' },
+          ],
+        },
         { name: 'Delete tracked account', method: 'DELETE', path: '/v1/accounts/{id}' },
       ]
     },
@@ -32,9 +71,39 @@ const ApiDocsPage: React.FC = () => {
       title: 'Videos',
       isOpen: false,
       endpoints: [
-        { name: 'List all tracked videos', method: 'GET', path: '/v1/videos' },
-        { name: 'Add video to track', method: 'POST', path: '/v1/videos' },
-        { name: 'Get video details + transcript', method: 'GET', path: '/v1/videos/{id}' },
+        {
+          name: 'List all tracked videos',
+          method: 'GET',
+          path: '/v1/videos',
+          params: [
+            { name: 'projectId', type: 'string', description: 'Filter by project ID' },
+            { name: 'platform', type: 'string', description: 'Filter by platform' },
+            { name: 'status', type: 'string', description: 'Filter by status: active, archived' },
+            { name: 'sortBy', type: 'string', description: 'Sort field: uploadDate, views, likes. Default: uploadDate' },
+            { name: 'sortOrder', type: 'string', description: 'Sort direction: asc, desc. Default: desc' },
+            { name: 'limit', type: 'number', description: 'Results per page (1-100). Default: 50' },
+            { name: 'offset', type: 'number', description: 'Number of results to skip. Default: 0' },
+          ],
+        },
+        {
+          name: 'Add video to track',
+          method: 'POST',
+          path: '/v1/videos',
+          params: [
+            { name: 'url', type: 'string', required: true, description: 'Video URL from any supported platform' },
+            { name: 'projectId', type: 'string', required: true, description: 'Project to add the video to' },
+            { name: 'sync', type: 'boolean', description: 'Wait for sync to complete. Default: false' },
+          ],
+        },
+        {
+          name: 'Get video details + snapshots',
+          method: 'GET',
+          path: '/v1/videos/{id}',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Video ID' },
+            { name: 'includeSnapshots', type: 'boolean', description: 'Include metric history. Default: true' },
+          ],
+        },
         { name: 'Delete tracked video', method: 'DELETE', path: '/v1/videos/{id}' },
       ]
     },
@@ -74,6 +143,38 @@ const ApiDocsPage: React.FC = () => {
           params: [
             { name: 'id', type: 'string', required: true, description: 'The viral video ID' },
           ],
+        },
+        {
+          name: 'Add viral video (admin)',
+          method: 'POST',
+          path: '/v1/viral/admin',
+          params: [
+            { name: 'url', type: 'string', required: true, description: 'Video URL' },
+            { name: 'platform', type: 'string', required: true, description: 'Platform: tiktok, instagram, youtube' },
+            { name: 'title', type: 'string', description: 'Video title' },
+            { name: 'description', type: 'string', description: 'Video description' },
+            { name: 'thumbnail', type: 'string', description: 'Thumbnail URL' },
+            { name: 'uploaderHandle', type: 'string', description: 'Creator handle' },
+            { name: 'views', type: 'number', description: 'View count' },
+            { name: 'likes', type: 'number', description: 'Like count' },
+            { name: 'category', type: 'string', description: 'Content category' },
+            { name: 'tags', type: 'array', description: 'Array of tag strings' },
+            { name: 'contentType', type: 'string', description: 'video or slideshow' },
+          ],
+        },
+        {
+          name: 'Delete viral video (admin)',
+          method: 'DELETE',
+          path: '/v1/viral/admin',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Viral video ID to delete (query param)' },
+          ],
+        },
+        {
+          name: 'Cleanup dead videos (admin)',
+          method: 'POST',
+          path: '/v1/viral/admin/cleanup',
+          params: [],
         },
       ]
     },
