@@ -3,7 +3,7 @@ import { Copy, Check, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface ApiEndpoint {
   name: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   params?: { name: string; type: string; required?: boolean; description: string }[];
 }
