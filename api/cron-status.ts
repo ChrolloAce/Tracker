@@ -5,7 +5,8 @@ import { getAuth } from 'firebase-admin/auth';
 
 // Super admin emails - only these users can access the cron status dashboard
 const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com'
+  'ernesto@maktubtechnologies.com',
+  'mauriciobaronvergara@gmail.com'
 ];
 
 // Initialize Firebase Admin (same pattern as other API files)

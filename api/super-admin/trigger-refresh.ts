@@ -28,7 +28,8 @@ const adminDb = getFirestore();
 
 // Super admin emails
 const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com'
+  'ernesto@maktubtechnologies.com',
+  'mauriciobaronvergara@gmail.com'
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

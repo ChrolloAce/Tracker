@@ -1,6 +1,7 @@
 // Super admin email(s) - only these can access super admin features
 export const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com'
+  'ernesto@maktubtechnologies.com',
+  'mauriciobaronvergara@gmail.com'
 ];
 
 export interface OrganizationSummary {

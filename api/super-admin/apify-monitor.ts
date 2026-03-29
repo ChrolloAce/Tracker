@@ -11,7 +11,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  */
 
 const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com'
+  'ernesto@maktubtechnologies.com',
+  'mauriciobaronvergara@gmail.com'
 ];
 
 interface ApifyRunItem {

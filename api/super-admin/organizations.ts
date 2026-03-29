@@ -22,7 +22,7 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com'];
+const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com', 'mauriciobaronvergara@gmail.com'];
 
 interface OrganizationSummary {
   id: string;

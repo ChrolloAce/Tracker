@@ -11,7 +11,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { createHash, randomBytes } from 'crypto';
 
-const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com'];
+const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com', 'mauriciobaronvergara@gmail.com'];
 
 // ─── Firebase Admin Init (inlined) ───────────────────────
 function initFirebase() {
