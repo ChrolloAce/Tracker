@@ -108,6 +108,16 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [can, permissionsLoading, baseHref]);
 
+  // Open Claw item (standalone)
+  const openClawItem: NavItem | null = useMemo(() => {
+    return {
+      id: 'openclaw-keys',
+      label: 'Open Claw',
+      icon: Key,
+      href: `${baseHref}/openclaw`,
+    };
+  }, [baseHref]);
+
   // Creators item (standalone, right under Dashboard)
   const creatorsItem: NavItem | null = useMemo(() => {
     if (isDemoMode || permissionsLoading || can.accessTab('creators')) {
@@ -174,18 +184,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             label: 'Viral Content',
             icon: Flame,
             href: `${baseHref}/viral`,
-          },
-        ]
-      },
-      {
-        id: 'openclaw-section',
-        label: 'Open Claw',
-        items: [
-          {
-            id: 'openclaw-keys',
-            label: 'API Keys',
-            icon: Key,
-            href: `${baseHref}/openclaw`,
           },
         ]
       },
@@ -521,6 +519,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Support & Settings - Standalone at bottom with separator */}
           <>
             <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
+          {openClawItem && <NavItemComponent item={openClawItem} />}
           {userRole !== 'creator' && <NavItemComponent item={supportItem} />}
           {settingsItem && <NavItemComponent item={settingsItem} />}
           {superAdminItem && <NavItemComponent item={superAdminItem} />}

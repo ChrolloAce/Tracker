@@ -105,7 +105,6 @@ const DemoPage: React.FC = () => {
       description: 'This is where ViewTrack becomes your <strong>AI\'s brain</strong>. Connect Open Claw and let it learn from every video you track.',
       position: 'right' as const,
       padding: 4,
-      expandSection: '[data-section-id="openclaw-section"]',
       onEnter: () => switchTab('openclaw'),
       delay: 150,
     },
