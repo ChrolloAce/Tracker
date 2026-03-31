@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronDown, Check } from 'lucide-react';
 import KPICards from '../components/KPICards';
@@ -7,10 +7,9 @@ import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import TopPerformersSection from '../components/TopPerformersSection';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
-import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
+import { DateFilterType } from '../components/DateRangeFilter';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
-import DateFilterService from '../services/DateFilterService';
 import { VideoSubmission } from '../types';
 import { TrackedAccount } from '../types/firestore';
 import { Timestamp } from 'firebase/firestore';
@@ -178,9 +177,9 @@ export default function PublicSharePage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoSubmission | null>(null);
 
-  // Filter state - matching the dashboard
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
+  // Filter state - date is hardcoded to 'all' (all-time)
+  const dateFilter: DateFilterType = 'all';
+  const customDateRange: DateRange | undefined = undefined;
   const [platformFilter, setPlatformFilter] = useState<('instagram' | 'tiktok' | 'youtube' | 'twitter')[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
@@ -284,25 +283,8 @@ export default function PublicSharePage() {
     return filtered;
   }, [allSubmissions, platformFilter, selectedAccountIds, accounts]);
 
-  // Step 2: Apply date filter for charts/heatmaps (non-strict mode)
-  const filteredSubmissions = useMemo(() => {
-    return DateFilterService.filterVideosByDateRange(
-      submissionsWithoutDateFilter,
-      dateFilter,
-      customDateRange,
-      false // non-strict: include videos with snapshots in period
-    );
-  }, [submissionsWithoutDateFilter, dateFilter, customDateRange]);
-
-  // Strict date filter for the videos table (only videos uploaded in period)
-  const strictFilteredSubmissions = useMemo(() => {
-    return DateFilterService.filterVideosByDateRange(
-      submissionsWithoutDateFilter,
-      dateFilter,
-      customDateRange,
-      true // strict: only upload date
-    );
-  }, [submissionsWithoutDateFilter, dateFilter, customDateRange]);
+  // With 'all' date filter, filtered = unfiltered
+  const filteredSubmissions = submissionsWithoutDateFilter;
 
   // Default subsection visibility for TopPerformersSection
   const topPerformersVisibility = useMemo(() => ({
@@ -325,31 +307,10 @@ export default function PublicSharePage() {
     }));
   }, [data]);
 
-  const handleDateFilterChange = useCallback((filter: DateFilterType, range?: DateRange) => {
-    setDateFilter(filter);
-    setCustomDateRange(range);
-  }, []);
-
   const handleVideoClick = (video: VideoSubmission) => {
     setSelectedVideo(video);
   };
 
-  // Get table header based on date filter (matching dashboard)
-  const getVideoTableHeader = (filter: DateFilterType) => {
-    switch (filter) {
-      case 'today': return 'New Videos Today';
-      case 'yesterday': return 'Videos from Yesterday';
-      case 'last7days': return 'New Videos Last 7 Days';
-      case 'last14days': return 'New Videos Last 14 Days';
-      case 'last30days': return 'New Videos Last 30 Days';
-      case 'last90days': return 'New Videos Last 90 Days';
-      case 'mtd': return 'New Videos This Month';
-      case 'ytd': return 'New Videos This Year';
-      case 'all': return 'All Videos';
-      case 'custom': return 'New Videos (Custom Range)';
-      default: return 'All Videos';
-    }
-  };
 
   if (loading) {
     return (
@@ -465,13 +426,6 @@ export default function PublicSharePage() {
               )}
             </div>
 
-            {/* Date Filter */}
-            <DateRangeFilter
-              selectedFilter={dateFilter}
-              customRange={customDateRange}
-              onFilterChange={handleDateFilterChange}
-            />
-
             {/* Powered by */}
             <a
               href="https://viewtrack.app"
@@ -526,11 +480,11 @@ export default function PublicSharePage() {
               customRange={customDateRange}
             />
 
-            {/* Videos Table - uses strict date-filtered submissions */}
+            {/* Videos Table */}
             <VideoSubmissionsTable
-              submissions={strictFilteredSubmissions}
+              submissions={filteredSubmissions}
               onVideoClick={handleVideoClick}
-              headerTitle={getVideoTableHeader(dateFilter)}
+              headerTitle="All Videos"
             />
           </div>
 
