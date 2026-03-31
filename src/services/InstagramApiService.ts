@@ -4,8 +4,7 @@ import ApifyBrowserClient from './ApifyBrowserClient';
 
 class InstagramApiService {
   private apifyClient: ApifyBrowserClient;
-  // NEW WORKING SCRAPER TOKEN
-  private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
+  private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || '';
   // NEW INSTAGRAM REELS SCRAPER - ACTUALLY WORKS!
   private readonly INSTAGRAM_SCRAPER_ACTOR = 'scraper-engine~instagram-reels-scraper';
   

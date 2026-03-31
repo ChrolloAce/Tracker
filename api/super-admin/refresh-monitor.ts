@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { authenticateSuperAdmin } from '../middleware/auth.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -37,9 +38,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userEmail = req.query.email as string;
-  if (!userEmail || !SUPER_ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
-    return res.status(403).json({ error: 'Unauthorized' });
+  let adminUser;
+  try {
+    adminUser = await authenticateSuperAdmin(req);
+  } catch (err: any) {
+    return res.status(403).json({ error: err.message || 'Unauthorized' });
   }
 
   try {

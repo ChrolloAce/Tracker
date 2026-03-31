@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { getFrontendUrl } from './utils/base-url.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
 
 /**
  * Create a Stripe Checkout session
@@ -9,13 +10,16 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  setCorsHeaders(res, req);
+  if (handleCorsPreFlight(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   // Check if Stripe is configured
   if (!process.env.STRIPE_SECRET_KEY) {
-    return res.status(503).json({ 
+    return res.status(503).json({
       error: 'Stripe not configured',
       message: 'Please add STRIPE_SECRET_KEY to environment variables'
     });
@@ -29,6 +33,13 @@ export default async function handler(
 
   if (!orgId || !planTier || !billingCycle) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Verify the caller is authenticated and belongs to this org
+  try {
+    await authenticateAndVerifyOrg(req, orgId);
+  } catch (err: any) {
+    return res.status(401).json({ error: err.message || 'Authentication required' });
   }
 
   try {

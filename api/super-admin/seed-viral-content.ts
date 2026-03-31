@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { setCorsHeaders, handleCorsPreFlight, authenticateSuperAdmin } from '../middleware/auth.js';
 
 // ─── Firebase init ───────────────────────────────────────
 function initializeFirebase() {
@@ -50,24 +51,24 @@ interface SeedEntry {
 // ─── Handler ─────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  setCorsHeaders(res, req);
+  if (handleCorsPreFlight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, entries, clearFirst } = req.body as {
-    email: string;
+  let adminUser;
+  try {
+    adminUser = await authenticateSuperAdmin(req);
+  } catch (err: any) {
+    return res.status(403).json({ error: err.message || 'Unauthorized' });
+  }
+
+  const { entries, clearFirst } = req.body as {
     entries: SeedEntry[];
     clearFirst?: boolean;
   };
-
-  if (!email || !SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
 
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return res.status(400).json({ error: 'entries array is required' });

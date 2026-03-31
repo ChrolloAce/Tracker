@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { authenticateSuperAdmin } from '../middleware/auth.js';
 
 /**
  * Super Admin - Apify Monitor API
@@ -82,12 +83,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, days, limit } = req.query;
-
-  // ── Security: verify super admin ──
-  if (!email || !SUPER_ADMIN_EMAILS.includes((email as string).toLowerCase())) {
-    return res.status(403).json({ error: 'Unauthorized - Super admin access required' });
+  let adminUser;
+  try {
+    adminUser = await authenticateSuperAdmin(req);
+  } catch (err: any) {
+    return res.status(403).json({ error: err.message || 'Unauthorized - Super admin access required' });
   }
+
+  const { days, limit } = req.query;
 
   const APIFY_TOKEN = process.env.APIFY_TOKEN;
   if (!APIFY_TOKEN) {

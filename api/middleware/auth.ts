@@ -1,6 +1,7 @@
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { SUPER_ADMIN_EMAILS } from '../constants/admin-emails.js';
 
 export interface AuthenticatedUser {
   userId: string;
@@ -148,11 +149,26 @@ export function validateRequiredFields(
   requiredFields: string[]
 ): { valid: boolean; missing?: string[] } {
   const missing = requiredFields.filter(field => !body[field]);
-  
+
   if (missing.length > 0) {
     return { valid: false, missing };
   }
-  
+
   return { valid: true };
+}
+
+/**
+ * Authenticate a super admin request.
+ * Verifies the Firebase ID token from the Authorization header
+ * and checks that the token's email is in the SUPER_ADMIN_EMAILS list.
+ */
+export async function authenticateSuperAdmin(req: VercelRequest): Promise<AuthenticatedUser> {
+  const user = await authenticateRequest(req);
+
+  if (!user.email || !SUPER_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {
+    throw new Error('Unauthorized - Super admin access required');
+  }
+
+  return user;
 }
 

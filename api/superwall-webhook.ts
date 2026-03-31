@@ -35,6 +35,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'Method Not Allowed', method: req.method });
     }
 
+    // Verify webhook secret
+    const webhookSecret = process.env.SUPERWALL_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const authHeader = req.headers['authorization'];
+      if (!authHeader || authHeader !== `Bearer ${webhookSecret}`) {
+        console.warn('❌ Superwall webhook received with invalid authorization');
+        return res.status(401).json({ error: 'Unauthorized - invalid webhook secret' });
+      }
+    } else {
+      console.error('❌ SUPERWALL_WEBHOOK_SECRET not configured - rejecting webhook');
+      return res.status(500).json({ error: 'Webhook verification not configured' });
+    }
+
     const { orgId, projectId } = req.query;
     console.log('🔍 Query params:', { orgId, projectId });
 
