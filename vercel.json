@@ -146,6 +146,12 @@
     },
     "api/v1/projects/index.ts": {
       "maxDuration": 15
+    },
+    "api/public-share.ts": {
+      "maxDuration": 30
+    },
+    "api/create-project-share.ts": {
+      "maxDuration": 15
     }
   },
   "crons": [

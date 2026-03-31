@@ -46,6 +46,7 @@ const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const ApiManagementPage = lazy(() => import('./pages/ApiManagementPage'));
 const ViralPage = lazy(() => import('./pages/ViralPage'));
 const OpenClawPage = lazy(() => import('./pages/OpenClawPage'));
+const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
 
 // SEO Pages (lazy-loaded)
 const PricingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PricingPage })));
@@ -178,6 +179,9 @@ function App() {
         
         {/* Creator invitation portal - public route */}
         <Route path="/invitations/:invitationId" element={<CreatorInvitationPage />} />
+
+        {/* Public project share - no auth required */}
+        <Route path="/share/:token" element={<PublicSharePage />} />
         
         {/* SEO Pages - Public */}
         <Route path="/pricing" element={<PricingPage />} />
