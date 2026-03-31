@@ -211,50 +211,21 @@ export default function PublicSharePage() {
     return data.accounts.map(toTrackedAccount);
   }, [data]);
 
-  // Auto-calculate granularity based on date filter (same logic as dashboard)
+  // Smart granularity for all-time: based on actual data spread
   const granularity = useMemo<'day' | 'week' | 'month' | 'year'>(() => {
-    switch (dateFilter) {
-      case 'today':
-      case 'yesterday':
-      case 'last7days':
-      case 'last14days':
-        return 'day';
-      case 'last30days':
-      case 'mtd':
-        return 'week';
-      case 'last90days':
-      case 'ytd':
-        return 'month';
-      case 'all': {
-        const videos = allSubmissions;
-        if (videos.length > 0) {
-          const dates = videos
-            .map(v => (v.uploadDate || v.dateSubmitted)?.getTime?.() || 0)
-            .filter(d => d > 0);
-          if (dates.length > 0) {
-            const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24);
-            if (span <= 14) return 'day';
-            if (span <= 60) return 'week';
-            return 'month';
-          }
-        }
+    if (allSubmissions.length > 0) {
+      const dates = allSubmissions
+        .map(v => (v.uploadDate || v.dateSubmitted)?.getTime?.() || 0)
+        .filter(d => d > 0);
+      if (dates.length > 0) {
+        const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24);
+        if (span <= 14) return 'day';
+        if (span <= 60) return 'week';
         return 'month';
       }
-      case 'custom':
-        if (customDateRange) {
-          const daysDiff = Math.ceil(
-            (customDateRange.endDate.getTime() - customDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          if (daysDiff <= 14) return 'day';
-          if (daysDiff <= 60) return 'week';
-          if (daysDiff <= 365) return 'month';
-          return 'year';
-        }
-        return 'day';
-      default:
-        return 'day';
     }
-  }, [dateFilter, customDateRange, allSubmissions]);
+    return 'month';
+  }, [allSubmissions]);
 
   // Step 1: Apply platform + account filters (no date filter yet)
   // These are used for KPI card totals (always all-time)
