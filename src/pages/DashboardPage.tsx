@@ -81,6 +81,7 @@ import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount, TrackedLink } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
+import { Toast } from '../components/ui/Toast';
 
 interface DateRange {
   startDate: Date;
@@ -409,7 +410,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [pendingAccounts, setPendingAccounts] = useState<TrackedAccount[]>([]);
   const [dateFilter, setDateFilter] = useState<DateFilterType>(() => {
     const saved = localStorage.getItem('dashboardDateFilter');
-    return (saved as DateFilterType) || 'last30days';
+    return (saved as DateFilterType) || 'all';
   });
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(() => {
     const saved = localStorage.getItem('dashboardCustomDateRange');
@@ -429,6 +430,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [bulkAddToast, setBulkAddToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [manualGranularity, setManualGranularity] = useState<'day' | 'week' | 'month' | 'year' | null>(null);
   
   // Auto-calculate granularity based on date filter (updates in same render!)
@@ -2023,8 +2025,36 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
 
 
-    // Create placeholder videos immediately for instant UI feedback
-    const placeholderVideos: VideoSubmission[] = videoUrls.map((url, index) => ({
+    // Pre-check: how many video slots are available?
+    let videosToAdd = videoUrls;
+    let skippedDueToLimit = 0;
+
+    const isAdmin = await AdminService.shouldBypassLimits(user.uid);
+    if (!isAdmin) {
+      try {
+        const [usage, limits] = await Promise.all([
+          UsageTrackingService.getUsage(currentOrgId),
+          UsageTrackingService.getLimits(currentOrgId)
+        ]);
+        const maxVideos = limits.maxVideos;
+        if (maxVideos !== -1) {
+          const slotsAvailable = Math.max(0, maxVideos - usage.trackedVideos);
+          if (slotsAvailable === 0) {
+            setBulkAddToast({ message: `Video limit reached (${usage.trackedVideos}/${maxVideos}). Upgrade your plan to add more.`, type: 'error' });
+            return;
+          }
+          if (videoUrls.length > slotsAvailable) {
+            skippedDueToLimit = videoUrls.length - slotsAvailable;
+            videosToAdd = videoUrls.slice(0, slotsAvailable);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to pre-check video limits, proceeding anyway:', err);
+      }
+    }
+
+    // Create placeholder videos for instant UI feedback (only for videos we'll actually add)
+    const placeholderVideos: VideoSubmission[] = videosToAdd.map((url, index) => ({
       id: `pending-${Date.now()}-${index}`,
       url: url,
       platform: platform,
@@ -2053,7 +2083,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         orgId: currentOrgId,
         projectId: currentProjectId,
         userId: user.uid,
-        totalVideos: videoUrls.length,
+        totalVideos: videosToAdd.length,
         completedVideos: 0,
         platform,
         createdAt: Timestamp.now(),
@@ -2065,7 +2095,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     let successCount = 0;
     let failureCount = 0;
 
-    for (const videoUrl of videoUrls) {
+    for (const videoUrl of videosToAdd) {
       try {
         const videoId = await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
@@ -2100,6 +2130,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
 
 
+    // Show visible feedback to the user
+    if (successCount > 0 && failureCount === 0 && skippedDueToLimit === 0) {
+      setBulkAddToast({ message: `${successCount} video${successCount !== 1 ? 's' : ''} queued for processing.`, type: 'success' });
+    } else if (successCount > 0 && (failureCount > 0 || skippedDueToLimit > 0)) {
+      const skippedTotal = failureCount + skippedDueToLimit;
+      setBulkAddToast({ message: `${successCount} video${successCount !== 1 ? 's' : ''} queued. ${skippedTotal} skipped (plan limit reached). Upgrade for more.`, type: 'info' });
+    } else {
+      setBulkAddToast({ message: `Failed to add videos. You may have hit your plan limit.`, type: 'error' });
+    }
+
     // Handle results
     if (successCount > 0) {
       // Reload after 8 seconds to allow processing to complete
@@ -2108,10 +2148,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         setPendingAccounts([]);
         window.location.reload();
       }, 8000); // 8 seconds for Apify API + processing
-    } else if (failureCount > 0) {
+    } else {
       setPendingVideos([]);
       setPendingAccounts([]);
-      alert(`Failed to queue ${failureCount} video(s). Check console for details.`);
     }
   }, [user, currentOrgId, currentProjectId]);
 
@@ -4797,6 +4836,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           setBulkAssignCreatorState({ isOpen: false, videoIds: [], accountIds: [], label: '' });
         }}
       />
+
+      {bulkAddToast && (
+        <Toast
+          message={bulkAddToast.message}
+          type={bulkAddToast.type}
+          duration={bulkAddToast.type === 'error' ? 6000 : 4000}
+          onClose={() => setBulkAddToast(null)}
+        />
+      )}
     </div>
   );
 }

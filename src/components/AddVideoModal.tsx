@@ -303,8 +303,8 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
           </div>
         )}
 
-        {/* Usage limit warnings — hidden, paywall handles gatekeeping */}
-        {false && (() => {
+        {/* Usage limit warnings */}
+        {(() => {
           const videosOverLimit = totalCount > videosLeft;
           const videosToAdd = Math.min(totalCount, videosLeft);
 
