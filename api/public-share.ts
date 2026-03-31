@@ -86,22 +86,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     });
 
-    // Process videos
+    // Build account lookup for enriching video data
+    const accountLookup = new Map<string, any>();
+    for (const acc of accounts) {
+      accountLookup.set(acc.username, acc);
+    }
+
+    // Process videos in VideoSubmission-compatible format
     const videos = videosSnapshot.docs.map(doc => {
       const d = doc.data();
+      const uploaderHandle = d.uploaderHandle || '';
+      const linkedAccount = accountLookup.get(uploaderHandle);
       return {
         id: doc.id,
+        url: d.url || d.videoUrl || '',
         platform: d.platform || '',
-        videoUrl: d.url || d.videoUrl || '',
+        thumbnail: d.thumbnail || '',
         title: d.title || d.videoTitle || '',
         caption: d.caption || '',
-        thumbnail: d.thumbnail || '',
-        uploaderHandle: d.uploaderHandle || '',
+        uploader: d.uploader || d.uploaderHandle || '',
+        uploaderHandle,
+        uploaderProfilePicture: d.uploaderProfilePicture || linkedAccount?.profilePicture || '',
+        followerCount: d.followerCount || linkedAccount?.followerCount || 0,
+        trackedAccountId: d.trackedAccountId || '',
+        status: 'approved',
         views: d.views || 0,
         likes: d.likes || 0,
         comments: d.comments || 0,
         shares: d.shares || 0,
+        saves: d.saves || d.bookmarks || 0,
+        duration: d.duration || 0,
+        dateSubmitted: d.dateAdded?.toDate?.()?.toISOString() || d.uploadDate?.toDate?.()?.toISOString() || new Date().toISOString(),
         uploadDate: d.uploadDate?.toDate?.()?.toISOString() || null,
+        lastRefreshed: d.lastRefreshed?.toDate?.()?.toISOString() || null,
       };
     });
 
