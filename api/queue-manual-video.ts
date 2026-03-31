@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`🔒 Authenticated user ${user.userId} for manual video queue`);
 
     // ==================== VIDEO LIMIT CHECK ====================
-    const videoLimit = await checkVideoLimit(orgId);
+    const videoLimit = await checkVideoLimit(orgId, user.email);
     console.log(`📊 Video limits - Current: ${videoLimit.currentCount}, Limit: ${videoLimit.limit}, Remaining: ${videoLimit.remaining}`);
 
     if (!videoLimit.allowed) {
@@ -103,6 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       projectId,
       videoUrl: resolvedUrl,
       addedBy: user.userId, // Track who submitted the video
+      userEmail: user.email || null, // For admin bypass in downstream functions
       createdAt: Timestamp.now(),
       startedAt: null,
       completedAt: null,

@@ -86,9 +86,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
   
-  // If jobId provided, update job status to running
+  // If jobId provided, update job status to running and read metadata
+  let jobUserEmail: string | null = null;
   if (jobId) {
     try {
+      const jobDoc = await db.collection('syncQueue').doc(jobId).get();
+      if (jobDoc.exists) {
+        jobUserEmail = jobDoc.data()?.userEmail || null;
+      }
       await db.collection('syncQueue').doc(jobId).update({
         status: 'running',
         startedAt: Timestamp.now()
@@ -129,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ==================== VIDEO LIMIT CHECK ====================
     const isUrl = videoId.startsWith('http://') || videoId.startsWith('https://');
     if (isUrl) {
-      const videoLimit = await checkVideoLimit(orgId);
+      const videoLimit = await checkVideoLimit(orgId, jobUserEmail || undefined);
       console.log(`📊 Video limits - Current: ${videoLimit.currentCount}, Limit: ${videoLimit.limit}, Remaining: ${videoLimit.remaining}`);
 
       if (!videoLimit.allowed) {

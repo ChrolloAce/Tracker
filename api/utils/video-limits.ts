@@ -1,4 +1,5 @@
 import { getFirestore } from 'firebase-admin/firestore';
+import { SUPER_ADMIN_EMAILS } from '../constants/admin-emails.js';
 
 /**
  * Plan-based video limits (must match src/types/subscription.ts SUBSCRIPTION_PLANS)
@@ -24,8 +25,15 @@ export interface VideoLimitResult {
  *
  * Uses a real Firestore count across all projects (not a cached counter)
  * so the result is always accurate.
+ *
+ * Pass `userEmail` so super-admin accounts bypass limits server-side.
  */
-export async function checkVideoLimit(orgId: string): Promise<VideoLimitResult> {
+export async function checkVideoLimit(orgId: string, userEmail?: string): Promise<VideoLimitResult> {
+  // Super admins bypass all limits
+  if (userEmail && SUPER_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(userEmail.toLowerCase())) {
+    console.log(`👑 [VIDEO-LIMIT] Super admin (${userEmail}) - bypassing video limits`);
+    return { allowed: true, planTier: 'admin', limit: -1, currentCount: 0, remaining: Infinity };
+  }
   const db = getFirestore();
 
   // 1. Get the org's plan tier

@@ -139,7 +139,8 @@ export default async function handler(
     let isSpiderwebPhase = false; // Keep variable but don't use for spawning
     let spiderwebPhase: number | null = null; // Keep variable but don't use for spawning
     let existingVideoIdsFromJob: string[] = [];
-    
+    let jobUserEmail: string | null = null; // For admin bypass in video limit checks
+
     if (jobId) {
       try {
         const jobDoc = await db.collection('syncQueue').doc(jobId).get();
@@ -147,6 +148,7 @@ export default async function handler(
           const jobData = jobDoc.data();
           syncStrategy = jobData?.syncStrategy || 'progressive';
           maxVideosOverride = jobData?.maxVideos || null;
+          jobUserEmail = jobData?.userEmail || null;
           // TODO: SPIDERWEB - Read but don't use for spawning new phases
           isSpiderwebPhase = jobData?.isSpiderwebPhase || false;
           spiderwebPhase = jobData?.spiderwebPhase || null;
@@ -244,7 +246,7 @@ export default async function handler(
 
     // ==================== VIDEO LIMIT ENFORCEMENT ====================
     // Use real Firestore count (not the stale subscription.usage.videos counter)
-    const videoLimitResult = await checkVideoLimit(orgId);
+    const videoLimitResult = await checkVideoLimit(orgId, jobUserEmail || undefined);
 
     const orgPlanTier = videoLimitResult.planTier;
     const planVideoLimit = videoLimitResult.limit;
