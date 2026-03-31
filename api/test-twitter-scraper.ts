@@ -27,7 +27,7 @@ export default async function handler(
   console.log(`🧪 Testing Twitter scraper for username: ${username}`);
 
   try {
-    const APIFY_TOKEN = process.env.APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
+    const APIFY_TOKEN = process.env.APIFY_TOKEN || '';
     const actorId = 'gentle_cloud~twitter-tweets-scraper';
 
     const input = {

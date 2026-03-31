@@ -48,11 +48,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res, req);
   if (handleCorsPreFlight(req, res)) return;
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });

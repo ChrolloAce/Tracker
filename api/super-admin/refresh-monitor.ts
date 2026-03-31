@@ -23,7 +23,6 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com', 'mauriciobaronvergara@gmail.com'];
 
 /**
  * Refresh Monitor API

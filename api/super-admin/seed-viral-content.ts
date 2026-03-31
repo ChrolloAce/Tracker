@@ -23,8 +23,6 @@ function initializeFirebase() {
   return getFirestore();
 }
 
-// ─── Auth ────────────────────────────────────────────────
-const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com', 'mauriciobaronvergara@gmail.com'];
 
 // ─── Types ───────────────────────────────────────────────
 interface SeedEntry {

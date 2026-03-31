@@ -11,10 +11,6 @@ import { authenticateSuperAdmin } from '../middleware/auth.js';
  * Security: Super-admin email verification required.
  */
 
-const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com',
-  'mauriciobaronvergara@gmail.com'
-];
 
 interface ApifyRunItem {
   id: string;

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { authenticateSuperAdmin } from '../../middleware/auth.js';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -25,11 +26,6 @@ if (!getApps().length) {
 
 const adminDb = getFirestore();
 
-// Super admin emails
-const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com',
-  'mauriciobaronvergara@gmail.com'
-];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow GET
@@ -37,12 +33,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { orgId } = req.query;
-  const userEmail = req.query.email as string;
-  
-  if (!userEmail || !SUPER_ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
-    return res.status(403).json({ error: 'Unauthorized - Super admin access required' });
+  let adminUser;
+  try {
+    adminUser = await authenticateSuperAdmin(req);
+  } catch (err: any) {
+    return res.status(403).json({ error: err.message || 'Unauthorized - Super admin access required' });
   }
+
+  const { orgId } = req.query;
 
   if (!orgId || typeof orgId !== 'string') {
     return res.status(400).json({ error: 'Organization ID is required' });

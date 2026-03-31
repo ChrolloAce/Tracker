@@ -26,11 +26,6 @@ if (!getApps().length) {
 
 const adminDb = getFirestore();
 
-// Super admin emails
-const SUPER_ADMIN_EMAILS = [
-  'ernesto@maktubtechnologies.com',
-  'mauriciobaronvergara@gmail.com'
-];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST
@@ -87,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentPeriodEnd: expiresAt,
       createdAt: now,
       updatedAt: now,
-      grantedBy: email,
+      grantedBy: adminUser.email,
       grantedAt: now,
     }, { merge: true });
 
