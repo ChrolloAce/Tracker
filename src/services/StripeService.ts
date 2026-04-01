@@ -1,4 +1,5 @@
 import { PlanTier } from '../types/subscription';
+import { auth } from './firebase';
 
 /**
  * Stripe service for handling payments
@@ -15,10 +16,15 @@ class StripeService {
   ): Promise<void> {
     try {
       // Call your API to create a checkout session
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const idToken = await user.getIdToken();
+
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           orgId,
@@ -57,10 +63,15 @@ class StripeService {
    */
   static async createPortalSession(orgId: string): Promise<void> {
     try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const idToken = await user.getIdToken();
+
       const response = await fetch('/api/create-portal-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ orgId }),
       });

@@ -1,6 +1,8 @@
+import { auth } from './firebase';
+
 /**
  * ApifyMonitorService
- * 
+ *
  * Client-side service that calls our secure server-side API
  * to fetch Apify monitoring data. The Apify token is NEVER
  * exposed to the browser — all requests go through
@@ -63,14 +65,19 @@ class ApifyMonitorService {
    * Fetch Apify monitoring data from our secure backend.
    * Token never leaves the server.
    */
-  async fetchMonitorData(userEmail: string, days: number = 7): Promise<ApifyMonitorData> {
+  async fetchMonitorData(_userEmail: string, days: number = 7): Promise<ApifyMonitorData> {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not authenticated');
+    const idToken = await user.getIdToken();
+
     const params = new URLSearchParams({
-      email: userEmail,
       days: String(days),
       limit: '1000',
     });
 
-    const response = await fetch(`/api/super-admin/apify-monitor?${params}`);
+    const response = await fetch(`/api/super-admin/apify-monitor?${params}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` },
+    });
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Unknown error' }));

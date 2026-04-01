@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../services/firebase';
 import SuperAdminService from '../services/SuperAdminService';
 import DashboardPage from './DashboardPage';
 import { Loader2, ArrowLeft, Shield, AlertCircle } from 'lucide-react';
@@ -85,8 +86,10 @@ const ViewAsPage: React.FC = () => {
       setError(null);
 
       // Step 1: Get org info and project ID
+      const idToken = await auth.currentUser?.getIdToken();
       const viewAsResponse = await fetch(
-        `/api/super-admin/view-as?orgId=${encodeURIComponent(orgId)}&email=${encodeURIComponent(user.email)}`
+        `/api/super-admin/view-as?orgId=${encodeURIComponent(orgId)}`,
+        { headers: { 'Authorization': `Bearer ${idToken}` } }
       );
       
       if (!viewAsResponse.ok) {
@@ -101,7 +104,8 @@ const ViewAsPage: React.FC = () => {
       // Step 2: Fetch all dashboard data
       setLoadingData(true);
       const dashboardResponse = await fetch(
-        `/api/super-admin/dashboard-data?orgId=${encodeURIComponent(orgId)}&projectId=${encodeURIComponent(viewAsData.projectId)}&email=${encodeURIComponent(user.email)}`
+        `/api/super-admin/dashboard-data?orgId=${encodeURIComponent(orgId)}&projectId=${encodeURIComponent(viewAsData.projectId)}`,
+        { headers: { 'Authorization': `Bearer ${idToken}` } }
       );
 
       if (!dashboardResponse.ok) {

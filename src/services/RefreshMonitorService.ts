@@ -1,3 +1,5 @@
+import { auth } from './firebase';
+
 /**
  * RefreshMonitorService
  *
@@ -68,9 +70,14 @@ export interface RefreshMonitorData {
 }
 
 class RefreshMonitorService {
-  async fetchMonitorData(userEmail: string): Promise<RefreshMonitorData> {
-    const params = new URLSearchParams({ email: userEmail });
-    const response = await fetch(`/api/super-admin/refresh-monitor?${params}`);
+  async fetchMonitorData(_userEmail: string): Promise<RefreshMonitorData> {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not authenticated');
+    const idToken = await user.getIdToken();
+
+    const response = await fetch('/api/super-admin/refresh-monitor', {
+      headers: { 'Authorization': `Bearer ${idToken}` },
+    });
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Unknown error' }));

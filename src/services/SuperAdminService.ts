@@ -1,8 +1,20 @@
+import { auth } from './firebase';
+
 // Super admin email(s) - only these can access super admin features
 export const SUPER_ADMIN_EMAILS = [
   'ernesto@maktubtechnologies.com',
   'mauriciobaronvergara@gmail.com'
 ];
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  const idToken = await user.getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${idToken}`,
+  };
+}
 
 export interface OrganizationSummary {
   id: string;
@@ -46,11 +58,12 @@ class SuperAdminService {
   /**
    * Get all organizations with their summary data via API
    */
-  async getAllOrganizations(userEmail: string): Promise<{ organizations: OrganizationSummary[], stats: SuperAdminStats }> {
+  async getAllOrganizations(_userEmail: string): Promise<{ organizations: OrganizationSummary[], stats: SuperAdminStats }> {
     console.log('🔍 SuperAdmin: Fetching all organizations via API...');
     
     try {
-      const response = await fetch(`/api/super-admin/organizations?email=${encodeURIComponent(userEmail)}`);
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/super-admin/organizations', { headers });
       
       // Check if response is JSON
       const contentType = response.headers.get('content-type');
@@ -82,7 +95,7 @@ class SuperAdminService {
   /**
    * Get detailed info for a specific organization via API
    */
-  async getOrganizationDetails(orgId: string, userEmail: string): Promise<{
+  async getOrganizationDetails(orgId: string, _userEmail: string): Promise<{
     organization: OrganizationSummary | null;
     trackedAccounts: any[];
     videos: any[];
@@ -91,7 +104,8 @@ class SuperAdminService {
     console.log('🔍 SuperAdmin: Fetching org details via API...');
     
     try {
-      const response = await fetch(`/api/super-admin/organizations/${orgId}?email=${encodeURIComponent(userEmail)}`);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/super-admin/organizations/${orgId}`, { headers });
       
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -119,11 +133,12 @@ class SuperAdminService {
   /**
    * Delete an organization and all its data (super admin only)
    */
-  async deleteOrganization(orgId: string, userEmail: string): Promise<void> {
+  async deleteOrganization(orgId: string, _userEmail: string): Promise<void> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/super-admin/delete-org', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userEmail, orgId }),
+      headers,
+      body: JSON.stringify({ orgId }),
     });
 
     if (!response.ok) {
@@ -135,11 +150,12 @@ class SuperAdminService {
   /**
    * Assign an owner to an organization by email
    */
-  async assignOwner(orgId: string, targetEmail: string, userEmail: string): Promise<{ displayName: string }> {
+  async assignOwner(orgId: string, targetEmail: string, _userEmail: string): Promise<{ displayName: string }> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/super-admin/assign-owner', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userEmail, orgId, targetEmail }),
+      headers,
+      body: JSON.stringify({ orgId, targetEmail }),
     });
 
     if (!response.ok) {
@@ -153,11 +169,12 @@ class SuperAdminService {
   /**
    * Delete or remove a member from an organization
    */
-  async deleteMember(orgId: string, memberId: string, userEmail: string, hardDelete: boolean = false): Promise<void> {
+  async deleteMember(orgId: string, memberId: string, _userEmail: string, hardDelete: boolean = false): Promise<void> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/super-admin/delete-member', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userEmail, orgId, memberId, hardDelete }),
+      headers,
+      body: JSON.stringify({ orgId, memberId, hardDelete }),
     });
 
     if (!response.ok) {

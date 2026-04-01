@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../services/firebase';
 import SuperAdminService, { OrganizationSummary, SuperAdminStats } from '../services/SuperAdminService';
 import OrganizationService from '../services/OrganizationService';
 import Sidebar from '../components/layout/Sidebar';
@@ -102,10 +103,11 @@ const SuperAdminPage: React.FC = () => {
     if (!selectedOrg || !user?.email) return;
     setActionLoading('grant-plan');
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/super-admin/grant-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, orgId: selectedOrg, planTier: selectedPlan }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({ orgId: selectedOrg, planTier: selectedPlan }),
       });
       if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to grant plan'); }
       setActionSuccess(`Granted ${selectedPlan} plan successfully!`);
@@ -121,10 +123,11 @@ const SuperAdminPage: React.FC = () => {
     if (!user?.email) return;
     setActionLoading('refresh-' + orgId);
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/super-admin/trigger-refresh', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, orgId }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({ orgId }),
       });
       if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to trigger refresh'); }
       setActionSuccess('Refresh triggered successfully!');
