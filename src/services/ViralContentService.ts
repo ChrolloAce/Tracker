@@ -75,6 +75,9 @@ class ViralContentService {
   private static buildConstraints(filters: PageFilters): QueryConstraint[] {
     const constraints: QueryConstraint[] = [];
 
+    // Always filter to active content — matches existing composite indexes
+    constraints.push(where('isActive', '==', true));
+
     if (filters.platform && filters.platform !== 'all') {
       constraints.push(where('platform', '==', filters.platform));
     }
