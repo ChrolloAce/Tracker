@@ -99,16 +99,10 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       return;
     }
     
-    // If it's revenue or downloads and no integration is set up, open the revenue modal
-    if ((metricId === 'revenue' || metricId === 'downloads') && revenueIntegrations.length === 0) {
-      if (onOpenRevenueSettings) {
-        onOpenRevenueSettings();
-      }
-      return;
-    }
-    
-    // If it's revenue or downloads WITH data, show transactions modal
-    if ((metricId === 'revenue' || metricId === 'downloads') && revenueMetrics) {
+    // If it's revenue or downloads, handle specially
+    if (metricId === 'revenue' || metricId === 'downloads') {
+      // If there's actual data, show the transactions modal
+      if (revenueMetrics) {
       setTransactionsMetricType(metricId as 'revenue' | 'downloads');
       
       // Set the interval data for the modal
@@ -150,8 +144,15 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       setSelectedDate(hoveredInterval ? new Date(hoveredInterval.startDate) : new Date());
       setIsTransactionsModalOpen(true);
       return;
+      }
+
+      // No data yet — open the revenue settings modal
+      if (onOpenRevenueSettings) {
+        onOpenRevenueSettings();
+      }
+      return;
     }
-    
+
     // Open Day Videos Modal with hovered interval or most recent date
     if (submissions.length > 0) {
       let targetDate: Date;

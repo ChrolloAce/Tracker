@@ -43,6 +43,25 @@ function decodeJWSPayload(jws: string): any {
 }
 
 /**
+ * Recursively strip undefined values from an object so Firestore doesn't reject it
+ */
+function stripUndefined(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (obj instanceof Date) return obj;
+  if (Array.isArray(obj)) return obj.map(stripUndefined);
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = stripUndefined(value);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
+/**
  * Helper to get the Firestore collection path for revenue transactions
  */
 function transactionsCollection(orgId: string, projectId: string) {
@@ -173,6 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Process the notification
+    let processingFailed = false;
     try {
       await processAppleNotification(
         orgId,
@@ -185,6 +205,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     } catch (processError) {
       console.error(`Apple webhook: error processing ${notificationType}:`, processError);
+      processingFailed = true;
     }
 
     // Log webhook receipt for audit trail
@@ -194,7 +215,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .collection('projects')
       .doc(projectId)
       .collection('webhookLogs')
-      .add({
+      .add(stripUndefined({
         provider: 'apple',
         eventType: notificationType,
         subtype: subtype || null,
@@ -208,8 +229,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           transactionId: transactionInfo?.transactionId,
           productId: transactionInfo?.productId,
         },
-        processed: true,
-      });
+        processed: !processingFailed,
+        ...(processingFailed ? { error: 'Event processing failed - check server logs' } : {}),
+      }));
 
     return res.status(200).json({ success: true, message: 'Webhook received' });
   } catch (error: any) {
@@ -384,7 +406,7 @@ async function upsertTransaction(
 
   await transactionsCollection(orgId, projectId)
     .doc(transactionId)
-    .set(transaction, { merge: true });
+    .set(stripUndefined(transaction), { merge: true });
 
   console.log(
     `Apple: stored transaction ${transactionId} (${opts.notificationType}) - $${(amountInCents / 100).toFixed(2)}`
@@ -404,13 +426,13 @@ async function updateTransactionStatus(
   const doc = await docRef.get();
 
   if (doc.exists) {
-    await docRef.update({
+    await docRef.update(stripUndefined({
       status: newStatus,
       ...Object.fromEntries(
         Object.entries(extraFields).map(([k, v]) => [`metadata.${k}`, v])
       ),
       updatedAt: new Date(),
-    });
+    }));
     console.log(`Apple: updated ${transactionId} status to ${newStatus}`);
   } else {
     // Transaction not found — create a minimal record so we don't lose the event
@@ -434,12 +456,12 @@ async function updateTransactionMetadata(
   const doc = await docRef.get();
 
   if (doc.exists) {
-    await docRef.update({
+    await docRef.update(stripUndefined({
       ...Object.fromEntries(
         Object.entries(metadataUpdates).map(([k, v]) => [`metadata.${k}`, v])
       ),
       updatedAt: new Date(),
-    });
+    }));
     console.log(`Apple: updated metadata for ${transactionId}`);
   } else {
     console.log(`Apple: transaction ${transactionId} not found for metadata update`);

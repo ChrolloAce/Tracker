@@ -52,6 +52,25 @@ interface RevenueCatWebhookEvent {
 }
 
 /**
+ * Recursively strip undefined values from an object so Firestore doesn't reject it
+ */
+function stripUndefined(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (obj instanceof Date) return obj;
+  if (Array.isArray(obj)) return obj.map(stripUndefined);
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = stripUndefined(value);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
+/**
  * Helper to get the Firestore collection path for revenue transactions
  */
 function transactionsCollection(orgId: string, projectId: string) {
@@ -130,6 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Process event by type
+    let processingFailed = false;
     try {
       switch (event.type) {
         case 'INITIAL_PURCHASE':
@@ -171,6 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     } catch (processError) {
       console.error(`Error processing event type ${event.type}:`, processError);
+      processingFailed = true;
     }
 
     // Log webhook receipt for audit trail
@@ -185,8 +206,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         eventType: event.type,
         appUserId: event.app_user_id,
         receivedAt: FieldValue.serverTimestamp(),
-        data: webhookData,
-        processed: true,
+        data: stripUndefined(webhookData),
+        processed: !processingFailed,
+        ...(processingFailed ? { error: 'Event processing failed - check server logs' } : {}),
       });
 
     return res.status(200).json({ success: true, message: 'Webhook received' });
@@ -244,7 +266,7 @@ async function handlePurchaseEvent(
 
   await transactionsCollection(orgId, projectId)
     .doc(transactionId)
-    .set(transaction, { merge: true });
+    .set(stripUndefined(transaction), { merge: true });
 
   console.log(`RevenueCat: stored transaction ${transactionId} - $${(amountInCents / 100).toFixed(2)}`);
 }
@@ -264,11 +286,11 @@ async function handleCancellationEvent(
   const snapshot = await query.get();
 
   if (!snapshot.empty) {
-    await snapshot.docs[0].ref.update({
+    await snapshot.docs[0].ref.update(stripUndefined({
       status: 'cancelled',
       cancelReason: event.cancel_reason || event.cancellation_reason || null,
       updatedAt: new Date(),
-    });
+    }));
     console.log(`RevenueCat: cancelled subscription for ${event.app_user_id}`);
   } else {
     console.log(`RevenueCat: no active transaction found for cancellation - ${event.app_user_id}`);
@@ -290,11 +312,11 @@ async function handleUncancellationEvent(
   const snapshot = await query.get();
 
   if (!snapshot.empty) {
-    await snapshot.docs[0].ref.update({
+    await snapshot.docs[0].ref.update(stripUndefined({
       status: 'active',
       cancelReason: null,
       updatedAt: new Date(),
-    });
+    }));
     console.log(`RevenueCat: reactivated subscription for ${event.app_user_id}`);
   }
 }
@@ -314,10 +336,10 @@ async function handleExpirationEvent(
   const snapshot = await query.get();
 
   if (!snapshot.empty) {
-    await snapshot.docs[0].ref.update({
+    await snapshot.docs[0].ref.update(stripUndefined({
       status: 'expired',
       updatedAt: new Date(),
-    });
+    }));
     console.log(`RevenueCat: expired subscription for ${event.app_user_id}`);
   }
 }
@@ -337,10 +359,10 @@ async function handleBillingIssueEvent(
   const snapshot = await query.get();
 
   if (!snapshot.empty) {
-    await snapshot.docs[0].ref.update({
+    await snapshot.docs[0].ref.update(stripUndefined({
       hasBillingIssue: true,
       updatedAt: new Date(),
-    });
+    }));
     console.log(`RevenueCat: billing issue flagged for ${event.app_user_id}`);
   }
 }
@@ -361,11 +383,11 @@ async function handleProductChangeEvent(
   const snapshot = await query.get();
 
   if (!snapshot.empty) {
-    await snapshot.docs[0].ref.update({
+    await snapshot.docs[0].ref.update(stripUndefined({
       status: 'expired',
       'metadata.replacedByProduct': event.new_product_id || event.product_id,
       updatedAt: new Date(),
-    });
+    }));
   }
 
   // Create a new transaction for the new product
@@ -389,10 +411,10 @@ async function handleStatusUpdateEvent(
   const snapshot = await query.get();
 
   if (!snapshot.empty) {
-    await snapshot.docs[0].ref.update({
+    await snapshot.docs[0].ref.update(stripUndefined({
       status: newStatus,
       updatedAt: new Date(),
-    });
+    }));
     console.log(`RevenueCat: subscription ${newStatus} for ${event.app_user_id}`);
   }
 }
