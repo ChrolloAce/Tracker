@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { AlertCircle, X, RefreshCw } from 'lucide-react';
+import { AlertCircle, X, RefreshCw, UserPlus } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import UsageTrackingService from '../services/UsageTrackingService';
 import AdminService from '../services/AdminService';
+import CreatorLinksService from '../services/CreatorLinksService';
+import { Creator } from '../types/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 interface AddVideoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddVideo: (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[]) => Promise<void>;
+  onAddVideo: (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[], assignedCreatorId?: string) => Promise<void>;
+  showCreatorSelector?: boolean;
 }
 
 interface ParsedVideo {
@@ -35,14 +38,16 @@ function parseUrlsFromText(text: string): ParsedVideo[] {
   return videos;
 }
 
-export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
-  const { user, currentOrgId } = useAuth();
+export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo, showCreatorSelector = false }) => {
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
   const [videos, setVideos] = useState<ParsedVideo[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [videosLeft, setVideosLeft] = useState(999999);
   const [isAtVideoLimit, setIsAtVideoLimit] = useState(false);
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string>('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -78,10 +83,18 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         checkLimits();
       }
 
+      // Load creators for assignment dropdown
+      if (showCreatorSelector && currentOrgId && currentProjectId) {
+        CreatorLinksService.getAllCreators(currentOrgId, currentProjectId)
+          .then(setCreators)
+          .catch(err => console.error('Failed to load creators:', err));
+      }
+      setSelectedCreatorId('');
+
       // Focus the input after a tick
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen, currentOrgId, user]);
+  }, [isOpen, currentOrgId, currentProjectId, user, showCreatorSelector]);
 
   // Process input — detect if user pasted multiple lines
   const processInput = useCallback((text: string) => {
@@ -167,7 +180,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         onClose();
 
         for (const [platform, urls] of Object.entries(groups)) {
-          onAddVideo(platform as any, urls).catch(err => console.error(`Failed to add ${platform} videos:`, err));
+          onAddVideo(platform as any, urls, selectedCreatorId || undefined).catch(err => console.error(`Failed to add ${platform} videos:`, err));
         }
         return;
       }
@@ -190,7 +203,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
     onClose();
 
     for (const [platform, urls] of Object.entries(groups)) {
-      onAddVideo(platform as any, urls).catch(err => console.error(`Failed to add ${platform} videos:`, err));
+      onAddVideo(platform as any, urls, selectedCreatorId || undefined).catch(err => console.error(`Failed to add ${platform} videos:`, err));
     }
   };
 
@@ -350,6 +363,26 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
 
           return null;
         })()}
+
+        {/* Creator assignment dropdown */}
+        {showCreatorSelector && creators.length > 0 && (
+          <div className="mb-4">
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-400 mb-2">
+              <UserPlus className="w-3.5 h-3.5" />
+              Assign to Creator (optional)
+            </label>
+            <select
+              value={selectedCreatorId}
+              onChange={(e) => setSelectedCreatorId(e.target.value)}
+              className="w-full px-3 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+            >
+              <option value="">No creator — add to project only</option>
+              {creators.map(c => (
+                <option key={c.id} value={c.id}>{c.displayName}{c.email ? ` (${c.email})` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">

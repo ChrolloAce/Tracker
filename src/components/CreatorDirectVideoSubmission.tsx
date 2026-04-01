@@ -171,7 +171,7 @@ export const CreatorDirectVideoSubmission: React.FC<CreatorDirectVideoSubmission
     try {
       for (const video of allValid) {
         try {
-          await authenticatedApiService.processVideo(video.url, currentOrgId, currentProjectId);
+          await authenticatedApiService.processVideo(video.url, currentOrgId, currentProjectId, undefined, user.uid);
           successCount++;
         } catch (err: any) {
           console.error(`Failed to submit video: ${video.url}`, err);

@@ -21,6 +21,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   // Single step: Email + Linked Accounts
   const [email, setEmail] = useState('');
+  const [creatorWorkflow, setCreatorWorkflow] = useState<'account' | 'video'>('account');
   const [availableAccounts, setAvailableAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +52,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   const handleClose = () => {
     setEmail('');
+    setCreatorWorkflow('account');
     setSelectedAccountIds([]);
     setSearchQuery('');
     setError(null);
@@ -86,7 +88,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         throw new Error('Organization not found');
       }
 
-      // Send invitation (display name will be set from email automatically)
+      // Send invitation with workflow type and selected accounts
       await TeamInvitationService.createInvitation(
         currentOrgId,
         email.trim(),
@@ -95,11 +97,12 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         user.displayName || user.email || 'Team Member',
         user.email || '',
         currentOrg.name,
-        currentProjectId
+        currentProjectId,
+        {
+          creatorWorkflow,
+          selectedAccountIds: creatorWorkflow === 'account' ? selectedAccountIds : undefined,
+        }
       );
-
-      // TODO: Link selected accounts to the creator after they accept
-      // This would require storing selectedAccountIds and linking them after invitation acceptance
 
       onSuccess();
       handleClose();
@@ -178,8 +181,53 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             </p>
           </div>
 
-          {/* Managed Accounts */}
+          {/* Creator Workflow Type */}
           <div>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              Creator Type
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCreatorWorkflow('account')}
+                className={clsx(
+                  'p-3 rounded-xl border-2 text-left transition-all',
+                  creatorWorkflow === 'account'
+                    ? 'border-black dark:border-white bg-gray-50 dark:bg-white/10'
+                    : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                )}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <LinkIcon className="w-4 h-4 text-gray-900 dark:text-white" />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">Link Account</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Track all videos from their account (UGC)
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatorWorkflow('video')}
+                className={clsx(
+                  'p-3 rounded-xl border-2 text-left transition-all',
+                  creatorWorkflow === 'video'
+                    ? 'border-black dark:border-white bg-gray-50 dark:bg-white/10'
+                    : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                )}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <UserIcon className="w-4 h-4 text-gray-900 dark:text-white" />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">Track Videos</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Only track specific videos they submit (Influencer)
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Managed Accounts — only for account workflow */}
+          {creatorWorkflow === 'account' && <div>
             <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
               Managed Accounts <span className="text-gray-500 dark:text-gray-400 font-normal">(Optional)</span>
             </label>
@@ -277,7 +325,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                 {selectedAccountIds.length} account{selectedAccountIds.length !== 1 ? 's' : ''} selected
               </p>
             )}
-          </div>
+          </div>}
         </form>
 
         {/* Actions */}

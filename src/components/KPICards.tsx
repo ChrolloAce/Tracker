@@ -99,11 +99,11 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       return;
     }
     
-    // If it's revenue or downloads and no integration is set up, redirect to settings
+    // If it's revenue or downloads and no integration is set up, open the revenue modal
     if ((metricId === 'revenue' || metricId === 'downloads') && revenueIntegrations.length === 0) {
-      navigate('/settings');
-      // Set the active tab to revenue when navigating
-      localStorage.setItem('settingsActiveTab', 'revenue');
+      if (onOpenRevenueSettings) {
+        onOpenRevenueSettings();
+      }
       return;
     }
     

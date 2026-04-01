@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   
   try {
     // Extract orgId first for authentication
-    const { url, orgId, projectId, batchId } = req.body;
+    const { url, orgId, projectId, batchId, assignedCreatorId } = req.body;
     
     if (!url || !orgId || !projectId) {
       return res.status(400).json({ 
@@ -113,8 +113,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: null,
       userInitiated: true,
       ...(batchId && { batchId }),
+      ...(assignedCreatorId && { assignedCreatorId }),
     });
-    
+
     console.log(`✅ [MANUAL-VIDEO] Job ${jobRef.id} queued with priority ${JOB_PRIORITIES.USER_INITIATED}`);
     console.log(`   📹 Video URL: ${resolvedUrl}${resolvedUrl !== url ? ` (resolved from ${url})` : ''}`);
     
@@ -148,6 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             jobId: jobRef.id,
             addedBy: user.userId,
             ...(batchId && { batchId }),
+            ...(assignedCreatorId && { assignedCreatorId }),
           })
         });
         

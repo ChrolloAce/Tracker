@@ -427,6 +427,23 @@ const CreatorPortalPage: React.FC = () => {
       {/* === DASHBOARD TAB === */}
       {activeTab === 'dashboard' && (
         <>
+      {/* Video-workflow CTA — prominent for influencer-type creators */}
+      {creatorProfile?.creatorWorkflow === 'video' && (
+        <div className="bg-gradient-to-r from-white/5 to-white/[0.02] rounded-2xl border border-white/10 p-6 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-1">Submit Your Videos</h3>
+            <p className="text-sm text-gray-400">Paste video URLs to track their performance here</p>
+          </div>
+          <button
+            onClick={() => setShowSubmitVideo(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-100 text-black font-semibold rounded-xl text-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Submit Videos
+          </button>
+        </div>
+      )}
+
       {/* Stats Cards Grid - Monotone */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Earnings */}

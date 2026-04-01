@@ -58,14 +58,15 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
    * Generate webhook URL for an integration
    */
   const getWebhookUrl = (integration: RevenueIntegration): string | null => {
-    // Only Superwall and RevenueCat support webhooks for now
-    if (integration.provider !== 'superwall' && integration.provider !== 'revenuecat') {
-      return null;
-    }
+    const webhookPaths: Record<string, string> = {
+      superwall: 'superwall-webhook',
+      revenuecat: 'revenuecat-webhook',
+      apple: 'apple-webhook',
+    };
+    const webhookPath = webhookPaths[integration.provider];
+    if (!webhookPath) return null;
 
     const baseUrl = window.location.origin;
-    const webhookPath = integration.provider === 'superwall' ? 'superwall-webhook' : 'revenuecat-webhook';
-    
     return `${baseUrl}/api/${webhookPath}?orgId=${organizationId}&projectId=${projectId}`;
   };
 
@@ -441,14 +442,15 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
    * Generate webhook URL for this provider
    */
   const getWebhookUrl = (): string | null => {
-    // Only Superwall and RevenueCat support webhooks
-    if (provider !== 'superwall' && provider !== 'revenuecat') {
-      return null;
-    }
+    const webhookPaths: Record<string, string> = {
+      superwall: 'superwall-webhook',
+      revenuecat: 'revenuecat-webhook',
+      apple: 'apple-webhook',
+    };
+    const webhookPath = webhookPaths[provider];
+    if (!webhookPath) return null;
 
     const baseUrl = window.location.origin;
-    const webhookPath = provider === 'superwall' ? 'superwall-webhook' : 'revenuecat-webhook';
-    
     return `${baseUrl}/api/${webhookPath}?orgId=${organizationId}&projectId=${projectId}`;
   };
 

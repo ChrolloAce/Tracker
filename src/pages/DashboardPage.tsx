@@ -27,6 +27,7 @@ import HeatmapByHour from '../components/HeatmapByHour';
 import TopTeamCreatorsList from '../components/TopTeamCreatorsList';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import ComparisonGraph from '../components/ComparisonGraph';
+import RevenueComparisonGraph from '../components/RevenueComparisonGraph';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
@@ -70,7 +71,7 @@ import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
 import RevenueDataService from '../services/RevenueDataService';
 import UsageTrackingService from '../services/UsageTrackingService';
-import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
+import { RevenueMetrics, RevenueIntegration, RevenueTransaction } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemoContext } from './DemoPage';
@@ -376,6 +377,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [totalVideosInOrg, setTotalVideosInOrg] = useState(0);
   const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
   const [revenueIntegrations, setRevenueIntegrations] = useState<RevenueIntegration[]>([]);
+  const [revenueTransactions, setRevenueTransactions] = useState<RevenueTransaction[]>([]);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [showCreateRuleForm, setShowCreateRuleForm] = useState(false);
   const [ruleName, setRuleName] = useState('');
@@ -595,7 +597,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['kpi-cards', 'video-slider', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
+    const defaultOrder = ['kpi-cards', 'revenue-chart', 'video-slider', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
     const saved = localStorage.getItem('dashboardSectionOrder');
     
     if (saved) {
@@ -684,6 +686,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
     const defaults = {
       'kpi-cards': true,
+      'revenue-chart': true,
       'top-performers': true,
       'posting-activity': false,
       'tracked-accounts': false,
@@ -756,6 +759,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     return {
       'kpi-cards': 'KPI Cards',
+      'revenue-chart': 'Revenue',
       'top-performers': 'Top Performers',
       'videos-table': 'Videos Table'
     };
@@ -1446,10 +1450,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       const enabledIntegrations = allIntegrations.filter((i: any) => i.enabled);
       setRevenueIntegrations(enabledIntegrations);
       
-      // Load revenue metrics if integrations exist
+      // Load revenue metrics and transactions if integrations exist
       if (enabledIntegrations.length > 0) {
-        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+        const [metrics, transactions] = await Promise.all([
+          RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId),
+          RevenueDataService.getTransactions(
+            currentOrgId,
+            currentProjectId,
+            new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
+            new Date()
+          ),
+        ]);
         setRevenueMetrics(metrics);
+        setRevenueTransactions(transactions);
       }
       
       setRulesLoadedFromFirebase(true);
@@ -2018,7 +2031,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => { ... }
 
 
-  const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[]) => {
+  const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[], assignedCreatorId?: string) => {
     if (requiresPaidPlan('to start tracking videos')) return;
     if (!user || !currentOrgId || !currentProjectId) {
       throw new Error('User not authenticated or no organization selected');
@@ -2114,10 +2127,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           syncStatus: 'pending',
           syncRequestedBy: user.uid,
           syncRequestedAt: Timestamp.now(),
-          syncRetryCount: 0
+          syncRetryCount: 0,
+          ...(assignedCreatorId && { assignedCreatorId }),
         });
 
-        AuthenticatedApiService.processVideo(videoId, currentOrgId, currentProjectId, batchId).catch((err: any) => {
+        AuthenticatedApiService.processVideo(videoId, currentOrgId, currentProjectId, batchId, assignedCreatorId).catch((err: any) => {
           console.error('Failed to trigger immediate processing:', err);
         });
 
@@ -3463,6 +3477,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           return <ChartSkeleton height="h-80" />;
                         case 'videos-table':
                           return <VideoTableSkeleton />;
+                        case 'revenue-chart':
+                          return <ChartSkeleton height="h-96" />;
                         default:
                           // tracked-accounts and other sections show the generic skeleton
                           return <DashboardSkeleton height="h-96" />;
@@ -3484,7 +3500,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             timePeriod="days"
                             granularity={granularity}
                             onVideoClick={handleVideoClick}
-                            onOpenRevenueSettings={() => navigate('/revenue')}
+                            onOpenRevenueSettings={() => setIsRevenueModalOpen(true)}
                             revenueMetrics={revenueMetrics}
                             revenueIntegrations={revenueIntegrations}
                             isEditMode={isEditingLayout}
@@ -3555,6 +3571,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             customDateRange={customDateRange}
                           />
                         );
+                      case 'revenue-chart':
+                        {
+                          if (revenueIntegrations.length === 0) return null;
+                          const revDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
+                          return (
+                            <RevenueComparisonGraph
+                              transactions={revenueTransactions}
+                              submissions={filteredSubmissions}
+                              granularity={granularity}
+                              dateRange={revDateRange}
+                            />
+                          );
+                        }
                       case 'tracked-accounts':
                         return (
                           <AccountsPage 
@@ -3884,6 +3913,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddVideo={handleAddVideosWithAccounts}
+        showCreatorSelector
       />
 
       <AddAccountModal
@@ -4001,6 +4031,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             if (sectionId === 'video-slider') return <VideoSliderSkeleton />;
             if (sectionId === 'top-performers') return <ChartSkeleton height="h-96" />;
             if (sectionId === 'posting-activity') return <ChartSkeleton height="h-80" />;
+            if (sectionId === 'revenue-chart') return <ChartSkeleton height="h-96" />;
             if (sectionId === 'videos-table') return <VideoTableSkeleton />;
             return <DashboardSkeleton height="h-96" />;
           }
@@ -4232,7 +4263,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onVideoClick={handleVideoClick}
                 />
               );
-            
+
+            case 'revenue-chart':
+              {
+                if (revenueIntegrations.length === 0) return <div className="text-white/50 text-sm">Connect a revenue integration to see this chart</div>;
+                const revPreviewDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
+                return (
+                  <RevenueComparisonGraph
+                    transactions={revenueTransactions}
+                    submissions={filteredSubmissions}
+                    granularity={granularity}
+                    dateRange={revPreviewDateRange}
+                  />
+                );
+              }
+
             default:
               return <div className="text-white/50 text-sm">Preview not available</div>;
           }

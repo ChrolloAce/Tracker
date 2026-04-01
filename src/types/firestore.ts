@@ -208,6 +208,8 @@ export interface TeamInvitation {
   acceptedAt?: Timestamp;
   declinedAt?: Timestamp;
   projectId?: string; // Optional: For adding creators to specific project
+  creatorWorkflow?: 'account' | 'video'; // 'account' = UGC (link accounts), 'video' = Influencer (track individual videos)
+  selectedAccountIds?: string[]; // For 'account' workflow: accounts to link on acceptance
 }
 
 // ==================== TRACKED ACCOUNTS ====================
@@ -540,6 +542,7 @@ export interface Creator {
   createdAt: Timestamp;
   lastPayoutAt?: Timestamp;
   status?: string; // Status of the creator (e.g., 'pending', 'active')
+  creatorWorkflow?: 'account' | 'video'; // 'account' = UGC (link accounts), 'video' = Influencer (track individual videos)
   
   // Payment terms
   paymentTermPresetId?: string; // Reference to selected preset

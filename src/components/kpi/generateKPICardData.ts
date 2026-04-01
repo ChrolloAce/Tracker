@@ -842,7 +842,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
       accent: 'emerald',
       sparklineData: [],
       isEmpty: true,
-      ctaText: 'Connect App Store',
+      ctaText: 'Connect Revenue',
       onClick: onOpenRevenueSettings
     } as any);
   }

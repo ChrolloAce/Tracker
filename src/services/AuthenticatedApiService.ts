@@ -102,12 +102,13 @@ class AuthenticatedApiService {
    * Process a single video (authenticated)
    * Queues video for high-priority processing through the job queue
    */
-  async processVideo(videoId: string, orgId: string, projectId: string, batchId?: string) {
+  async processVideo(videoId: string, orgId: string, projectId: string, batchId?: string, assignedCreatorId?: string) {
     return this.post('/api/queue-manual-video', {
       url: videoId,
       orgId,
       projectId,
       ...(batchId && { batchId }),
+      ...(assignedCreatorId && { assignedCreatorId }),
     });
   }
 

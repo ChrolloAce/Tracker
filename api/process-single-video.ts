@@ -75,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { videoId, orgId, projectId, jobId, addedBy } = req.body;
+  const { videoId, orgId, projectId, jobId, addedBy, assignedCreatorId } = req.body;
 
   // Validate required fields
   const validation = validateRequiredFields(req.body, ['videoId', 'orgId', 'projectId']);
@@ -217,6 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           projectId: projectId,
           dateAdded: Timestamp.now(),
           addedBy: addedBy || 'system', // Use the user ID who submitted the video
+          ...(assignedCreatorId && { assignedCreatorId }),
           lastRefreshed: null,
           isSingular: true,
           isRead: false

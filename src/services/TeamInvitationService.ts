@@ -33,7 +33,11 @@ class TeamInvitationService {
     invitedByName: string,
     invitedByEmail: string,
     organizationName: string,
-    projectId?: string // Optional: For adding creators to specific project
+    projectId?: string, // Optional: For adding creators to specific project
+    options?: {
+      creatorWorkflow?: 'account' | 'video';
+      selectedAccountIds?: string[];
+    }
   ): Promise<string> {
     // Check if user is already a member
     const existingMembers = await getDocs(
@@ -77,7 +81,9 @@ class TeamInvitationService {
       organizationName,
       createdAt: Timestamp.now(),
       expiresAt: Timestamp.fromDate(expiresAt),
-      ...(projectId && { projectId }) // Include projectId if provided
+      ...(projectId && { projectId }), // Include projectId if provided
+      ...(options?.creatorWorkflow && { creatorWorkflow: options.creatorWorkflow }),
+      ...(options?.selectedAccountIds?.length && { selectedAccountIds: options.selectedAccountIds }),
     };
     
     await setDoc(inviteRef, inviteData);
@@ -337,18 +343,40 @@ class TeamInvitationService {
         
         // Create creator profile in the project
         const creatorRef = doc(db, 'organizations', orgId, 'projects', invite.projectId, 'creators', userId);
+        // Determine how many accounts to link (for account workflow)
+        const accountsToLink = invite.creatorWorkflow === 'account' && invite.selectedAccountIds?.length
+          ? invite.selectedAccountIds
+          : [];
+
         const creatorData: Omit<Creator, 'id'> = {
           orgId,
           projectId: invite.projectId,
           displayName: displayName || email.split('@')[0],
           email: email,
-          linkedAccountsCount: 0,
+          linkedAccountsCount: accountsToLink.length,
           totalEarnings: 0,
           payoutsEnabled: true,
           createdAt: Timestamp.now(),
+          ...(invite.creatorWorkflow && { creatorWorkflow: invite.creatorWorkflow }),
         };
         batch.set(creatorRef, creatorData);
         console.log(`✅ Created creator profile in project ${invite.projectId}`);
+
+        // If account workflow with selected accounts, create creatorLinks in same batch
+        if (accountsToLink.length > 0) {
+          for (const accountId of accountsToLink) {
+            const linkRef = doc(collection(db, 'organizations', orgId, 'projects', invite.projectId, 'creatorLinks'));
+            batch.set(linkRef, {
+              orgId,
+              projectId: invite.projectId,
+              creatorId: userId,
+              accountId,
+              createdAt: Timestamp.now(),
+              createdBy: invite.invitedBy,
+            });
+          }
+          console.log(`🔗 Linked ${accountsToLink.length} accounts to creator`);
+        }
       }
       
       // This will create a new member doc or overwrite an existing one (reactivation)

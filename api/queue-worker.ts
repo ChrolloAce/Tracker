@@ -280,6 +280,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               jobId: jobId,
               addedBy: job.addedBy,
               ...(job.batchId && { batchId: job.batchId }),
+              ...(job.assignedCreatorId && { assignedCreatorId: job.assignedCreatorId }),
             })
           });
         } else {

@@ -1,7 +1,25 @@
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { SUPER_ADMIN_EMAILS } from '../constants/admin-emails.js';
+
+// Ensure Firebase Admin is initialized before any auth operations
+if (!getApps().length) {
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1);
+  }
+  privateKey = privateKey.replace(/\\n/g, '\n');
+
+  initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey,
+    } as any),
+  });
+}
 
 export interface AuthenticatedUser {
   userId: string;
