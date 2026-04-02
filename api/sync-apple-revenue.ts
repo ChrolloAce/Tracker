@@ -39,15 +39,11 @@ if (getApps().length === 0) {
  */
 function decryptPrivateKey(encryptedKey: string): string {
   try {
-    // Reverse base64 + XOR cipher (0xAA)
-    const decoded = Buffer.from(encryptedKey, 'base64').toString('binary');
-    const decrypted = Array.from(decoded)
-      .map(char => String.fromCharCode(char.charCodeAt(0) ^ 0xAA))
-      .join('');
-    return decrypted;
+    // Decode from base64 to get the raw PEM key
+    return Buffer.from(encryptedKey, 'base64').toString('utf-8');
   } catch (error) {
-    console.error('Failed to decrypt private key:', error);
-    throw new Error('Failed to decrypt private key');
+    console.error('Failed to decode private key:', error);
+    throw new Error('Failed to decode private key');
   }
 }
 

@@ -21,6 +21,14 @@
       "collectionGroup": "videos",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "trackedAccountId", "order": "ASCENDING" },
+        { "fieldPath": "uploadDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "videos",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "platform", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "uploadDate", "order": "DESCENDING" }

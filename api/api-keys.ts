@@ -157,6 +157,8 @@ async function createApiKey(
     'analytics:read',
     'projects:read', 'projects:write',
     'organizations:read',
+    'viral:write',
+    'creators:read',
   ];
 
   for (const scope of body.scopes) {

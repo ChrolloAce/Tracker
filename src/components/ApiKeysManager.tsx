@@ -32,6 +32,7 @@ const AVAILABLE_SCOPES: { value: ApiKeyScope; label: string; description: string
   { value: 'projects:read', label: 'Read Projects', description: 'View projects' },
   { value: 'projects:write', label: 'Write Projects', description: 'Create/update projects' },
   { value: 'organizations:read', label: 'Read Organization', description: 'View organization info' },
+  { value: 'creators:read', label: 'Read Creators', description: 'View creator profiles, stats, and leaderboards' },
 ];
 
 export const ApiKeysManager: React.FC<ApiKeysManagerProps> = ({ organizationId }) => {

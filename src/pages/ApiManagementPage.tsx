@@ -27,6 +27,8 @@ const ALL_SCOPES: { value: ApiKeyScope; label: string; group: string }[] = [
   { value: 'projects:read', label: 'Read Projects', group: 'Projects' },
   { value: 'projects:write', label: 'Write Projects', group: 'Projects' },
   { value: 'organizations:read', label: 'Read Org', group: 'Organization' },
+  { value: 'viral:write', label: 'Write Viral', group: 'Viral' },
+  { value: 'creators:read', label: 'Read Creators', group: 'Creators' },
 ];
 
 // ─── Page ─────────────────────────────────────────────────

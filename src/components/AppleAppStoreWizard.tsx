@@ -54,11 +54,8 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
    * 
    * Apple's API uses JWT authentication with the private key for secure access.
    */
-  const encryptPrivateKey = (key: string): string => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(key);
-    const encrypted = Array.from(data).map(byte => byte ^ 0xAA); // XOR with key
-    return btoa(String.fromCharCode(...encrypted));
+  const encodePrivateKey = (key: string): string => {
+    return btoa(key);
   };
 
   const testConnection = async () => {
@@ -174,14 +171,13 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
         throw new Error('Please fill in all required fields');
       }
 
-      // Encrypt the private key before storing
-      const encryptedCredentials = {
+      // Base64-encode the private key before storing
+      const encodedCredentials = {
         ...credentials,
-        privateKey: encryptPrivateKey(credentials.privateKey)
+        privateKey: encodePrivateKey(credentials.privateKey)
       };
 
-      // Call the completion handler with encrypted credentials
-      await onComplete(encryptedCredentials);
+      await onComplete(encodedCredentials);
       
       // Mark final step as completed
       setCompletedSteps(prev => new Set(prev).add(currentStep));

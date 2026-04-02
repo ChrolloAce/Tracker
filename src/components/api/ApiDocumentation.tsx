@@ -24,6 +24,7 @@ API keys are scoped with permissions. Each key can have any combination of:
 - projects:read — List projects
 - projects:write — Create projects
 - organizations:read — Read org-level data
+- creators:read — View creator profiles, stats, and leaderboards
 
 Rate Limit: 100 requests per minute per API key.
 Rate limit headers are included in every response:
@@ -650,6 +651,122 @@ Response:
       "totalFailures": 2
     },
     "pagination": { "limit": 20, "offset": 0, "total": 30, "hasMore": true }
+  }
+}
+\`\`\`
+
+---
+
+### 6. Creators
+
+#### GET /api/v1/creators
+List all creators in a project with their aggregated stats from linked accounts.
+
+Required scope: \`creators:read\`
+
+Query parameters:
+| Parameter | Type   | Required | Default | Description |
+|-----------|--------|----------|---------|-------------|
+| projectId | string | yes*     | —       | Target project (* not needed if API key is project-scoped) |
+| limit     | number | no       | 50      | Max results (capped at 100) |
+| offset    | number | no       | 0       | Pagination offset |
+
+Response:
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "creators": [
+      {
+        "id": "user123",
+        "displayName": "Creator Name",
+        "email": "creator@example.com",
+        "photoURL": "https://...",
+        "status": "active",
+        "stats": {
+          "totalViews": 1500000,
+          "totalLikes": 85000,
+          "totalComments": 3200,
+          "totalShares": 12000,
+          "totalVideos": 45,
+          "engagementRate": 6.68
+        },
+        "linkedAccounts": [
+          {
+            "id": "tiktok_johndoe",
+            "username": "johndoe",
+            "platform": "tiktok",
+            "followerCount": 50000,
+            "totalViews": 800000,
+            "totalVideos": 25
+          }
+        ]
+      }
+    ],
+    "pagination": { "limit": 50, "offset": 0, "total": 12, "hasMore": false }
+  }
+}
+\`\`\`
+
+---
+
+#### GET /api/v1/creators/:id
+Get full details for a single creator including stats and linked accounts.
+
+Required scope: \`creators:read\`
+
+Query parameters:
+| Parameter     | Type    | Required | Description |
+|---------------|---------|----------|-------------|
+| projectId     | string  | yes*     | Target project (* not needed if API key is project-scoped) |
+| includeVideos | boolean | no       | Set "true" to include up to 50 recent videos sorted by views |
+
+Response: Same shape as a single creator object from the list endpoint, plus an optional \`recentVideos\` array when \`includeVideos=true\`.
+
+---
+
+#### GET /api/v1/creators/leaderboard
+Get a ranked leaderboard of creators sorted by a chosen metric. Ideal for Discord bots and external integrations.
+
+Required scope: \`creators:read\`
+
+Query parameters:
+| Parameter | Type   | Required | Default | Description |
+|-----------|--------|----------|---------|-------------|
+| projectId | string | yes*     | —       | Target project (* not needed if API key is project-scoped) |
+| sortBy    | string | no       | views   | Metric to rank by: views, likes, comments, shares, engagement, videos |
+| limit     | number | no       | 10      | Number of entries (max 50) |
+
+Response:
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "leaderboard": [
+      {
+        "rank": 1,
+        "creatorId": "user123",
+        "displayName": "Top Creator",
+        "photoURL": "https://...",
+        "score": 2500000,
+        "metric": "views",
+        "stats": {
+          "totalViews": 2500000,
+          "totalLikes": 150000,
+          "totalComments": 8500,
+          "totalShares": 22000,
+          "totalVideos": 67,
+          "engagementRate": 7.22
+        },
+        "linkedAccountsCount": 4
+      }
+    ],
+    "meta": {
+      "projectId": "proj_1",
+      "sortedBy": "views",
+      "totalCreators": 25,
+      "generatedAt": "2026-04-01T12:00:00.000Z"
+    }
   }
 }
 \`\`\`
