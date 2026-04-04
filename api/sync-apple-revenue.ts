@@ -74,20 +74,29 @@ function generateAppleJWT(privateKey: string, keyId: string, issuerId: string): 
 
 /**
  * Fetch reports from Apple App Store Connect API with retry logic
- * reportType: 'SALES' for downloads, 'SUBSCRIPTION' for subscription revenue
+ * reportType: 'SALES' for downloads, 'SUBSCRIBER' for per-transaction subscription revenue
  */
 async function fetchAppleReports(
   token: string,
   vendorNumber: string,
   reportDate: string,
-  reportType: 'SALES' | 'SUBSCRIPTION' = 'SALES'
+  reportType: 'SALES' | 'SUBSCRIBER' = 'SALES'
 ): Promise<any[]> {
   const url = new URL('https://api.appstoreconnect.apple.com/v1/salesReports');
   url.searchParams.append('filter[frequency]', 'DAILY');
-  url.searchParams.append('filter[reportSubType]', 'SUMMARY');
   url.searchParams.append('filter[reportType]', reportType);
   url.searchParams.append('filter[vendorNumber]', vendorNumber);
   url.searchParams.append('filter[reportDate]', reportDate);
+
+  // SUBSCRIBER reports require DETAILED subtype and version 1_3
+  // SALES reports use SUMMARY subtype and version 1_0
+  if (reportType === 'SUBSCRIBER') {
+    url.searchParams.append('filter[reportSubType]', 'DETAILED');
+    url.searchParams.append('filter[version]', '1_3');
+  } else {
+    url.searchParams.append('filter[reportSubType]', 'SUMMARY');
+    url.searchParams.append('filter[version]', '1_0');
+  }
 
   // Retry logic for 500 errors (Apple's server issues)
   let lastError: Error | null = null;
@@ -319,31 +328,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    console.log(`🚀 Fetching ${datesToFetch.length} days of SALES + SUBSCRIPTION reports in parallel...`);
+    console.log(`🚀 Fetching ${datesToFetch.length} days of SALES + SUBSCRIBER reports in parallel...`);
 
-    // Fetch SALES (downloads) and SUBSCRIPTION (revenue) reports in parallel for each day
+    // Fetch SALES (downloads) and SUBSCRIBER (per-transaction revenue) reports in parallel
     const fetchPromises = datesToFetch.map(async (reportDate, index) => {
       const salesResult = { data: [] as any[], success: false };
       const subResult = { data: [] as any[], success: false };
 
-      // Fetch both report types concurrently
       const [salesRes, subRes] = await Promise.allSettled([
         fetchAppleReports(token, integration.credentials.vendorNumber, reportDate, 'SALES'),
-        fetchAppleReports(token, integration.credentials.vendorNumber, reportDate, 'SUBSCRIPTION'),
+        fetchAppleReports(token, integration.credentials.vendorNumber, reportDate, 'SUBSCRIBER'),
       ]);
 
       if (salesRes.status === 'fulfilled' && salesRes.value.length > 0) {
         salesResult.data = salesRes.value;
         salesResult.success = true;
+      } else if (salesRes.status === 'rejected') {
+        console.warn(`  ⚠️ SALES fetch failed for ${reportDate}: ${salesRes.reason?.message || salesRes.reason}`);
       }
+
       if (subRes.status === 'fulfilled' && subRes.value.length > 0) {
         subResult.data = subRes.value;
         subResult.success = true;
+      } else if (subRes.status === 'rejected') {
+        console.warn(`  ⚠️ SUBSCRIBER fetch failed for ${reportDate}: ${subRes.reason?.message || subRes.reason}`);
       }
 
       if (salesResult.success || subResult.success) {
-        const totalRecords = salesResult.data.length + subResult.data.length;
-        console.log(`  ✓ ${reportDate}: ${salesResult.data.length} sales + ${subResult.data.length} subs (${index + 1}/${datesToFetch.length})`);
+        console.log(`  ✓ ${reportDate}: ${salesResult.data.length} sales + ${subResult.data.length} subscriber records (${index + 1}/${datesToFetch.length})`);
       }
 
       return { date: reportDate, sales: salesResult, subscriptions: subResult };
@@ -382,8 +394,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('📋 Sample SALES record:', Object.keys(allSalesData[0]));
     }
     if (allSubscriptionData.length > 0) {
-      console.log('📋 Sample SUBSCRIPTION record:', Object.keys(allSubscriptionData[0]));
-      console.log('📋 Sample SUBSCRIPTION data:', allSubscriptionData[0]);
+      console.log('📋 Sample SUBSCRIBER record columns:', Object.keys(allSubscriptionData[0]));
+      console.log('📋 Sample SUBSCRIBER record data:', allSubscriptionData[0]);
     }
 
     // Helper to ensure a daily entry exists
@@ -421,37 +433,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // --- Process SUBSCRIPTION records (subscription revenue) ---
+    // --- Process SUBSCRIBER records (per-transaction subscription revenue) ---
+    // SUBSCRIBER report columns: Event Date, App Name, App Apple ID, Subscription Name,
+    // Subscription Apple ID, Developer Proceeds, Proceeds Currency, Customer Price,
+    // Customer Currency, Device, Country, Subscriber ID, Units, Event Date, Purchase Date, etc.
     let subsFiltered = 0;
     let subsSkipped = 0;
     allSubscriptionData.forEach(record => {
-      // Subscription reports use 'App Apple ID' for the app identifier
       const recordAppleId = record['App Apple ID'] || record['Apple Identifier'] || record['apple_identifier'];
       if (!matchesApp(recordAppleId)) { subsSkipped++; return; }
       subsFiltered++;
 
-      const units = parseInt(record['Units'] || record['Quantity'] || '0');
+      const units = parseInt(record['Units'] || record['Quantity'] || '1');
       const proceeds = parseFloat(record['Developer Proceeds'] || record['developer_proceeds'] || '0');
-      // Subscription reports use 'Event Date' for the date
       const eventDate = record['Event Date'] || record['Begin Date'] || record['event_date'] || '';
-      const event = (record['Event'] || record['event'] || '').toLowerCase();
+      const isRefund = record['Refund'] === 'Yes' || record['Refund'] === 'true';
 
-      // Track subscription revenue
-      totalSubscriptionRevenue += proceeds * units;
-      totalRevenue += proceeds * units;
+      // Calculate revenue: proceeds * units, negative for refunds
+      const revenue = isRefund ? -(proceeds * units) : (proceeds * units);
+      totalSubscriptionRevenue += revenue;
+      totalRevenue += revenue;
 
-      // Track subscription counts
-      if (event.includes('subscribe') || event === 'pay as you go' || event === 'start') {
+      // Count subscriptions (each record is a transaction)
+      if (proceeds > 0 && !isRefund) {
         newSubscriptions += units;
-      }
-      if (event.includes('renew') || event.includes('subscribe')) {
         activeSubscriptions += units;
       }
 
       if (eventDate) {
         ensureDay(eventDate);
-        dailyBreakdown[eventDate].subscriptionRevenue += proceeds * units;
-        dailyBreakdown[eventDate].revenue += proceeds * units;
+        dailyBreakdown[eventDate].subscriptionRevenue += revenue;
+        dailyBreakdown[eventDate].revenue += revenue;
       }
     });
 
@@ -470,7 +482,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('📊 SYNC COMPLETE');
     console.log('='.repeat(60));
     console.log(`📦 Sales Records: ${allSalesData.length} total, ${salesFiltered} matched, ${salesSkipped} skipped`);
-    console.log(`📦 Subscription Records: ${allSubscriptionData.length} total, ${subsFiltered} matched, ${subsSkipped} skipped`);
+    console.log(`📦 Subscriber Records: ${allSubscriptionData.length} total, ${subsFiltered} matched, ${subsSkipped} skipped`);
     console.log(`🎯 Target Apple ID: ${targetAppleId || 'NONE (importing all apps)'}`);
     console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)}`);
     console.log(`💰 Subscription Revenue: $${totalSubscriptionRevenue.toFixed(2)}`);
