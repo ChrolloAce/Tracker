@@ -392,6 +392,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
   const [appId, setAppId] = useState('');
   const [keyId, setKeyId] = useState(''); // For Apple
   const [issuerId, setIssuerId] = useState(''); // For Apple
+  const [vendorNumber, setVendorNumber] = useState(''); // For Apple
   const [showApiKey, setShowApiKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -517,6 +518,10 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
         alert('Please enter an Issuer ID for Apple');
         return;
       }
+      if (!vendorNumber) {
+        alert('Please enter a Vendor Number for Apple');
+        return;
+      }
     }
 
     try {
@@ -527,10 +532,11 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
         projectId,
         provider,
         {
-          apiKey: provider === 'superwall' ? 'webhook-only' : apiKey, // Superwall doesn't need API key
+          apiKey: provider === 'superwall' ? 'webhook-only' : apiKey,
           appId: (provider === 'revenuecat' || provider === 'apple') ? appId : undefined,
           keyId: provider === 'apple' ? keyId : undefined,
           issuerId: provider === 'apple' ? issuerId : undefined,
+          vendorNumber: provider === 'apple' ? vendorNumber : undefined,
         }
       );
 
@@ -718,6 +724,22 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
                   Your app's Bundle ID from App Store Connect
                 </p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Vendor Number *
+                </label>
+                <input
+                  type="text"
+                  value={vendorNumber}
+                  onChange={(e) => setVendorNumber(e.target.value)}
+                  placeholder="e.g. 85012345"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="mt-2 text-sm text-gray-400">
+                  Find in App Store Connect → Sales and Trends (8-digit number in top right)
+                </p>
+              </div>
             </>
           )}
 
@@ -727,9 +749,9 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               <button
                 onClick={handleTest}
                 disabled={
-                  testing || 
-                  !apiKey || 
-                  (provider === 'apple' && (!appId || !keyId || !issuerId))
+                  testing ||
+                  !apiKey ||
+                  (provider === 'apple' && (!appId || !keyId || !issuerId || !vendorNumber))
                 }
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
