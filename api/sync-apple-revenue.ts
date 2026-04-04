@@ -73,25 +73,21 @@ function generateAppleJWT(privateKey: string, keyId: string, issuerId: string): 
 }
 
 /**
- * Fetch sales reports from Apple App Store Connect API with retry logic
+ * Fetch reports from Apple App Store Connect API with retry logic
+ * reportType: 'SALES' for downloads, 'SUBSCRIPTION' for subscription revenue
  */
-async function fetchAppleSalesReports(
+async function fetchAppleReports(
   token: string,
   vendorNumber: string,
-  reportDate: string
+  reportDate: string,
+  reportType: 'SALES' | 'SUBSCRIPTION' = 'SALES'
 ): Promise<any[]> {
   const url = new URL('https://api.appstoreconnect.apple.com/v1/salesReports');
   url.searchParams.append('filter[frequency]', 'DAILY');
   url.searchParams.append('filter[reportSubType]', 'SUMMARY');
-  url.searchParams.append('filter[reportType]', 'SALES');
+  url.searchParams.append('filter[reportType]', reportType);
   url.searchParams.append('filter[vendorNumber]', vendorNumber);
-  url.searchParams.append('filter[reportDate]', reportDate); // Format: YYYY-MM-DD
-
-  console.log('📊 Fetching Apple sales reports:', {
-    vendorNumber,
-    reportDate,
-    url: url.toString()
-  });
+  url.searchParams.append('filter[reportDate]', reportDate);
 
   // Retry logic for 500 errors (Apple's server issues)
   let lastError: Error | null = null;
@@ -323,39 +319,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    console.log(`🚀 Fetching ${datesToFetch.length} days in parallel...`);
+    console.log(`🚀 Fetching ${datesToFetch.length} days of SALES + SUBSCRIPTION reports in parallel...`);
 
-    // Fetch ALL days in parallel (10x faster!)
+    // Fetch SALES (downloads) and SUBSCRIPTION (revenue) reports in parallel for each day
     const fetchPromises = datesToFetch.map(async (reportDate, index) => {
-      try {
-        const dailyData = await fetchAppleSalesReports(
-      token,
-      integration.credentials.vendorNumber,
-      reportDate
-    );
+      const salesResult = { data: [] as any[], success: false };
+      const subResult = { data: [] as any[], success: false };
 
-        if (dailyData && dailyData.length > 0) {
-          console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${index + 1}/${datesToFetch.length})`);
-          return { success: true, data: dailyData, date: reportDate };
-        }
-        return { success: true, data: [], date: reportDate };
-      } catch (error) {
-        // Silent fail for days without data
-        return { success: false, data: [], date: reportDate };
+      // Fetch both report types concurrently
+      const [salesRes, subRes] = await Promise.allSettled([
+        fetchAppleReports(token, integration.credentials.vendorNumber, reportDate, 'SALES'),
+        fetchAppleReports(token, integration.credentials.vendorNumber, reportDate, 'SUBSCRIPTION'),
+      ]);
+
+      if (salesRes.status === 'fulfilled' && salesRes.value.length > 0) {
+        salesResult.data = salesRes.value;
+        salesResult.success = true;
       }
+      if (subRes.status === 'fulfilled' && subRes.value.length > 0) {
+        subResult.data = subRes.value;
+        subResult.success = true;
+      }
+
+      if (salesResult.success || subResult.success) {
+        const totalRecords = salesResult.data.length + subResult.data.length;
+        console.log(`  ✓ ${reportDate}: ${salesResult.data.length} sales + ${subResult.data.length} subs (${index + 1}/${datesToFetch.length})`);
+      }
+
+      return { date: reportDate, sales: salesResult, subscriptions: subResult };
     });
 
     // Wait for all parallel fetches to complete
     const results = await Promise.all(fetchPromises);
-    
+
     // Aggregate all the data
     let allSalesData: any[] = [];
+    let allSubscriptionData: any[] = [];
     let daysWithData = 0;
     results.forEach(result => {
-      if (result.success && result.data.length > 0) {
-        allSalesData = allSalesData.concat(result.data);
-        daysWithData++;
-      }
+      const hasData = result.sales.success || result.subscriptions.success;
+      if (hasData) daysWithData++;
+      if (result.sales.success) allSalesData = allSalesData.concat(result.sales.data);
+      if (result.subscriptions.success) allSubscriptionData = allSubscriptionData.concat(result.subscriptions.data);
     });
     
     const daysProcessed = datesToFetch.length;
@@ -363,99 +368,120 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Calculate aggregated metrics and daily breakdown from all records
     let totalRevenue = 0;
     let totalDownloads = 0;
-    const dailyBreakdown: Record<string, { revenue: number; downloads: number; date: Date }> = {};
-    
-    // Get Apple ID for filtering (if specified in integration settings)
-    const targetAppleId = integration.credentials?.appId; // This is the Apple ID from settings
+    let totalSubscriptionRevenue = 0;
+    let activeSubscriptions = 0;
+    let newSubscriptions = 0;
+    const dailyBreakdown: Record<string, { revenue: number; downloads: number; subscriptionRevenue: number; date: Date }> = {};
+
+    // Get Apple ID for filtering
+    const targetAppleId = integration.credentials?.appId;
     console.log(`🎯 Target Apple ID: ${targetAppleId || 'ALL APPS (no filter)'}`);
-    
-    // Debug: Log first record structure to see what fields are available
+
+    // Debug: Log sample records from both report types
     if (allSalesData.length > 0) {
-      console.log('📋 Sample record structure:', Object.keys(allSalesData[0]));
-      console.log('📋 Sample record data:', allSalesData[0]);
+      console.log('📋 Sample SALES record:', Object.keys(allSalesData[0]));
     }
-    
-    // Track filtering stats
-    let totalRecords = 0;
-    let filteredRecords = 0;
-    let skippedRecords = 0;
-    const uniqueAppleIds = new Set<string>();
-    
-    allSalesData.forEach(record => {
-      totalRecords++;
-      
-      // Get Apple Identifier from the record (ONLY identifier we use for filtering)
-      const recordAppleId = record['Apple Identifier'] || record['apple_identifier'];
-      
-      // Track all unique Apple IDs
-      if (recordAppleId) uniqueAppleIds.add(recordAppleId);
-      
-      // If we have a target filter, check if this record matches (EXACT MATCH ONLY)
-      if (targetAppleId) {
-        const matchesAppleId = recordAppleId && recordAppleId === targetAppleId;
-        
-        if (!matchesAppleId) {
-          skippedRecords++;
-          return; // Skip this record - it's from a different app
-        }
-        
-        filteredRecords++;
-      } else {
-        filteredRecords++;
+    if (allSubscriptionData.length > 0) {
+      console.log('📋 Sample SUBSCRIPTION record:', Object.keys(allSubscriptionData[0]));
+      console.log('📋 Sample SUBSCRIPTION data:', allSubscriptionData[0]);
+    }
+
+    // Helper to ensure a daily entry exists
+    const ensureDay = (dateStr: string) => {
+      if (dateStr && !dailyBreakdown[dateStr]) {
+        dailyBreakdown[dateStr] = { revenue: 0, downloads: 0, subscriptionRevenue: 0, date: new Date(dateStr) };
       }
-      
-      // Units = downloads/purchases
+    };
+
+    // Helper to check Apple ID match
+    const matchesApp = (recordAppleId: string | undefined) => {
+      if (!targetAppleId) return true;
+      return recordAppleId && recordAppleId === targetAppleId;
+    };
+
+    // --- Process SALES records (downloads + paid app revenue) ---
+    let salesFiltered = 0;
+    let salesSkipped = 0;
+    allSalesData.forEach(record => {
+      const recordAppleId = record['Apple Identifier'] || record['apple_identifier'];
+      if (!matchesApp(recordAppleId)) { salesSkipped++; return; }
+      salesFiltered++;
+
       const units = parseInt(record['Units'] || record['units'] || '0');
-      // Developer Proceeds = revenue after Apple's cut
       const proceeds = parseFloat(record['Developer Proceeds'] || record['developer_proceeds'] || '0');
-      // Begin Date is the sale date
       const saleDate = record['Begin Date'] || record['begin_date'] || '';
-      
+
       totalDownloads += units;
       totalRevenue += proceeds;
-      
-      // Group by date for daily breakdown
+
       if (saleDate) {
-        if (!dailyBreakdown[saleDate]) {
-          dailyBreakdown[saleDate] = { 
-            revenue: 0, 
-            downloads: 0,
-            date: new Date(saleDate)
-          };
-        }
-        dailyBreakdown[saleDate].revenue += proceeds;
+        ensureDay(saleDate);
         dailyBreakdown[saleDate].downloads += units;
+        dailyBreakdown[saleDate].revenue += proceeds;
       }
     });
-    
+
+    // --- Process SUBSCRIPTION records (subscription revenue) ---
+    let subsFiltered = 0;
+    let subsSkipped = 0;
+    allSubscriptionData.forEach(record => {
+      // Subscription reports use 'App Apple ID' for the app identifier
+      const recordAppleId = record['App Apple ID'] || record['Apple Identifier'] || record['apple_identifier'];
+      if (!matchesApp(recordAppleId)) { subsSkipped++; return; }
+      subsFiltered++;
+
+      const units = parseInt(record['Units'] || record['Quantity'] || '0');
+      const proceeds = parseFloat(record['Developer Proceeds'] || record['developer_proceeds'] || '0');
+      // Subscription reports use 'Event Date' for the date
+      const eventDate = record['Event Date'] || record['Begin Date'] || record['event_date'] || '';
+      const event = (record['Event'] || record['event'] || '').toLowerCase();
+
+      // Track subscription revenue
+      totalSubscriptionRevenue += proceeds * units;
+      totalRevenue += proceeds * units;
+
+      // Track subscription counts
+      if (event.includes('subscribe') || event === 'pay as you go' || event === 'start') {
+        newSubscriptions += units;
+      }
+      if (event.includes('renew') || event.includes('subscribe')) {
+        activeSubscriptions += units;
+      }
+
+      if (eventDate) {
+        ensureDay(eventDate);
+        dailyBreakdown[eventDate].subscriptionRevenue += proceeds * units;
+        dailyBreakdown[eventDate].revenue += proceeds * units;
+      }
+    });
+
     // Convert daily breakdown to array and sort by date
     const dailyMetrics = Object.entries(dailyBreakdown)
       .map(([date, data]) => ({
         date: data.date,
         revenue: data.revenue,
-        downloads: data.downloads
+        downloads: data.downloads,
+        subscriptionRevenue: data.subscriptionRevenue,
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     console.log('');
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
     console.log('📊 SYNC COMPLETE');
-    console.log('=' .repeat(60));
-    console.log(`✅ Total Records: ${allSalesData.length}`);
-    console.log(`🎯 Filtered Records: ${filteredRecords} (kept) - EXACT Apple ID match only`);
-    console.log(`🚫 Skipped Records: ${skippedRecords} (filtered out)`);
-    console.log(`🆔 Unique Apple IDs in data: ${Array.from(uniqueAppleIds).join(', ')}`);
+    console.log('='.repeat(60));
+    console.log(`📦 Sales Records: ${allSalesData.length} total, ${salesFiltered} matched, ${salesSkipped} skipped`);
+    console.log(`📦 Subscription Records: ${allSubscriptionData.length} total, ${subsFiltered} matched, ${subsSkipped} skipped`);
     console.log(`🎯 Target Apple ID: ${targetAppleId || 'NONE (importing all apps)'}`);
-    console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)} (from ${filteredRecords} records)`);
-    console.log(`📥 Total Downloads: ${totalDownloads.toLocaleString()} (from ${filteredRecords} records)`);
+    console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)}`);
+    console.log(`💰 Subscription Revenue: $${totalSubscriptionRevenue.toFixed(2)}`);
+    console.log(`📥 Total Downloads: ${totalDownloads.toLocaleString()}`);
+    console.log(`📊 New Subscriptions: ${newSubscriptions}`);
+    console.log(`📊 Active Subscriptions: ${activeSubscriptions}`);
     console.log(`📅 Date Range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
     console.log(`📈 Days Processed: ${daysProcessed}`);
-    console.log(`💰 Days with Sales: ${daysWithData}`);
     console.log(`📊 Daily Metrics: ${dailyMetrics.length} days with data`);
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
     console.log('');
-
-    const salesData = allSalesData;
 
     // Get existing data to merge with new data (for incremental syncs)
     const metricsRef = db
@@ -471,8 +497,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Merge daily metrics (keep existing + add new/update overlapping dates)
     const existingDailyMetrics = existingData?.dailyMetrics || [];
-    const dailyMetricsMap = new Map<string, { revenue: number; downloads: number; date: Date }>();
-    
+    const dailyMetricsMap = new Map<string, { revenue: number; downloads: number; subscriptionRevenue: number; date: Date }>();
+
     // Add existing data
     existingDailyMetrics.forEach((d: any) => {
       const date = d.date?.toDate();
@@ -481,11 +507,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dailyMetricsMap.set(dateKey, {
           date,
           revenue: d.revenue || 0,
-          downloads: d.downloads || 0
+          downloads: d.downloads || 0,
+          subscriptionRevenue: d.subscriptionRevenue || 0,
         });
       }
     });
-    
+
     // Update/add new data (overwrites if date exists)
     dailyMetrics.forEach(d => {
       const dateKey = d.date.toISOString().split('T')[0];
@@ -499,13 +526,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Calculate cumulative totals from all daily data
     const cumulativeTotalRevenue = mergedDailyMetrics.reduce((sum, d) => sum + d.revenue, 0);
     const cumulativeTotalDownloads = mergedDailyMetrics.reduce((sum, d) => sum + d.downloads, 0);
-    const cumulativeRecordCount = allSalesData.length + (existingData?.recordCount || 0);
-    
+    const cumulativeTotalSubRevenue = mergedDailyMetrics.reduce((sum, d) => sum + (d.subscriptionRevenue || 0), 0);
+    const cumulativeRecordCount = allSalesData.length + allSubscriptionData.length + (existingData?.recordCount || 0);
+
     // Store merged data
     await metricsRef.set({
       provider: 'apple',
       totalRevenue: cumulativeTotalRevenue,
+      totalSubscriptionRevenue: cumulativeTotalSubRevenue,
       totalDownloads: cumulativeTotalDownloads,
+      activeSubscriptions,
+      newSubscriptions,
       recordCount: cumulativeRecordCount,
       dateRange: {
         start: mergedDailyMetrics[0]?.date || startDate,
@@ -514,7 +545,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       dailyMetrics: mergedDailyMetrics.map(d => ({
         date: Timestamp.fromDate(d.date),
         revenue: d.revenue,
-        downloads: d.downloads
+        downloads: d.downloads,
+        subscriptionRevenue: d.subscriptionRevenue || 0,
       })),
       lastSynced: Timestamp.now(),
       updatedAt: Timestamp.now()
@@ -537,8 +569,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dateRange: `${mergedDailyMetrics[0]?.date.toISOString().split('T')[0] || startDate.toISOString().split('T')[0]} to ${mergedDailyMetrics[mergedDailyMetrics.length - 1]?.date.toISOString().split('T')[0] || endDate.toISOString().split('T')[0]}`,
         recordCount: cumulativeRecordCount,
         totalRevenue: cumulativeTotalRevenue,
+        totalSubscriptionRevenue: cumulativeTotalSubRevenue,
         totalDownloads: cumulativeTotalDownloads,
-        newRecords: allSalesData.length,
+        activeSubscriptions,
+        newSubscriptions,
+        salesRecords: allSalesData.length,
+        subscriptionRecords: allSubscriptionData.length,
         dailyDataPoints: mergedDailyMetrics.length,
         lastSynced: new Date().toISOString()
       }
