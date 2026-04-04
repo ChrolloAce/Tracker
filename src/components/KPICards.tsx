@@ -101,8 +101,8 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
     
     // If it's revenue or downloads, handle specially
     if (metricId === 'revenue' || metricId === 'downloads') {
-      // If there's actual data, show the transactions modal
-      if (revenueMetrics) {
+      // If there's actual data with revenue, show the transactions modal
+      if (revenueMetrics && (revenueMetrics.totalRevenue > 0 || revenueMetrics.activeSubscriptions > 0)) {
       setTransactionsMetricType(metricId as 'revenue' | 'downloads');
       
       // Set the interval data for the modal
