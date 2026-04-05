@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { authenticateSuperAdmin } from '../../middleware/auth.js';
+import { authenticateSuperAdmin } from '../../_middleware/auth.js';
 
 // Initialize Firebase Admin
 if (!getApps().length) {

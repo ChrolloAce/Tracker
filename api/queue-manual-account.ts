@@ -1,10 +1,10 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
-import { JOB_PRIORITIES } from './constants/priorities.js';
-import { getBaseUrl } from './utils/base-url.js';
-import { checkVideoLimit } from './utils/video-limits.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './_middleware/auth.js';
+import { JOB_PRIORITIES } from './_constants/priorities.js';
+import { getBaseUrl } from './_utils/base-url.js';
+import { checkVideoLimit } from './_utils/video-limits.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -137,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check current queue capacity
     const runningJobs = await db.collection('syncQueue').where('status', '==', 'running').get();
     const runningCount = runningJobs.size;
-    const { APIFY_CONCURRENCY_LIMIT } = await import('./constants/priorities.js');
+    const { APIFY_CONCURRENCY_LIMIT } = await import('./_constants/priorities.js');
     const availableSlots = APIFY_CONCURRENCY_LIMIT - runningCount;
     
     console.log(`   📊 Queue capacity: ${runningCount}/${APIFY_CONCURRENCY_LIMIT} running, ${availableSlots} slots available`);

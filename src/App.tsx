@@ -45,8 +45,10 @@ const CreatorInvitationPage = lazy(() => import('./pages/CreatorInvitationPage')
 const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const ApiManagementPage = lazy(() => import('./pages/ApiManagementPage'));
 const ViralPage = lazy(() => import('./pages/ViralPage'));
+// SavedViralPage is rendered inside DashboardPage via initialTab="saved"
 const OpenClawPage = lazy(() => import('./pages/OpenClawPage'));
 const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
+const SharedFolderPage = lazy(() => import('./pages/SharedFolderPage'));
 
 // SEO Pages (lazy-loaded)
 const PricingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PricingPage })));
@@ -182,6 +184,7 @@ function App() {
 
         {/* Public project share - no auth required */}
         <Route path="/share/:token" element={<PublicSharePage />} />
+        <Route path="/shared/:token" element={<SharedFolderPage />} />
         
         {/* SEO Pages - Public */}
         <Route path="/pricing" element={<PricingPage />} />
@@ -508,8 +511,8 @@ function App() {
       {/* Hidden for MVP — redirect to dashboard */}
       <Route path="/extension" element={<Navigate to="/" replace />} />
 
-      <Route 
-        path="/viral" 
+      <Route
+        path="/viral"
         element={
           !user ? (
             <Navigate to="/login" replace />
@@ -517,6 +520,19 @@ function App() {
             <Navigate to="/" replace />
           ) : (
             <ViralPage />
+          )
+        }
+      />
+
+      <Route
+        path="/saved"
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/" replace />
+          ) : (
+            <DashboardPage initialTab="saved" />
           )
         }
       />

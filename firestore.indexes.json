@@ -195,6 +195,15 @@
         }
       ]
     }
+    ,
+    {
+      "collectionGroup": "savedViralContent",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folderId", "order": "ASCENDING" },
+        { "fieldPath": "savedAt", "order": "DESCENDING" }
+      ]
+    }
   ],
   "fieldOverrides": []
 }

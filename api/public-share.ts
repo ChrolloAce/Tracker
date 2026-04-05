@@ -8,7 +8,7 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeFirebase } from './utils/firebase-admin.js';
+import { initializeFirebase } from './_utils/firebase-admin.js';
 
 initializeFirebase();
 const db = getFirestore();

@@ -15,6 +15,13 @@ import { ViralVideo } from '../types/viralContent';
 
 const COLLECTION = 'viralContent';
 
+/** Filter out videos with no stats and no thumbnail — they're empty/broken entries */
+function isValidVideo(video: ViralVideo): boolean {
+  const hasStats = video.views > 0 || video.likes > 0 || video.comments > 0 || video.shares > 0 || video.saves > 0;
+  const hasThumbnail = !!video.thumbnail;
+  return hasStats || hasThumbnail;
+}
+
 export type SortField = 'order' | 'views' | 'likes' | 'uploadDate';
 export type SortDir = 'asc' | 'desc';
 
@@ -53,7 +60,7 @@ class ViralContentService {
   static async fetchFirst(count: number = 12): Promise<ViralVideo[]> {
     const q = query(collection(db, COLLECTION), orderBy('order', 'asc'), limit(count));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo));
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo)).filter(isValidVideo);
   }
 
   /**
@@ -147,7 +154,7 @@ class ViralContentService {
     const q = query(collection(db, COLLECTION), ...queryConstraints);
     const snapshot = await getDocs(q);
 
-    const videos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo));
+    const videos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo)).filter(isValidVideo);
     const lastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
 
     // Cache this page's results and its cursor
@@ -207,7 +214,7 @@ class ViralContentService {
 
     const q = query(collection(db, COLLECTION), orderBy('order', 'asc'));
     const snapshot = await getDocs(q);
-    const videos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo));
+    const videos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ViralVideo)).filter(isValidVideo);
 
     this.allDocsCache = { videos, ts: Date.now() };
     return videos;

@@ -8,7 +8,7 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { InstagramScraperService } from './services/InstagramScraperService';
+import { InstagramScraperService } from './_services/InstagramScraperService';
 
 export default async function handler(
   req: VercelRequest,

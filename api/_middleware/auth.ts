@@ -2,7 +2,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { SUPER_ADMIN_EMAILS } from '../constants/admin-emails.js';
+import { SUPER_ADMIN_EMAILS } from '../_constants/admin-emails.js';
 
 // Ensure Firebase Admin is initialized before any auth operations
 if (!getApps().length) {

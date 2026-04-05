@@ -10,8 +10,8 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { initializeFirebase } from './utils/firebase-admin.js';
-import { transcribeVideo } from './services/TranscriptionService.js';
+import { initializeFirebase } from './_utils/firebase-admin.js';
+import { transcribeVideo } from './_services/TranscriptionService.js';
 
 initializeFirebase();
 const db = getFirestore();

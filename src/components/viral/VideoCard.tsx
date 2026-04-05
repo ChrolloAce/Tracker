@@ -7,7 +7,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { ViralVideo } from '../../types/viralContent';
-import VideoPlayerModal from './VideoPlayerModal';
+import ViralVideoDetailPanel from './ViralVideoDetailPanel';
 
 interface VideoCardProps {
   video: ViralVideo;
@@ -101,9 +101,9 @@ const VideoCard = React.memo(function VideoCard({ video, getPlatformIcon, format
         </div>
       </div>
 
-      {/* Video player modal */}
+      {/* Video detail panel */}
       {showPlayer && (
-        <VideoPlayerModal video={video} onClose={handleClosePlayer} />
+        <ViralVideoDetailPanel video={video} onClose={handleClosePlayer} />
       )}
     </>
   );

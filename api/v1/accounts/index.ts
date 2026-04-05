@@ -6,11 +6,11 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
-import { initializeFirebase } from '../../utils/firebase-admin.js';
-import { withApiAuth } from '../../middleware/apiKeyAuth.js';
+import { initializeFirebase } from '../../_utils/firebase-admin.js';
+import { withApiAuth } from '../../_middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 
-import { getBaseUrl } from '../../utils/base-url.js';
+import { getBaseUrl } from '../../_utils/base-url.js';
 
 const JOB_PRIORITY_USER_INITIATED = 100;
 const BASE_URL = getBaseUrl();

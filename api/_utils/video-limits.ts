@@ -1,5 +1,5 @@
 import { getFirestore } from 'firebase-admin/firestore';
-import { SUPER_ADMIN_EMAILS } from '../constants/admin-emails.js';
+import { SUPER_ADMIN_EMAILS } from '../_constants/admin-emails.js';
 
 /**
  * Plan-based video limits (must match src/types/subscription.ts SUBSCRIPTION_PLANS)

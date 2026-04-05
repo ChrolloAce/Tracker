@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from '../middleware/auth.js';
-import { SyncCoordinator } from '../services/sync/SyncCoordinator.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from '../_middleware/auth.js';
+import { SyncCoordinator } from '../_services/sync/SyncCoordinator.js';
 
 // Initialize Firebase Admin
 if (!getApps().length) {

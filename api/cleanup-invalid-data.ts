@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { CleanupService } from './services/CleanupService.js';
+import { CleanupService } from './_services/CleanupService.js';
 
 // Initialize Firebase Admin
 if (!getApps().length) {

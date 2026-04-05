@@ -49,6 +49,7 @@ import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import ViralContentPage from '../components/ViralContentPage';
+import SavedViralPage from './SavedViralPage';
 import ApiManagementPage from './ApiManagementPage';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import SuperAdminService from '../services/SuperAdminService';
@@ -2856,6 +2857,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'campaigns' && 'Campaigns'}
                 {activeTab === 'viral' && 'Viral Content'}
+                {activeTab === 'saved' && 'Saved Content'}
                 {activeTab === 'openclaw' && 'Open Claw'}
                 {activeTab === 'extension' && 'Extension'}
                 {activeTab === 'cron' && 'Cron Jobs'}
@@ -2870,6 +2872,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'campaigns' && 'Create and manage creator campaigns with rewards'}
                   {activeTab === 'viral' && 'Discover trending content across platforms'}
+                  {activeTab === 'saved' && 'Your bookmarked viral videos organized in folders'}
                   {activeTab === 'extension' && 'Supercharge your workflow with our browser extension'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
                   {activeTab === 'settings' && 'Configure your preferences'}
@@ -3859,6 +3862,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Viral Content Tab */}
           {activeTab === 'viral' && <div data-spotlight="content-viral"><ViralContentPage onRequiresPaidPlan={planTier === 'free' && !isDemoMode ? requiresPaidPlan : undefined} /></div>}
 
+          {/* Saved Viral Content Tab */}
+          {activeTab === 'saved' && <div data-spotlight="content-saved"><SavedViralPage /></div>}
+
           {/* Open Claw - API Keys Tab */}
           {activeTab === 'openclaw' && (
             <div data-spotlight="content-openclaw">
@@ -3878,7 +3884,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral', 'openclaw'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral', 'saved', 'openclaw'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

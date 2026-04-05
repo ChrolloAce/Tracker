@@ -6,8 +6,8 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { initializeFirebase } from '../../utils/firebase-admin.js';
-import { withApiAuth } from '../../middleware/apiKeyAuth.js';
+import { initializeFirebase } from '../../_utils/firebase-admin.js';
+import { withApiAuth } from '../../_middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 import {
   detectPlatform,
@@ -15,7 +15,7 @@ import {
   pollVideoUntilReady,
   formatVideoResponse,
 } from './syncHelpers.js';
-import { checkVideoLimit } from '../../utils/video-limits.js';
+import { checkVideoLimit } from '../../_utils/video-limits.js';
 
 const JOB_PRIORITY_USER_INITIATED = 100;
 

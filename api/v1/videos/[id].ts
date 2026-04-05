@@ -10,9 +10,9 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { initializeFirebase } from '../../utils/firebase-admin.js';
-import { withApiAuth } from '../../middleware/apiKeyAuth.js';
-import { getBaseUrl } from '../../utils/base-url.js';
+import { initializeFirebase } from '../../_utils/firebase-admin.js';
+import { withApiAuth } from '../../_middleware/apiKeyAuth.js';
+import { getBaseUrl } from '../../_utils/base-url.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 import { formatVideoResponse } from './syncHelpers.js';
 

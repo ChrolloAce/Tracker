@@ -1,8 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { JOB_PRIORITIES } from './constants/priorities.js';
-import { getBaseUrl } from './utils/base-url.js';
+import { JOB_PRIORITIES } from './_constants/priorities.js';
+import { getBaseUrl } from './_utils/base-url.js';
 
 // Refresh interval per plan tier (in hours)
 // Mirrors dataRefreshHours from src/types/subscription.ts
@@ -305,7 +305,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`      📋 Total jobs tracked: ${jobIds.length}`);
     
     // Conditional dispatch based on manual vs scheduled refresh
-    const { APIFY_CONCURRENCY_LIMIT } = await import('./constants/priorities.js');
+    const { APIFY_CONCURRENCY_LIMIT } = await import('./_constants/priorities.js');
     let immediatelyDispatched = 0;
     
     if (isManualRefresh) {

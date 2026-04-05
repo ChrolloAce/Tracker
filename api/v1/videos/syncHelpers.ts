@@ -4,7 +4,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
-import { getBaseUrl } from '../../utils/base-url.js';
+import { getBaseUrl } from '../../_utils/base-url.js';
 
 const BASE_URL = getBaseUrl();
 

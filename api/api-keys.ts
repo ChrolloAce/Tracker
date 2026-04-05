@@ -9,7 +9,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
+import { setCorsHeaders, handleCorsPreFlight } from './_middleware/auth.js';
 import { createHash, randomBytes } from 'crypto';
 
 const SUPER_ADMIN_EMAILS = ['ernesto@maktubtechnologies.com', 'mauriciobaronvergara@gmail.com'];
@@ -158,6 +158,8 @@ async function createApiKey(
     'projects:read', 'projects:write',
     'organizations:read',
     'viral:write',
+    'saved:read',
+    'saved:write',
     'creators:read',
   ];
 

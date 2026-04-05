@@ -3,11 +3,11 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
-import { ErrorNotificationService } from './services/ErrorNotificationService.js';
-import { CleanupService } from './services/CleanupService.js';
-import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './utils/resolve-tiktok-url.js';
-import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
-import { checkVideoLimit } from './utils/video-limits.js';
+import { ErrorNotificationService } from './_services/ErrorNotificationService.js';
+import { CleanupService } from './_services/CleanupService.js';
+import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './_utils/resolve-tiktok-url.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './_middleware/auth.js';
+import { checkVideoLimit } from './_utils/video-limits.js';
 // @ts-ignore - heic-convert has no types
 import convert from 'heic-convert';
 

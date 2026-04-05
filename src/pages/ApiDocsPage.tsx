@@ -1,20 +1,26 @@
-import React, { useState } from 'react';
-import { Copy, Check, ChevronRight, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Copy, Check, ChevronRight, ChevronDown, Shield } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import SuperAdminService from '../services/SuperAdminService';
 
 interface ApiEndpoint {
   name: string;
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   params?: { name: string; type: string; required?: boolean; description: string }[];
+  adminOnly?: boolean;
 }
 
 interface ApiSection {
   title: string;
   endpoints: ApiEndpoint[];
   isOpen: boolean;
+  adminOnly?: boolean;
 }
 
 const ApiDocsPage: React.FC = () => {
+  const { user } = useAuth();
+  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState('shell');
   const [sections, setSections] = useState<ApiSection[]>([
@@ -119,7 +125,7 @@ const ApiDocsPage: React.FC = () => {
       isOpen: false,
       endpoints: [
         {
-          name: 'List viral videos',
+          name: 'Browse viral videos',
           method: 'GET',
           path: '/v1/viral',
           params: [
@@ -144,37 +150,108 @@ const ApiDocsPage: React.FC = () => {
             { name: 'id', type: 'string', required: true, description: 'The viral video ID' },
           ],
         },
+      ]
+    },
+    {
+      title: 'Saved Content',
+      isOpen: false,
+      endpoints: [
         {
-          name: 'Add viral video (admin)',
-          method: 'POST',
-          path: '/v1/viral/admin',
+          name: 'List saved videos',
+          method: 'GET',
+          path: '/v1/saved',
           params: [
-            { name: 'url', type: 'string', required: true, description: 'Video URL' },
-            { name: 'platform', type: 'string', required: true, description: 'Platform: tiktok, instagram, youtube' },
+            { name: 'folderId', type: 'string', description: 'Filter by folder ID. Use "default" for unsorted' },
+          ],
+        },
+        {
+          name: 'Save a video',
+          method: 'POST',
+          path: '/v1/saved',
+          params: [
+            { name: 'url', type: 'string', required: true, description: 'Full video URL' },
+            { name: 'platform', type: 'string', required: true, description: 'Platform: tiktok, instagram, youtube, twitter' },
             { name: 'title', type: 'string', description: 'Video title' },
-            { name: 'description', type: 'string', description: 'Video description' },
-            { name: 'thumbnail', type: 'string', description: 'Thumbnail URL' },
+            { name: 'description', type: 'string', description: 'Video caption or description' },
             { name: 'uploaderHandle', type: 'string', description: 'Creator handle' },
-            { name: 'views', type: 'number', description: 'View count' },
-            { name: 'likes', type: 'number', description: 'Like count' },
-            { name: 'category', type: 'string', description: 'Content category' },
-            { name: 'tags', type: 'array', description: 'Array of tag strings' },
-            { name: 'contentType', type: 'string', description: 'video or slideshow' },
+            { name: 'thumbnail', type: 'string', description: 'Thumbnail URL' },
+            { name: 'contentType', type: 'string', description: 'Content type: video or slideshow. Default: video' },
+            { name: 'folderId', type: 'string', description: 'Folder to save into. Default: "default" (Unsorted)' },
           ],
         },
         {
-          name: 'Delete viral video (admin)',
+          name: 'Remove saved video',
           method: 'DELETE',
-          path: '/v1/viral/admin',
+          path: '/v1/saved',
           params: [
-            { name: 'id', type: 'string', required: true, description: 'Viral video ID to delete (query param)' },
+            { name: 'id', type: 'string', required: true, description: 'Saved video ID (query param)' },
           ],
         },
         {
-          name: 'Cleanup dead videos (admin)',
+          name: 'List folders',
+          method: 'GET',
+          path: '/v1/saved/folders',
+        },
+        {
+          name: 'Create folder',
           method: 'POST',
-          path: '/v1/viral/admin/cleanup',
-          params: [],
+          path: '/v1/saved/folders',
+          params: [
+            { name: 'name', type: 'string', required: true, description: 'Folder name' },
+          ],
+        },
+        {
+          name: 'Rename folder',
+          method: 'PATCH',
+          path: '/v1/saved/folders',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Folder ID (query param)' },
+            { name: 'name', type: 'string', required: true, description: 'New folder name' },
+          ],
+        },
+        {
+          name: 'Delete folder',
+          method: 'DELETE',
+          path: '/v1/saved/folders',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Folder ID (query param). Videos moved to Unsorted' },
+          ],
+        },
+      ]
+    },
+    {
+      title: 'Creators',
+      isOpen: false,
+      endpoints: [
+        {
+          name: 'List creators',
+          method: 'GET',
+          path: '/v1/creators',
+          params: [
+            { name: 'projectId', type: 'string', required: true, description: 'Project ID (not needed if key is project-scoped)' },
+            { name: 'limit', type: 'number', description: 'Max results (1-100). Default: 50' },
+            { name: 'offset', type: 'number', description: 'Pagination offset. Default: 0' },
+          ],
+        },
+        {
+          name: 'Get creator details',
+          method: 'GET',
+          path: '/v1/creators/{id}',
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Creator ID' },
+            { name: 'projectId', type: 'string', required: true, description: 'Project ID' },
+            { name: 'includeVideos', type: 'boolean', description: 'Include up to 50 recent videos. Default: false' },
+          ],
+        },
+        {
+          name: 'Creator leaderboard',
+          method: 'GET',
+          path: '/v1/creators/leaderboard',
+          params: [
+            { name: 'projectId', type: 'string', required: true, description: 'Project ID' },
+            { name: 'sortBy', type: 'string', description: 'Rank by: views, likes, comments, shares, engagement, videos. Default: views' },
+            { name: 'limit', type: 'number', description: 'Number of entries (1-50). Default: 10' },
+          ],
         },
       ]
     },
@@ -186,11 +263,67 @@ const ApiDocsPage: React.FC = () => {
         { name: 'Create new project', method: 'POST', path: '/v1/projects' },
       ]
     },
+    {
+      title: 'Viral Admin',
+      isOpen: false,
+      adminOnly: true,
+      endpoints: [
+        {
+          name: 'Add viral video',
+          method: 'POST',
+          path: '/v1/viral/admin',
+          adminOnly: true,
+          params: [
+            { name: 'url', type: 'string', required: true, description: 'Video URL' },
+            { name: 'platform', type: 'string', required: true, description: 'Platform: tiktok, instagram, youtube' },
+            { name: 'title', type: 'string', description: 'Video title' },
+            { name: 'description', type: 'string', description: 'Video description' },
+            { name: 'thumbnail', type: 'string', description: 'Thumbnail URL' },
+            { name: 'uploaderHandle', type: 'string', description: 'Creator handle' },
+            { name: 'views', type: 'number', description: 'View count (auto-fetched if omitted)' },
+            { name: 'likes', type: 'number', description: 'Like count (auto-fetched if omitted)' },
+            { name: 'category', type: 'string', description: 'Content category' },
+            { name: 'tags', type: 'array', description: 'Array of tag strings' },
+            { name: 'contentType', type: 'string', description: 'video or slideshow. Default: video' },
+            { name: 'folderId', type: 'string', description: 'Also save to this folder in your org' },
+            { name: 'enrich', type: 'boolean', description: 'Auto-scrape metrics via Apify. Default: true' },
+          ],
+        },
+        {
+          name: 'Delete viral video',
+          method: 'DELETE',
+          path: '/v1/viral/admin',
+          adminOnly: true,
+          params: [
+            { name: 'id', type: 'string', required: true, description: 'Viral video ID to delete (query param)' },
+          ],
+        },
+        {
+          name: 'Cleanup dead videos',
+          method: 'POST',
+          path: '/v1/viral/admin/cleanup',
+          adminOnly: true,
+        },
+      ]
+    },
   ]);
 
+  // Filter sections based on admin status
+  const visibleSections = useMemo(() => {
+    return sections
+      .filter((s) => !s.adminOnly || isSuperAdmin)
+      .map((s) => ({
+        ...s,
+        endpoints: s.endpoints.filter((e) => !e.adminOnly || isSuperAdmin),
+      }));
+  }, [sections, isSuperAdmin]);
+
   const toggleSection = (index: number) => {
-    setSections(prev => prev.map((section, i) => 
-      i === index ? { ...section, isOpen: !section.isOpen } : section
+    // Find the actual section index in the full array
+    const visibleSection = visibleSections[index];
+    const realIndex = sections.findIndex((s) => s.title === visibleSection.title);
+    setSections(prev => prev.map((section, i) =>
+      i === realIndex ? { ...section, isOpen: !section.isOpen } : section
     ));
   };
 
@@ -205,6 +338,7 @@ const ApiDocsPage: React.FC = () => {
       case 'GET': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
       case 'POST': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'PUT': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      case 'PATCH': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'DELETE': return 'bg-red-500/20 text-red-400 border-red-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
@@ -278,13 +412,16 @@ data = JSON.parse(response.body)`
           </div>
 
           {/* API Sections */}
-          {sections.map((section, index) => (
+          {visibleSections.map((section, index) => (
             <div key={index} className="mb-4">
               <button
                 onClick={() => toggleSection(index)}
                 className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded transition-colors"
               >
-                <span>{section.title}</span>
+                <span className="flex items-center gap-1.5">
+                  {section.adminOnly && <Shield className="w-3 h-3 text-red-400" />}
+                  {section.title}
+                </span>
                 {section.isOpen ? (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 ) : (
@@ -395,9 +532,13 @@ data = JSON.parse(response.body)`
 
           {/* API Endpoints Documentation */}
           <section className="space-y-12">
-            {sections.map((section, sectionIndex) => (
+            {visibleSections.map((section, sectionIndex) => (
               <div key={sectionIndex} className="space-y-6">
-                <h2 className="text-2xl font-bold text-white">{section.title}</h2>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  {section.adminOnly && <Shield className="w-5 h-5 text-red-400" />}
+                  {section.title}
+                  {section.adminOnly && <span className="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">Admin Only</span>}
+                </h2>
                 <p className="text-gray-400 -mt-2">Manage and monitor {section.title.toLowerCase()}</p>
                 
                 {section.endpoints.map((endpoint, endpointIndex) => (

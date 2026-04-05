@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getBaseUrl } from './utils/base-url.js';
+import { getBaseUrl } from './_utils/base-url.js';
 
 /**
  * Manual trigger for queue-worker

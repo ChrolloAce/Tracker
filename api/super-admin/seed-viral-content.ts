@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { setCorsHeaders, handleCorsPreFlight, authenticateSuperAdmin } from '../middleware/auth.js';
+import { setCorsHeaders, handleCorsPreFlight, authenticateSuperAdmin } from '../_middleware/auth.js';
 
 // ─── Firebase init ───────────────────────────────────────
 function initializeFirebase() {

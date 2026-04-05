@@ -597,6 +597,20 @@ service cloud.firestore {
         }
       }
       
+      // ==================== SAVED VIRAL CONTENT ====================
+
+      match /savedViralContent/{savedId} {
+        allow read: if canReadOrg(orgId);
+        allow create: if canWriteOrg(orgId);
+        allow update, delete: if canWriteOrg(orgId);
+      }
+
+      match /savedViralFolders/{folderId} {
+        allow read: if canReadOrg(orgId);
+        allow create: if canWriteOrg(orgId);
+        allow update, delete: if canWriteOrg(orgId);
+      }
+
       // ==================== TRACKED ACCOUNTS (Legacy - for migration) ====================
       
       match /trackedAccounts/{accountId} {
@@ -739,6 +753,14 @@ service cloud.firestore {
       allow delete: if isSignedIn();
     }
     
+    // ==================== PUBLIC FOLDER SHARES ====================
+
+    match /publicFolderShares/{token} {
+      allow read: if true; // Public read for shared folder links
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
     // ==================== VIRAL CONTENT LIBRARY ====================
     
     // Curated viral content — any signed-in user can browse,

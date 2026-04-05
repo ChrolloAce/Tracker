@@ -3,7 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
-import { progressiveFetchVideos } from './utils/progressive-video-fetch.js';
+import { progressiveFetchVideos } from './_utils/progressive-video-fetch.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {

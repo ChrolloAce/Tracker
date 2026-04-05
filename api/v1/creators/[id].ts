@@ -5,8 +5,8 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeFirebase } from '../../utils/firebase-admin.js';
-import { withApiAuth } from '../../middleware/apiKeyAuth.js';
+import { initializeFirebase } from '../../_utils/firebase-admin.js';
+import { withApiAuth } from '../../_middleware/apiKeyAuth.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 import { getCreatorById } from './statsHelper.js';
 

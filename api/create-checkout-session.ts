@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import { getFrontendUrl } from './utils/base-url.js';
-import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
+import { getFrontendUrl } from './_utils/base-url.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight } from './_middleware/auth.js';
 
 /**
  * Create a Stripe Checkout session

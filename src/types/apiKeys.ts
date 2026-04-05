@@ -44,6 +44,8 @@ export type ApiKeyScope =
   | 'projects:write'
   | 'organizations:read'
   | 'viral:write'
+  | 'saved:read'
+  | 'saved:write'
   | 'creators:read';
 
 export interface ApiKeyCreateRequest {

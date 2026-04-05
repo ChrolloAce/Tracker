@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { runApifyActor } from './apify-client';
-import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './utils/resolve-tiktok-url';
+import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './_utils/resolve-tiktok-url';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {

@@ -16,6 +16,7 @@ import {
   MessageCircle,
   Shield,
   Flame,
+  Bookmark,
   Activity,
   RefreshCw,
   Key
@@ -185,6 +186,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             icon: Flame,
             href: `${baseHref}/viral`,
           },
+          {
+            id: 'saved',
+            label: 'Saved',
+            icon: Bookmark,
+            href: `${baseHref}/saved`,
+          },
         ]
       },
     ];
@@ -230,7 +237,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           item.id !== 'analytics' &&
           item.id !== 'extension' &&
           item.id !== 'creators' &&
-          item.id !== 'viral' // Hide Discover/Viral Content for creators
+          item.id !== 'viral' && // Hide Discover/Viral Content for creators
+          item.id !== 'saved' // Hide Saved for creators
         );
       });
     }

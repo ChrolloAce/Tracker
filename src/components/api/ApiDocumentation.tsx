@@ -25,6 +25,8 @@ API keys are scoped with permissions. Each key can have any combination of:
 - projects:write — Create projects
 - organizations:read — Read org-level data
 - creators:read — View creator profiles, stats, and leaderboards
+- saved:read — Read saved/bookmarked content
+- saved:write — Save/unsave videos and manage folders
 
 Rate Limit: 100 requests per minute per API key.
 Rate limit headers are included in every response:
@@ -773,6 +775,340 @@ Response:
 
 ---
 
+### 7. Viral Content Library
+
+#### GET /api/v1/viral
+Browse the curated viral content library with filtering and pagination.
+
+Required scope: \`analytics:read\`
+
+Query parameters:
+| Parameter   | Type   | Required | Default | Description |
+|-------------|--------|----------|---------|-------------|
+| platform    | string | no       | —       | Filter: tiktok, instagram, youtube |
+| category    | string | no       | —       | Filter by category (e.g. "Business & Finance") |
+| contentType | string | no       | —       | Filter: video, slideshow |
+| tags        | string | no       | —       | Comma-separated tag filter |
+| search      | string | no       | —       | Search title, description, handle, tags |
+| minViews    | number | no       | —       | Minimum view count |
+| maxViews    | number | no       | —       | Maximum view count |
+| sortBy      | string | no       | views   | Sort: views, likes, comments, shares, saves, uploadDate, addedAt, order |
+| sortOrder   | string | no       | desc    | Sort order: asc, desc |
+| limit       | number | no       | 20      | Max results (capped at 100) |
+| offset      | number | no       | 0       | Pagination offset |
+
+Response:
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "videos": [
+      {
+        "id": "abc123",
+        "url": "https://tiktok.com/@user/video/123",
+        "platform": "tiktok",
+        "title": "Video title",
+        "description": "Full caption",
+        "thumbnail": "https://...",
+        "contentType": "video",
+        "category": "Business & Finance",
+        "tags": ["marketing", "saas"],
+        "uploaderHandle": "username",
+        "followerCount": 50000,
+        "metrics": {
+          "views": 1500000,
+          "likes": 85000,
+          "comments": 3200,
+          "shares": 12000,
+          "saves": 5000
+        },
+        "uploadDate": "2026-03-15T12:00:00.000Z",
+        "addedAt": "2026-03-20T17:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "limit": 20,
+      "offset": 0,
+      "total": 1500,
+      "returned": 20,
+      "hasMore": true
+    }
+  }
+}
+\`\`\`
+
+
+---
+
+### 8. Viral Admin (Admin Only)
+
+These endpoints require the \`viral:write\` scope and are intended for admin use only.
+
+#### POST /api/v1/viral/admin
+Add a video to the viral content library. Automatically enriches with real metrics via Apify, transcribes the video, and runs AI analysis in the background.
+
+Required scope: \`viral:write\`
+
+Request body:
+| Field          | Type     | Required | Default | Description |
+|----------------|----------|----------|---------|-------------|
+| url            | string   | yes      | —       | Full video URL |
+| platform       | string   | yes      | —       | Platform: tiktok, instagram, youtube, twitter |
+| title          | string   | no       | ""      | Video title (auto-filled by scraper if empty) |
+| description    | string   | no       | ""      | Caption (auto-filled by scraper if empty) |
+| uploaderHandle | string   | no       | ""      | Creator handle (auto-filled by scraper if empty) |
+| thumbnail      | string   | no       | ""      | Thumbnail URL (auto-filled by scraper if empty) |
+| contentType    | string   | no       | "video" | Content type: video, slideshow |
+| category       | string   | no       | ""      | Category name |
+| tags           | string[] | no       | []      | Array of tag strings |
+| views          | number   | no       | 0       | View count (overwritten by scraper) |
+| likes          | number   | no       | 0       | Like count (overwritten by scraper) |
+| comments       | number   | no       | 0       | Comment count (overwritten by scraper) |
+| shares         | number   | no       | 0       | Share count (overwritten by scraper) |
+| saves          | number   | no       | 0       | Save count (overwritten by scraper) |
+| followerCount  | number   | no       | 0       | Creator follower count |
+| folderId       | string   | no       | —       | Also save to this folder in your org's saved collection |
+| enrich         | boolean  | no       | true    | Auto-scrape metrics, transcribe, and AI-analyze |
+
+\`\`\`json
+// Request — just a URL and platform, everything else is auto-filled
+POST /api/v1/viral/admin
+{
+  "url": "https://www.tiktok.com/@user/video/123",
+  "platform": "tiktok",
+  "folderId": "myFolder123"
+}
+
+// Response (201 Created) — returns immediately
+{
+  "success": true,
+  "data": {
+    "id": "newViralId123",
+    "url": "https://www.tiktok.com/@user/video/123",
+    "platform": "tiktok",
+    "enriching": true,
+    "enrichmentStatus": "pending",
+    "savedToFolder": "myFolder123"
+  }
+}
+\`\`\`
+
+**Background enrichment pipeline** (runs automatically after response):
+
+1. **Scraping** (\`enrichmentStatus: "scraping"\`) — Calls Apify/YouTube API to fetch real metrics:
+   - TikTok: views, likes, comments, shares, saves, thumbnail, handle, follower count, duration, media URL
+   - Instagram: same via hpix~ig-reels-scraper
+   - YouTube: via YouTube Data API v3
+   - Twitter: via gentle_cloud/twitter-tweets-scraper
+
+2. **Transcription** (\`enrichmentStatus: "transcribing"\`):
+   - YouTube: free platform captions via innertube API
+   - TikTok/Instagram/Twitter: OpenAI Whisper API (downloads video file, transcribes)
+   - Stores: full transcript text, language, timestamped segments, word count
+
+3. **AI Analysis** (\`enrichmentStatus: "analyzing"\`) — GPT-4o-mini analyzes the video and returns:
+   - \`productDetected\`: boolean — is a product being promoted?
+   - \`productName\`: string — the product/brand name
+   - \`productType\`: "app", "saas", "physical_product", "digital_product", "service", "course", "supplement", "fashion", "food", "other"
+   - \`productCategory\`: specific category (e.g. "fitness app", "AI writing tool")
+   - \`contentCategory\`: auto-categorized (Business & Finance, Tech, etc.)
+   - \`hook\`: the hook/opening strategy used
+   - \`viralFactors\`: 2-4 factors that made it go viral
+   - \`targetAudience\`: who the video targets
+   - \`contentFormat\`: "talking_head", "tutorial", "storytime", "skit", "product_review", etc.
+
+Final \`enrichmentStatus\`: "completed" or "failed"
+
+Set \`"enrich": false\` to skip all enrichment and just store the raw data.
+
+Duplicate detection: Returns 409 if a video with the same URL already exists.
+
+---
+
+#### DELETE /api/v1/viral/admin?id=xxx
+Remove a video from the viral content library.
+
+Required scope: \`viral:write\`
+
+Response:
+\`\`\`json
+{ "success": true, "data": { "id": "xxx", "deleted": true } }
+\`\`\`
+
+---
+
+#### POST /api/v1/viral/admin/cleanup
+Batch cleanup dead/broken videos from the viral library. Admin only.
+
+Required scope: \`viral:write\`
+
+---
+
+### 9. Saved Content & Folders
+
+Save/bookmark videos to your organization's personal library, organized into folders.
+
+#### GET /api/v1/saved
+List all saved videos, optionally filtered by folder.
+
+Required scope: \`saved:write\`
+
+Query parameters:
+| Parameter | Type   | Required | Default | Description |
+|-----------|--------|----------|---------|-------------|
+| folderId  | string | no       | —       | Filter to a specific folder. Use "default" for unsorted |
+
+Response:
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "videos": [
+      {
+        "id": "docId",
+        "videoId": "docId",
+        "folderId": "default",
+        "savedAt": "2026-04-01T12:00:00.000Z",
+        "video": {
+          "url": "https://tiktok.com/@user/video/123",
+          "platform": "tiktok",
+          "title": "Saved video",
+          "thumbnail": "https://...",
+          "views": 500000,
+          "likes": 20000
+        }
+      }
+    ],
+    "total": 15
+  }
+}
+\`\`\`
+
+---
+
+#### POST /api/v1/saved
+Save a video to your library.
+
+Required scope: \`saved:write\`
+
+Request body:
+| Field          | Type     | Required | Default   | Description |
+|----------------|----------|----------|-----------|-------------|
+| url            | string   | yes      | —         | Full video URL |
+| platform       | string   | yes      | —         | Platform: tiktok, instagram, youtube, twitter |
+| title          | string   | no       | ""        | Video title |
+| description    | string   | no       | ""        | Caption |
+| uploaderHandle | string   | no       | ""        | Creator handle |
+| thumbnail      | string   | no       | ""        | Thumbnail URL |
+| contentType    | string   | no       | "video"   | Content type: video, slideshow |
+| folderId       | string   | no       | "default" | Folder to save into |
+
+\`\`\`json
+// Request
+POST /api/v1/saved
+{
+  "url": "https://www.tiktok.com/@user/video/123",
+  "platform": "tiktok",
+  "title": "Great video",
+  "uploaderHandle": "user",
+  "folderId": "myFolder123"
+}
+
+// Response (201 Created)
+{
+  "success": true,
+  "data": {
+    "id": "base64urlEncodedId",
+    "folderId": "myFolder123",
+    "video": { ... }
+  }
+}
+\`\`\`
+
+---
+
+#### DELETE /api/v1/saved?id=xxx
+Remove a saved video.
+
+Required scope: \`saved:write\`
+
+Response:
+\`\`\`json
+{ "success": true, "data": { "id": "xxx", "deleted": true } }
+\`\`\`
+
+---
+
+#### GET /api/v1/saved/folders
+List all folders.
+
+Required scope: \`saved:write\`
+
+Response:
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "folders": [
+      { "id": "folder123", "name": "Inspiration", "createdAt": "2026-04-01T12:00:00.000Z" },
+      { "id": "folder456", "name": "Competitors", "createdAt": "2026-04-02T10:00:00.000Z" }
+    ]
+  }
+}
+\`\`\`
+
+---
+
+#### POST /api/v1/saved/folders
+Create a new folder.
+
+Required scope: \`saved:write\`
+
+Request body:
+| Field | Type   | Required | Description |
+|-------|--------|----------|-------------|
+| name  | string | yes      | Folder name |
+
+\`\`\`json
+// Request
+POST /api/v1/saved/folders
+{ "name": "My Inspiration" }
+
+// Response (201 Created)
+{ "success": true, "data": { "id": "newFolderId", "name": "My Inspiration" } }
+\`\`\`
+
+---
+
+#### PATCH /api/v1/saved/folders?id=xxx
+Rename a folder.
+
+Required scope: \`saved:write\`
+
+Request body:
+| Field | Type   | Required | Description |
+|-------|--------|----------|-------------|
+| name  | string | yes      | New folder name |
+
+Response:
+\`\`\`json
+{ "success": true, "data": { "id": "xxx", "name": "New Name" } }
+\`\`\`
+
+---
+
+#### DELETE /api/v1/saved/folders?id=xxx
+Delete a folder. Videos inside are moved to "Unsorted" (default).
+
+Required scope: \`saved:write\`
+
+Response:
+\`\`\`json
+{ "success": true, "data": { "id": "xxx", "deleted": true, "videosMoved": 5 } }
+\`\`\`
+
+---
+
 ## Common Workflows
 
 ### Workflow 1: Track a new video and get its data
@@ -834,6 +1170,27 @@ Response:
 
 2. GET /api/v1/refreshes?startDate=2025-06-01&endDate=2025-06-30
    → See when data was last refreshed and any failures
+\`\`\`
+
+### Workflow 6: Save a video from a browser extension
+\`\`\`
+1. GET /api/v1/saved/folders
+   → Show folder picker to the user
+
+2. POST /api/v1/saved  { url, platform, title, ..., folderId }
+   → Saves to user's personal library in the chosen folder
+\`\`\`
+
+### Workflow 7: Organize saved content
+\`\`\`
+1. POST /api/v1/saved/folders  { name: "Competitors" }
+   → Create a new folder
+
+2. GET /api/v1/saved
+   → List all saved videos
+
+3. GET /api/v1/saved?folderId=folder123
+   → List videos in a specific folder
 \`\`\`
 
 ---

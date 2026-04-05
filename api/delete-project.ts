@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
+import { setCorsHeaders, handleCorsPreFlight } from './_middleware/auth.js';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';

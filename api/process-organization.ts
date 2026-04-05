@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
-import { getBaseUrl } from './utils/base-url.js';
+import { getBaseUrl } from './_utils/base-url.js';
 
 // Initialize Firebase Admin
 function initializeFirebase() {

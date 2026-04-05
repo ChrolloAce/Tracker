@@ -1,19 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
-import { initializeFirebase } from './utils/firebase-admin.js';
+import { initializeFirebase } from './_utils/firebase-admin.js';
 import { runApifyActor } from './apify-client.js';
-import { ErrorNotificationService } from './services/ErrorNotificationService.js';
-import { CleanupService } from './services/CleanupService.js';
-import { ImageUploadService } from './services/sync/shared/ImageUploadService.js';
-import { VideoStorageService } from './services/sync/shared/VideoStorageService.js';
-import { SyncSessionService } from './services/sync/shared/SyncSessionService.js';
-import { LockService } from './services/sync/shared/LockService.js';
-import { InstagramSyncService } from './services/sync/instagram/InstagramSyncService.js';
-import { TikTokSyncService } from './services/sync/tiktok/TikTokSyncService.js';
-import { YoutubeSyncService } from './services/sync/youtube/YoutubeSyncService.js';
-import { TwitterSyncService } from './services/sync/twitter/TwitterSyncService.js';
-import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
-import { checkVideoLimit } from './utils/video-limits.js';
+import { ErrorNotificationService } from './_services/ErrorNotificationService.js';
+import { CleanupService } from './_services/CleanupService.js';
+import { ImageUploadService } from './_services/sync/shared/ImageUploadService.js';
+import { VideoStorageService } from './_services/sync/shared/VideoStorageService.js';
+import { SyncSessionService } from './_services/sync/shared/SyncSessionService.js';
+import { LockService } from './_services/sync/shared/LockService.js';
+import { InstagramSyncService } from './_services/sync/instagram/InstagramSyncService.js';
+import { TikTokSyncService } from './_services/sync/tiktok/TikTokSyncService.js';
+import { YoutubeSyncService } from './_services/sync/youtube/YoutubeSyncService.js';
+import { TwitterSyncService } from './_services/sync/twitter/TwitterSyncService.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './_middleware/auth.js';
+import { checkVideoLimit } from './_utils/video-limits.js';
 
 // Initialize Firebase Admin
 const { db } = initializeFirebase();

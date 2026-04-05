@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
-import { setCorsHeaders, handleCorsPreFlight, authenticateAndVerifyOrg } from './middleware/auth.js';
+import { setCorsHeaders, handleCorsPreFlight, authenticateAndVerifyOrg } from './_middleware/auth.js';
 
 function initializeFirebase() {
   if (require('firebase-admin').apps.length === 0) {

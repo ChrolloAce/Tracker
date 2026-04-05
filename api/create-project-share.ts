@@ -12,9 +12,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { randomBytes } from 'crypto';
-import { initializeFirebase } from './utils/firebase-admin.js';
-import { authenticateAndVerifyOrg } from './middleware/auth.js';
-import { setCorsHeaders, handleCorsPreFlight } from './middleware/auth.js';
+import { initializeFirebase } from './_utils/firebase-admin.js';
+import { authenticateAndVerifyOrg } from './_middleware/auth.js';
+import { setCorsHeaders, handleCorsPreFlight } from './_middleware/auth.js';
 
 initializeFirebase();
 const db = getFirestore();
