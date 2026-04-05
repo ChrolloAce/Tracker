@@ -84,19 +84,13 @@ async function fetchAppleReports(
 ): Promise<any[]> {
   const url = new URL('https://api.appstoreconnect.apple.com/v1/salesReports');
   url.searchParams.append('filter[frequency]', 'DAILY');
+  // SUBSCRIBER uses DETAILED subtype; SALES uses SUMMARY
+  url.searchParams.append('filter[reportSubType]', reportType === 'SUBSCRIBER' ? 'DETAILED' : 'SUMMARY');
   url.searchParams.append('filter[reportType]', reportType);
   url.searchParams.append('filter[vendorNumber]', vendorNumber);
   url.searchParams.append('filter[reportDate]', reportDate);
-
-  // SUBSCRIBER reports require DETAILED subtype and version 1_3
-  // SALES reports use SUMMARY subtype and version 1_0
-  if (reportType === 'SUBSCRIBER') {
-    url.searchParams.append('filter[reportSubType]', 'DETAILED');
-    url.searchParams.append('filter[version]', '1_3');
-  } else {
-    url.searchParams.append('filter[reportSubType]', 'SUMMARY');
-    url.searchParams.append('filter[version]', '1_0');
-  }
+  // Version is required — SUBSCRIBER uses 1_3, SALES uses 1_0
+  url.searchParams.append('filter[version]', reportType === 'SUBSCRIBER' ? '1_3' : '1_0');
 
   // Retry logic for 500 errors (Apple's server issues)
   let lastError: Error | null = null;
@@ -344,18 +338,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         salesResult.data = salesRes.value;
         salesResult.success = true;
       } else if (salesRes.status === 'rejected') {
-        console.warn(`  ⚠️ SALES fetch failed for ${reportDate}: ${salesRes.reason?.message || salesRes.reason}`);
+        console.warn(`  ⚠️ ${reportDate} SALES failed: ${salesRes.reason?.message || salesRes.reason}`);
       }
 
       if (subRes.status === 'fulfilled' && subRes.value.length > 0) {
         subResult.data = subRes.value;
         subResult.success = true;
       } else if (subRes.status === 'rejected') {
-        console.warn(`  ⚠️ SUBSCRIBER fetch failed for ${reportDate}: ${subRes.reason?.message || subRes.reason}`);
+        console.warn(`  ⚠️ ${reportDate} SUBSCRIBER failed: ${subRes.reason?.message || subRes.reason}`);
       }
 
       if (salesResult.success || subResult.success) {
-        console.log(`  ✓ ${reportDate}: ${salesResult.data.length} sales + ${subResult.data.length} subscriber records (${index + 1}/${datesToFetch.length})`);
+        console.log(`  ✓ ${reportDate}: ${salesResult.data.length} sales + ${subResult.data.length} subs (${index + 1}/${datesToFetch.length})`);
       }
 
       return { date: reportDate, sales: salesResult, subscriptions: subResult };
@@ -395,7 +389,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (allSubscriptionData.length > 0) {
       console.log('📋 Sample SUBSCRIBER record columns:', Object.keys(allSubscriptionData[0]));
-      console.log('📋 Sample SUBSCRIBER record data:', allSubscriptionData[0]);
+      console.log('📋 Sample SUBSCRIBER data:', allSubscriptionData[0]);
+    } else {
+      console.log('⚠️ No SUBSCRIBER records returned from Apple');
     }
 
     // Helper to ensure a daily entry exists
@@ -434,38 +430,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // --- Process SUBSCRIBER records (per-transaction subscription revenue) ---
-    // SUBSCRIBER report columns: Event Date, App Name, App Apple ID, Subscription Name,
-    // Subscription Apple ID, Developer Proceeds, Proceeds Currency, Customer Price,
-    // Customer Currency, Device, Country, Subscriber ID, Units, Event Date, Purchase Date, etc.
+    // The SUBSCRIBER report has: Event Date, App Apple ID, Subscription Name,
+    // Developer Proceeds, Proceeds Currency, Customer Price, Customer Currency,
+    // Units, Subscriber ID, Refund, Purchase Date, etc.
+    //
+    // IMPORTANT: Developer Proceeds are in the local currency (Proceeds Currency).
+    // Apple does NOT convert to a single currency. For now we sum proceeds as-is
+    // since most US-based apps earn primarily in USD. The currency is logged for
+    // future multi-currency support.
     let subsFiltered = 0;
     let subsSkipped = 0;
+    const currencySeen = new Set<string>();
+
     allSubscriptionData.forEach(record => {
       const recordAppleId = record['App Apple ID'] || record['Apple Identifier'] || record['apple_identifier'];
       if (!matchesApp(recordAppleId)) { subsSkipped++; return; }
       subsFiltered++;
 
-      const units = parseInt(record['Units'] || record['Quantity'] || '1');
+      const units = parseInt(record['Units'] || record['Quantity'] || '0');
       const proceeds = parseFloat(record['Developer Proceeds'] || record['developer_proceeds'] || '0');
+      const proceedsCurrency = record['Proceeds Currency'] || record['proceeds_currency'] || 'USD';
       const eventDate = record['Event Date'] || record['Begin Date'] || record['event_date'] || '';
-      const isRefund = record['Refund'] === 'Yes' || record['Refund'] === 'true';
+      const isRefund = (record['Refund'] || '').trim() !== '';
+      const purchaseDate = record['Purchase Date'] || '';
 
-      // Calculate revenue: proceeds * units, negative for refunds
-      const revenue = isRefund ? -(proceeds * units) : (proceeds * units);
-      totalSubscriptionRevenue += revenue;
-      totalRevenue += revenue;
+      currencySeen.add(proceedsCurrency);
 
-      // Count subscriptions (each record is a transaction)
-      if (proceeds > 0 && !isRefund) {
+      // Revenue per record = proceeds * units (refunds have negative proceeds or are flagged)
+      const recordRevenue = isRefund ? -(Math.abs(proceeds) * units) : proceeds * units;
+
+      totalSubscriptionRevenue += recordRevenue;
+      totalRevenue += recordRevenue;
+
+      // Count subscriptions (units > 0 and not a refund = active subscription event)
+      if (units > 0 && !isRefund) {
         newSubscriptions += units;
         activeSubscriptions += units;
       }
 
       if (eventDate) {
         ensureDay(eventDate);
-        dailyBreakdown[eventDate].subscriptionRevenue += revenue;
-        dailyBreakdown[eventDate].revenue += revenue;
+        dailyBreakdown[eventDate].subscriptionRevenue += recordRevenue;
+        dailyBreakdown[eventDate].revenue += recordRevenue;
       }
     });
+
+    if (currencySeen.size > 0) {
+      console.log(`💱 Currencies seen in subscriber data: ${Array.from(currencySeen).join(', ')}`);
+      if (currencySeen.size > 1) {
+        console.warn('⚠️ Multiple currencies detected — revenue totals are approximate (not converted to single currency)');
+      }
+    }
 
     // Convert daily breakdown to array and sort by date
     const dailyMetrics = Object.entries(dailyBreakdown)
@@ -586,7 +601,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         activeSubscriptions,
         newSubscriptions,
         salesRecords: allSalesData.length,
-        subscriptionRecords: allSubscriptionData.length,
+        subscriberRecords: allSubscriptionData.length,
         dailyDataPoints: mergedDailyMetrics.length,
         lastSynced: new Date().toISOString()
       }
