@@ -187,4 +187,19 @@ async function deleteFolder(
 
 // ─── Export ─────────────────────────────────────────────
 
-export default withApiAuth(['saved:write'] as any, handler);
+// Accept saved:write OR viral:write (extensions may only have viral:write)
+export default function routeHandler(req: VercelRequest, res: VercelResponse) {
+  return withApiAuth([] as any, async (innerReq, innerRes, auth) => {
+    const scopes = auth.apiKey.scopes;
+    if (!scopes.includes('saved:write' as any) && !scopes.includes('viral:write' as any)) {
+      return innerRes.status(403).json({
+        success: false,
+        error: {
+          message: 'Missing required scope: saved:write or viral:write. Your key has: ' + scopes.join(', '),
+          code: 'FORBIDDEN',
+        },
+      });
+    }
+    return handler(innerReq, innerRes, auth);
+  })(req, res);
+}

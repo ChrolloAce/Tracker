@@ -26,16 +26,27 @@ async function handler(
   res: VercelResponse,
   auth: AuthenticatedApiRequest
 ) {
-  switch (req.method) {
-    case 'POST':
-      return await addViralVideo(req, res, auth);
-    case 'DELETE':
-      return await removeViralVideo(req, res, auth);
-    default:
-      return res.status(405).json({
-        success: false,
-        error: { message: 'Method not allowed. Use POST or DELETE.', code: 'METHOD_NOT_ALLOWED' }
-      });
+  try {
+    switch (req.method) {
+      case 'POST':
+        return await addViralVideo(req, res, auth);
+      case 'DELETE':
+        return await removeViralVideo(req, res, auth);
+      default:
+        return res.status(405).json({
+          success: false,
+          error: { message: 'Method not allowed. Use POST or DELETE.', code: 'METHOD_NOT_ALLOWED' }
+        });
+    }
+  } catch (error: any) {
+    console.error('❌ [VIRAL ADMIN] Handler error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: error.message || 'Internal server error',
+        code: 'INTERNAL_ERROR',
+      },
+    });
   }
 }
 
