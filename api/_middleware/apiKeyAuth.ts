@@ -82,7 +82,7 @@ export async function authenticateApiKey(
   }
   
   const keyDoc = keysSnapshot.docs[0];
-  const keyData = keyDoc.data() as ApiKey;
+  const keyData = { ...keyDoc.data(), id: keyDoc.id } as ApiKey;
 
   // Check status client-side instead of in query (avoids composite index)
   if (keyData.status !== 'active') {
