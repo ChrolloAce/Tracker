@@ -805,143 +805,109 @@ const CreateContractPage: React.FC = () => {
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Live Preview</span>
             </div>
             
-            {/* Legal Document Paper */}
-            <div 
-              className="bg-white relative overflow-hidden"
-              style={{ 
-                fontFamily: '"Times New Roman", Times, Georgia, serif',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15), inset 0 0 60px rgba(0,0,0,0.02)'
-              }}
-            >
-              {/* Double border frame */}
-              <div className="absolute inset-3 border-2 border-gray-300 pointer-events-none"></div>
-              <div className="absolute inset-4 border border-gray-200 pointer-events-none"></div>
-              
-              {/* Watermark */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-100 text-4xl font-bold rotate-[-30deg] pointer-events-none select-none tracking-[0.2em] opacity-30">
-                DRAFT
-              </div>
-              
-              {/* Document content */}
-              <div className="p-8 relative z-10">
-                {/* Header */}
+            {/* Clean Document Preview */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              <div className="p-8">
+                {/* Title */}
                 <div className="text-center mb-6">
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-gray-400"></div>
-                    <span className="text-[10px] text-gray-400 tracking-[0.15em]">LEGAL DOCUMENT</span>
-                    <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-gray-400"></div>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 tracking-[0.1em] uppercase">
-                    {contractTitle || 'CONTENT CREATOR AGREEMENT'}
+                  <h3 className="text-lg font-bold text-gray-900 tracking-wide uppercase">
+                    {contractTitle || 'Content Creator Agreement'}
                   </h3>
-                  <p className="text-[10px] text-gray-500 mt-1">Independent Contractor Services Contract</p>
+                  <div className="w-12 h-px bg-gray-300 mx-auto mt-3" />
                 </div>
 
-                {/* Preamble */}
-                <p className="text-[11px] text-gray-700 text-justify leading-relaxed mb-4">
-                  <strong>THIS AGREEMENT</strong> is entered into as of{' '}
-                  <span className="underline">
-                    {contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '[DATE]'}
-                  </span>{' '}
-                  by and between the parties identified herein.
+                {/* Intro */}
+                <p className="text-[11px] text-gray-600 text-center leading-relaxed mb-5">
+                  This Agreement is entered into as of{' '}
+                  <span className="font-semibold text-gray-800">
+                    {contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '[Date]'}
+                  </span>,
+                  by and between the parties identified below.
                 </p>
 
-                {/* Parties Section */}
-                <div className="mb-4">
-                  <div className="text-[10px] font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">
-                    ARTICLE I — PARTIES
+                {/* Parties */}
+                <div className="grid grid-cols-2 gap-4 mb-5 py-3 border-y border-gray-200">
+                  <div>
+                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Company</p>
+                    <p className="text-gray-900 font-semibold text-sm">{companyName || '[Company Name]'}</p>
+                    {companyEmail && <p className="text-gray-500 text-[10px]">{companyEmail}</p>}
+                    {companyPhone && <p className="text-gray-500 text-[10px]">{companyPhone}</p>}
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-[11px]">
-                    <div className="border-l-2 border-gray-800 pl-3">
-                      <div className="text-[9px] text-gray-500 uppercase mb-1">Section 1.1 — Company</div>
-                      <div className="font-bold text-gray-900">{companyName || '[COMPANY NAME]'}</div>
-                      {companyEmail && <div className="text-[9px] text-gray-600">{companyEmail}</div>}
-                      {companyPhone && <div className="text-[9px] text-gray-600">{companyPhone}</div>}
-                      <div className="text-[9px] text-gray-500 italic mt-1">("Client")</div>
-                    </div>
-                    <div className="border-l-2 border-gray-800 pl-3">
-                      <div className="text-[9px] text-gray-500 uppercase mb-1">Section 1.2 — Creator</div>
-                      <div className="font-bold text-gray-900">{creators.find(c => c.userId === selectedCreatorId)?.displayName || '[CREATOR NAME]'}</div>
-                      <div className="text-[9px] text-gray-500 italic mt-1">("Contractor")</div>
-                    </div>
+                  <div>
+                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Creator</p>
+                    <p className="text-gray-900 font-semibold text-sm">{creators.find(c => c.userId === selectedCreatorId)?.displayName || '[Creator Name]'}</p>
                   </div>
                 </div>
 
-                {/* Term Section */}
-                <div className="mb-4">
-                  <div className="text-[10px] font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">
-                    ARTICLE II — TERM
-                  </div>
-                  <p className="text-[11px] text-gray-700 leading-relaxed">
-                    <strong>2.1</strong> Effective Date:{' '}
-                    <span className="underline">
-                      {contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '[START DATE]'}
+                {/* Period */}
+                <div className="flex flex-wrap gap-x-6 gap-y-1 mb-5 text-[11px]">
+                  <div>
+                    <span className="text-gray-400">Start: </span>
+                    <span className="text-gray-800 font-medium">
+                      {contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '[Start Date]'}
                     </span>
-                    <br />
-                    <strong>2.2</strong> Termination:{' '}
-                    {contractEndDate ? (
-                      <span className="underline">{new Date(contractEndDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                    ) : (
-                      <span>Ongoing until terminated per provisions herein</span>
-                    )}
-                  </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">End: </span>
+                    <span className="text-gray-800 font-medium">
+                      {contractEndDate ? new Date(contractEndDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Ongoing'}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Custom Fields Section */}
+                {/* Custom Fields */}
                 {customFields.filter(f => f.label && f.value).length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-[10px] font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">
-                      ARTICLE III — ADDITIONAL TERMS
-                    </div>
-                    <div className="space-y-1.5">
+                  <div className="mb-5">
+                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2 pb-1 border-b border-gray-200">Additional Terms</p>
+                    <div className="space-y-1">
                       {customFields.filter(f => f.label && f.value).map((field, idx) => (
                         <p key={idx} className="text-[11px] text-gray-700">
-                          <strong>3.{idx + 1}</strong> {field.label}: <span className="font-semibold underline">{field.value}</span>
+                          <span className="font-medium">{field.label}:</span> {field.value}
                         </p>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Terms Section */}
+                {/* Terms */}
                 <div className="mb-6">
-                  <div className="text-[10px] font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-3">
-                    ARTICLE {customFields.filter(f => f.label && f.value).length > 0 ? 'IV' : 'III'} — TERMS AND CONDITIONS
-                  </div>
+                  <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2 pb-1 border-b border-gray-200">
+                    Terms & Conditions
+                  </p>
                   {contractNotes ? (
-                    <div className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap text-justify max-h-48 overflow-y-auto pr-2">
+                    <div className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto pr-2">
                       <ResolvedContractText text={contractNotes} variableValues={variableValues} />
                     </div>
                   ) : (
-                    <div className="text-[11px] text-gray-400 italic">
-                      Terms and conditions will appear here...
-                    </div>
+                    <p className="text-[11px] text-gray-400 italic">Terms will appear here...</p>
                   )}
                 </div>
 
-                {/* Signature Block */}
-                <div className="border-t-2 border-gray-800 pt-4">
-                  <p className="text-[10px] text-gray-600 italic text-center mb-4">
-                    IN WITNESS WHEREOF, the Parties have executed this Agreement.
+                {/* Signatures */}
+                <div className="border-t border-gray-900 pt-4">
+                  <p className="text-[9px] text-gray-400 italic text-center mb-4">
+                    IN WITNESS WHEREOF, the parties have executed this Agreement.
                   </p>
                   <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-2 font-bold">THE COMPANY:</div>
-                      <div className="h-8 border-b border-gray-400"></div>
-                      <div className="text-[9px] text-gray-500 mt-1">Signature / Date</div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-2 font-bold">THE CREATOR:</div>
-                      <div className="h-8 border-b border-gray-400"></div>
-                      <div className="text-[9px] text-gray-500 mt-1">Signature / Date</div>
-                    </div>
+                    {[
+                      { label: 'Company', name: companyName || '' },
+                      { label: 'Creator', name: creators.find(c => c.userId === selectedCreatorId)?.displayName || '' },
+                    ].map(p => (
+                      <div key={p.label}>
+                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-3">{p.label}</p>
+                        <div className="h-8" />
+                        <div className="border-t border-gray-300 border-dashed pt-1">
+                          <p className="text-[10px] text-gray-400">{p.name || '_______________'}</p>
+                          <p className="text-[9px] text-gray-300 mt-0.5">Date: _______________</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className="mt-4 pt-2 border-t border-gray-200 flex justify-between text-[8px] text-gray-400">
-                  <span>Draft Preview</span>
-                  <span>Page 1 of 1</span>
+                <div className="mt-6 pt-2 border-t border-gray-200 text-center">
+                  <p className="text-[8px] text-gray-300">Draft Preview</p>
                 </div>
               </div>
             </div>

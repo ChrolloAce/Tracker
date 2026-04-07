@@ -357,7 +357,7 @@ const ContractSigningPage: React.FC = () => {
 
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1">Signature</label>
-                          <SignatureCanvas onSignatureChange={setSignatureData} />
+                          <SignatureCanvas onSignatureChange={setSignatureData} initialName={signerName} />
                         </div>
 
                         <label className="flex items-start gap-2 cursor-pointer">
