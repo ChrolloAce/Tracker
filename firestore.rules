@@ -735,20 +735,29 @@ service cloud.firestore {
     match /shareableContracts/{contractId} {
       // Anyone can read a contract with the link (public access)
       allow read: if true;
-      
+
       // Organization members can create contracts
       allow create: if isSignedIn();
-      
-      // Anyone can update to sign the contract (add signatures)
+
+      // Signing: anyone with the link can add their signature
       // But can only update signature fields, not other contract details
-      allow update: if true &&
+      // Block updates to already-signed contracts (both signatures present)
+      allow update: if
+        // Prevent modifying fully signed contracts (except status resolution)
+        !(resource.data.creatorSignature != null && resource.data.companySignature != null
+          && !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+        &&
         (
-          // Allow updating creator signature
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['creatorSignature', 'updatedAt', 'status'])) ||
-          // Allow updating company signature
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companySignature', 'updatedAt', 'status']))
+          // Allow updating creator signature (only if not already signed by creator)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['creatorSignature', 'updatedAt', 'status'])
+           && resource.data.creatorSignature == null) ||
+          // Allow updating company signature (only if not already signed by company)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companySignature', 'updatedAt', 'status'])
+           && resource.data.companySignature == null) ||
+          // Allow authenticated users to update status/expiration (for renewal, status resolution)
+          (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'expiresAt']))
         );
-      
+
       // Only organization members can delete
       allow delete: if isSignedIn();
     }

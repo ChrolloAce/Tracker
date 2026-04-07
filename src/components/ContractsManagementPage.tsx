@@ -3,22 +3,71 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
-import { 
-  FileText, 
-  Plus, 
-  Copy, 
-  ExternalLink, 
-  Check, 
-  Clock, 
+import {
+  FileText,
+  Plus,
+  Copy,
+  ExternalLink,
+  Check,
+  Clock,
   X,
   Search,
   Filter,
   MoreVertical,
   Download,
   Mail,
-  Trash2
+  Trash2,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import Pagination from './ui/Pagination';
+
+/**
+ * Resolve the effective status of a contract.
+ * If the contract's stored status is not 'signed' and either expiresAt or
+ * contractEndDate is in the past, treat it as expired.
+ */
+const resolveEffectiveStatus = (contract: ShareableContract): ShareableContract['status'] => {
+  if (contract.status === 'signed') return 'signed';
+
+  const now = new Date();
+
+  // Check expiresAt (Firestore Timestamp)
+  if (contract.expiresAt) {
+    const expiresDate = contract.expiresAt.toDate?.() ?? new Date(contract.expiresAt as any);
+    if (expiresDate < now) return 'expired';
+  }
+
+  // Check contractEndDate (string like "2025-12-31")
+  if (contract.contractEndDate) {
+    const endDate = new Date(contract.contractEndDate);
+    if (endDate < now) return 'expired';
+  }
+
+  return contract.status;
+};
+
+/**
+ * Calculate days until a Firestore Timestamp date.
+ * Returns null if no date provided.
+ */
+const daysUntil = (timestamp: any): number | null => {
+  if (!timestamp) return null;
+  const target = timestamp.toDate?.() ?? new Date(timestamp);
+  const now = new Date();
+  const diff = target.getTime() - now.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Count how many signatures are still needed.
+ */
+const countPendingSignatures = (contract: ShareableContract): number => {
+  let pending = 0;
+  if (!contract.creatorSignature) pending++;
+  if (!contract.companySignature) pending++;
+  return pending;
+};
 
 const ContractsManagementPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +82,7 @@ const ContractsManagementPage: React.FC = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [renewingId, setRenewingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadContracts();
@@ -75,9 +125,17 @@ const ContractsManagementPage: React.FC = () => {
     });
   };
 
+  const formatTimestamp = (timestamp: any): string => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate?.() ?? new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   const handleDownloadContract = (contract: ShareableContract) => {
-    // Open contract page with auto-print enabled
-    // The ContractSigningPage already has print optimization built in
     const printUrl = `${contract.creatorLink}${contract.creatorLink.includes('?') ? '&' : '?'}print=true`;
     window.open(printUrl, '_blank');
     setOpenMenuId(null);
@@ -85,7 +143,7 @@ const ContractsManagementPage: React.FC = () => {
 
   const handleSendCopyToCreator = async (contract: ShareableContract) => {
     if (!contract.creatorEmail) return;
-    
+
     try {
       // TODO: Implement email sending via EmailService
       alert(`Sending contract to ${contract.creatorEmail}...`);
@@ -111,14 +169,31 @@ const ContractsManagementPage: React.FC = () => {
     }
   };
 
-  // Filter contracts
+  const handleRenewContract = async (contractId: string) => {
+    setRenewingId(contractId);
+    try {
+      // Renew with 90-day expiration
+      const newExpiration = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+      await ContractService.renewContract(contractId, newExpiration);
+      await loadContracts();
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error('Error renewing contract:', error);
+      alert('Failed to renew contract. Please try again.');
+    } finally {
+      setRenewingId(null);
+    }
+  };
+
+  // Filter contracts using effective (resolved) status
   const filteredContracts = contracts.filter(contract => {
-    const matchesSearch = 
+    const matchesSearch =
       contract.creatorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.creatorEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
-    
+
+    const effectiveStatus = resolveEffectiveStatus(contract);
+    const matchesStatus = statusFilter === 'all' || effectiveStatus === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -127,29 +202,59 @@ const ContractsManagementPage: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedContracts = filteredContracts.slice(startIndex, startIndex + itemsPerPage);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'signed':
+  const getStatusBadge = (contract: ShareableContract) => {
+    const effectiveStatus = resolveEffectiveStatus(contract);
+
+    switch (effectiveStatus) {
+      case 'signed': {
+        // Determine the signed date: use the later of the two signatures
+        let signedDate = '';
+        const creatorDate = contract.creatorSignature?.signedAt;
+        const companyDate = contract.companySignature?.signedAt;
+        const laterTimestamp = creatorDate && companyDate
+          ? (creatorDate.toDate() > companyDate.toDate() ? creatorDate : companyDate)
+          : creatorDate || companyDate;
+        if (laterTimestamp) {
+          signedDate = formatTimestamp(laterTimestamp);
+        }
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 rounded-md text-xs font-medium">
             <Check className="w-3 h-3" />
-            Signed
+            Signed {signedDate}
           </span>
         );
-      case 'pending':
+      }
+      case 'pending': {
+        const pendingCount = countPendingSignatures(contract);
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-md text-xs font-medium">
             <Clock className="w-3 h-3" />
-            Pending
+            Awaiting {pendingCount} signature{pendingCount !== 1 ? 's' : ''}
           </span>
         );
-      case 'expired':
+      }
+      case 'expired': {
+        // Show the date at which it expired
+        let expiredDate = '';
+        if (contract.expiresAt) {
+          const d = contract.expiresAt.toDate?.() ?? new Date(contract.expiresAt as any);
+          if (d < new Date()) {
+            expiredDate = formatTimestamp(contract.expiresAt);
+          }
+        }
+        if (!expiredDate && contract.contractEndDate) {
+          const d = new Date(contract.contractEndDate);
+          if (d < new Date()) {
+            expiredDate = formatDate(contract.contractEndDate);
+          }
+        }
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-400 rounded-md text-xs font-medium">
             <X className="w-3 h-3" />
-            Expired
+            Expired {expiredDate}
           </span>
         );
+      }
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-500/20 text-gray-400 rounded-md text-xs font-medium">
@@ -157,6 +262,65 @@ const ContractsManagementPage: React.FC = () => {
           </span>
         );
     }
+  };
+
+  /**
+   * Render an expiration warning for pending contracts with expiresAt.
+   */
+  const getExpirationWarning = (contract: ShareableContract) => {
+    const effectiveStatus = resolveEffectiveStatus(contract);
+    if (effectiveStatus !== 'pending') return null;
+
+    const days = daysUntil(contract.expiresAt);
+    if (days === null || days > 14) return null;
+
+    const isUrgent = days < 3;
+    const colorClass = isUrgent ? 'text-red-400' : 'text-amber-400';
+    const bgClass = isUrgent ? 'bg-red-500/10' : 'bg-amber-500/10';
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${bgClass} ${colorClass} rounded text-[11px] font-medium mt-1`}>
+        <AlertTriangle className="w-3 h-3" />
+        {days <= 0 ? 'Expiring today' : `Expires in ${days} day${days !== 1 ? 's' : ''}`}
+      </span>
+    );
+  };
+
+  /**
+   * Render signature progress indicators:
+   * Two small circles -- creator and company.
+   * Filled green if signed, hollow gray if not.
+   */
+  const getSignatureProgress = (contract: ShareableContract) => {
+    const creatorSigned = !!contract.creatorSignature;
+    const companySigned = !!contract.companySignature;
+
+    return (
+      <div className="flex items-center gap-2">
+        {/* Creator */}
+        <div className="flex items-center gap-1" title={creatorSigned ? `Creator signed: ${contract.creatorSignature?.name}` : 'Creator has not signed'}>
+          <span
+            className={`inline-block w-3 h-3 rounded-full border-2 ${
+              creatorSigned
+                ? 'bg-green-400 border-green-400'
+                : 'bg-transparent border-gray-500'
+            }`}
+          />
+          <span className="text-[11px] text-gray-400">Creator</span>
+        </div>
+        {/* Company */}
+        <div className="flex items-center gap-1" title={companySigned ? `Company signed: ${contract.companySignature?.name}` : 'Company has not signed'}>
+          <span
+            className={`inline-block w-3 h-3 rounded-full border-2 ${
+              companySigned
+                ? 'bg-green-400 border-green-400'
+                : 'bg-transparent border-gray-500'
+            }`}
+          />
+          <span className="text-[11px] text-gray-400">Company</span>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -241,6 +405,9 @@ const ContractsManagementPage: React.FC = () => {
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Signatures
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Contract Period
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
@@ -255,7 +422,9 @@ const ContractsManagementPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {paginatedContracts.map((contract) => (
+                {paginatedContracts.map((contract) => {
+                  const effectiveStatus = resolveEffectiveStatus(contract);
+                  return (
                   <tr key={contract.id} className="hover:bg-white/5 transition-colors group">
                     <td className="px-6 py-4">
                       <div>
@@ -264,7 +433,13 @@ const ContractsManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {getStatusBadge(contract.status)}
+                      <div className="flex flex-col">
+                        {getStatusBadge(contract)}
+                        {getExpirationWarning(contract)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {getSignatureProgress(contract)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-white">
@@ -301,7 +476,7 @@ const ContractsManagementPage: React.FC = () => {
                             <ExternalLink className="w-4 h-4 text-blue-400" />
                           </a>
                         </div>
-                        
+
                         {/* Company Link */}
                         <div className="flex gap-1 border-l border-gray-700 pl-2">
                           <button
@@ -344,11 +519,11 @@ const ContractsManagementPage: React.FC = () => {
                         {openMenuId === contract.id && (
                           <>
                             {/* Backdrop to close menu */}
-                            <div 
+                            <div
                               className="fixed inset-0 z-[9998]"
                               onClick={() => setOpenMenuId(null)}
                             />
-                            
+
                             {/* Menu */}
                             <div className="absolute right-0 top-8 w-48 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-[9999] overflow-hidden">
                               {/* Download */}
@@ -375,6 +550,18 @@ const ContractsManagementPage: React.FC = () => {
                                 Send Copy to Creator
                               </button>
 
+                              {/* Renew Contract - only for expired */}
+                              {effectiveStatus === 'expired' && (
+                                <button
+                                  onClick={() => handleRenewContract(contract.id)}
+                                  disabled={renewingId === contract.id}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <RefreshCw className={`w-4 h-4 text-amber-400 ${renewingId === contract.id ? 'animate-spin' : ''}`} />
+                                  {renewingId === contract.id ? 'Renewing...' : 'Renew Contract'}
+                                </button>
+                              )}
+
                               {/* Delete */}
                               <button
                                 onClick={() => {
@@ -392,11 +579,12 @@ const ContractsManagementPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination - Inside Container */}
           <Pagination
             currentPage={currentPage}
@@ -437,7 +625,7 @@ const ContractsManagementPage: React.FC = () => {
                 <p className="text-sm text-gray-400">This action cannot be undone</p>
               </div>
             </div>
-            
+
             <p className="text-gray-300 mb-6">
               Are you sure you want to delete this contract? All associated data will be permanently removed.
             </p>
@@ -476,4 +664,3 @@ const ContractsManagementPage: React.FC = () => {
 };
 
 export default ContractsManagementPage;
-

@@ -1,9 +1,9 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
   deleteDoc,
   Timestamp,
   query,
@@ -29,6 +29,57 @@ export class ContractService {
   }
 
   /**
+   * Resolve the correct status for a contract based on its current state.
+   * - Both signatures present -> 'signed'
+   * - expiresAt is in the past -> 'expired'
+   * - contractEndDate is in the past and status is still 'pending' -> 'expired'
+   * - Otherwise -> keep current status
+   */
+  static resolveStatus(contract: ShareableContract): ShareableContract['status'] {
+    // If both signatures exist, it's signed regardless of dates
+    if (contract.creatorSignature && contract.companySignature) {
+      return 'signed';
+    }
+
+    // If expiresAt exists and is in the past, mark expired
+    if (contract.expiresAt) {
+      const expiresDate = contract.expiresAt instanceof Timestamp
+        ? contract.expiresAt.toDate()
+        : new Date(contract.expiresAt as any);
+      if (expiresDate < new Date()) {
+        return 'expired';
+      }
+    }
+
+    // If contract end date is in the past and still pending, mark expired
+    if (contract.status === 'pending' && contract.contractEndDate) {
+      const endDate = new Date(contract.contractEndDate);
+      if (endDate < new Date()) {
+        return 'expired';
+      }
+    }
+
+    return contract.status;
+  }
+
+  /**
+   * Apply resolveStatus to a contract and persist the change if status differs.
+   */
+  private static async applyResolvedStatus(contract: ShareableContract): Promise<ShareableContract> {
+    const resolvedStatus = this.resolveStatus(contract);
+    if (resolvedStatus !== contract.status) {
+      contract.status = resolvedStatus;
+      // Persist the status fix
+      const contractRef = doc(db, this.CONTRACTS_COLLECTION, contract.id);
+      await updateDoc(contractRef, {
+        status: resolvedStatus,
+        updatedAt: Timestamp.now(),
+      });
+    }
+    return contract;
+  }
+
+  /**
    * Create a shareable contract
    */
   static async createShareableContract(
@@ -46,15 +97,11 @@ export class ContractService {
     contractTitle?: string,
     companyName?: string,
     creatorInfo?: CreatorContactInfo,
-    companyInfo?: CompanyContactInfo
+    companyInfo?: CompanyContactInfo,
+    expirationDays?: number
   ): Promise<ShareableContract> {
     const contractId = this.generateContractId();
     const now = Timestamp.now();
-    
-    // Set expiration to 90 days from now
-    const expiresAt = Timestamp.fromDate(
-      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-    );
 
     const baseUrl = window.location.origin;
 
@@ -75,8 +122,14 @@ export class ContractService {
       shareableLink: `${baseUrl}/contract/${contractId}`, // Legacy - both can sign
       creatorLink: `${baseUrl}/contract/${contractId}?role=creator`,
       companyLink: `${baseUrl}/contract/${contractId}?role=company`,
-      expiresAt,
     };
+
+    // Only set expiresAt if an explicit expirationDays was provided
+    if (expirationDays !== undefined && expirationDays > 0) {
+      contract.expiresAt = Timestamp.fromDate(
+        new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000)
+      );
+    }
 
     // Only add optional fields if they're defined (Firestore doesn't allow undefined)
     if (paymentStructureName) {
@@ -117,7 +170,8 @@ export class ContractService {
         return null;
       }
 
-      return contractSnap.data() as ShareableContract;
+      const contract = contractSnap.data() as ShareableContract;
+      return await this.applyResolvedStatus(contract);
     } catch (error) {
       console.error('Error fetching contract:', error);
       return null;
@@ -125,7 +179,7 @@ export class ContractService {
   }
 
   /**
-   * Sign contract as creator
+   * Sign contract as creator (atomic: sets signature and status in one write)
    */
   static async signAsCreator(
     contractId: string,
@@ -133,33 +187,39 @@ export class ContractService {
     signatureData?: string
   ): Promise<void> {
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
-    
+
+    // Read the current contract to check if the other party has signed
+    const contractSnap = await getDoc(contractRef);
+    if (!contractSnap.exists()) {
+      throw new Error('Contract not found');
+    }
+    const contract = contractSnap.data() as ShareableContract;
+
     const signature: any = {
       name: creatorName,
       signedAt: Timestamp.now(),
     };
-    
+
     // Only add signatureData if it's defined (Firestore doesn't allow undefined)
     if (signatureData) {
       signature.signatureData = signatureData;
     }
 
-    await updateDoc(contractRef, {
+    const updateData: any = {
       creatorSignature: signature,
       updatedAt: Timestamp.now(),
-    });
+    };
 
-    // Check if both parties have signed
-    const contract = await this.getContractById(contractId);
-    if (contract?.companySignature && contract?.creatorSignature) {
-      await updateDoc(contractRef, {
-        status: 'signed',
-      });
+    // If the other party already signed, set status to 'signed' atomically
+    if (contract.companySignature) {
+      updateData.status = 'signed';
     }
+
+    await updateDoc(contractRef, updateData);
   }
 
   /**
-   * Sign contract as company
+   * Sign contract as company (atomic: sets signature and status in one write)
    */
   static async signAsCompany(
     contractId: string,
@@ -167,29 +227,35 @@ export class ContractService {
     signatureData?: string
   ): Promise<void> {
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
-    
+
+    // Read the current contract to check if the other party has signed
+    const contractSnap = await getDoc(contractRef);
+    if (!contractSnap.exists()) {
+      throw new Error('Contract not found');
+    }
+    const contract = contractSnap.data() as ShareableContract;
+
     const signature: any = {
       name: companyRepName,
       signedAt: Timestamp.now(),
     };
-    
+
     // Only add signatureData if it's defined (Firestore doesn't allow undefined)
     if (signatureData) {
       signature.signatureData = signatureData;
     }
 
-    await updateDoc(contractRef, {
+    const updateData: any = {
       companySignature: signature,
       updatedAt: Timestamp.now(),
-    });
+    };
 
-    // Check if both parties have signed
-    const contract = await this.getContractById(contractId);
-    if (contract?.companySignature && contract?.creatorSignature) {
-      await updateDoc(contractRef, {
-        status: 'signed',
-      });
+    // If the other party already signed, set status to 'signed' atomically
+    if (contract.creatorSignature) {
+      updateData.status = 'signed';
     }
+
+    await updateDoc(contractRef, updateData);
   }
 
   /**
@@ -206,9 +272,10 @@ export class ContractService {
         where('organizationId', '==', organizationId),
         where('projectId', '==', projectId)
       );
-      
+
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => doc.data() as ShareableContract);
+      const contracts = snapshot.docs.map(doc => doc.data() as ShareableContract);
+      return await Promise.all(contracts.map(c => this.applyResolvedStatus(c)));
     } catch (error) {
       console.error('Error fetching contracts:', error);
       return [];
@@ -231,13 +298,48 @@ export class ContractService {
         where('projectId', '==', projectId),
         where('creatorId', '==', creatorId)
       );
-      
+
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => doc.data() as ShareableContract);
+      const contracts = snapshot.docs.map(doc => doc.data() as ShareableContract);
+      return await Promise.all(contracts.map(c => this.applyResolvedStatus(c)));
     } catch (error) {
       console.error('Error fetching contracts:', error);
       return [];
     }
+  }
+
+  /**
+   * Renew a contract. Resets status to 'pending' if it was 'expired',
+   * and optionally sets a new expiresAt.
+   */
+  static async renewContract(
+    contractId: string,
+    newExpiresAt?: Date
+  ): Promise<void> {
+    const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
+    const contractSnap = await getDoc(contractRef);
+
+    if (!contractSnap.exists()) {
+      throw new Error('Contract not found');
+    }
+
+    const contract = contractSnap.data() as ShareableContract;
+
+    const updateData: any = {
+      updatedAt: Timestamp.now(),
+    };
+
+    // Reset status from expired back to pending
+    if (contract.status === 'expired') {
+      updateData.status = 'pending';
+    }
+
+    // Update or remove expiresAt
+    if (newExpiresAt !== undefined) {
+      updateData.expiresAt = Timestamp.fromDate(newExpiresAt);
+    }
+
+    await updateDoc(contractRef, updateData);
   }
 
   /**
@@ -267,4 +369,3 @@ export class ContractService {
     }
   }
 }
-
