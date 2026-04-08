@@ -755,7 +755,10 @@ service cloud.firestore {
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companySignature', 'updatedAt', 'status'])
            && resource.data.companySignature == null) ||
           // Allow authenticated users to update status/expiration (for renewal, status resolution)
-          (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'expiresAt']))
+          (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'expiresAt'])) ||
+          // Allow contract creator to edit any fields before the creator has signed
+          (isSignedIn() && resource.data.createdBy == request.auth.uid
+           && resource.data.creatorSignature == null)
         );
 
       // Only organization members can delete

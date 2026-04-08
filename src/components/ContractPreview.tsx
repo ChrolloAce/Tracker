@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { CreatorContactInfo, CompanyContactInfo } from '../types/contract';
@@ -21,7 +21,23 @@ interface ContractPreviewProps {
   companySignature?: ContractSignature | null;
   creatorInfo?: CreatorContactInfo;
   companyInfo?: CompanyContactInfo;
+  onSwapVariable?: (oldVar: string, newVar: string) => void;
 }
+
+const ALL_VARIABLES = [
+  { key: '{{CREATOR_NAME}}', label: 'Creator Name', group: 'Creator' },
+  { key: '{{CREATOR_EMAIL}}', label: 'Creator Email', group: 'Creator' },
+  { key: '{{CREATOR_PHONE}}', label: 'Creator Phone', group: 'Creator' },
+  { key: '{{CREATOR_ADDRESS}}', label: 'Creator Address', group: 'Creator' },
+  { key: '{{COMPANY_NAME}}', label: 'Company Name', group: 'Company' },
+  { key: '{{COMPANY_EMAIL}}', label: 'Company Email', group: 'Company' },
+  { key: '{{COMPANY_PHONE}}', label: 'Company Phone', group: 'Company' },
+  { key: '{{COMPANY_ADDRESS}}', label: 'Company Address', group: 'Company' },
+  { key: '{{START_DATE}}', label: 'Start Date', group: 'Contract' },
+  { key: '{{END_DATE}}', label: 'End Date', group: 'Contract' },
+  { key: '{{TODAY_DATE}}', label: 'Today\'s Date', group: 'Contract' },
+  { key: '{{PAYMENT_STRUCTURE}}', label: 'Payment Terms', group: 'Contract' },
+];
 
 const TEMPLATE_VARIABLES = {
   '{{CREATOR_NAME}}': 'creatorName',
@@ -41,34 +57,113 @@ const TEMPLATE_VARIABLES = {
 const ContractPreview: React.FC<ContractPreviewProps> = ({
   creatorName, companyName, contractStartDate, contractEndDate,
   contractNotes, paymentStructureName, creatorSignature, companySignature,
-  creatorInfo, companyInfo,
+  creatorInfo, companyInfo, onSwapVariable,
 }) => {
+  const [swapTarget, setSwapTarget] = useState<string | null>(null);
+  const swapRef = useRef<HTMLSpanElement>(null);
+
+  // Close swap dropdown on outside click
+  useEffect(() => {
+    if (!swapTarget) return;
+    const handler = (e: MouseEvent) => {
+      if (swapRef.current && !swapRef.current.contains(e.target as Node)) {
+        setSwapTarget(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [swapTarget]);
+
   const fmt = (d: string) => {
     if (!d || d === 'Indefinite') return d || 'Not specified';
     const [y, m, day] = d.split('-').map(Number);
     return new Date(y, m - 1, day).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const processedNotes = useMemo(() => {
-    if (!contractNotes) return '';
-    let p = contractNotes;
-    const r: Record<string, string> = {
-      '{{CREATOR_NAME}}': creatorName || '[Creator Name]',
-      '{{COMPANY_NAME}}': companyName || '[Company Name]',
-      '{{START_DATE}}': fmt(contractStartDate),
-      '{{END_DATE}}': contractEndDate === 'Indefinite' ? 'Indefinite' : fmt(contractEndDate),
-      '{{CREATOR_EMAIL}}': creatorInfo?.email || '[Creator Email]',
-      '{{CREATOR_PHONE}}': creatorInfo?.phone || '[Creator Phone]',
-      '{{CREATOR_ADDRESS}}': creatorInfo?.address || '[Creator Address]',
-      '{{COMPANY_EMAIL}}': companyInfo?.email || '[Company Email]',
-      '{{COMPANY_PHONE}}': companyInfo?.phone || '[Company Phone]',
-      '{{COMPANY_ADDRESS}}': companyInfo?.address || '[Company Address]',
-      '{{PAYMENT_STRUCTURE}}': paymentStructureName || '[Payment Structure]',
-      '{{TODAY_DATE}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-    };
-    Object.entries(r).forEach(([k, v]) => { p = p.replace(new RegExp(k.replace(/[{}]/g, '\\$&'), 'g'), v); });
-    return p;
-  }, [contractNotes, creatorName, companyName, contractStartDate, contractEndDate, creatorInfo, companyInfo, paymentStructureName]);
+  const varMap = useMemo(() => ({
+    '{{CREATOR_NAME}}': creatorName || '',
+    '{{COMPANY_NAME}}': companyName || '',
+    '{{START_DATE}}': fmt(contractStartDate),
+    '{{END_DATE}}': contractEndDate === 'Indefinite' ? 'Indefinite' : fmt(contractEndDate),
+    '{{CREATOR_EMAIL}}': creatorInfo?.email || '',
+    '{{CREATOR_PHONE}}': creatorInfo?.phone || '',
+    '{{CREATOR_ADDRESS}}': creatorInfo?.address || '',
+    '{{COMPANY_EMAIL}}': companyInfo?.email || '',
+    '{{COMPANY_PHONE}}': companyInfo?.phone || '',
+    '{{COMPANY_ADDRESS}}': companyInfo?.address || '',
+    '{{PAYMENT_STRUCTURE}}': paymentStructureName || '',
+    '{{TODAY_DATE}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+  }), [creatorName, companyName, contractStartDate, contractEndDate, creatorInfo, companyInfo, paymentStructureName]);
+
+  const renderNotesWithVariables = useMemo(() => {
+    if (!contractNotes) return null;
+
+    const regex = /(\{\{[A-Z_]+\}\})/g;
+    const parts = contractNotes.split(regex);
+
+    return parts.map((part, i) => {
+      const varEntry = ALL_VARIABLES.find(v => v.key === part);
+      if (varEntry) {
+        const value = varMap[part as keyof typeof varMap];
+        const hasValue = !!value;
+        const displayValue = hasValue ? value : varEntry.label;
+
+        return (
+          <span
+            key={i}
+            ref={swapTarget === part ? swapRef : undefined}
+            className={`relative inline-block ${onSwapVariable ? 'cursor-pointer' : ''}`}
+            onClick={() => onSwapVariable && setSwapTarget(swapTarget === part ? null : part)}
+          >
+            {/* Red floating label */}
+            <span className="absolute -top-3 left-0 text-[6.5px] font-bold text-red-500 bg-red-50 px-1 py-px rounded leading-tight whitespace-nowrap pointer-events-none select-none" style={{ zIndex: 2 }}>
+              {varEntry.label}
+            </span>
+            {/* Value */}
+            <span className={`
+              ${hasValue
+                ? 'bg-blue-50/80 text-gray-900 font-medium border-b border-blue-300'
+                : 'bg-red-50/60 text-red-400 italic border-b border-red-200'
+              } px-0.5 rounded-sm
+            `}>
+              {displayValue}
+            </span>
+
+            {/* Swap dropdown */}
+            {onSwapVariable && swapTarget === part && (
+              <span className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 w-48 py-1 max-h-52 overflow-y-auto" style={{ zIndex: 100 }}>
+                {['Creator', 'Company', 'Contract'].map(group => (
+                  <span key={group} className="block">
+                    <span className="block px-3 py-1 text-[9px] font-bold text-gray-400 uppercase">{group}</span>
+                    {ALL_VARIABLES.filter(v => v.group === group && v.key !== part).map(v => (
+                      <button
+                        key={v.key}
+                        type="button"
+                        className="block w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSwapVariable(part, v.key);
+                          setSwapTarget(null);
+                        }}
+                      >
+                        {v.label}
+                        {varMap[v.key as keyof typeof varMap] && (
+                          <span className="text-[10px] text-gray-400 ml-1">
+                            ({varMap[v.key as keyof typeof varMap]})
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </span>
+                ))}
+              </span>
+            )}
+          </span>
+        );
+      }
+      return <React.Fragment key={i}>{part}</React.Fragment>;
+    });
+  }, [contractNotes, varMap, swapTarget, onSwapVariable]);
 
   if (!contractStartDate && !contractEndDate && !contractNotes) {
     return (
@@ -150,13 +245,13 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
         </div>
 
         {/* Terms */}
-        {processedNotes && (
+        {contractNotes && (
           <div className="mb-8">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2 pb-1.5 border-b border-gray-200">
               Terms & Conditions
             </p>
-            <div className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs">
-              {processedNotes}
+            <div className="text-gray-700 leading-loose whitespace-pre-wrap text-xs relative">
+              {renderNotesWithVariables}
             </div>
           </div>
         )}

@@ -64,17 +64,25 @@ export class ContractService {
 
   /**
    * Apply resolveStatus to a contract and persist the change if status differs.
+   * The write is best-effort — unauthenticated users (e.g. on the public signing
+   * page) may not have permission to update status, so we catch write errors
+   * and still return the contract with the resolved status in memory.
    */
   private static async applyResolvedStatus(contract: ShareableContract): Promise<ShareableContract> {
     const resolvedStatus = this.resolveStatus(contract);
     if (resolvedStatus !== contract.status) {
       contract.status = resolvedStatus;
-      // Persist the status fix
-      const contractRef = doc(db, this.CONTRACTS_COLLECTION, contract.id);
-      await updateDoc(contractRef, {
-        status: resolvedStatus,
-        updatedAt: Timestamp.now(),
-      });
+      // Persist the status fix (best-effort — may fail for unauthenticated users)
+      try {
+        const contractRef = doc(db, this.CONTRACTS_COLLECTION, contract.id);
+        await updateDoc(contractRef, {
+          status: resolvedStatus,
+          updatedAt: Timestamp.now(),
+        });
+      } catch (err) {
+        // Write failed (likely unauthenticated user) — status is still resolved in memory
+        console.warn('Could not persist status resolution:', err);
+      }
     }
     return contract;
   }
@@ -98,7 +106,8 @@ export class ContractService {
     companyName?: string,
     creatorInfo?: CreatorContactInfo,
     companyInfo?: CompanyContactInfo,
-    expirationDays?: number
+    expirationDays?: number,
+    creatorPhotoURL?: string
   ): Promise<ShareableContract> {
     const contractId = this.generateContractId();
     const now = Timestamp.now();
@@ -150,6 +159,9 @@ export class ContractService {
     if (isPendingInvitation) {
       contract.isPendingInvitation = true;
       contract.invitationId = creatorId; // Store invitation ID for later linking
+    }
+    if (creatorPhotoURL) {
+      contract.creatorPhotoURL = creatorPhotoURL;
     }
 
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);

@@ -10,9 +10,9 @@ import { CreatorContactInfo, CompanyContactInfo } from '../types/contract';
 import { TieredPaymentStructure } from '../types/payments';
 import TieredPaymentService from '../services/TieredPaymentService';
 import { Timestamp } from 'firebase/firestore';
-import { 
-  ArrowLeft, 
-  FileText, 
+import {
+  ArrowLeft,
+  FileText,
   Share2,
   Save,
   CheckCircle,
@@ -21,27 +21,54 @@ import {
   Copy,
   Check,
   ChevronDown,
-  User
+  User,
+  Building2,
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
 import TieredPaymentBuilder from '../components/TieredPaymentBuilder';
 
+// ─── Saved Company Profiles ────────────────────────────────
+interface SavedCompanyProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+const COMPANY_PROFILES_KEY = 'viewtrack_company_profiles';
+
+const loadCompanyProfiles = (): SavedCompanyProfile[] => {
+  try { return JSON.parse(localStorage.getItem(COMPANY_PROFILES_KEY) || '[]'); }
+  catch { return []; }
+};
+
+const saveCompanyProfiles = (profiles: SavedCompanyProfile[]) => {
+  localStorage.setItem(COMPANY_PROFILES_KEY, JSON.stringify(profiles));
+};
+
 const ContractEditorPage: React.FC = () => {
   const { creatorId } = useParams<{ creatorId: string }>();
   const navigate = useNavigate();
   const { currentOrgId, currentProjectId, user } = useAuth();
-  
+
   const [creator, setCreator] = useState<OrgMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
-  
+
   // Available creators for dropdown
   const [availableCreators, setAvailableCreators] = useState<Creator[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
   const [showCreatorDropdown, setShowCreatorDropdown] = useState(false);
   const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
+
+  // Saved company profiles
+  const [companyProfiles, setCompanyProfiles] = useState<SavedCompanyProfile[]>(loadCompanyProfiles());
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
@@ -425,6 +452,43 @@ const ContractEditorPage: React.FC = () => {
     }
   };
 
+  // ─── Company profile helpers ──────────────────────────────
+  const handleSaveCompanyProfile = () => {
+    if (!companyName.trim()) return;
+    const existing = companyProfiles.find(p => p.name === companyName.trim());
+    const profile: SavedCompanyProfile = {
+      id: existing?.id || `cp_${Date.now()}`,
+      name: companyName.trim(),
+      email: companyEmail,
+      phone: companyPhone,
+      address: companyAddress,
+    };
+    const updated = existing
+      ? companyProfiles.map(p => p.id === existing.id ? profile : p)
+      : [...companyProfiles, profile];
+    setCompanyProfiles(updated);
+    saveCompanyProfiles(updated);
+  };
+
+  const handleSelectCompanyProfile = (profile: SavedCompanyProfile) => {
+    setCompanyName(profile.name);
+    setCompanyEmail(profile.email);
+    setCompanyPhone(profile.phone);
+    setCompanyAddress(profile.address);
+    setShowCompanyDropdown(false);
+  };
+
+  const handleDeleteCompanyProfile = (id: string) => {
+    const updated = companyProfiles.filter(p => p.id !== id);
+    setCompanyProfiles(updated);
+    saveCompanyProfiles(updated);
+  };
+
+  // ─── Variable swap handler ──────────────────────────────
+  const handleSwapVariable = (oldVar: string, newVar: string) => {
+    setContractNotes(prev => prev.replace(oldVar, newVar));
+  };
+
   const hasUnsavedChanges = contractNotes !== initialContractNotes;
 
   if (loading) {
@@ -481,14 +545,14 @@ const ContractEditorPage: React.FC = () => {
                 Save as Template
               </Button>
 
-              <Button
+              <button
                 onClick={handleShareContract}
                 disabled={sharing || !contractNotes.trim()}
-                size="sm"
+                className="inline-flex items-center px-5 py-2 text-sm font-semibold text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-[0_2px_0_0_rgba(30,64,175,1)] hover:shadow-[0_1px_0_0_rgba(30,64,175,1)] active:shadow-none active:translate-y-[1px]"
               >
                 <Share2 className="w-4 h-4 mr-1.5" />
-                {sharing ? 'Sharing...' : 'Share Contract'}
-              </Button>
+                {sharing ? 'Sending...' : 'Send Contract'}
+              </button>
             </div>
           </div>
         </div>
@@ -505,13 +569,60 @@ const ContractEditorPage: React.FC = () => {
               <div className="space-y-5">
                 {/* Company Section */}
                 <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 text-xs font-bold">B</span>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Building2 className="w-3 h-3 text-blue-600" />
+                      </div>
+                      Company Details
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      {companyName.trim() && (
+                        <button
+                          type="button"
+                          onClick={handleSaveCompanyProfile}
+                          className="text-[10px] font-medium text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded transition-colors"
+                        >
+                          Save Profile
+                        </button>
+                      )}
+                      {companyProfiles.length > 0 && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+                            className="text-[10px] font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors flex items-center gap-1"
+                          >
+                            Saved <ChevronDown className="w-3 h-3" />
+                          </button>
+                          {showCompanyDropdown && (
+                            <div className="absolute right-0 z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl w-56 py-1">
+                              {companyProfiles.map(p => (
+                                <div key={p.id} className="flex items-center group">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectCompanyProfile(p)}
+                                    className="flex-1 text-left px-3 py-2 hover:bg-blue-50 transition-colors"
+                                  >
+                                    <div className="text-sm text-gray-900 font-medium">{p.name}</div>
+                                    {p.email && <div className="text-[10px] text-gray-400">{p.email}</div>}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCompanyProfile(p.id)}
+                                    className="p-1.5 mr-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    Company Details
-                  </h3>
-                  
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -603,8 +714,30 @@ const ContractEditorPage: React.FC = () => {
                       </div>
                       
                       {/* Creator Dropdown */}
-                      {showCreatorDropdown && filteredCreators.length > 0 && (
-                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {showCreatorDropdown && (
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-56 overflow-y-auto">
+                          {/* New Contact option */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClientName('');
+                              setCreatorEmail('');
+                              setCreatorPhone('');
+                              setCreatorAddress('');
+                              setSelectedCreatorId(null);
+                              setShowCreatorDropdown(false);
+                            }}
+                            className="w-full px-3 py-2.5 text-left hover:bg-emerald-50 flex items-center gap-3 transition-colors border-b border-gray-100"
+                          >
+                            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                              <UserPlus className="w-3 h-3 text-white" />
+                            </div>
+                            <div>
+                              <div className="text-sm text-emerald-700 font-medium">+ New Contact</div>
+                              <div className="text-[10px] text-gray-400">Add someone not in your creators</div>
+                            </div>
+                          </button>
+
                           {filteredCreators.map((c) => (
                             <button
                               key={c.id}
@@ -902,6 +1035,7 @@ const ContractEditorPage: React.FC = () => {
                   phone: companyPhone || undefined,
                   address: companyAddress || undefined,
                 }}
+                onSwapVariable={handleSwapVariable}
               />
             </div>
           </div>

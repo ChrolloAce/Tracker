@@ -110,38 +110,11 @@ function LoadingSkeleton() {
     );
   }
 
-  // Fast skeleton loader - no black screen! Show dashboard structure immediately
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      {/* Skeleton Sidebar */}
-      <div className="fixed left-0 top-0 bottom-0 w-64 bg-zinc-900/60 backdrop-blur border-r border-white/5 p-4">
-        <div className="h-8 bg-white/5 rounded animate-pulse mb-8"></div>
-        <div className="space-y-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-10 bg-white/5 rounded animate-pulse"></div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Skeleton Header */}
-      <div className="fixed top-0 left-64 right-0 h-16 bg-zinc-900/60 backdrop-blur border-b border-white/5 px-6 flex items-center">
-        <div className="h-8 bg-white/5 rounded w-48 animate-pulse"></div>
-      </div>
-      
-      {/* Skeleton Content */}
-      <div className="ml-64 pt-24 px-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Skeleton KPI Cards */}
-          <div className="grid grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse"></div>
-            ))}
-          </div>
-          
-          {/* Skeleton Charts */}
-          <div className="h-96 bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse"></div>
-          <div className="h-96 bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse"></div>
-        </div>
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-[3px] border-white/10 border-t-orange-500 rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-neutral-500 mt-4">Loading...</p>
       </div>
     </div>
   );
@@ -282,8 +255,8 @@ function App() {
       />
 
       {/* Contract creation route - requires authentication */}
-      <Route 
-        path="/contracts/create" 
+      <Route
+        path="/contracts/create"
         element={
           !user ? (
             <Navigate to="/login" replace />
@@ -292,7 +265,21 @@ function App() {
           ) : (
             <CreateContractPage />
           )
-        } 
+        }
+      />
+
+      {/* Contract edit route - requires authentication */}
+      <Route
+        path="/contracts/edit/:contractId"
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <LoadingSkeleton />
+          ) : (
+            <CreateContractPage />
+          )
+        }
       />
 
       {/* Creator details - DEPRECATED: Now redirects to dashboard */}

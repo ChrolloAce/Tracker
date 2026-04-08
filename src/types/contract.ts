@@ -28,6 +28,7 @@ export interface ShareableContract {
   creatorId: string;
   creatorName: string;
   creatorEmail: string;
+  creatorPhotoURL?: string;
   
   // Contract details
   contractTitle?: string;

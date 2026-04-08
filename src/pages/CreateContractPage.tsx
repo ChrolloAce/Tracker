@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Save, CheckCircle, Plus, Copy, ExternalLink, Link2, Trash2, GripVertical, Calendar, Type, DollarSign, PenTool } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, Save, CheckCircle, Plus, Copy, ExternalLink, Link2, Trash2, GripVertical, Calendar, Type, DollarSign, PenTool, ChevronDown, UserPlus, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
@@ -33,16 +32,40 @@ const TEMPLATE_VARIABLES: Array<{
   { key: '{{CUSTOM_DATE}}', label: 'Custom Date', description: 'Blank date — to be filled in', type: 'fillable', fillableBy: 'both' },
 ];
 
+// ─── Saved Company Profiles ────────────────────────────────
+interface SavedCompanyProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+const COMPANY_PROFILES_KEY = 'viewtrack_company_profiles';
+
+const loadCompanyProfiles = (): SavedCompanyProfile[] => {
+  try { return JSON.parse(localStorage.getItem(COMPANY_PROFILES_KEY) || '[]'); }
+  catch { return []; }
+};
+
+const persistCompanyProfiles = (profiles: SavedCompanyProfile[]) => {
+  localStorage.setItem(COMPANY_PROFILES_KEY, JSON.stringify(profiles));
+};
+
 interface CreatorOption {
   userId: string;
   displayName: string;
   email?: string;
   isPending?: boolean;
+  photoURL?: string;
 }
 
 const CreateContractPage: React.FC = () => {
   const navigate = useNavigate();
+  const { contractId: editContractId } = useParams<{ contractId?: string }>();
+  const isEditMode = !!editContractId;
   const { currentOrgId, currentProjectId, user } = useAuth();
+  const [editLoading, setEditLoading] = useState(false);
+  const [editBlocked, setEditBlocked] = useState(false); // true if creator already signed
   const [creators, setCreators] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
   const [contractTitle, setContractTitle] = useState('Content Creation Agreement');
@@ -68,8 +91,19 @@ const CreateContractPage: React.FC = () => {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showVariablesDropdown, setShowVariablesDropdown] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [swapTarget, setSwapTarget] = useState<{ varKey: string; index: number } | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const [companyProfiles, setCompanyProfiles] = useState<SavedCompanyProfile[]>(loadCompanyProfiles());
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [customCreatorName, setCustomCreatorName] = useState('');
+  const [customCreatorEmail, setCustomCreatorEmail] = useState('');
+  const [customCreatorPhone, setCustomCreatorPhone] = useState('');
+  const [customCreatorAddress, setCustomCreatorAddress] = useState('');
+  const [isCustomCreator, setIsCustomCreator] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const skipRebuildRef = useRef(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -87,22 +121,108 @@ const CreateContractPage: React.FC = () => {
     };
   }, [showVariablesDropdown]);
 
-  // Insert a variable at the current cursor position
-  const insertVariable = (variable: string) => {
-    if (textareaRef.current) {
-      const start = textareaRef.current.selectionStart;
-      const end = textareaRef.current.selectionEnd;
-      const newText = contractNotes.substring(0, start) + variable + contractNotes.substring(end);
-      setContractNotes(newText);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(start + variable.length, start + variable.length);
+  // ─── ContentEditable Editor Logic ───────────────────────
+  const serializeEditor = (el: HTMLElement): string => {
+    let result = '';
+    el.childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        result += node.textContent || '';
+      } else if (node instanceof HTMLElement) {
+        if (node.dataset.var) {
+          result += node.dataset.var;
+        } else if (node.tagName === 'BR') {
+          result += '\n';
+        } else if (node.tagName === 'DIV' || node.tagName === 'P') {
+          if (result.length > 0 && !result.endsWith('\n')) result += '\n';
+          result += serializeEditor(node);
+        } else {
+          result += serializeEditor(node);
         }
-      }, 0);
-    } else {
-      setContractNotes(contractNotes + variable);
+      }
+    });
+    return result;
+  };
+
+  const handleEditorInput = () => {
+    if (!editorRef.current) return;
+    skipRebuildRef.current = true;
+    setContractNotes(serializeEditor(editorRef.current));
+  };
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+
+      // Allow select-all + delete
+      if (!range.collapsed && editorRef.current) {
+        const editorRange = document.createRange();
+        editorRange.selectNodeContents(editorRef.current);
+        const isFullSelect =
+          range.startOffset === editorRange.startOffset &&
+          range.startContainer === editorRange.startContainer &&
+          range.endOffset === editorRange.endOffset &&
+          range.endContainer === editorRange.endContainer;
+        if (isFullSelect) return; // Allow full clear
+      }
+
+      // Block deletion of individual chips
+      if (range.collapsed) {
+        const node = range.startContainer;
+        if (e.key === 'Backspace' && node.nodeType === Node.TEXT_NODE && range.startOffset === 0) {
+          const prev = node.previousSibling;
+          if (prev instanceof HTMLElement && prev.dataset.var) { e.preventDefault(); return; }
+        }
+        if (e.key === 'Delete' && node.nodeType === Node.TEXT_NODE && range.startOffset === (node.textContent?.length || 0)) {
+          const next = node.nextSibling;
+          if (next instanceof HTMLElement && next.dataset.var) { e.preventDefault(); return; }
+        }
+      } else {
+        // Selection spans nodes — check if it contains chips
+        const fragment = range.cloneContents();
+        if (fragment.querySelector('[data-var]')) { e.preventDefault(); return; }
+      }
     }
+  };
+
+  const handleEditorPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
+
+  const handleEditorClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const chip = target.closest('[data-var]') as HTMLElement | null;
+    if (chip?.dataset.var && editorRef.current) {
+      e.stopPropagation();
+      const allChips = editorRef.current.querySelectorAll(`[data-var="${chip.dataset.var}"]`);
+      let occIdx = 0;
+      allChips.forEach((el, i) => { if (el === chip) occIdx = i; });
+
+      const editorRect = editorRef.current.getBoundingClientRect();
+      const chipRect = chip.getBoundingClientRect();
+      setSwapTarget({ varKey: chip.dataset.var, index: occIdx });
+      setPopoverPos({ top: chipRect.bottom - editorRect.top + 6, left: chipRect.left - editorRect.left });
+    } else {
+      setSwapTarget(null);
+    }
+  };
+
+  const handleDeleteVariable = (varKey: string, occurrenceIndex: number) => {
+    setContractNotes(prev => {
+      let count = 0;
+      return prev.replace(new RegExp(varKey.replace(/[{}]/g, '\\$&'), 'g'), (match) => {
+        return count++ === occurrenceIndex ? '' : match;
+      });
+    });
+    setSwapTarget(null);
+  };
+
+  // Insert a variable — append to end of contract notes
+  const insertVariable = (variable: string) => {
+    setContractNotes(prev => prev + variable);
     setShowVariablesDropdown(false);
   };
 
@@ -154,8 +274,50 @@ const CreateContractPage: React.FC = () => {
 
   useEffect(() => {
     loadCreators();
-    loadDefaultTemplate();
+    if (!isEditMode) loadDefaultTemplate();
   }, [currentOrgId, currentProjectId]);
+
+  // Load existing contract for edit mode
+  useEffect(() => {
+    if (!editContractId) return;
+    const loadExisting = async () => {
+      setEditLoading(true);
+      try {
+        const contract = await ContractService.getContractById(editContractId);
+        if (!contract) { alert('Contract not found'); navigate('/creators'); return; }
+        if (contract.creatorSignature) {
+          setEditBlocked(true);
+        }
+        // Pre-fill all fields
+        setContractTitle(contract.contractTitle || 'Content Creation Agreement');
+        setContractStartDate(contract.contractStartDate || '');
+        setContractEndDate(contract.contractEndDate === 'Indefinite' ? '' : (contract.contractEndDate || ''));
+        setContractNotes(contract.contractNotes || '');
+        setInitialContractNotes(contract.contractNotes || '');
+        setCompanyName(contract.companyName || '');
+        setCompanyEmail(contract.companyInfo?.email || '');
+        setCompanyPhone(contract.companyInfo?.phone || '');
+        setPaymentStructureName(contract.paymentStructureName || '');
+        // Try to match creator
+        if (contract.creatorId?.startsWith('custom_')) {
+          setIsCustomCreator(true);
+          setCustomCreatorName(contract.creatorName || '');
+          setCustomCreatorEmail(contract.creatorEmail || '');
+          setCustomCreatorPhone(contract.creatorInfo?.phone || '');
+          setCustomCreatorAddress(contract.creatorInfo?.address || '');
+        } else {
+          setSelectedCreatorId(contract.creatorId || '');
+        }
+      } catch (err) {
+        console.error('Error loading contract for edit:', err);
+        alert('Failed to load contract');
+        navigate('/creators');
+      } finally {
+        setEditLoading(false);
+      }
+    };
+    loadExisting();
+  }, [editContractId]);
 
   const loadCreators = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -174,6 +336,7 @@ const CreateContractPage: React.FC = () => {
           displayName: creator.displayName,
           email: creator.email,
           isPending: false,
+          photoURL: creator.photoURL,
         }])
       );
 
@@ -184,6 +347,7 @@ const CreateContractPage: React.FC = () => {
           displayName: member.displayName || member.email || 'Unknown',
           email: member.email,
           isPending: false,
+          photoURL: member.photoURL,
         }));
 
       const mergedCreators = new Map<string, CreatorOption>();
@@ -199,6 +363,7 @@ const CreateContractPage: React.FC = () => {
             ...existing,
             displayName: creator.displayName || existing.displayName,
             email: creator.email || existing.email,
+            photoURL: creator.photoURL || existing.photoURL,
           });
         } else {
           mergedCreators.set(creator.userId, creator);
@@ -315,17 +480,97 @@ const CreateContractPage: React.FC = () => {
       ['{{COMPANY_NAME}}', companyName || ''],
       ['{{COMPANY_EMAIL}}', companyEmail || ''],
       ['{{COMPANY_PHONE}}', companyPhone || ''],
-      ['{{CREATOR_NAME}}', selectedCreator?.displayName || ''],
-      ['{{CREATOR_EMAIL}}', selectedCreator?.email || ''],
+      ['{{CREATOR_NAME}}', isCustomCreator ? customCreatorName : (selectedCreator?.displayName || '')],
+      ['{{CREATOR_EMAIL}}', isCustomCreator ? customCreatorEmail : (selectedCreator?.email || '')],
       ['{{CONTRACT_TITLE}}', contractTitle || ''],
       ['{{START_DATE}}', formatDate(contractStartDate)],
       ['{{END_DATE}}', contractEndDate ? formatDate(contractEndDate) : ''],
       ['{{TODAY_DATE}}', new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
     ]);
-  }, [companyName, companyEmail, companyPhone, selectedCreator, contractTitle, contractStartDate, contractEndDate]);
+  }, [companyName, companyEmail, companyPhone, selectedCreator, isCustomCreator, customCreatorName, customCreatorEmail, contractTitle, contractStartDate, contractEndDate]);
+
+  // ─── Build editor HTML (must be after variableValues) ───
+  const buildEditorHtml = (raw: string): string => {
+    if (!raw) return '';
+    const regex = /(\{\{[A-Z_]+\}\})/g;
+    const parts = raw.split(regex);
+
+    return parts.map(part => {
+      const varDef = TEMPLATE_VARIABLES.find(v => v.key === part);
+      if (varDef) {
+        const value = variableValues.get(part);
+        const hasValue = !!value;
+        const isFillable = varDef.type === 'fillable';
+        const displayValue = isFillable ? varDef.label : (hasValue ? value : varDef.label);
+        const bg = isFillable ? '#fffbeb' : hasValue ? '#eff6ff' : '#fef2f2';
+        const color = isFillable ? '#d97706' : hasValue ? '#111827' : '#f87171';
+        const border = isFillable ? '#fcd34d' : hasValue ? '#93c5fd' : '#fecaca';
+        const fw = hasValue && !isFillable ? '500' : '400';
+        const fs = (!hasValue || isFillable) ? 'italic' : 'normal';
+
+        return `<span contenteditable="false" data-var="${part}" style="display:inline-block;position:relative;cursor:pointer;padding:1px 5px;border-radius:3px;background:${bg};color:${color};border-bottom:2px solid ${border};font-weight:${fw};font-style:${fs};user-select:none;margin:2px 1px;line-height:1.8;"><span style="position:absolute;top:-11px;left:0;font-size:6.5px;font-weight:700;color:#ef4444;background:#fef2f2;border:1px solid #fee2e2;padding:0 3px;border-radius:3px;line-height:1.3;white-space:nowrap;pointer-events:none;">${varDef.label}</span>${displayValue}</span>`;
+      }
+      return part
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }).join('');
+  };
+
+  // Sync editor HTML on external changes (not from user typing)
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (skipRebuildRef.current) {
+      skipRebuildRef.current = false;
+      return;
+    }
+    editorRef.current.innerHTML = buildEditorHtml(contractNotes);
+  }, [contractNotes, variableValues]);
+
+  // ─── Company profile helpers ──────────────────────────────
+  const handleSaveCompanyProfile = () => {
+    if (!companyName.trim()) return;
+    const existing = companyProfiles.find(p => p.name === companyName.trim());
+    const profile: SavedCompanyProfile = {
+      id: existing?.id || `cp_${Date.now()}`,
+      name: companyName.trim(),
+      email: companyEmail,
+      phone: companyPhone,
+    };
+    const updated = existing
+      ? companyProfiles.map(p => p.id === existing.id ? profile : p)
+      : [...companyProfiles, profile];
+    setCompanyProfiles(updated);
+    persistCompanyProfiles(updated);
+  };
+
+  const handleSelectCompanyProfile = (profile: SavedCompanyProfile) => {
+    setCompanyName(profile.name);
+    setCompanyEmail(profile.email);
+    setCompanyPhone(profile.phone);
+    setShowCompanyDropdown(false);
+  };
+
+  const handleDeleteCompanyProfile = (id: string) => {
+    const updated = companyProfiles.filter(p => p.id !== id);
+    setCompanyProfiles(updated);
+    persistCompanyProfiles(updated);
+  };
+
+  // ─── Variable swap: replace the nth occurrence ──────────
+  const handleSwapVariable = (oldVar: string, newVar: string, occurrenceIndex: number) => {
+    setContractNotes(prev => {
+      let count = 0;
+      return prev.replace(new RegExp(oldVar.replace(/[{}]/g, '\\$&'), 'g'), (match) => {
+        return count++ === occurrenceIndex ? newVar : match;
+      });
+    });
+    setSwapTarget(null);
+  };
 
   const handleCreate = async () => {
-    if (!currentOrgId || !currentProjectId || !user || !selectedCreatorId) {
+    if (!currentOrgId || !currentProjectId || !user) {
       alert('Please fill in all required fields');
       return;
     }
@@ -335,15 +580,37 @@ const CreateContractPage: React.FC = () => {
       return;
     }
 
-    const selectedCreator = creators.find(c => c.userId === selectedCreatorId);
-    if (!selectedCreator) {
-      alert('Invalid creator selection');
-      return;
-    }
+    // Support custom creator (not in system) or selected creator
+    let creatorId: string;
+    let creatorName: string;
+    let creatorEmailVal: string;
+    let isPending = false;
 
-    const creatorId = selectedCreator.isPending
-      ? selectedCreatorId.replace('pending_', '')
-      : selectedCreatorId;
+    if (isCustomCreator) {
+      if (!customCreatorName.trim()) {
+        alert('Please enter the creator/client name');
+        return;
+      }
+      creatorId = `custom_${Date.now()}`;
+      creatorName = customCreatorName.trim();
+      creatorEmailVal = customCreatorEmail;
+    } else {
+      if (!selectedCreatorId) {
+        alert('Please select a creator');
+        return;
+      }
+      const selectedCreator = creators.find(c => c.userId === selectedCreatorId);
+      if (!selectedCreator) {
+        alert('Invalid creator selection');
+        return;
+      }
+      creatorId = selectedCreator.isPending
+        ? selectedCreatorId.replace('pending_', '')
+        : selectedCreatorId;
+      creatorName = selectedCreator.displayName || 'Creator';
+      creatorEmailVal = selectedCreator.email || '';
+      isPending = selectedCreator.isPending || false;
+    }
 
     setLoading(true);
     try {
@@ -351,16 +618,29 @@ const CreateContractPage: React.FC = () => {
         currentOrgId,
         currentProjectId,
         creatorId,
-        selectedCreator.displayName || 'Creator',
-        selectedCreator.email || '',
+        creatorName,
+        creatorEmailVal,
         contractStartDate,
         contractEndDate,
         contractNotes,
         paymentStructureName || undefined,
         user.uid,
-        selectedCreator.isPending || false,
+        isPending,
         contractTitle,
-        companyName
+        companyName,
+        isCustomCreator ? {
+          name: customCreatorName,
+          email: customCreatorEmail || undefined,
+          phone: customCreatorPhone || undefined,
+          address: customCreatorAddress || undefined,
+        } : undefined,
+        {
+          name: companyName,
+          email: companyEmail || undefined,
+          phone: companyPhone || undefined,
+        },
+        undefined, // expirationDays
+        !isCustomCreator ? creators.find(c => c.userId === selectedCreatorId)?.photoURL : undefined
       );
 
       localStorage.removeItem(getDraftKey());
@@ -377,13 +657,109 @@ const CreateContractPage: React.FC = () => {
     }
   };
 
+  // Save as draft — creates contract with status 'draft'
+  const handleSaveDraft = async () => {
+    if (!currentOrgId || !currentProjectId || !user) return;
+    if (!companyName.trim()) { alert('Please enter a company name'); return; }
+
+    let creatorId = 'draft_placeholder';
+    let creatorName = 'TBD';
+    let creatorEmailVal = '';
+
+    if (isCustomCreator && customCreatorName.trim()) {
+      creatorId = `custom_${Date.now()}`;
+      creatorName = customCreatorName.trim();
+      creatorEmailVal = customCreatorEmail;
+    } else if (selectedCreatorId) {
+      const sel = creators.find(c => c.userId === selectedCreatorId);
+      if (sel) {
+        creatorId = sel.isPending ? selectedCreatorId.replace('pending_', '') : selectedCreatorId;
+        creatorName = sel.displayName || 'Creator';
+        creatorEmailVal = sel.email || '';
+      }
+    }
+
+    setLoading(true);
+    try {
+      const contract = await ContractService.createShareableContract(
+        currentOrgId, currentProjectId, creatorId, creatorName, creatorEmailVal,
+        contractStartDate || new Date().toISOString().split('T')[0],
+        contractEndDate || 'Indefinite', contractNotes,
+        paymentStructureName || undefined, user.uid, false,
+        contractTitle, companyName,
+        isCustomCreator ? { name: customCreatorName, email: customCreatorEmail || undefined, phone: customCreatorPhone || undefined, address: customCreatorAddress || undefined } : undefined,
+        { name: companyName, email: companyEmail || undefined, phone: companyPhone || undefined },
+        undefined,
+        !isCustomCreator && selectedCreatorId ? creators.find(c => c.userId === selectedCreatorId)?.photoURL : undefined
+      );
+      // Set status to draft
+      await ContractService.updateContract(contract.id, { status: 'draft' as any });
+      localStorage.removeItem(getDraftKey());
+      navigate('/creators');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      alert('Failed to save draft');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save edits to an existing contract
+  const handleSaveEdit = async () => {
+    if (!editContractId || !user) return;
+    if (editBlocked) { alert('Cannot edit — creator has already signed'); return; }
+
+    let creatorId: string | undefined;
+    let creatorName: string | undefined;
+    let creatorEmailVal: string | undefined;
+
+    if (isCustomCreator) {
+      creatorId = `custom_${Date.now()}`;
+      creatorName = customCreatorName.trim();
+      creatorEmailVal = customCreatorEmail;
+    } else if (selectedCreatorId) {
+      const sel = creators.find(c => c.userId === selectedCreatorId);
+      if (sel) {
+        creatorId = sel.isPending ? selectedCreatorId.replace('pending_', '') : selectedCreatorId;
+        creatorName = sel.displayName || 'Creator';
+        creatorEmailVal = sel.email || '';
+      }
+    }
+
+    setLoading(true);
+    try {
+      const updates: any = {
+        contractTitle,
+        contractStartDate: contractStartDate || '',
+        contractEndDate: contractEndDate || 'Indefinite',
+        contractNotes,
+        companyName,
+        companyInfo: { name: companyName, email: companyEmail || undefined, phone: companyPhone || undefined },
+      };
+      if (creatorId) updates.creatorId = creatorId;
+      if (creatorName) updates.creatorName = creatorName;
+      if (creatorEmailVal !== undefined) updates.creatorEmail = creatorEmailVal;
+      if (isCustomCreator) {
+        updates.creatorInfo = { name: customCreatorName, email: customCreatorEmail || undefined, phone: customCreatorPhone || undefined, address: customCreatorAddress || undefined };
+      }
+      // If contract was a draft and we're editing, keep it as draft. User sends separately.
+      await ContractService.updateContract(editContractId, updates);
+      navigate('/creators');
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      alert('Failed to save changes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBack = () => {
     if (hasUnsavedChanges) {
       const confirmLeave = confirm('You have unsaved changes. Are you sure you want to leave?');
       if (!confirmLeave) return;
     }
     localStorage.removeItem(getDraftKey());
-    navigate('/dashboard?tab=creators&subtab=contracts');
+    navigate('/creators');
   };
 
   // Helper: get icon for a field chip
@@ -409,31 +785,65 @@ const CreateContractPage: React.FC = () => {
             >
               <ArrowLeft className="w-4 h-4 text-neutral-500" />
             </button>
-            <span className="text-sm font-semibold text-neutral-900">New Contract</span>
+            <span className="text-sm font-semibold text-neutral-900">
+              {isEditMode ? 'Edit Contract' : 'New Contract'}
+            </span>
+            {editBlocked && (
+              <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                Read-only — creator signed
+              </span>
+            )}
           </div>
-          <Button
-            onClick={handleCreate}
-            disabled={loading || !selectedCreatorId || !contractStartDate || !companyName}
-            className="h-8 px-4 text-xs font-medium bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-40 rounded-md flex items-center gap-1.5"
-          >
-            {loading ? (
+          <div className="flex items-center gap-2">
+            {isEditMode ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Sending...
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={loading || editBlocked}
+                  className="h-9 px-5 text-xs font-semibold text-white rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-[0_2px_0_0_rgba(30,64,175,1)] hover:shadow-[0_1px_0_0_rgba(30,64,175,1)] active:shadow-none active:translate-y-[1px] flex items-center gap-1.5"
+                >
+                  {loading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...</> : <><Save className="w-3.5 h-3.5" /> Save Changes</>}
+                </button>
               </>
             ) : (
-              'Send Contract'
+              <>
+                {/* Save Draft */}
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={loading || !companyName.trim()}
+                  className="h-9 px-4 text-xs font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save Draft
+                </button>
+                {/* Send Contract */}
+                <button
+                  onClick={handleCreate}
+                  disabled={loading || (!selectedCreatorId && !isCustomCreator) || !contractStartDate || !companyName}
+                  className="h-9 px-5 text-xs font-semibold text-white rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-[0_2px_0_0_rgba(30,64,175,1)] hover:shadow-[0_1px_0_0_rgba(30,64,175,1)] active:shadow-none active:translate-y-[1px] flex items-center gap-1.5"
+                >
+                  {loading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...</> : 'Send Contract'}
+                </button>
+              </>
             )}
-          </Button>
+          </div>
         </div>
       </div>
+
+      {/* Loading state for edit mode */}
+      {editLoading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+          <span className="ml-2 text-sm text-neutral-500">Loading contract...</span>
+        </div>
+      )}
 
       {/* ── Three-column layout ── */}
       <div className="max-w-[1440px] mx-auto flex">
 
         {/* ── LEFT SIDEBAR: Field Palette ── */}
         <aside className="w-64 flex-shrink-0 border-r border-neutral-200 bg-white min-h-[calc(100vh-3.5rem)] overflow-y-auto">
-          <div className="p-4">
+          <div className="px-3 py-4">
             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">Fields</p>
 
             {/* Legend */}
@@ -553,14 +963,14 @@ const CreateContractPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowChangeTemplateModal(true)}
-                className="text-xs text-neutral-500 hover:text-neutral-900 px-2.5 py-1 rounded-md hover:bg-neutral-100 transition-colors"
+                className="text-xs font-medium text-neutral-700 bg-white border border-neutral-300 px-3 py-1.5 rounded-md transition-all hover:bg-neutral-50 active:bg-neutral-100 shadow-[0_1px_0_0_rgba(0,0,0,0.1)] active:shadow-none active:translate-y-[1px]"
               >
                 Change Template
               </button>
               <button
                 onClick={() => setShowSaveTemplateModal(true)}
                 disabled={!contractNotes.trim()}
-                className="text-xs text-neutral-500 hover:text-neutral-900 px-2.5 py-1 rounded-md hover:bg-neutral-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-neutral-700 bg-white border border-neutral-300 px-3 py-1.5 rounded-md transition-all hover:bg-neutral-50 active:bg-neutral-100 shadow-[0_1px_0_0_rgba(0,0,0,0.1)] active:shadow-none active:translate-y-[1px] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Save Template
               </button>
@@ -606,9 +1016,12 @@ const CreateContractPage: React.FC = () => {
                 <div>
                   <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Creator</p>
                   <p className="text-sm font-semibold text-neutral-900">
-                    {selectedCreator?.displayName || '[Creator Name]'}
+                    {isCustomCreator ? (customCreatorName || '[Creator Name]') : (selectedCreator?.displayName || '[Creator Name]')}
                   </p>
-                  {selectedCreator?.email && <p className="text-[10px] text-neutral-500">{selectedCreator.email}</p>}
+                  {isCustomCreator
+                    ? customCreatorEmail && <p className="text-[10px] text-neutral-500">{customCreatorEmail}</p>
+                    : selectedCreator?.email && <p className="text-[10px] text-neutral-500">{selectedCreator.email}</p>
+                  }
                 </div>
               </div>
 
@@ -648,16 +1061,79 @@ const CreateContractPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Editable contract body */}
+              {/* Contract body — contentEditable with inline variable chips */}
               <div className="mb-8">
                 <p className="text-xs font-medium text-neutral-400 mb-3">Terms & Conditions</p>
-                <textarea
-                  ref={textareaRef}
-                  value={contractNotes}
-                  onChange={(e) => setContractNotes(e.target.value)}
-                  placeholder={"Enter contract terms and conditions...\n\nYou can use variables like {{COMPANY_NAME}} and {{CREATOR_NAME}} that auto-fill when the contract is sent."}
-                  className="w-full min-h-[320px] px-0 py-0 bg-transparent text-neutral-700 placeholder-neutral-300 focus:outline-none resize-none text-sm leading-relaxed"
-                />
+
+                <div className="relative">
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={handleEditorInput}
+                    onKeyDown={handleEditorKeyDown}
+                    onPaste={handleEditorPaste}
+                    onClick={handleEditorClick}
+                    data-placeholder="Start typing your contract terms..."
+                    className="min-h-[320px] text-neutral-700 text-sm leading-loose outline-none whitespace-pre-wrap empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-300 empty:before:italic empty:before:pointer-events-none"
+                    style={{ wordBreak: 'break-word' }}
+                  />
+
+                  {/* Swap / Delete popover */}
+                  {swapTarget && popoverPos && (
+                    <div
+                      className="absolute bg-white border border-neutral-200 rounded-xl shadow-2xl w-56 py-2 max-h-72 overflow-y-auto"
+                      style={{ top: popoverPos.top, left: popoverPos.left, zIndex: 100 }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Header with delete */}
+                      <div className="flex items-center justify-between px-3 pb-1.5 mb-1 border-b border-neutral-100">
+                        <div>
+                          <span className="text-[10px] font-semibold text-neutral-900 block">Edit Variable</span>
+                          <span className="text-[9px] text-neutral-400">Swap or remove this field</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVariable(swapTarget.varKey, swapTarget.index)}
+                          className="p-1.5 rounded-md hover:bg-red-50 text-neutral-400 hover:text-red-500 transition-colors"
+                          title="Remove variable"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Swap options */}
+                      {['auto', 'fillable'].map(type => {
+                        const items = TEMPLATE_VARIABLES.filter(v => v.type === type && v.key !== swapTarget.varKey);
+                        if (!items.length) return null;
+                        return (
+                          <div key={type}>
+                            <span className="block px-3 pt-2 pb-1 text-[8px] font-bold text-neutral-400 uppercase tracking-wider">
+                              {type === 'auto' ? 'Standard Fields' : 'Fillable Fields'}
+                            </span>
+                            {items.map(v => {
+                              const vValue = variableValues.get(v.key);
+                              return (
+                                <button
+                                  key={v.key}
+                                  type="button"
+                                  className="flex items-center gap-2 w-full text-left px-3 py-1.5 hover:bg-blue-50 transition-colors"
+                                  onClick={() => handleSwapVariable(swapTarget.varKey, v.key, swapTarget.index)}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${vValue ? 'bg-emerald-500' : v.type === 'fillable' ? 'bg-amber-400' : 'bg-neutral-300'}`} />
+                                  <span className="flex-1 min-w-0">
+                                    <span className="text-xs text-neutral-800 font-medium block">{v.label}</span>
+                                    {vValue && <span className="text-[10px] text-neutral-400 truncate block">{vValue}</span>}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Signature blocks */}
@@ -665,7 +1141,7 @@ const CreateContractPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-8">
                   {[
                     { label: 'Company', name: companyName || '' },
-                    { label: 'Creator', name: selectedCreator?.displayName || '' },
+                    { label: 'Creator', name: isCustomCreator ? customCreatorName : (selectedCreator?.displayName || '') },
                   ].map(p => (
                     <div key={p.label}>
                       <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-4">{p.label}</p>
@@ -685,168 +1161,193 @@ const CreateContractPage: React.FC = () => {
 
         {/* ── RIGHT SIDEBAR: Contract Setup ── */}
         <aside className="w-72 flex-shrink-0 border-l border-neutral-200 bg-white min-h-[calc(100vh-3.5rem)] overflow-y-auto">
-          <div className="p-5 space-y-5">
-            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Contract Setup</p>
+          <div className="divide-y divide-neutral-100">
 
-            {/* Company Details */}
+            {/* ── Company Details (collapsible) ── */}
             <div>
-              <p className="text-xs font-medium text-neutral-900 mb-2">Company Details</p>
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[10px] text-neutral-500 mb-0.5">Company Name *</label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Acme Inc."
-                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-neutral-500 mb-0.5">Email</label>
-                  <input
-                    type="email"
-                    value={companyEmail}
-                    onChange={(e) => setCompanyEmail(e.target.value)}
-                    placeholder="hello@acme.com"
-                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-neutral-500 mb-0.5">Phone</label>
-                  <input
-                    type="tel"
-                    value={companyPhone}
-                    onChange={(e) => setCompanyPhone(e.target.value)}
-                    placeholder="+1 (555) 123-4567"
-                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-neutral-100" />
-
-            {/* Creator */}
-            <div>
-              <p className="text-xs font-medium text-neutral-900 mb-2">Creator</p>
-              {loadingCreators ? (
-                <div className="flex items-center gap-2 text-xs text-neutral-400 py-2">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Loading...
-                </div>
-              ) : creators.length === 0 ? (
-                <p className="text-xs text-neutral-400">No creators found</p>
-              ) : (
-                <>
-                  <select
-                    value={selectedCreatorId}
-                    onChange={(e) => setSelectedCreatorId(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-                  >
-                    <option value="">Choose a creator...</option>
-                    {creators.filter(c => !c.isPending).length > 0 && (
-                      <optgroup label="Active Creators">
-                        {creators.filter(c => !c.isPending).map((creator) => (
-                          <option key={creator.userId} value={creator.userId}>
-                            {creator.displayName || creator.email}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {creators.filter(c => c.isPending).length > 0 && (
-                      <optgroup label="Pending">
-                        {creators.filter(c => c.isPending).map((creator) => (
-                          <option key={creator.userId} value={creator.userId}>
-                            {creator.email || creator.displayName} (pending)
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                  {selectedCreatorId?.startsWith('pending_') && (
-                    <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700 leading-tight">
-                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5 flex-shrink-0" />
-                      This creator hasn't accepted their invitation yet.
+              <button
+                type="button"
+                onClick={() => setCollapsedSections(prev => { const n = new Set(prev); n.has('company') ? n.delete('company') : n.add('company'); return n; })}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors"
+              >
+                <span className="text-xs font-medium text-neutral-900">Company Details</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${collapsedSections.has('company') ? '-rotate-90' : ''}`} />
+              </button>
+              {!collapsedSections.has('company') && (
+                <div className="px-4 pb-4 space-y-2">
+                  {/* Saved profiles dropdown */}
+                  {companyProfiles.length > 0 && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+                        className="w-full flex items-center justify-between px-2.5 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-md hover:bg-neutral-100 transition-colors"
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                          <span className="text-neutral-700 truncate text-xs">{companyName || 'Select saved company...'}</span>
+                        </span>
+                        <ChevronDown className={`w-3 h-3 text-neutral-400 transition-transform flex-shrink-0 ${showCompanyDropdown ? 'rotate-180' : ''}`} />
+                      </button>
+                      {showCompanyDropdown && (
+                        <div className="absolute left-0 right-0 z-30 mt-1 bg-white border border-neutral-200 rounded-lg shadow-xl py-1">
+                          {companyProfiles.map(p => (
+                            <div key={p.id} className="flex items-center group">
+                              <button type="button" onClick={() => handleSelectCompanyProfile(p)} className="flex-1 text-left px-3 py-2 hover:bg-blue-50 transition-colors">
+                                <div className="text-xs text-neutral-900 font-medium">{p.name}</div>
+                                {p.email && <div className="text-[9px] text-neutral-400">{p.email}</div>}
+                              </button>
+                              <button type="button" onClick={() => handleDeleteCompanyProfile(p.id)} className="p-1.5 mr-2 text-neutral-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
-                </>
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 mb-0.5">Company Name *</label>
+                    <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 mb-0.5">Email <span className="text-neutral-300">(optional)</span></label>
+                    <input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} placeholder="hello@acme.com" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 mb-0.5">Phone <span className="text-neutral-300">(optional)</span></label>
+                    <input type="tel" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="+1 (555) 123-4567" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                  </div>
+                  {companyName.trim() && (
+                    <button type="button" onClick={handleSaveCompanyProfile} className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[10px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors">
+                      <Save className="w-3 h-3" />
+                      {companyProfiles.find(p => p.name === companyName.trim()) ? 'Update Saved Profile' : 'Save Company Profile'}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
-            <div className="border-t border-neutral-100" />
-
-            {/* Contract Period */}
+            {/* ── Creator (collapsible) ── */}
             <div>
-              <p className="text-xs font-medium text-neutral-900 mb-2">Contract Period</p>
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[10px] text-neutral-500 mb-0.5">Start Date *</label>
-                  <input
-                    type="date"
-                    value={contractStartDate}
-                    onChange={(e) => setContractStartDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-                  />
+              <button
+                type="button"
+                onClick={() => setCollapsedSections(prev => { const n = new Set(prev); n.has('creator') ? n.delete('creator') : n.add('creator'); return n; })}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors"
+              >
+                <span className="text-xs font-medium text-neutral-900">Creator</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${collapsedSections.has('creator') ? '-rotate-90' : ''}`} />
+              </button>
+              {!collapsedSections.has('creator') && (
+                <div className="px-4 pb-4">
+                  {isCustomCreator ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 px-2 py-1.5 bg-emerald-50 border border-emerald-200 rounded-md">
+                        <UserPlus className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                        <span className="text-[10px] text-emerald-700 font-medium">New Contact</span>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-500 mb-0.5">Name *</label>
+                        <input type="text" value={customCreatorName} onChange={(e) => setCustomCreatorName(e.target.value)} placeholder="Full name" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-500 mb-0.5">Email <span className="text-neutral-300">(optional)</span></label>
+                        <input type="email" value={customCreatorEmail} onChange={(e) => setCustomCreatorEmail(e.target.value)} placeholder="email@example.com" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-500 mb-0.5">Phone <span className="text-neutral-300">(optional)</span></label>
+                        <input type="tel" value={customCreatorPhone} onChange={(e) => setCustomCreatorPhone(e.target.value)} placeholder="+1 (555) 123-4567" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-500 mb-0.5">Address <span className="text-neutral-300">(optional)</span></label>
+                        <input type="text" value={customCreatorAddress} onChange={(e) => setCustomCreatorAddress(e.target.value)} placeholder="123 Main St, City, State" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                      </div>
+                      <button type="button" onClick={() => { setIsCustomCreator(false); setCustomCreatorName(''); setCustomCreatorEmail(''); setCustomCreatorPhone(''); setCustomCreatorAddress(''); }} className="text-[10px] text-neutral-500 hover:text-neutral-700 transition-colors">&larr; Back to existing creators</button>
+                    </div>
+                  ) : loadingCreators ? (
+                    <div className="flex items-center gap-2 text-xs text-neutral-400 py-2"><Loader2 className="w-3 h-3 animate-spin" /> Loading...</div>
+                  ) : (
+                    <div className="space-y-2">
+                      <select value={selectedCreatorId} onChange={(e) => setSelectedCreatorId(e.target.value)} className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white">
+                        <option value="">Choose a creator...</option>
+                        {creators.filter(c => !c.isPending).length > 0 && (
+                          <optgroup label="Active Creators">
+                            {creators.filter(c => !c.isPending).map((c) => (<option key={c.userId} value={c.userId}>{c.displayName || c.email}</option>))}
+                          </optgroup>
+                        )}
+                        {creators.filter(c => c.isPending).length > 0 && (
+                          <optgroup label="Pending">
+                            {creators.filter(c => c.isPending).map((c) => (<option key={c.userId} value={c.userId}>{c.email || c.displayName} (pending)</option>))}
+                          </optgroup>
+                        )}
+                      </select>
+                      <button type="button" onClick={() => { setIsCustomCreator(true); setSelectedCreatorId(''); }} className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors font-medium">
+                        <UserPlus className="w-3.5 h-3.5" /> New Contact
+                      </button>
+                      {selectedCreatorId?.startsWith('pending_') && (
+                        <div className="flex items-start gap-1.5 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700 leading-tight">
+                          <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5 flex-shrink-0" />
+                          This creator hasn't accepted their invitation yet.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-[10px] text-neutral-500 mb-0.5">End Date <span className="text-neutral-300">(optional)</span></label>
-                  <input
-                    type="date"
-                    value={contractEndDate}
-                    onChange={(e) => setContractEndDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-                  />
+              )}
+            </div>
+
+            {/* ── Contract Details (collapsible) ── */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setCollapsedSections(prev => { const n = new Set(prev); n.has('details') ? n.delete('details') : n.add('details'); return n; })}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors"
+              >
+                <span className="text-xs font-medium text-neutral-900">Contract Details</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${collapsedSections.has('details') ? '-rotate-90' : ''}`} />
+              </button>
+              {!collapsedSections.has('details') && (
+                <div className="px-4 pb-4 space-y-2">
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 mb-0.5">Contract Title</label>
+                    <input type="text" value={contractTitle} onChange={(e) => setContractTitle(e.target.value)} placeholder="Content Creation Agreement" className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 mb-0.5">Start Date *</label>
+                    <input type="date" value={contractStartDate} onChange={(e) => setContractStartDate(e.target.value)} className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 mb-0.5">End Date <span className="text-neutral-300">(optional)</span></label>
+                    <input type="date" value={contractEndDate} onChange={(e) => setContractEndDate(e.target.value)} className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="border-t border-neutral-100" />
-
-            {/* Contract Title */}
-            <div>
-              <p className="text-xs font-medium text-neutral-900 mb-2">Contract Title</p>
-              <input
-                type="text"
-                value={contractTitle}
-                onChange={(e) => setContractTitle(e.target.value)}
-                placeholder="Content Creation Agreement"
-                className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-              />
-            </div>
-
-            <div className="border-t border-neutral-100" />
-
-            {/* Payment Structure */}
-            <div>
-              <p className="text-xs font-medium text-neutral-900 mb-2">Payment Structure <span className="text-neutral-300 font-normal">(optional)</span></p>
-              <input
-                type="text"
-                value={paymentStructureName}
-                onChange={(e) => setPaymentStructureName(e.target.value)}
-                placeholder="e.g., Net 30, per deliverable"
-                className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
-              />
-            </div>
-
-            {/* Variable status */}
+            {/* ── Variables in Contract ── */}
             {contractNotes.includes('{{') && (
-              <>
-                <div className="border-t border-neutral-100" />
-                <div>
-                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Variables</p>
-                  <div className="space-y-1">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setCollapsedSections(prev => { const n = new Set(prev); n.has('variables') ? n.delete('variables') : n.add('variables'); return n; })}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors"
+                >
+                  <span className="text-xs font-medium text-neutral-900">Variables <span className="text-neutral-400 font-normal">({TEMPLATE_VARIABLES.filter(v => contractNotes.includes(v.key)).length})</span></span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${collapsedSections.has('variables') ? '-rotate-90' : ''}`} />
+                </button>
+                {!collapsedSections.has('variables') && (
+                  <div className="px-4 pb-4 space-y-1.5">
                     {TEMPLATE_VARIABLES.filter(v => contractNotes.includes(v.key)).map(v => {
                       const resolved = variableValues.get(v.key);
                       const isFillable = v.type === 'fillable';
                       return (
-                        <div key={v.key} className="flex items-center justify-between gap-2">
+                        <div key={v.key} className="flex items-center justify-between gap-2 py-1">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isFillable ? 'bg-amber-400' : resolved ? 'bg-emerald-500' : 'bg-red-300'}`} />
                             <span className="text-[10px] text-neutral-600 truncate">{v.label}</span>
                           </div>
                           {isFillable ? (
-                            <span className="text-[10px] text-amber-600 flex-shrink-0">signer</span>
+                            <span className="text-[10px] text-amber-600 flex-shrink-0">signer fills</span>
                           ) : resolved ? (
                             <span className="text-[10px] text-emerald-600 truncate max-w-[100px] flex-shrink-0">{resolved}</span>
                           ) : (
@@ -856,9 +1357,10 @@ const CreateContractPage: React.FC = () => {
                       );
                     })}
                   </div>
-                </div>
-              </>
+                )}
+              </div>
             )}
+
           </div>
         </aside>
       </div>
@@ -945,7 +1447,7 @@ const CreateContractPage: React.FC = () => {
         <ContractCreatedModal
           creatorLink={createdContract.creatorLink}
           companyLink={createdContract.companyLink}
-          onClose={() => navigate('/dashboard?tab=creators&subtab=contracts')}
+          onClose={() => navigate('/creators')}
         />
       )}
     </div>

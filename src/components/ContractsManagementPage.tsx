@@ -7,7 +7,6 @@ import {
   FileText,
   Plus,
   Copy,
-  ExternalLink,
   Check,
   Clock,
   X,
@@ -18,7 +17,8 @@ import {
   Mail,
   Trash2,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Pencil
 } from 'lucide-react';
 import Pagination from './ui/Pagination';
 
@@ -75,7 +75,7 @@ const ContractsManagementPage: React.FC = () => {
   const [contracts, setContracts] = useState<ShareableContract[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'signed' | 'expired'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'pending' | 'signed' | 'expired'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
@@ -117,7 +117,7 @@ const ContractsManagementPage: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString || dateString === 'Indefinite') return 'Indefinite';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -227,9 +227,9 @@ const ContractsManagementPage: React.FC = () => {
       case 'pending': {
         const pendingCount = countPendingSignatures(contract);
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-md text-xs font-medium">
-            <Clock className="w-3 h-3" />
-            Awaiting {pendingCount} signature{pendingCount !== 1 ? 's' : ''}
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 text-neutral-300 rounded-md text-xs font-medium whitespace-nowrap">
+            <Clock className="w-3 h-3 text-neutral-500" />
+            {pendingCount} signature{pendingCount !== 1 ? 's' : ''} pending
           </span>
         );
       }
@@ -257,7 +257,8 @@ const ContractsManagementPage: React.FC = () => {
       }
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-500/20 text-gray-400 rounded-md text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 text-neutral-400 rounded-md text-xs font-medium">
+            <FileText className="w-3 h-3" />
             Draft
           </span>
         );
@@ -366,6 +367,7 @@ const ContractsManagementPage: React.FC = () => {
             title="Filter by status"
           >
             <option value="all">All</option>
+            <option value="draft">Drafts</option>
             <option value="pending">Pending</option>
             <option value="signed">Signed</option>
             <option value="expired">Expired</option>
@@ -414,7 +416,7 @@ const ContractsManagementPage: React.FC = () => {
                     Created
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                    Links
+                    Quick Actions
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Actions
@@ -427,9 +429,18 @@ const ContractsManagementPage: React.FC = () => {
                   return (
                   <tr key={contract.id} className="hover:bg-white/5 transition-colors group">
                     <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-semibold text-white">{contract.creatorName}</div>
-                        <div className="text-xs text-gray-400">{contract.creatorEmail}</div>
+                      <div className="flex items-center gap-2.5">
+                        {contract.creatorPhotoURL ? (
+                          <img src={contract.creatorPhotoURL} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-white uppercase">
+                            {contract.creatorName?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white truncate">{contract.creatorName}</div>
+                          {contract.creatorEmail && <div className="text-xs text-gray-400 truncate">{contract.creatorEmail}</div>}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -442,8 +453,8 @@ const ContractsManagementPage: React.FC = () => {
                       {getSignatureProgress(contract)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-white">
-                        {formatDate(contract.contractStartDate)} - {formatDate(contract.contractEndDate)}
+                      <div className="text-sm text-white whitespace-nowrap">
+                        {formatDate(contract.contractStartDate)}{contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? ` - ${formatDate(contract.contractEndDate)}` : ' - Indefinite'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -452,55 +463,47 @@ const ContractsManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        {/* Creator Link */}
-                        <div className="flex gap-1">
+                      {effectiveStatus === 'draft' ? (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => navigate(`/contracts/edit/${contract.id}`)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium rounded-md transition-all bg-orange-600 text-white hover:bg-orange-700 active:bg-orange-800 shadow-[0_2px_0_0_rgba(154,52,18,1)] hover:shadow-[0_1px_0_0_rgba(154,52,18,1)] active:shadow-none active:translate-y-[1px]"
+                          >
+                            <Pencil className="w-3 h-3" /> Edit
+                          </button>
+                          <button
+                            onClick={() => { setDeleteConfirmId(contract.id); setOpenMenuId(null); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium rounded-md transition-all bg-neutral-700 text-neutral-200 hover:bg-neutral-600 active:bg-neutral-800 shadow-[0_2px_0_0_rgba(38,38,38,1)] hover:shadow-[0_1px_0_0_rgba(38,38,38,1)] active:shadow-none active:translate-y-[1px]"
+                          >
+                            <Trash2 className="w-3 h-3" /> Archive
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
                           <button
                             onClick={() => handleCopyLink(contract.creatorLink, `creator-${contract.id}`)}
-                            className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                            title="Copy creator link"
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium rounded-md transition-all ${
+                              copiedLink === `creator-${contract.id}`
+                                ? 'bg-green-600 text-white shadow-[0_2px_0_0_rgba(22,101,52,1)]'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-[0_2px_0_0_rgba(30,64,175,1)] hover:shadow-[0_1px_0_0_rgba(30,64,175,1)] active:shadow-none active:translate-y-[1px]'
+                            }`}
                           >
-                            {copiedLink === `creator-${contract.id}` ? (
-                              <Check className="w-4 h-4 text-green-400" />
-                            ) : (
-                              <Copy className="w-4 h-4 text-blue-400" />
-                            )}
+                            {copiedLink === `creator-${contract.id}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            {copiedLink === `creator-${contract.id}` ? 'Copied' : 'Creator'}
                           </button>
-                          <a
-                            href={contract.creatorLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                            title="Open creator link"
-                          >
-                            <ExternalLink className="w-4 h-4 text-blue-400" />
-                          </a>
-                        </div>
-
-                        {/* Company Link */}
-                        <div className="flex gap-1 border-l border-gray-700 pl-2">
                           <button
                             onClick={() => handleCopyLink(contract.companyLink, `company-${contract.id}`)}
-                            className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                            title="Copy company link"
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium rounded-md transition-all ${
+                              copiedLink === `company-${contract.id}`
+                                ? 'bg-green-600 text-white shadow-[0_2px_0_0_rgba(22,101,52,1)]'
+                                : 'bg-neutral-700 text-neutral-200 hover:bg-neutral-600 active:bg-neutral-800 shadow-[0_2px_0_0_rgba(38,38,38,1)] hover:shadow-[0_1px_0_0_rgba(38,38,38,1)] active:shadow-none active:translate-y-[1px]'
+                            }`}
                           >
-                            {copiedLink === `company-${contract.id}` ? (
-                              <Check className="w-4 h-4 text-green-400" />
-                            ) : (
-                              <Copy className="w-4 h-4 text-purple-400" />
-                            )}
+                            {copiedLink === `company-${contract.id}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            {copiedLink === `company-${contract.id}` ? 'Copied' : 'Company'}
                           </button>
-                          <a
-                            href={contract.companyLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                            title="Open company link"
-                          >
-                            <ExternalLink className="w-4 h-4 text-purple-400" />
-                          </a>
                         </div>
-                      </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end relative">
@@ -526,6 +529,21 @@ const ContractsManagementPage: React.FC = () => {
 
                             {/* Menu */}
                             <div className="absolute right-0 top-8 w-48 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-[9999] overflow-hidden">
+                              {/* Edit */}
+                              <button
+                                onClick={() => { setOpenMenuId(null); navigate(`/contracts/edit/${contract.id}`); }}
+                                disabled={!!contract.creatorSignature}
+                                className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-3 ${
+                                  contract.creatorSignature
+                                    ? 'text-gray-500 cursor-not-allowed opacity-50'
+                                    : 'text-white hover:bg-white/10'
+                                }`}
+                                title={contract.creatorSignature ? 'Cannot edit — creator already signed' : 'Edit contract'}
+                              >
+                                <Pencil className="w-4 h-4 text-orange-400" />
+                                Edit Contract
+                              </button>
+
                               {/* Download */}
                               <button
                                 onClick={() => handleDownloadContract(contract)}

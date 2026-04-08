@@ -43,6 +43,7 @@ const ContractSigningPage: React.FC = () => {
     try {
       const data = await ContractService.getContractById(contractId);
       if (!data) { setError('Contract not found'); }
+      else if (data.status === 'draft') { setError('This contract is still being drafted and is not yet available for signing.'); }
       else if (data.status === 'expired' || (data.expiresAt && data.expiresAt.toDate() < new Date())) {
         setContract(data); setExpired(true);
       } else { setContract(data); }

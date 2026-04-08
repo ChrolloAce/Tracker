@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMobileToggle
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations', 'openclaw-section'])); // Start with sections expanded
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations', 'openclaw-section', 'discover-section'])); // Start with sections expanded
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
@@ -111,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const openClawItem: NavItem | null = useMemo(() => {
     return {
       id: 'openclaw-keys',
-      label: 'Open Claw',
+      label: 'API Keys',
       icon: Key,
       href: `${baseHref}/openclaw`,
     };
