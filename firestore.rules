@@ -739,29 +739,20 @@ service cloud.firestore {
       // Organization members can create contracts
       allow create: if isSignedIn();
 
-      // Update rules for signing + editing
+      // Signing + editing rules
       allow update: if
-        // RULE 1: Anyone can sign as creator (if creator hasn't signed yet)
-        // Checks that the update only touches creatorSignature, updatedAt, and optionally status
-        (resource.data.creatorSignature == null
-         && request.resource.data.creatorSignature != null
-         && request.resource.data.diff(resource.data).affectedKeys().hasAll(['creatorSignature', 'updatedAt'])
-         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['creatorSignature', 'updatedAt', 'status']))
+        // Anyone can add creator signature if field doesn't exist yet
+        (!('creatorSignature' in resource.data) && 'creatorSignature' in request.resource.data)
         ||
-        // RULE 2: Anyone can sign as company (if company hasn't signed yet)
-        (resource.data.companySignature == null
-         && request.resource.data.companySignature != null
-         && request.resource.data.diff(resource.data).affectedKeys().hasAll(['companySignature', 'updatedAt'])
-         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companySignature', 'updatedAt', 'status']))
+        // Anyone can add company signature if field doesn't exist yet
+        (!('companySignature' in resource.data) && 'companySignature' in request.resource.data)
         ||
-        // RULE 3: Authenticated users can update status/expiration (renewal, status resolution)
-        (isSignedIn()
-         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'expiresAt']))
+        // Authenticated users can update status/expiration
+        (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'expiresAt']))
         ||
-        // RULE 4: Contract owner can edit any fields before creator signs
-        (isSignedIn()
-         && resource.data.createdBy == request.auth.uid
-         && resource.data.creatorSignature == null);
+        // Contract owner can edit before creator signs
+        (isSignedIn() && resource.data.createdBy == request.auth.uid
+         && !('creatorSignature' in resource.data));
 
       // Only organization members can delete
       allow delete: if isSignedIn();
