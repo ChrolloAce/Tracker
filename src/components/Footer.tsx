@@ -1,41 +1,76 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import viewtrackLogo from '/Viewtrack Logo Black.png';
+import { Twitter } from 'lucide-react';
+
+const linkClasses = 'text-sm text-neutral-500 hover:text-neutral-900 transition-colors';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="py-8 md:py-12 px-4 md:px-6 border-t border-gray-100 bg-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
-          <Link to="/" className="flex items-center space-x-3">
-            <img src={viewtrackLogo} alt="ViewTrack" className="h-7 md:h-8 w-auto" />
-          </Link>
-          
-          {/* Footer Links */}
-          <div className="flex items-center gap-4 md:gap-6 text-xs md:text-sm">
-            <Link 
-              to="/privacy" 
-              className="text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              Privacy Policy
+    <footer className="bg-neutral-50 border-t border-neutral-200">
+      <div className="max-w-7xl mx-auto py-16 px-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          {/* Brand */}
+          <div className="space-y-3">
+            <Link to="/" className="text-xl font-bold text-neutral-900">
+              ViewTrack
             </Link>
-            <Link 
-              to="/terms" 
-              className="text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              Terms of Service
-            </Link>
-            <Link 
-              to="/support" 
-              className="text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              Support
-            </Link>
+            <p className="text-sm text-neutral-500">
+              The all-in-one platform for creator analytics and campaign management.
+            </p>
           </div>
-          
-          <p className="text-xs md:text-sm text-gray-500">
-            © {new Date().getFullYear()} ViewTrack. Track smarter, grow faster.
+
+          {/* Product */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">
+              Product
+            </h4>
+            <ul className="space-y-2">
+              <li><Link to="/features" className={linkClasses}>Features</Link></li>
+              <li><Link to="/pricing" className={linkClasses}>Pricing</Link></li>
+              <li><Link to="/solutions" className={linkClasses}>Solutions</Link></li>
+              <li><Link to="/features/chrome-extension" className={linkClasses}>Chrome Extension</Link></li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">
+              Resources
+            </h4>
+            <ul className="space-y-2">
+              <li><Link to="/blog" className={linkClasses}>Blog</Link></li>
+              <li><Link to="/docs" className={linkClasses}>Documentation</Link></li>
+              <li><Link to="/api" className={linkClasses}>API</Link></li>
+              <li><Link to="/support" className={linkClasses}>Support</Link></li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">
+              Legal
+            </h4>
+            <ul className="space-y-2">
+              <li><Link to="/privacy" className={linkClasses}>Privacy Policy</Link></li>
+              <li><Link to="/terms" className={linkClasses}>Terms of Service</Link></li>
+              <li><Link to="/security" className={linkClasses}>Security</Link></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="border-t border-neutral-200 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-neutral-600">
+            &copy; 2026 ViewTrack. All rights reserved.
           </p>
+          <a
+            href="https://x.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            <Twitter className="h-5 w-5" />
+          </a>
         </div>
       </div>
     </footer>
@@ -43,4 +78,3 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
-
