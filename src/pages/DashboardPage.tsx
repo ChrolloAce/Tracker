@@ -682,7 +682,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     };
     
     checkSubscription();
-  }, [currentOrgId, activeTab, user, isDemoMode]);
+  }, [currentOrgId, user, isDemoMode]);
   
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
     const defaults = {

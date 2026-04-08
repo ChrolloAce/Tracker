@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import {
   User,
   signInWithRedirect,
@@ -571,7 +571,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const value: AuthContextType = {
+  const value = useMemo<AuthContextType>(() => ({
     user,
     loading,
     currentOrgId,
@@ -586,7 +586,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     switchOrganization,
     switchProject,
-  };
+  }), [user, loading, currentOrgId, currentProjectId, userRole, isAdmin, planTier, planLoaded]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

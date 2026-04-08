@@ -44,7 +44,8 @@ export function useCreatorsData(
     creatorId: string,
     profile: Creator,
     projectAccounts: any[],
-    creatorLinks: any[]
+    creatorLinks: any[],
+    allProjectVideosCache: any[]
   ): Promise<{ earnings: number; videoCount: number; totalViews: number }> => {
     if (!orgId || !projectId) return { earnings: 0, videoCount: 0, totalViews: 0 };
 
@@ -52,6 +53,7 @@ export function useCreatorsData(
       const accountIds = creatorLinks.map((link: any) => link.accountId);
       const linkedAccounts = projectAccounts.filter((acc: any) => accountIds.includes(acc.id));
 
+      // Get videos from linked accounts
       const videosPromises = linkedAccounts.map(async (account: any) => {
         try {
           return await FirestoreDataService.getVideos(orgId, projectId, {
@@ -65,13 +67,8 @@ export function useCreatorsData(
 
       const linkedVideos = (await Promise.all(videosPromises)).flat();
 
-      let directlySubmittedVideos: any[] = [];
-      try {
-        const allProjectVideos = await FirestoreDataService.getVideos(orgId, projectId, { limitCount: 10000 });
-        directlySubmittedVideos = allProjectVideos.filter((v: any) => v.addedBy === creatorId);
-      } catch {
-        /* noop */
-      }
+      // Filter directly submitted videos from the cached full list (no extra query)
+      const directlySubmittedVideos = allProjectVideosCache.filter((v: any) => v.addedBy === creatorId);
 
       const videoMap = new Map<string, any>();
       linkedVideos.forEach((v: any) => videoMap.set(v.id, v));
@@ -247,7 +244,13 @@ export function useCreatorsData(
         creatorLinksMap.get(cId)!.push(link);
       });
 
-      // Calculate earnings in parallel
+      // Fetch ALL project videos ONCE (instead of per-creator)
+      let allProjectVideosCache: any[] = [];
+      try {
+        allProjectVideosCache = await FirestoreDataService.getVideos(orgId, projectId, { limitCount: 10000 });
+      } catch { /* noop */ }
+
+      // Calculate earnings in parallel using the cached videos
       const earningsMap = new Map<string, number>();
       const videoCountsMap = new Map<string, number>();
       const viewsMap = new Map<string, number>();
@@ -259,7 +262,8 @@ export function useCreatorsData(
             profile.id,
             profile,
             projectAccounts,
-            links
+            links,
+            allProjectVideosCache
           );
           earningsMap.set(profile.id, earnings);
           videoCountsMap.set(profile.id, videoCount);

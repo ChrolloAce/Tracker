@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, memo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
@@ -454,4 +454,4 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
 CreatorsManagementPage.displayName = 'CreatorsManagementPage';
 
-export default CreatorsManagementPage;
+export default memo(CreatorsManagementPage);
