@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Save, CheckCircle, Plus, ChevronDown, Copy, ExternalLink, Link2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, CheckCircle, Plus, Copy, ExternalLink, Link2, Trash2, GripVertical, Calendar, Type, DollarSign, PenTool } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
@@ -48,7 +48,7 @@ const CreateContractPage: React.FC = () => {
   const [contractTitle, setContractTitle] = useState('Content Creation Agreement');
   const [contractStartDate, setContractStartDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().split('T')[0]; // YYYY-MM-DD
+    return today.toISOString().split('T')[0];
   });
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
@@ -94,7 +94,6 @@ const CreateContractPage: React.FC = () => {
       const end = textareaRef.current.selectionEnd;
       const newText = contractNotes.substring(0, start) + variable + contractNotes.substring(end);
       setContractNotes(newText);
-      // Reset cursor position after the inserted variable
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
@@ -163,14 +162,12 @@ const CreateContractPage: React.FC = () => {
 
     setLoadingCreators(true);
     try {
-      // Fetch project creators, org members, AND pending invitations in parallel
       const [projectCreators, allMembers, pendingInvitations] = await Promise.all([
         CreatorLinksService.getAllCreators(currentOrgId, currentProjectId),
         OrganizationService.getOrgMembers(currentOrgId),
         TeamInvitationService.getOrgInvitations(currentOrgId)
       ]);
-      
-      // 1. Get creators from project profiles (linked to accounts)
+
       const projectCreatorMap = new Map(
         projectCreators.map(creator => [creator.id, {
           userId: creator.id,
@@ -179,8 +176,7 @@ const CreateContractPage: React.FC = () => {
           isPending: false,
         }])
       );
-      
-      // 2. Get creators from org members with role='creator' (may not have project profile yet)
+
       const memberCreators = allMembers
         .filter(member => member.role === 'creator')
         .map(member => ({
@@ -189,14 +185,13 @@ const CreateContractPage: React.FC = () => {
           email: member.email,
           isPending: false,
         }));
-      
-      // 3. Merge active creators (members take precedence for display name)
+
       const mergedCreators = new Map<string, CreatorOption>();
-      
+
       projectCreatorMap.forEach((creator, id) => {
         mergedCreators.set(id, creator);
       });
-      
+
       memberCreators.forEach(creator => {
         const existing = mergedCreators.get(creator.userId);
         if (existing) {
@@ -209,8 +204,7 @@ const CreateContractPage: React.FC = () => {
           mergedCreators.set(creator.userId, creator);
         }
       });
-      
-      // 4. Add pending creator invitations
+
       const pendingCreators = pendingInvitations
         .filter(inv => inv.role === 'creator' && inv.status === 'pending')
         .map(inv => ({
@@ -219,15 +213,14 @@ const CreateContractPage: React.FC = () => {
           email: inv.email,
           isPending: true,
         }));
-      
-      // Convert to array and sort by display name
+
       const activeCreators = Array.from(mergedCreators.values())
         .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
-      
+
       const allCreators = [...activeCreators, ...pendingCreators];
-      
+
       console.log(`[CreateContractPage] Loaded ${allCreators.length} creators (${activeCreators.length} active, ${pendingCreators.length} pending)`);
-      
+
       setCreators(allCreators);
     } catch (error) {
       console.error('Error loading creators:', error);
@@ -241,8 +234,8 @@ const CreateContractPage: React.FC = () => {
 
     try {
       const templates = await TemplateService.getSavedTemplates(currentOrgId);
-      const defaultTemplate = templates[0]; // Use first template as default
-      
+      const defaultTemplate = templates[0];
+
       if (defaultTemplate && !contractNotes) {
         setContractNotes(defaultTemplate.terms);
         setInitialContractNotes(defaultTemplate.terms);
@@ -264,12 +257,12 @@ const CreateContractPage: React.FC = () => {
       alert('Please provide a template name');
       return;
     }
-    
+
     if (!currentOrgId) {
       alert('No organization selected. Please refresh and try again.');
       return;
     }
-    
+
     if (!user) {
       alert('You must be signed in to save templates.');
       return;
@@ -282,7 +275,7 @@ const CreateContractPage: React.FC = () => {
         userId: user.uid,
         templateName: templateName.trim(),
       });
-      
+
       await TemplateService.saveTemplate(
         currentOrgId,
         templateName.trim(),
@@ -348,9 +341,8 @@ const CreateContractPage: React.FC = () => {
       return;
     }
 
-    // For pending invitations, strip the prefix to get the actual invitation ID
-    const creatorId = selectedCreator.isPending 
-      ? selectedCreatorId.replace('pending_', '') 
+    const creatorId = selectedCreator.isPending
+      ? selectedCreatorId.replace('pending_', '')
       : selectedCreatorId;
 
     setLoading(true);
@@ -371,10 +363,8 @@ const CreateContractPage: React.FC = () => {
         companyName
       );
 
-      // Clear the draft on success
       localStorage.removeItem(getDraftKey());
-      
-      // Show success popup with links instead of redirecting
+
       setCreatedContract({
         creatorLink: contract.creatorLink,
         companyLink: contract.companyLink,
@@ -396,524 +386,505 @@ const CreateContractPage: React.FC = () => {
     navigate('/dashboard?tab=creators&subtab=contracts');
   };
 
+  // Helper: get icon for a field chip
+  const getFieldIcon = (key: string) => {
+    if (key.includes('DATE') || key.includes('SIGNATURE_DATE')) return <Calendar className="w-3 h-3" />;
+    if (key.includes('AMOUNT')) return <DollarSign className="w-3 h-3" />;
+    if (key.includes('SIGNATURE')) return <PenTool className="w-3 h-3" />;
+    return <Type className="w-3 h-3" />;
+  };
+
+  const autoFields = TEMPLATE_VARIABLES.filter(v => v.type === 'auto');
+  const fillableFields = TEMPLATE_VARIABLES.filter(v => v.type === 'fillable');
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <FileText className="w-5 h-5 text-gray-700" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Create Contract</h1>
-                  <p className="text-sm text-gray-500">Generate a shareable contract for a creator</p>
-                </div>
-              </div>
-            </div>
-            <Button
-              onClick={handleCreate}
-              disabled={loading || !selectedCreatorId || !contractStartDate || !companyName}
-              className="flex items-center gap-2"
+    <div className="min-h-screen bg-neutral-50">
+      {/* ── Sticky Top Bar ── */}
+      <div className="sticky top-0 z-30 bg-white border-b border-neutral-200">
+        <div className="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleBack}
+              className="p-1.5 rounded-md hover:bg-neutral-100 transition-colors"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Create Contract
-                </>
-              )}
-            </Button>
+              <ArrowLeft className="w-4 h-4 text-neutral-500" />
+            </button>
+            <span className="text-sm font-semibold text-neutral-900">New Contract</span>
           </div>
+          <Button
+            onClick={handleCreate}
+            disabled={loading || !selectedCreatorId || !contractStartDate || !companyName}
+            className="h-8 px-4 text-xs font-medium bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-40 rounded-md flex items-center gap-1.5"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              'Send Contract'
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Form */}
-          <div className="space-y-6">
-            {/* Contract Details */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Contract Details</h2>
-              
-              <div className="space-y-4">
-                {/* Company Section */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200 space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">1</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">Company Details</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Company Name *</label>
-                    <input
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="Your company name"
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+      {/* ── Three-column layout ── */}
+      <div className="max-w-[1440px] mx-auto flex">
+
+        {/* ── LEFT SIDEBAR: Field Palette ── */}
+        <aside className="w-64 flex-shrink-0 border-r border-neutral-200 bg-white min-h-[calc(100vh-3.5rem)] overflow-y-auto">
+          <div className="p-4">
+            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">Fields</p>
+
+            {/* Legend */}
+            <div className="flex items-center gap-3 mb-4 text-[10px] text-neutral-400">
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Auto-filled</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Signer fills</span>
+            </div>
+
+            {/* Standard Fields — Auto */}
+            <div className="mb-5">
+              <p className="text-[10px] font-medium text-neutral-500 mb-2">Standard Fields</p>
+              <div className="space-y-1">
+                {autoFields.map((v) => {
+                  const resolved = variableValues.get(v.key);
+                  const hasValue = !!resolved;
+                  return (
+                    <button
+                      key={v.key}
+                      onClick={() => insertVariable(v.key)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left hover:bg-neutral-50 transition-colors group"
+                      title={v.description}
+                    >
+                      <GripVertical className="w-3 h-3 text-neutral-300 group-hover:text-neutral-400 flex-shrink-0" />
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hasValue ? 'bg-emerald-500' : 'bg-red-300'}`} />
+                      <span className="text-xs text-neutral-700 truncate flex-1">{v.label}</span>
+                      {getFieldIcon(v.key)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Signature fields */}
+            <div className="mb-5">
+              <p className="text-[10px] font-medium text-neutral-500 mb-2">Signature &amp; Fillable</p>
+              <div className="space-y-1">
+                {fillableFields.map((v) => (
+                  <button
+                    key={v.key}
+                    onClick={() => insertVariable(v.key)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left hover:bg-neutral-50 transition-colors group"
+                    title={v.description}
+                  >
+                    <GripVertical className="w-3 h-3 text-neutral-300 group-hover:text-neutral-400 flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                    <span className="text-xs text-neutral-700 truncate flex-1">{v.label}</span>
+                    {getFieldIcon(v.key)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-neutral-100 my-4" />
+
+            {/* Custom Fields */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-medium text-neutral-500">Custom Fields</p>
+                <button
+                  onClick={() => setCustomFields(prev => [...prev, { label: '', value: '' }])}
+                  className="p-1 rounded hover:bg-neutral-100 transition-colors"
+                >
+                  <Plus className="w-3 h-3 text-neutral-400" />
+                </button>
+              </div>
+              {customFields.length === 0 ? (
+                <p className="text-[10px] text-neutral-400 leading-relaxed">
+                  Add label + value pairs that appear in the document.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {customFields.map((field, index) => (
+                    <div key={index} className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={field.label}
+                          onChange={(e) => {
+                            const updated = [...customFields];
+                            updated[index].label = e.target.value;
+                            setCustomFields(updated);
+                          }}
+                          placeholder="Label"
+                          className="flex-1 px-2 py-1 text-xs bg-neutral-50 border border-neutral-200 rounded text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300"
+                        />
+                        <button
+                          onClick={() => setCustomFields(prev => prev.filter((_, i) => i !== index))}
+                          className="p-1 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3 text-neutral-400 hover:text-red-500" />
+                        </button>
+                      </div>
                       <input
-                        type="email"
-                        value={companyEmail}
-                        onChange={(e) => setCompanyEmail(e.target.value)}
-                        placeholder="company@example.com"
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
+                        type="text"
+                        value={field.value}
+                        onChange={(e) => {
+                          const updated = [...customFields];
+                          updated[index].value = e.target.value;
+                          setCustomFields(updated);
+                        }}
+                        placeholder="Value"
+                        className="w-full px-2 py-1 text-xs bg-neutral-50 border border-neutral-200 rounded text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
-                      <input
-                        type="tel"
-                        value={companyPhone}
-                        onChange={(e) => setCompanyPhone(e.target.value)}
-                        placeholder="+1 (555) 123-4567"
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                      />
-                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* ── CENTER: Document View ── */}
+        <main className="flex-1 min-h-[calc(100vh-3.5rem)] overflow-y-auto py-8 px-6">
+          {/* Thin toolbar */}
+          <div className="max-w-[700px] mx-auto mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowChangeTemplateModal(true)}
+                className="text-xs text-neutral-500 hover:text-neutral-900 px-2.5 py-1 rounded-md hover:bg-neutral-100 transition-colors"
+              >
+                Change Template
+              </button>
+              <button
+                onClick={() => setShowSaveTemplateModal(true)}
+                disabled={!contractNotes.trim()}
+                className="text-xs text-neutral-500 hover:text-neutral-900 px-2.5 py-1 rounded-md hover:bg-neutral-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Save Template
+              </button>
+            </div>
+            {hasUnsavedChanges && (
+              <span className="text-[10px] text-neutral-400">Draft auto-saved</span>
+            )}
+          </div>
+
+          {/* The "paper" document */}
+          <div
+            className="max-w-[700px] mx-auto bg-white rounded-sm border border-neutral-200 shadow-sm"
+            style={{ fontFamily: 'Georgia, "Times New Roman", Times, serif' }}
+          >
+            <div className="px-12 py-10">
+              {/* Document title */}
+              <div className="text-center mb-8">
+                <h2 className="text-lg font-bold text-neutral-900 uppercase tracking-wide">
+                  {contractTitle || 'Untitled Agreement'}
+                </h2>
+                <div className="w-10 h-px bg-neutral-300 mx-auto mt-3" />
+              </div>
+
+              {/* Parties header */}
+              <p className="text-xs text-neutral-500 text-center leading-relaxed mb-6" style={{ fontFamily: 'Georgia, serif' }}>
+                This Agreement is entered into as of{' '}
+                <span className="font-semibold text-neutral-800">
+                  {contractStartDate
+                    ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : '[Date]'}
+                </span>
+                , by and between the parties identified below.
+              </p>
+
+              {/* Parties block */}
+              <div className="grid grid-cols-2 gap-6 mb-6 py-3 border-y border-neutral-200">
+                <div>
+                  <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Company</p>
+                  <p className="text-sm font-semibold text-neutral-900">{companyName || '[Company Name]'}</p>
+                  {companyEmail && <p className="text-[10px] text-neutral-500">{companyEmail}</p>}
+                  {companyPhone && <p className="text-[10px] text-neutral-500">{companyPhone}</p>}
+                </div>
+                <div>
+                  <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-1">Creator</p>
+                  <p className="text-sm font-semibold text-neutral-900">
+                    {selectedCreator?.displayName || '[Creator Name]'}
+                  </p>
+                  {selectedCreator?.email && <p className="text-[10px] text-neutral-500">{selectedCreator.email}</p>}
+                </div>
+              </div>
+
+              {/* Period */}
+              <div className="flex gap-6 mb-6 text-[11px]">
+                <div>
+                  <span className="text-neutral-400">Start: </span>
+                  <span className="text-neutral-800 font-medium">
+                    {contractStartDate
+                      ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                      : '[Start Date]'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-neutral-400">End: </span>
+                  <span className="text-neutral-800 font-medium">
+                    {contractEndDate
+                      ? new Date(contractEndDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                      : 'Ongoing'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Custom fields rendered in document */}
+              {customFields.filter(f => f.label && f.value).length > 0 && (
+                <div className="mb-6">
+                  <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-2 pb-1 border-b border-neutral-200">
+                    Additional Terms
+                  </p>
+                  <div className="space-y-1">
+                    {customFields.filter(f => f.label && f.value).map((field, idx) => (
+                      <p key={idx} className="text-[11px] text-neutral-700">
+                        <span className="font-medium">{field.label}:</span> {field.value}
+                      </p>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* Contract Title */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200">
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Contract Title *
-                  </label>
+              {/* Editable contract body */}
+              <div className="mb-6">
+                <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-2 pb-1 border-b border-neutral-200">
+                  Terms &amp; Conditions
+                </p>
+
+                {/* Preview with resolved variables */}
+                {contractNotes ? (
+                  <div className="text-[11px] text-neutral-700 leading-relaxed whitespace-pre-wrap mb-4">
+                    <ResolvedContractText text={contractNotes} variableValues={variableValues} />
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-neutral-400 italic mb-4">Terms will appear here as you type below...</p>
+                )}
+
+                {/* Textarea — styled as part of the document */}
+                <textarea
+                  ref={textareaRef}
+                  value={contractNotes}
+                  onChange={(e) => setContractNotes(e.target.value)}
+                  placeholder={"Enter contract terms and conditions...\n\nExample: This agreement is entered into on {{TODAY_DATE}} between {{COMPANY_NAME}} and {{CREATOR_NAME}}..."}
+                  className="w-full min-h-[280px] px-0 py-3 bg-transparent text-neutral-800 placeholder-neutral-300 focus:outline-none resize-none text-sm leading-relaxed border-t border-dashed border-neutral-200"
+                  style={{ fontFamily: '"SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace', fontSize: '12px' }}
+                />
+              </div>
+
+              {/* Signature blocks */}
+              <div className="border-t border-neutral-900 pt-5">
+                <p className="text-[9px] text-neutral-400 italic text-center mb-5">
+                  IN WITNESS WHEREOF, the parties have executed this Agreement.
+                </p>
+                <div className="grid grid-cols-2 gap-8">
+                  {[
+                    { label: 'Company', name: companyName || '' },
+                    { label: 'Creator', name: selectedCreator?.displayName || '' },
+                  ].map(p => (
+                    <div key={p.label}>
+                      <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-4">{p.label}</p>
+                      <div className="h-8" />
+                      <div className="border-t border-dashed border-neutral-300 pt-1.5">
+                        <p className="text-[10px] text-neutral-500">{p.name || '_______________'}</p>
+                        <p className="text-[9px] text-neutral-300 mt-0.5">Date: _______________</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-8 pt-2 border-t border-neutral-100 text-center">
+                <p className="text-[8px] text-neutral-300">Draft Preview</p>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* ── RIGHT SIDEBAR: Contract Setup ── */}
+        <aside className="w-72 flex-shrink-0 border-l border-neutral-200 bg-white min-h-[calc(100vh-3.5rem)] overflow-y-auto">
+          <div className="p-5 space-y-5">
+            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Contract Setup</p>
+
+            {/* Company Details */}
+            <div>
+              <p className="text-xs font-medium text-neutral-900 mb-2">Company Details</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Company Name *</label>
                   <input
                     type="text"
-                    value={contractTitle}
-                    onChange={(e) => setContractTitle(e.target.value)}
-                    placeholder="e.g., Content Creation Agreement"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Acme Inc."
+                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
                   />
                 </div>
-
-                {/* Creator Section */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
-                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">2</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">Creator</span>
-                  </div>
-                  {loadingCreators ? (
-                    <div className="text-sm text-gray-500">Loading creators...</div>
-                  ) : creators.length === 0 ? (
-                    <div className="text-sm text-gray-500">No creators found in this project</div>
-                  ) : (
-                    <>
-                      <select
-                        value={selectedCreatorId}
-                        onChange={(e) => setSelectedCreatorId(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                      >
-                        <option value="">Choose a creator...</option>
-                        {creators.filter(c => !c.isPending).length > 0 && (
-                          <optgroup label="Active Creators">
-                            {creators.filter(c => !c.isPending).map((creator) => (
-                              <option key={creator.userId} value={creator.userId}>
-                                {creator.displayName || creator.email}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {creators.filter(c => c.isPending).length > 0 && (
-                          <optgroup label="Pending — Not Active Yet">
-                            {creators.filter(c => c.isPending).map((creator) => (
-                              <option key={creator.userId} value={creator.userId}>
-                                {creator.email || creator.displayName} — not active yet
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
-                      {selectedCreatorId?.startsWith('pending_') && (
-                        <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                          <span className="w-2 h-2 bg-amber-400 rounded-full flex-shrink-0" />
-                          <span className="text-xs text-amber-700">This creator hasn't accepted their invitation yet. The contract will be ready when they join.</span>
-                        </div>
-                      )}
-                    </>
-                  )}
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Email</label>
+                  <input
+                    type="email"
+                    value={companyEmail}
+                    onChange={(e) => setCompanyEmail(e.target.value)}
+                    placeholder="hello@acme.com"
+                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
+                  />
                 </div>
-
-                {/* Contract Period */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-3">
-                    <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">3</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">Contract Period</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Start Date *
-                      </label>
-                      <input
-                        type="date"
-                        value={contractStartDate}
-                        onChange={(e) => setContractStartDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        End Date <span className="text-gray-400">(Optional)</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={contractEndDate}
-                        onChange={(e) => setContractEndDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dynamic Custom Fields */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gray-800 rounded flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">4</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">Custom Fields <span className="text-gray-400 font-normal">(Optional)</span></span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setCustomFields(prev => [...prev, { label: '', value: '' }])}
-                      className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Add Field
-                    </button>
-                  </div>
-                  {customFields.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-3">
-                      Add custom fields like "Deliverables", "Payment Amount", etc.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {customFields.map((field, index) => (
-                        <div key={index} className="flex gap-2 items-start">
-                          <div className="flex-1 grid grid-cols-2 gap-2">
-                            <input
-                              type="text"
-                              value={field.label}
-                              onChange={(e) => {
-                                const updated = [...customFields];
-                                updated[index].label = e.target.value;
-                                setCustomFields(updated);
-                              }}
-                              placeholder="Field name"
-                              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-                            />
-                            <input
-                              type="text"
-                              value={field.value}
-                              onChange={(e) => {
-                                const updated = [...customFields];
-                                updated[index].value = e.target.value;
-                                setCustomFields(updated);
-                              }}
-                              placeholder="Value"
-                              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-                            />
-                          </div>
-                          <button
-                            onClick={() => setCustomFields(prev => prev.filter((_, i) => i !== index))}
-                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Phone</label>
+                  <input
+                    type="tel"
+                    value={companyPhone}
+                    onChange={(e) => setCompanyPhone(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Contract Terms */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Terms & Conditions</h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowChangeTemplateModal(true)}
-                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                  >
-                    Change Template
-                  </button>
-                  <button
-                    onClick={() => setShowSaveTemplateModal(true)}
-                    disabled={!contractNotes.trim()}
-                    className="text-sm text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Save as Template
-                  </button>
+            <div className="border-t border-neutral-100" />
+
+            {/* Creator */}
+            <div>
+              <p className="text-xs font-medium text-neutral-900 mb-2">Creator</p>
+              {loadingCreators ? (
+                <div className="flex items-center gap-2 text-xs text-neutral-400 py-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading...
                 </div>
-              </div>
-              
-              {/* Template Variables Toolbar */}
-              <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-gray-600">Insert Variable:</span>
-                    <div className="relative" ref={dropdownRef}>
-                      <button
-                        onClick={() => setShowVariablesDropdown(!showVariablesDropdown)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Add Variable
-                        <ChevronDown className="w-3 h-3" />
-                      </button>
-                      
-                      {showVariablesDropdown && (
-                        <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-96 overflow-y-auto">
-                          <div className="p-2.5 border-b border-gray-100">
-                            <p className="text-[10px] text-gray-500">Click to insert at cursor. Auto-fill variables resolve in the preview.</p>
-                          </div>
-                          
-                          {/* Auto-fill variables */}
-                          <div className="p-1.5">
-                            <div className="px-2 py-1">
-                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Auto-filled</span>
-                            </div>
-                            {TEMPLATE_VARIABLES.filter(v => v.type === 'auto').map((variable) => {
-                              const resolvedValue = variableValues.get(variable.key);
-                              const hasValue = !!resolvedValue;
-                              return (
-                                <button
-                                  key={variable.key}
-                                  onClick={() => insertVariable(variable.key)}
-                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors"
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hasValue ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                                      <span className="text-xs font-medium text-gray-900 truncate">{variable.label}</span>
-                                    </div>
-                                    {hasValue ? (
-                                      <span className="text-[10px] text-emerald-600 font-medium truncate max-w-[140px]">{resolvedValue}</span>
-                                    ) : (
-                                      <span className="text-[10px] text-gray-400 italic">empty</span>
-                                    )}
-                                  </div>
-                                  <p className="text-[10px] text-gray-400 mt-0.5 pl-3.5 font-mono">{variable.key}</p>
-                                </button>
-                              );
-                            })}
-                          </div>
-                          
-                          {/* Fillable variables */}
-                          <div className="p-1.5 border-t border-gray-100">
-                            <div className="px-2 py-1">
-                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Fillable by Signer</span>
-                            </div>
-                            {TEMPLATE_VARIABLES.filter(v => v.type === 'fillable').map((variable) => (
-                              <button
-                                key={variable.key}
-                                onClick={() => insertVariable(variable.key)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                                    <span className="text-xs font-medium text-gray-900">{variable.label}</span>
-                                  </div>
-                                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded font-medium">blank</span>
-                                </div>
-                                <p className="text-[10px] text-gray-400 mt-0.5 pl-3.5">{variable.description}</p>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+              ) : creators.length === 0 ? (
+                <p className="text-xs text-neutral-400">No creators found</p>
+              ) : (
+                <>
+                  <select
+                    value={selectedCreatorId}
+                    onChange={(e) => setSelectedCreatorId(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
+                  >
+                    <option value="">Choose a creator...</option>
+                    {creators.filter(c => !c.isPending).length > 0 && (
+                      <optgroup label="Active Creators">
+                        {creators.filter(c => !c.isPending).map((creator) => (
+                          <option key={creator.userId} value={creator.userId}>
+                            {creator.displayName || creator.email}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {creators.filter(c => c.isPending).length > 0 && (
+                      <optgroup label="Pending">
+                        {creators.filter(c => c.isPending).map((creator) => (
+                          <option key={creator.userId} value={creator.userId}>
+                            {creator.email || creator.displayName} (pending)
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  {selectedCreatorId?.startsWith('pending_') && (
+                    <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700 leading-tight">
+                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-0.5 flex-shrink-0" />
+                      This creator hasn't accepted their invitation yet.
                     </div>
-                  </div>
-                  <div className="text-[10px] text-gray-400">
-                    <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Auto-filled</span>
-                    <span className="mx-2">·</span>
-                    <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Fillable by signer</span>
-                  </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-neutral-100" />
+
+            {/* Contract Period */}
+            <div>
+              <p className="text-xs font-medium text-neutral-900 mb-2">Contract Period</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Start Date *</label>
+                  <input
+                    type="date"
+                    value={contractStartDate}
+                    onChange={(e) => setContractStartDate(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">End Date <span className="text-neutral-300">(optional)</span></label>
+                  <input
+                    type="date"
+                    value={contractEndDate}
+                    onChange={(e) => setContractEndDate(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
+                  />
                 </div>
               </div>
-              
-              <textarea
-                ref={textareaRef}
-                value={contractNotes}
-                onChange={(e) => setContractNotes(e.target.value)}
-                placeholder="Enter contract terms and conditions...&#10;&#10;Example: This agreement is entered into on {{TODAY_DATE}} between {{COMPANY_NAME}} and {{CREATOR_NAME}}..."
-                className="w-full h-96 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent focus:bg-white resize-none font-mono text-sm"
+            </div>
+
+            <div className="border-t border-neutral-100" />
+
+            {/* Contract Title */}
+            <div>
+              <p className="text-xs font-medium text-neutral-900 mb-2">Contract Title</p>
+              <input
+                type="text"
+                value={contractTitle}
+                onChange={(e) => setContractTitle(e.target.value)}
+                placeholder="Content Creation Agreement"
+                className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
               />
-              
-              {/* Variable Legend — shows resolved values */}
-              {contractNotes.includes('{{') && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-[10px] font-medium text-gray-600 mb-2">Variables in your contract:</p>
-                  <div className="space-y-1.5">
+            </div>
+
+            <div className="border-t border-neutral-100" />
+
+            {/* Payment Structure */}
+            <div>
+              <p className="text-xs font-medium text-neutral-900 mb-2">Payment Structure <span className="text-neutral-300 font-normal">(optional)</span></p>
+              <input
+                type="text"
+                value={paymentStructureName}
+                onChange={(e) => setPaymentStructureName(e.target.value)}
+                placeholder="e.g., Net 30, per deliverable"
+                className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white"
+              />
+            </div>
+
+            {/* Variable status */}
+            {contractNotes.includes('{{') && (
+              <>
+                <div className="border-t border-neutral-100" />
+                <div>
+                  <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Variables</p>
+                  <div className="space-y-1">
                     {TEMPLATE_VARIABLES.filter(v => contractNotes.includes(v.key)).map(v => {
                       const resolved = variableValues.get(v.key);
                       const isFillable = v.type === 'fillable';
                       return (
-                        <div key={v.key} className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${isFillable ? 'bg-amber-400' : resolved ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                            <span className="text-[10px] font-mono text-gray-600">{v.key}</span>
+                        <div key={v.key} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isFillable ? 'bg-amber-400' : resolved ? 'bg-emerald-500' : 'bg-red-300'}`} />
+                            <span className="text-[10px] text-neutral-600 truncate">{v.label}</span>
                           </div>
                           {isFillable ? (
-                            <span className="text-[10px] text-amber-600 italic">filled by signer</span>
+                            <span className="text-[10px] text-amber-600 flex-shrink-0">signer</span>
                           ) : resolved ? (
-                            <span className="text-[10px] text-emerald-600 font-medium truncate max-w-[200px]">→ {resolved}</span>
+                            <span className="text-[10px] text-emerald-600 truncate max-w-[100px] flex-shrink-0">{resolved}</span>
                           ) : (
-                            <span className="text-[10px] text-red-400 italic">not set — fill in the form</span>
+                            <span className="text-[10px] text-red-400 flex-shrink-0">empty</span>
                           )}
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
-
-          {/* Right Column - Preview */}
-          <div className="h-fit sticky top-24">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Contract Preview</h2>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Live Preview</span>
-            </div>
-            
-            {/* Clean Document Preview */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-              <div className="p-8">
-                {/* Title */}
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 tracking-wide uppercase">
-                    {contractTitle || 'Content Creator Agreement'}
-                  </h3>
-                  <div className="w-12 h-px bg-gray-300 mx-auto mt-3" />
-                </div>
-
-                {/* Intro */}
-                <p className="text-[11px] text-gray-600 text-center leading-relaxed mb-5">
-                  This Agreement is entered into as of{' '}
-                  <span className="font-semibold text-gray-800">
-                    {contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '[Date]'}
-                  </span>,
-                  by and between the parties identified below.
-                </p>
-
-                {/* Parties */}
-                <div className="grid grid-cols-2 gap-4 mb-5 py-3 border-y border-gray-200">
-                  <div>
-                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Company</p>
-                    <p className="text-gray-900 font-semibold text-sm">{companyName || '[Company Name]'}</p>
-                    {companyEmail && <p className="text-gray-500 text-[10px]">{companyEmail}</p>}
-                    {companyPhone && <p className="text-gray-500 text-[10px]">{companyPhone}</p>}
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Creator</p>
-                    <p className="text-gray-900 font-semibold text-sm">{creators.find(c => c.userId === selectedCreatorId)?.displayName || '[Creator Name]'}</p>
-                  </div>
-                </div>
-
-                {/* Period */}
-                <div className="flex flex-wrap gap-x-6 gap-y-1 mb-5 text-[11px]">
-                  <div>
-                    <span className="text-gray-400">Start: </span>
-                    <span className="text-gray-800 font-medium">
-                      {contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '[Start Date]'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">End: </span>
-                    <span className="text-gray-800 font-medium">
-                      {contractEndDate ? new Date(contractEndDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Ongoing'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Custom Fields */}
-                {customFields.filter(f => f.label && f.value).length > 0 && (
-                  <div className="mb-5">
-                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2 pb-1 border-b border-gray-200">Additional Terms</p>
-                    <div className="space-y-1">
-                      {customFields.filter(f => f.label && f.value).map((field, idx) => (
-                        <p key={idx} className="text-[11px] text-gray-700">
-                          <span className="font-medium">{field.label}:</span> {field.value}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Terms */}
-                <div className="mb-6">
-                  <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2 pb-1 border-b border-gray-200">
-                    Terms & Conditions
-                  </p>
-                  {contractNotes ? (
-                    <div className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto pr-2">
-                      <ResolvedContractText text={contractNotes} variableValues={variableValues} />
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-gray-400 italic">Terms will appear here...</p>
-                  )}
-                </div>
-
-                {/* Signatures */}
-                <div className="border-t border-gray-900 pt-4">
-                  <p className="text-[9px] text-gray-400 italic text-center mb-4">
-                    IN WITNESS WHEREOF, the parties have executed this Agreement.
-                  </p>
-                  <div className="grid grid-cols-2 gap-6">
-                    {[
-                      { label: 'Company', name: companyName || '' },
-                      { label: 'Creator', name: creators.find(c => c.userId === selectedCreatorId)?.displayName || '' },
-                    ].map(p => (
-                      <div key={p.label}>
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-3">{p.label}</p>
-                        <div className="h-8" />
-                        <div className="border-t border-gray-300 border-dashed pt-1">
-                          <p className="text-[10px] text-gray-400">{p.name || '_______________'}</p>
-                          <p className="text-[9px] text-gray-300 mt-0.5">Date: _______________</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="mt-6 pt-2 border-t border-gray-200 text-center">
-                  <p className="text-[8px] text-gray-300">Draft Preview</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </aside>
       </div>
+
+      {/* ── Modals ── */}
 
       {/* Change Template Modal */}
       {showChangeTemplateModal && (
@@ -926,59 +897,54 @@ const CreateContractPage: React.FC = () => {
       {/* Save Template Modal */}
       {showSaveTemplateModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl border border-gray-200 max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Save as Template</h3>
-            
-            <div className="space-y-4">
+          <div className="bg-white rounded-lg border border-neutral-200 max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-neutral-900 mb-4">Save as Template</h3>
+
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Name *
-                </label>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Template Name *</label>
                 <input
                   type="text"
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder="e.g., 'Standard Creator Agreement'"
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Standard Creator Agreement"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white text-sm"
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (Optional)
-                </label>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Description <span className="text-neutral-300">(optional)</span></label>
                 <textarea
                   value={templateDescription}
                   onChange={(e) => setTemplateDescription(e.target.value)}
-                  placeholder="Brief description of this template..."
+                  placeholder="Brief description..."
                   rows={3}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-md text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-300 focus:bg-white resize-none text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setShowSaveTemplateModal(false)}
                 disabled={savingTemplate}
-                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
+                className="flex-1 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-md text-sm transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveTemplate}
                 disabled={savingTemplate || !templateName.trim()}
-                className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-3 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-md text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {savingTemplate ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     Saving...
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
-                    Save Template
+                    <Save className="w-3.5 h-3.5" />
+                    Save
                   </>
                 )}
               </button>
@@ -989,9 +955,9 @@ const CreateContractPage: React.FC = () => {
 
       {/* Success Toast */}
       {showSuccessToast && (
-        <div className="fixed bottom-8 right-8 bg-emerald-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-2">
-          <CheckCircle className="w-5 h-5" />
-          <span className="font-medium">Template saved successfully!</span>
+        <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-5 py-3 rounded-md shadow-lg flex items-center gap-2 z-50">
+          <CheckCircle className="w-4 h-4" />
+          <span className="text-sm font-medium">Template saved</span>
         </div>
       )}
 
@@ -1007,22 +973,13 @@ const CreateContractPage: React.FC = () => {
   );
 };
 
-// Contract Created Success Modal
-interface ContractCreatedModalProps {
-  creatorLink: string;
-  companyLink: string;
-  onClose: () => void;
-}
-
 // Renders contract text with variables resolved to their values
 const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string, string> }> = ({ text, variableValues }) => {
-  // Split text by variable patterns, keeping the delimiters
   const parts = text.split(/(\{\{[A-Z_]+\}\})/g);
 
   return (
     <>
       {parts.map((part, index) => {
-        // Check if this part is a variable
         const variableDef = TEMPLATE_VARIABLES.find(v => v.key === part);
         if (!variableDef) {
           return <span key={index}>{part}</span>;
@@ -1032,11 +989,10 @@ const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string,
         const isFillable = variableDef.type === 'fillable';
 
         if (isFillable) {
-          // Fillable: show as a styled blank line
           return (
             <span
               key={index}
-              className="inline-block min-w-[100px] border-b border-dashed border-amber-400 text-amber-500 text-[10px] italic px-1 mx-0.5"
+              className="inline-block min-w-[100px] border-b-2 border-dashed border-amber-400 text-amber-500 text-[10px] italic px-1 mx-0.5"
               title={variableDef.description}
             >
               [{variableDef.label}]
@@ -1045,11 +1001,10 @@ const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string,
         }
 
         if (resolvedValue) {
-          // Auto-fill with value: show as highlighted resolved text
           return (
             <span
               key={index}
-              className="font-semibold text-gray-900 underline decoration-emerald-400 decoration-1 underline-offset-2"
+              className="font-semibold text-neutral-900 underline decoration-emerald-400 decoration-1 underline-offset-2"
               title={`${variableDef.key} → ${resolvedValue}`}
             >
               {resolvedValue}
@@ -1057,11 +1012,10 @@ const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string,
           );
         }
 
-        // Auto-fill but empty: show as a red placeholder
         return (
           <span
             key={index}
-            className="inline-block min-w-[80px] border-b border-dashed border-red-300 text-red-400 text-[10px] italic px-1 mx-0.5"
+            className="inline-block min-w-[80px] border-b-2 border-dashed border-red-300 text-red-400 text-[10px] italic px-1 mx-0.5"
             title={`${variableDef.key} — not set yet`}
           >
             [{variableDef.label}]
@@ -1071,6 +1025,13 @@ const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string,
     </>
   );
 };
+
+// Contract Created Success Modal
+interface ContractCreatedModalProps {
+  creatorLink: string;
+  companyLink: string;
+  onClose: () => void;
+}
 
 const ContractCreatedModal: React.FC<ContractCreatedModalProps> = ({ creatorLink, companyLink, onClose }) => {
   const [copiedCreator, setCopiedCreator] = useState(false);
@@ -1087,7 +1048,6 @@ const ContractCreatedModal: React.FC<ContractCreatedModalProps> = ({ creatorLink
         setTimeout(() => setCopiedCompany(false), 2000);
       }
     } catch {
-      // Fallback
       const textarea = document.createElement('textarea');
       textarea.value = text;
       document.body.appendChild(textarea);
@@ -1098,94 +1058,94 @@ const ContractCreatedModal: React.FC<ContractCreatedModalProps> = ({ creatorLink
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <CheckCircle className="w-8 h-8 text-emerald-600" />
+        <div className="text-center mb-5">
+          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="w-6 h-6 text-emerald-600" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900">Contract Created!</h3>
-          <p className="text-sm text-gray-500 mt-1">Share these links with the relevant parties</p>
+          <h3 className="text-base font-semibold text-neutral-900">Contract Created</h3>
+          <p className="text-xs text-neutral-500 mt-1">Share these links with the relevant parties</p>
         </div>
 
         {/* Links */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Creator Link */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase mb-2">
-              <Link2 className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-1 text-[10px] font-semibold text-neutral-500 uppercase mb-1.5">
+              <Link2 className="w-3 h-3" />
               Creator Link
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <input
                 type="text"
                 value={creatorLink}
                 readOnly
-                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm truncate"
+                className="flex-1 px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-md text-neutral-700 text-xs truncate"
               />
               <button
                 onClick={() => copyToClipboard(creatorLink, 'creator')}
-                className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-                  copiedCreator 
-                    ? 'bg-emerald-100 text-emerald-700' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                className={`px-2.5 py-2 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
+                  copiedCreator
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700'
                 }`}
               >
-                {copiedCreator ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedCreator ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedCreator ? 'Copied' : 'Copy'}
               </button>
               <a
                 href={creatorLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                className="px-2.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-md transition-colors"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
 
           {/* Company Link */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase mb-2">
-              <Link2 className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-1 text-[10px] font-semibold text-neutral-500 uppercase mb-1.5">
+              <Link2 className="w-3 h-3" />
               Company Link
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <input
                 type="text"
                 value={companyLink}
                 readOnly
-                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm truncate"
+                className="flex-1 px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-md text-neutral-700 text-xs truncate"
               />
               <button
                 onClick={() => copyToClipboard(companyLink, 'company')}
-                className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-                  copiedCompany 
-                    ? 'bg-emerald-100 text-emerald-700' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                className={`px-2.5 py-2 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
+                  copiedCompany
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700'
                 }`}
               >
-                {copiedCompany ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedCompany ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedCompany ? 'Copied' : 'Copy'}
               </button>
               <a
                 href={companyLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                className="px-2.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-md transition-colors"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
         </div>
 
-        {/* Done Button */}
+        {/* Done */}
         <button
           onClick={onClose}
-          className="w-full mt-6 px-4 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-colors"
+          className="w-full mt-5 px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-md text-sm font-medium transition-colors"
         >
           Done
         </button>
@@ -1195,4 +1155,3 @@ const ContractCreatedModal: React.FC<ContractCreatedModalProps> = ({ creatorLink
 };
 
 export default CreateContractPage;
-
