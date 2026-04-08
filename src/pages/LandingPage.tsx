@@ -438,10 +438,10 @@ const LandingPage: React.FC = () => {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { step: '01', title: 'Track any account without login', desc: 'Add your creators and track your competitors. Just paste a public link.', img: '/step-add.png', bg: 'bg-blue-50' },
-              { step: '02', title: 'Make data-driven decisions', desc: 'Views, engagement, CPM rates, and post schedules all in one dashboard.', img: '/step-track.png', bg: 'bg-orange-50' },
-              { step: '03', title: 'Scale your product with precision', desc: 'Define base fees and bonuses. We calculate, invoice, and pay creators for you.', img: '/step-pay.png', bg: 'bg-amber-50' },
-            ].map(({ step, title, desc, img, bg }) => (
+              { step: '01', title: 'Track any account without login', desc: 'Add your creators and track your competitors. Just paste a public link.', img: '/step-add.png' },
+              { step: '02', title: 'Make data-driven decisions', desc: 'Views, engagement, CPM rates, and post schedules all in one dashboard.', img: '/step-track.png' },
+              { step: '03', title: 'Scale your product with precision', desc: 'Define base fees and bonuses. We calculate, invoice, and pay creators for you.', img: '/step-pay.png' },
+            ].map(({ step, title, desc, img }) => (
               <div key={step} className="rounded-2xl border border-neutral-200 bg-white overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="h-56 overflow-hidden">
                   <img src={img} alt={title} className="w-full h-full object-cover" />
