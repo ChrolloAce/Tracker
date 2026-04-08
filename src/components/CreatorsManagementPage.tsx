@@ -440,10 +440,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           {/* Floating Action Button - Add Creator (only on Accounts tab) */}
           <button
             onClick={() => { if (onRequiresPaidPlan?.('to add creators')) return; setShowInviteModal(true); }}
-            className="fixed bottom-8 right-8 flex items-center justify-center p-4 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
+            className="fixed bottom-8 right-8 flex items-center gap-2 px-5 py-3 rounded-xl bg-orange-500 text-white shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all z-40"
             title="Add Creator (Space)"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5" />
+            <span className="text-sm font-semibold">Add Creator</span>
           </button>
         </>
       )}

@@ -3,13 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark background for app */
+/* Base background — white for landing, dark pages set their own bg */
 html {
-  background-color: #0A0A0A;
+  background-color: #ffffff;
 }
 
 body {
-  background-color: #0A0A0A;
+  background-color: #ffffff;
 }
 
 /* Base styles */
@@ -17,9 +17,8 @@ body {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.9);
-  background-color: #0A0A0A;
+  color-scheme: light dark;
+  background-color: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

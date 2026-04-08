@@ -4592,41 +4592,23 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             }
           }}
           disabled={isOverrideMode}
-          className={`fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all shadow-2xl group ${
-            isOverrideMode 
-              ? 'bg-gray-600 text-gray-400 border border-gray-700 cursor-not-allowed opacity-60' 
-              : 'transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30'
+          className={`fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${
+            isOverrideMode
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
+              : 'bg-orange-500 text-white shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]'
           }`}
-          aria-label={
-            (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') ? 'Track Content' :
-            activeTab === 'analytics' ? 'Create Link' :
-            activeTab === 'campaigns' ? 'Create Campaign' :
-            activeTab === 'team' ? 'Invite Team Member' :
-            'Add'
-          }
+          aria-label="Add"
         >
-          <svg 
-            className="w-6 h-6" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M12 4v16m8-8H4" 
-            />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span className="absolute -top-12 right-0 bg-gray-900 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {isOverrideMode ? "Can't add - viewing another organization" : (
-              <>
-            {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
-            {activeTab === 'analytics' && 'Create Link'}
-            {activeTab === 'campaigns' && 'Create Campaign'}
-            {activeTab === 'team' && 'Invite Team Member'}
-              </>
-            )}
+          <span className="text-sm font-semibold">
+            {isOverrideMode ? 'Viewing' :
+              (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') ? 'Add Account' :
+              activeTab === 'analytics' ? 'Add Link' :
+              activeTab === 'campaigns' ? 'New Campaign' :
+              activeTab === 'team' ? 'Invite Member' :
+              'Add'}
           </span>
         </button>
       )}

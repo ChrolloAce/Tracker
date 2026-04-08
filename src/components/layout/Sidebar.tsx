@@ -17,8 +17,6 @@ import {
   Shield,
   Flame,
   Bookmark,
-  Activity,
-  RefreshCw,
   Key
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
@@ -276,44 +274,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [isSuperAdmin, isDemoMode]);
 
-  // Apify Monitor item (only for super admins)
-  const apifyMonitorItem: NavItem | null = useMemo(() => {
-    if (isSuperAdmin && !isDemoMode) {
-      return {
-        id: 'apify-monitor',
-        label: 'Apify Monitor',
-        icon: Activity,
-        href: '/apify-monitor',
-      };
-    }
-    return null;
-  }, [isSuperAdmin, isDemoMode]);
-
-  // Refresh Monitor item (only for super admins)
-  const refreshMonitorItem: NavItem | null = useMemo(() => {
-    if (isSuperAdmin && !isDemoMode) {
-      return {
-        id: 'refresh-monitor',
-        label: 'Refresh Monitor',
-        icon: RefreshCw,
-        href: '/refresh-monitor',
-      };
-    }
-    return null;
-  }, [isSuperAdmin, isDemoMode]);
-
-  // API Management item (only for super admins)
-  const apiManagementItem: NavItem | null = useMemo(() => {
-    if (isSuperAdmin && !isDemoMode) {
-      return {
-        id: 'api-management',
-        label: 'API Management',
-        icon: Key,
-        href: '/api-management',
-      };
-    }
-    return null;
-  }, [isSuperAdmin, isDemoMode]);
 
   // Support item (standalone at bottom)
   const supportItem: NavItem = useMemo(() => ({
@@ -531,9 +491,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           {userRole !== 'creator' && <NavItemComponent item={supportItem} />}
           {settingsItem && <NavItemComponent item={settingsItem} />}
           {superAdminItem && <NavItemComponent item={superAdminItem} />}
-          {apifyMonitorItem && <NavItemComponent item={apifyMonitorItem} />}
-          {refreshMonitorItem && <NavItemComponent item={refreshMonitorItem} />}
-          {apiManagementItem && <NavItemComponent item={apiManagementItem} />}
           </>
       </nav>
 
