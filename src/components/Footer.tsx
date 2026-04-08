@@ -12,7 +12,7 @@ const Footer: React.FC = () => {
           {/* Brand */}
           <div className="space-y-3">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/Viewtrack Logo Black.png" alt="ViewTrack" className="h-7" />
+              <img src="/viewtrack-logo.png" alt="ViewTrack" className="h-7" />
               <span className="text-xl font-bold text-neutral-900">ViewTrack</span>
             </Link>
             <p className="text-sm text-neutral-500">

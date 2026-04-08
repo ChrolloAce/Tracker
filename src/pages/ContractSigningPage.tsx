@@ -232,14 +232,13 @@ const ContractSigningPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-6">
             {/* ── Contract Document ─────────────────────────────── */}
             <div className="flex-1 min-w-0 print-contract">
-              <div className="bg-white rounded-lg shadow-sm border border-neutral-200" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
                 <div className="p-8 sm:p-12">
                   {/* Title */}
                   <div className="text-center mb-10">
                     <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-wide uppercase">
                       {contract.contractTitle || 'Creator Agreement'}
                     </h1>
-                    <div className="w-16 h-px bg-neutral-300 mx-auto mt-4" />
                   </div>
 
                   {/* Intro */}
@@ -296,10 +295,7 @@ const ContractSigningPage: React.FC = () => {
                   </div>
 
                   {/* Signatures */}
-                  <div className="pt-8 border-t border-neutral-900">
-                    <p className="text-center text-xs text-neutral-400 mb-8 italic">
-                      IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
-                    </p>
+                  <div className="pt-8 border-t border-neutral-200">
                     <div className="flex flex-col sm:flex-row gap-10">
                       {renderSigBlock('For the Company', contract.companySignature, 'Authorized Signatory')}
                       {renderSigBlock('For the Creator', contract.creatorSignature, contract.creatorName)}

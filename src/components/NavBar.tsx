@@ -51,7 +51,7 @@ const NavBar = (_props?: { logo?: string; onGetStarted?: () => void }) => {
         <div className={`mx-auto px-4 md:px-6 transition-all duration-500 ${isScrolled ? 'max-w-6xl' : 'max-w-5xl'}`}>
           <div className={`bg-white/80 backdrop-blur-xl border border-neutral-200 rounded-2xl px-5 py-3 flex items-center justify-between transition-all duration-500 ${isScrolled ? 'shadow-lg' : 'shadow-sm'}`}>
             <Link to="/" className="flex items-center gap-2">
-              <img src="/Viewtrack Logo Black.png" alt="ViewTrack" className="h-8" />
+              <img src="/viewtrack-logo.png" alt="ViewTrack" className="h-8" />
             </Link>
 
             <div className="hidden md:flex items-center gap-8 text-sm text-neutral-500">
@@ -82,7 +82,7 @@ const NavBar = (_props?: { logo?: string; onGetStarted?: () => void }) => {
         <div className="fixed inset-0 z-[60] bg-white flex flex-col">
           <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-100">
             <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-              <img src="/Viewtrack Logo Black.png" alt="ViewTrack" className="h-7" />
+              <img src="/viewtrack-logo.png" alt="ViewTrack" className="h-7" />
             </Link>
             <button type="button" className="text-neutral-900 p-1" onClick={() => setMobileOpen(false)} aria-label="Close menu">
               <X className="w-6 h-6" />

@@ -4604,9 +4604,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           </svg>
           <span className="text-sm font-semibold">
             {isOverrideMode ? 'Viewing' :
-              (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') ? 'Add Account' :
+              activeTab === 'dashboard' ? 'Add Account' :
+              activeTab === 'accounts' ? 'Add Account' :
+              activeTab === 'videos' ? 'Add Video' :
               activeTab === 'analytics' ? 'Add Link' :
+              activeTab === 'creators' ? 'Add Creator' :
               activeTab === 'campaigns' ? 'New Campaign' :
+              activeTab === 'viral' ? 'Add Content' :
               activeTab === 'team' ? 'Invite Member' :
               'Add'}
           </span>

@@ -516,7 +516,7 @@ const LandingPage: React.FC = () => {
                       />
                     </div>
                     <div className="min-w-0 w-6" />
-                    <div className="flex-1 hidden sm:block">
+                    <div className="flex-1">
                       <LiveGraph onTrend={setTrending} />
                     </div>
                     <div className="text-right shrink-0 w-16">

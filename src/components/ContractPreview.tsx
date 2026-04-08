@@ -108,14 +108,13 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
   );
 
   return (
-    <div className="bg-white min-h-full" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+    <div className="bg-white min-h-full">
       <div className="p-8 sm:p-10">
         {/* Title */}
         <div className="text-center mb-8">
           <h1 className="text-lg font-bold text-gray-900 tracking-wide uppercase">
             Content Creator Agreement
           </h1>
-          <div className="w-12 h-px bg-gray-300 mx-auto mt-3" />
         </div>
 
         {/* Intro */}
@@ -163,10 +162,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
         )}
 
         {/* Signatures */}
-        <div className="pt-6 border-t border-gray-900">
-          <p className="text-center text-[10px] text-gray-400 mb-6 italic">
-            IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
-          </p>
+        <div className="pt-6 border-t border-gray-200">
           <div className="flex gap-8">
             {renderSig('The Company', companySignature, 'Authorized Signatory')}
             {renderSig('The Creator', creatorSignature, creatorName || 'Creator')}

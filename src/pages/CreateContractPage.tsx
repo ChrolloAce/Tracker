@@ -649,36 +649,19 @@ const CreateContractPage: React.FC = () => {
               )}
 
               {/* Editable contract body */}
-              <div className="mb-6">
-                <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-widest mb-2 pb-1 border-b border-neutral-200">
-                  Terms &amp; Conditions
-                </p>
-
-                {/* Preview with resolved variables */}
-                {contractNotes ? (
-                  <div className="text-[11px] text-neutral-700 leading-relaxed whitespace-pre-wrap mb-4">
-                    <ResolvedContractText text={contractNotes} variableValues={variableValues} />
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-neutral-400 italic mb-4">Terms will appear here as you type below...</p>
-                )}
-
-                {/* Textarea — styled as part of the document */}
+              <div className="mb-8">
+                <p className="text-xs font-medium text-neutral-400 mb-3">Terms & Conditions</p>
                 <textarea
                   ref={textareaRef}
                   value={contractNotes}
                   onChange={(e) => setContractNotes(e.target.value)}
-                  placeholder={"Enter contract terms and conditions...\n\nExample: This agreement is entered into on {{TODAY_DATE}} between {{COMPANY_NAME}} and {{CREATOR_NAME}}..."}
-                  className="w-full min-h-[280px] px-0 py-3 bg-transparent text-neutral-800 placeholder-neutral-300 focus:outline-none resize-none text-sm leading-relaxed border-t border-dashed border-neutral-200"
-                  style={{ fontFamily: '"SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace', fontSize: '12px' }}
+                  placeholder={"Enter contract terms and conditions...\n\nYou can use variables like {{COMPANY_NAME}} and {{CREATOR_NAME}} that auto-fill when the contract is sent."}
+                  className="w-full min-h-[320px] px-0 py-0 bg-transparent text-neutral-700 placeholder-neutral-300 focus:outline-none resize-none text-sm leading-relaxed"
                 />
               </div>
 
               {/* Signature blocks */}
-              <div className="border-t border-neutral-900 pt-5">
-                <p className="text-[9px] text-neutral-400 italic text-center mb-5">
-                  IN WITNESS WHEREOF, the parties have executed this Agreement.
-                </p>
+              <div className="border-t border-neutral-200 pt-6">
                 <div className="grid grid-cols-2 gap-8">
                   {[
                     { label: 'Company', name: companyName || '' },
@@ -696,10 +679,6 @@ const CreateContractPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="mt-8 pt-2 border-t border-neutral-100 text-center">
-                <p className="text-[8px] text-neutral-300">Draft Preview</p>
-              </div>
             </div>
           </div>
         </main>
@@ -970,59 +949,6 @@ const CreateContractPage: React.FC = () => {
         />
       )}
     </div>
-  );
-};
-
-// Renders contract text with variables resolved to their values
-const ResolvedContractText: React.FC<{ text: string; variableValues: Map<string, string> }> = ({ text, variableValues }) => {
-  const parts = text.split(/(\{\{[A-Z_]+\}\})/g);
-
-  return (
-    <>
-      {parts.map((part, index) => {
-        const variableDef = TEMPLATE_VARIABLES.find(v => v.key === part);
-        if (!variableDef) {
-          return <span key={index}>{part}</span>;
-        }
-
-        const resolvedValue = variableValues.get(part);
-        const isFillable = variableDef.type === 'fillable';
-
-        if (isFillable) {
-          return (
-            <span
-              key={index}
-              className="inline-block min-w-[100px] border-b-2 border-dashed border-amber-400 text-amber-500 text-[10px] italic px-1 mx-0.5"
-              title={variableDef.description}
-            >
-              [{variableDef.label}]
-            </span>
-          );
-        }
-
-        if (resolvedValue) {
-          return (
-            <span
-              key={index}
-              className="font-semibold text-neutral-900 underline decoration-emerald-400 decoration-1 underline-offset-2"
-              title={`${variableDef.key} → ${resolvedValue}`}
-            >
-              {resolvedValue}
-            </span>
-          );
-        }
-
-        return (
-          <span
-            key={index}
-            className="inline-block min-w-[80px] border-b-2 border-dashed border-red-300 text-red-400 text-[10px] italic px-1 mx-0.5"
-            title={`${variableDef.key} — not set yet`}
-          >
-            [{variableDef.label}]
-          </span>
-        );
-      })}
-    </>
   );
 };
 
