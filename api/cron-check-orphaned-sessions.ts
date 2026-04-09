@@ -122,6 +122,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
         
+        // Check for sessions stuck in 'dispatching' with no remaining jobs
+        const thirtyMinutesAgo = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
+
+        const stuckDispatchingSessions = await sessionsRef
+          .where('status', '==', 'dispatching')
+          .where('startedAt', '<', thirtyMinutesAgo)
+          .get();
+
+        for (const sessionDoc of stuckDispatchingSessions.docs) {
+          const session = sessionDoc.data();
+          const sessionId = sessionDoc.id;
+
+          try {
+            // Only force-complete if no jobs are still pending or running
+            const remainingJobs = await db
+              .collection('syncQueue')
+              .where('sessionId', '==', sessionId)
+              .where('status', 'in', ['pending', 'running'])
+              .limit(1)
+              .get();
+
+            if (!remainingJobs.empty) {
+              continue;
+            }
+
+            console.log(`  🔧 Force-completing stuck session ${sessionId} for org ${orgId}`);
+
+            await sessionDoc.ref.update({
+              status: 'completed',
+              completedAt: Timestamp.now(),
+              recoveredByStuckDispatchCheck: true
+            });
+
+            const finalSession = (await sessionDoc.ref.get()).data();
+
+            if (finalSession && finalSession.ownerEmail) {
+              try {
+                await sendRefreshSummaryEmail(finalSession, db);
+
+                await sessionDoc.ref.update({
+                  emailSent: true,
+                  emailSentAt: Timestamp.now()
+                });
+
+                emailsSent++;
+                console.log(`  ✅ Email sent for force-completed session ${sessionId}`);
+              } catch (emailError: any) {
+                console.error(`  ❌ Failed to send email for stuck session ${sessionId}:`, emailError.message);
+                errors++;
+              }
+            }
+          } catch (sessionError: any) {
+            console.error(`  ❌ Error recovering stuck session ${sessionId}:`, sessionError.message);
+            errors++;
+          }
+        }
+
       } catch (orgError: any) {
         console.error(`  ❌ Error checking org ${orgId}:`, orgError.message);
         errors++;

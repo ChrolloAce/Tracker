@@ -1215,6 +1215,36 @@ export default async function handler(
               error: error.message || String(error)
             });
             console.log(`   ❌ Job ${jobId} marked as failed (max retries exceeded)`);
+
+            // Update session progress so the counter increments even on permanent failure.
+            // This prevents sessions from getting stuck in 'dispatching' forever.
+            if (sessionId) {
+              try {
+                const failedAccountRef = db
+                  .collection('organizations')
+                  .doc(orgId)
+                  .collection('projects')
+                  .doc(projectId)
+                  .collection('trackedAccounts')
+                  .doc(accountId);
+                const failedAccountDoc = await failedAccountRef.get();
+                const failedAccount = failedAccountDoc.exists
+                  ? { ...failedAccountDoc.data(), id: failedAccountDoc.id }
+                  : { username: 'unknown', platform: 'unknown' };
+
+                await SyncSessionService.updateSessionProgress(
+                  sessionId,
+                  orgId,
+                  projectId,
+                  accountId,
+                  0,
+                  failedAccount,
+                  db
+                );
+              } catch (sessionError: any) {
+                console.warn(`   ⚠️ Failed to update session for permanently failed account (non-critical):`, sessionError.message);
+              }
+            }
           } else {
             // Reset to pending for retry
             await db.collection('syncQueue').doc(jobId).update({

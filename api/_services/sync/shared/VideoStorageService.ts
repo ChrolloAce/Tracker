@@ -240,7 +240,7 @@ export class VideoStorageService {
         if (!isRefreshOnly) {
           if (video.videoTitle) updateData.videoTitle = video.videoTitle;
           if (video.uploadDate) updateData.uploadDate = video.uploadDate;
-          if (video.media) updateData.media = video.media;
+          if (Array.isArray(video.media)) updateData.media = video.media;
         }
 
         // Track refresh snapshot count for age-filter bypass (videos with < 2 always refresh)
@@ -275,10 +275,11 @@ export class VideoStorageService {
           continue;
         }
 
-        const { _isRefreshOnly, ...cleanVideoData } = video;
+        const { _isRefreshOnly, media, ...cleanVideoData } = video;
 
         batch.set(videoRef, {
           ...cleanVideoData,
+          ...(Array.isArray(media) ? { media } : {}),
           uploaderHandle: video.accountUsername || account.username,
           uploader: video.accountDisplayName || account.username,
           thumbnail: firebaseThumbnailUrl,
