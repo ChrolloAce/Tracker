@@ -39,14 +39,14 @@ class TeamInvitationService {
       selectedAccountIds?: string[];
     }
   ): Promise<string> {
-    // Check if user is already a member
+    // Check if user is already a member (skip creators — they can be invited to portal)
     const existingMembers = await getDocs(
       collection(db, 'organizations', orgId, 'members')
     );
-    
+
     for (const memberDoc of existingMembers.docs) {
       const memberData = memberDoc.data();
-      if (memberData.email?.toLowerCase() === email.toLowerCase() && memberData.status === 'active') {
+      if (memberData.email?.toLowerCase() === email.toLowerCase() && memberData.status === 'active' && memberData.role !== 'creator') {
         throw new Error('This user is already a member of the organization');
       }
     }

@@ -232,21 +232,26 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     }
   };
 
-  const handleInviteToPortal = async (creator: OrgMember) => {
-    if (!user || !currentOrgId || !currentProjectId) return;
+  // Invite to portal state
+  const [inviteConfirm, setInviteConfirm] = useState<OrgMember | null>(null);
+  const [inviteMessage, setInviteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const handleInviteToPortal = (creator: OrgMember) => {
     const creatorEmail = creator.email || creatorProfiles.get(creator.userId)?.email;
     if (!creatorEmail) {
-      alert('This creator has no email address. Please edit their profile to add an email first.');
+      setInviteMessage({ type: 'error', text: 'This creator has no email address. Please edit their profile to add an email first.' });
       return;
     }
+    setInviteConfirm(creator);
+  };
 
-    if (!confirm(`Send a portal invitation to ${creator.displayName || creatorEmail}?\n\nThey will receive an email with a link to access the Creator Portal.`)) {
-      return;
-    }
+  const confirmInviteToPortal = async () => {
+    if (!inviteConfirm || !user || !currentOrgId || !currentProjectId) return;
+    const creatorEmail = inviteConfirm.email || creatorProfiles.get(inviteConfirm.userId)?.email;
+    if (!creatorEmail) return;
 
     try {
-      setActionLoading(creator.userId);
+      setActionLoading(inviteConfirm.userId);
       const orgs = await OrganizationService.getUserOrganizations(user.uid);
       const currentOrg = orgs.find(o => o.id === currentOrgId);
       if (!currentOrg) throw new Error('Organization not found');
@@ -262,11 +267,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         currentProjectId
       );
 
-      alert(`Invitation sent to ${creatorEmail}`);
+      setInviteConfirm(null);
+      setInviteMessage({ type: 'success', text: `Invitation sent to ${creatorEmail}` });
+      setTimeout(() => setInviteMessage(null), 4000);
       await loadData();
     } catch (error: any) {
       console.error('Failed to send portal invitation:', error);
-      alert(error.message || 'Failed to send invitation');
+      setInviteConfirm(null);
+      setInviteMessage({ type: 'error', text: error.message || 'Failed to send invitation' });
+      setTimeout(() => setInviteMessage(null), 5000);
     } finally {
       setActionLoading(null);
     }
@@ -493,6 +502,35 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           }}
           creator={paymentPlanCreator}
         />
+      )}
+
+      {/* Invite Confirmation Modal */}
+      {inviteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-secondary rounded-xl border border-border shadow-2xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold text-content mb-2">Send Portal Invitation?</h3>
+            <p className="text-sm text-content-secondary mb-6">
+              {inviteConfirm.displayName || inviteConfirm.email} will receive an email with a link to access the Creator Portal.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setInviteConfirm(null)} className="flex-1 px-4 py-2.5 bg-surface-secondary text-content border border-border rounded-lg font-semibold shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
+                Cancel
+              </button>
+              <button onClick={confirmInviteToPortal} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
+                Send Invite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Message Toast */}
+      {inviteMessage && (
+        <div className={`fixed bottom-20 right-8 px-5 py-3 rounded-lg shadow-lg z-50 text-sm font-medium ${
+          inviteMessage.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          {inviteMessage.text}
+        </div>
       )}
 
           {/* Floating Action Button - Add Creator (only on Accounts tab) */}
