@@ -48,7 +48,7 @@ const SignOutModal: React.FC<SignOutModalProps> = ({ isOpen, onConfirm, onCancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+            className="px-6 py-2.5 bg-red-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
           >
             Sign Out
           </button>

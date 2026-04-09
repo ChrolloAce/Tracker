@@ -45,25 +45,17 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
   const paginatedSnapshots = snapshotsWithEngagement.slice(startIndex, endIndex);
 
   return (
-    <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden min-w-0" style={{ backgroundColor: '#121214' }}>
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
-      
+    <div className="relative rounded-2xl border border-border-subtle shadow-lg overflow-hidden min-w-0" style={{ backgroundColor: 'var(--surface-secondary)' }}>
       {/* Header with Pagination */}
-      <div className="relative px-6 py-4 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+      <div className="relative px-6 py-4 border-b border-border-subtle" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Bookmark className="w-4 h-4 text-gray-400" />
+            <Bookmark className="w-4 h-4 text-content-muted" />
             <div>
-              <h3 className="text-base font-semibold text-white">
+              <h3 className="text-base font-semibold text-content">
                 Snapshots History
               </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-content-muted mt-0.5">
                 {snapshots.length} {snapshots.length === 1 ? 'recording' : 'recordings'}
               </p>
             </div>
@@ -75,19 +67,19 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
               <button
                 onClick={() => setSnapshotsPage(p => Math.max(1, p - 1))}
                 disabled={snapshotsPage === 1}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-lg bg-surface-hover hover:bg-surface-active disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 text-white" />
+                <ChevronLeft className="w-4 h-4 text-content" />
               </button>
-              <span className="text-xs text-gray-400 min-w-[80px] text-center">
+              <span className="text-xs text-content-muted min-w-[80px] text-center">
                 Page {snapshotsPage} of {totalPages}
               </span>
               <button
                 onClick={() => setSnapshotsPage(p => Math.min(totalPages, p + 1))}
                 disabled={snapshotsPage === totalPages}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-lg bg-surface-hover hover:bg-surface-active disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronRight className="w-4 h-4 text-white" />
+                <ChevronRight className="w-4 h-4 text-content" />
               </button>
             </div>
           )}
@@ -95,7 +87,7 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
       </div>
 
       {/* Table Header */}
-      <div className="relative grid grid-cols-6 gap-4 px-6 py-3 bg-white/5 border-b border-white/5 text-xs font-medium text-gray-400 uppercase tracking-wider z-10">
+      <div className="grid grid-cols-6 gap-4 px-6 py-3 bg-surface-hover border-b border-border-subtle text-xs font-medium text-content-muted uppercase tracking-wider">
         <div className="col-span-2">Date Captured</div>
         <div className="text-right">Views</div>
         <div className="text-right">Likes</div>
@@ -104,38 +96,38 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
       </div>
 
       {/* Snapshots List - Scrollable */}
-      <div className="relative divide-y divide-white/5 z-10 max-h-[400px] overflow-y-auto">
+      <div className="divide-y divide-border-subtle max-h-[400px] overflow-y-auto">
         {paginatedSnapshots.map((snapshot) => (
           <div 
             key={snapshot.capturedAt instanceof Date ? snapshot.capturedAt.toISOString() : String(snapshot.capturedAt)}
-            className="grid grid-cols-6 gap-4 px-6 py-4 hover:bg-white/5 transition-colors items-center"
+            className="grid grid-cols-6 gap-4 px-6 py-4 hover:bg-surface-hover transition-colors items-center"
           >
             {/* Date */}
             <div className="col-span-2 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
-                <Bookmark className="w-4 h-4 text-gray-400" />
+              <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center border border-border">
+                <Bookmark className="w-4 h-4 text-content-muted" />
               </div>
               <div>
-                <div className="text-sm font-medium text-white">
+                <div className="text-sm font-medium text-content">
                   {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric'
                   })}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-content-muted">
                   {new Date(snapshot.capturedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
             </div>
 
             {/* Metrics */}
-            <div className="text-right text-sm text-gray-300 font-medium">
+            <div className="text-right text-sm text-content-secondary font-medium">
               {formatNumber(snapshot.views)}
             </div>
-            <div className="text-right text-sm text-gray-300">
+            <div className="text-right text-sm text-content-secondary">
               {formatNumber(snapshot.likes)}
             </div>
-            <div className="text-right text-sm text-gray-300">
+            <div className="text-right text-sm text-content-secondary">
               {formatNumber(snapshot.comments)}
             </div>
 
@@ -146,7 +138,7 @@ export const VideoSnapshotsHistory: React.FC<VideoSnapshotsHistoryProps> = ({ sn
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                   : snapshot.trend === 'down'
                     ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                    : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                    : 'bg-surface-hover text-content-muted border-border-subtle'
               }`}>
                 {snapshot.trend === 'up' && <TrendingUp className="w-3 h-3" />}
                 {snapshot.trend === 'down' && <TrendingDown className="w-3 h-3" />}

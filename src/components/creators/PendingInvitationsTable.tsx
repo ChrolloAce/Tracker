@@ -25,36 +25,36 @@ const PendingInvitationsTable: React.FC<PendingInvitationsTableProps> = ({
   if (invitations.length === 0) return null;
 
   return (
-    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/5 bg-zinc-900/40">
-        <h2 className="text-lg font-semibold text-white">
+    <div className="rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-lg overflow-hidden">
+      <div className="px-6 py-4 border-b border-border-subtle bg-surface-secondary">
+        <h2 className="text-lg font-semibold text-content">
           Pending Creator Invitations ({invitations.length})
         </h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/5">
-              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Invited By</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Sent</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">Actions</th>
+            <tr className="border-b border-border-subtle">
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Invited By</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Sent</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-content-muted uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-border">
             {invitations.map((invitation) => (
-              <tr key={invitation.id} className="hover:bg-white/5 transition-colors">
+              <tr key={invitation.id} className="hover:bg-surface-hover transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-white">{invitation.email}</span>
+                    <Mail className="w-4 h-4 text-content-muted" />
+                    <span className="text-sm text-content">{invitation.email}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-content-muted">
                   {invitation.invitedByName || invitation.invitedByEmail || 'Unknown'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <div className="flex items-center gap-2 text-sm text-content-muted">
                     <Clock className="w-4 h-4" />
                     {formatDate(invitation.createdAt)}
                   </div>
@@ -65,7 +65,7 @@ const PendingInvitationsTable: React.FC<PendingInvitationsTableProps> = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => onCopyLink(invitation.id)}
-                      className="text-gray-400 hover:text-gray-300 hover:bg-gray-500/10"
+                      className="text-content-muted hover:text-content-secondary hover:bg-surface-hover"
                     >
                       <Copy className="w-4 h-4" />
                     </Button>

@@ -185,14 +185,13 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
     if (active && payload && payload.length) {
       return (
         <div
-          className="backdrop-blur-xl text-white rounded-xl border shadow-2xl"
+          className="backdrop-blur-xl text-content rounded-xl border border-border shadow-2xl"
           style={{
-            backgroundColor: 'rgba(26, 26, 26, 0.95)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'var(--surface-tertiary)',
             padding: '12px 16px',
           }}
         >
-          <p className="text-sm font-semibold text-white mb-2">{label}</p>
+          <p className="text-sm font-semibold text-content mb-2">{label}</p>
           <div className="space-y-1">
             {payload.map((entry: any, index: number) => {
               const metricKey = entry.dataKey === 'metric1' ? metric1 : metric2;
@@ -203,11 +202,11 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                       className="w-2.5 h-2.5 rounded-sm"
                       style={{ backgroundColor: entry.color }}
                     />
-                    <span className="text-xs text-gray-300">
+                    <span className="text-xs text-content-secondary">
                       {getMetricLabel(metricKey)}:
                     </span>
                   </div>
-                  <span className="text-sm font-bold text-white">
+                  <span className="text-sm font-bold text-content">
                     {formatMetricValue(metricKey, entry.value)}
                   </span>
                 </div>
@@ -249,13 +248,13 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 <stop offset="100%" stopColor={metric2Color} stopOpacity={0.6} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
-              stroke="rgba(255, 255, 255, 0.15)"
-              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              stroke="var(--content-muted)"
+              tick={{ fill: 'var(--content-secondary)', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              axisLine={{ stroke: 'var(--border)' }}
             />
             <YAxis
               yAxisId="left"
@@ -276,7 +275,7 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
             />
             <Tooltip
               content={<CustomTooltip />}
-              cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }}
+              cursor={{ fill: 'var(--surface-hover)' }}
               wrapperStyle={{ zIndex: 9999, pointerEvents: 'none' }}
               position={{ y: -10 }}
               offset={20}
@@ -290,13 +289,13 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
       case 'line':
         return (
           <LineChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
-              stroke="rgba(255, 255, 255, 0.15)"
-              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              stroke="var(--content-muted)"
+              tick={{ fill: 'var(--content-secondary)', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              axisLine={{ stroke: 'var(--border)' }}
             />
             <YAxis
               yAxisId="left"
@@ -356,13 +355,13 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 <stop offset="100%" stopColor={metric2Color} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
-              stroke="rgba(255, 255, 255, 0.15)"
-              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              stroke="var(--content-muted)"
+              tick={{ fill: 'var(--content-secondary)', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              axisLine={{ stroke: 'var(--border)' }}
             />
             <YAxis
               yAxisId="left"
@@ -411,11 +410,7 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
 
   return (
     <div
-      className="relative rounded-2xl backdrop-blur border shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-      style={{
-        backgroundColor: 'rgba(18, 18, 20, 0.95)',
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-      }}
+      className="relative rounded-2xl backdrop-blur border border-border-subtle shadow-theme transition-all duration-300 overflow-hidden bg-surface-secondary"
     >
       {/* Subtle inner glow */}
       <div
@@ -432,25 +427,21 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
           {/* Title */}
           <div className="flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-lg font-bold text-white">Revenue</h3>
+            <h3 className="text-lg font-bold text-content">Revenue</h3>
             <div className="relative">
               <button
                 onMouseEnter={() => setShowTooltipInfo(true)}
                 onMouseLeave={() => setShowTooltipInfo(false)}
-                className="text-gray-500 hover:text-gray-400 transition-colors"
+                className="text-content-muted hover:text-content-secondary transition-colors"
               >
                 <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
               </button>
 
               {showTooltipInfo && (
                 <div
-                  className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg border shadow-xl z-50"
-                  style={{
-                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                  }}
+                  className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg bg-surface-tertiary border border-border shadow-xl z-50"
                 >
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-xs text-content-secondary leading-relaxed">
                     Compare revenue metrics with content engagement to see how your videos drive subscriptions and revenue over time.
                   </p>
                 </div>
@@ -462,10 +453,8 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* Left metric (Revenue) */}
             <div
-              className="relative rounded-lg border transition-all cursor-pointer hover:border-emerald-500/40"
+              className="relative rounded-lg border border-emerald-500/30 transition-all cursor-pointer hover:border-emerald-500/40 bg-surface-tertiary"
               style={{
-                backgroundColor: 'rgba(18, 18, 20, 0.6)',
-                borderColor: 'rgba(16, 185, 129, 0.3)',
                 padding: '6px 10px 6px 8px',
               }}
             >
@@ -474,7 +463,7 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 <select
                   value={metric1}
                   onChange={(e) => setMetric1(e.target.value as RevenueMetric)}
-                  className="appearance-none bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer pr-2"
+                  className="appearance-none bg-transparent text-content text-sm font-medium focus:outline-none cursor-pointer pr-2"
                   style={{ minWidth: '100px' }}
                 >
                   {REVENUE_METRICS.map(m => (
@@ -486,10 +475,8 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
 
             {/* Right metric (Revenue or Engagement) */}
             <div
-              className="relative rounded-lg border transition-all cursor-pointer hover:border-gray-500/40"
+              className="relative rounded-lg border border-border transition-all cursor-pointer hover:border-border-strong bg-surface-tertiary"
               style={{
-                backgroundColor: 'rgba(18, 18, 20, 0.6)',
-                borderColor: 'rgba(107, 114, 128, 0.3)',
                 padding: '6px 10px 6px 8px',
               }}
             >
@@ -498,7 +485,7 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 <select
                   value={metric2}
                   onChange={(e) => setMetric2(e.target.value as MetricType)}
-                  className="appearance-none bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer pr-2"
+                  className="appearance-none bg-transparent text-content text-sm font-medium focus:outline-none cursor-pointer pr-2"
                   style={{ minWidth: '100px' }}
                 >
                   <optgroup label="Revenue">
@@ -518,7 +505,7 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
             </div>
 
             {/* Divider */}
-            <div className="h-6 w-px bg-white/10 mx-1" />
+            <div className="h-6 w-px bg-border-subtle mx-1" />
 
             {/* Chart Type Icons */}
             <div className="flex items-center gap-1">
@@ -526,8 +513,8 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 onClick={() => setChartType('bar')}
                 className={`p-1.5 rounded-md transition-all ${
                   chartType === 'bar'
-                    ? 'bg-white/15 text-white'
-                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+                    ? 'bg-surface-hover text-content'
+                    : 'text-gray-500 hover:bg-surface-hover hover:text-content-secondary'
                 }`}
                 title="Bar Chart"
               >
@@ -537,8 +524,8 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 onClick={() => setChartType('line')}
                 className={`p-1.5 rounded-md transition-all ${
                   chartType === 'line'
-                    ? 'bg-white/15 text-white'
-                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+                    ? 'bg-surface-hover text-content'
+                    : 'text-gray-500 hover:bg-surface-hover hover:text-content-secondary'
                 }`}
                 title="Line Chart"
               >
@@ -548,8 +535,8 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
                 onClick={() => setChartType('area')}
                 className={`p-1.5 rounded-md transition-all ${
                   chartType === 'area'
-                    ? 'bg-white/15 text-white'
-                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+                    ? 'bg-surface-hover text-content'
+                    : 'text-gray-500 hover:bg-surface-hover hover:text-content-secondary'
                 }`}
                 title="Area Chart"
               >
@@ -561,9 +548,8 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
 
         {/* Chart Area */}
         <div
-          className="rounded-xl overflow-hidden"
+          className="rounded-xl overflow-hidden bg-surface-secondary"
           style={{
-            backgroundColor: 'rgba(10, 10, 12, 0.4)',
             minHeight: '320px',
           }}
         >
@@ -572,10 +558,10 @@ const RevenueComparisonGraph = React.memo<RevenueComparisonGraphProps>(({
               {renderChart()}
             </ResponsiveContainer>
           ) : (
-            <div className="h-[320px] flex flex-col items-center justify-center text-gray-500 text-sm gap-2">
-              <DollarSign className="w-8 h-8 text-white/10" />
+            <div className="h-[320px] flex flex-col items-center justify-center text-content-muted text-sm gap-2">
+              <DollarSign className="w-8 h-8 text-content-muted/30" />
               <p>No revenue data available yet</p>
-              <p className="text-xs text-gray-600">Transactions will appear here as they come in via webhooks</p>
+              <p className="text-xs text-content-muted">Transactions will appear here as they come in via webhooks</p>
             </div>
           )}
         </div>

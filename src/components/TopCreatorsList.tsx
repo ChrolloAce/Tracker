@@ -167,16 +167,8 @@ const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreato
 
   return (
     <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
-
       {/* Header */}
-      <div className="relative z-10 mb-6">
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xl font-bold text-white">Top Creators</h3>
@@ -221,7 +213,7 @@ const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreato
       </div>
 
       {/* Creators List */}
-      <div className="relative z-10 space-y-3">
+      <div className="space-y-3">
         {sortedCreators.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />

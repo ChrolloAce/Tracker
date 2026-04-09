@@ -102,16 +102,16 @@ export default async function handler(
       return res.status(404).json({ error: 'Destination URL not found' });
     }
 
-    // Check for WhatsApp preview bot specifically
+    // Check for social media preview bots
     const userAgent = req.headers['user-agent'] || '';
-    const isWhatsAppBot = userAgent.toLowerCase().includes('whatsapp');
-    
-    if (!isWhatsAppBot) {
-      // Record all clicks EXCEPT WhatsApp preview bots
+    const isSocialBot = isPreviewBot(userAgent);
+
+    if (!isSocialBot) {
+      // Record all clicks EXCEPT preview bots
       // Use Promise.race to timeout after 5 seconds - don't block redirect
       Promise.race([
         recordClickAnalytics(db, linkData, req),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Analytics timeout after 5s')), 5000)
         )
       ]).catch(err => {
@@ -119,10 +119,28 @@ export default async function handler(
         // Don't log full details to avoid verbose errors
       });
     } else {
-      console.log(`🚫 WhatsApp preview detected - not recording click`);
+      console.log(`🚫 Social preview bot detected - not recording click`);
     }
 
-    // INSTANT 302 REDIRECT - happens immediately!
+    // For social media bots, serve HTML with OG meta tags so previews work
+    if (isSocialBot) {
+      const linkTitle = linkData?.title || 'Shared Link';
+      const ogHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta property="og:title" content="${linkTitle.replace(/"/g, '&quot;')}" />
+  <meta property="og:url" content="${destinationUrl.replace(/"/g, '&quot;')}" />
+  <meta property="og:description" content="Shared via ViewTrack" />
+  <meta http-equiv="refresh" content="0;url=${destinationUrl.replace(/"/g, '&quot;')}" />
+</head>
+<body></body>
+</html>`;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+      return res.status(200).send(ogHtml);
+    }
+
+    // INSTANT 302 REDIRECT - happens immediately for real users!
     res.setHeader('Location', destinationUrl);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
@@ -409,21 +427,24 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     const isp = req.headers['x-vercel-ip-isp'] as string | undefined;
     const organization = req.headers['x-vercel-ip-org'] as string | undefined;
 
-    // Create click document (correct path with projects)
+    // Write to the NEW flat linkClicks collection that the client reads from
+    // (previously wrote to links/{linkId}/clicks which caused a read/write path mismatch)
     const clickRef = db
       .collection('organizations')
       .doc(linkData.orgId)
       .collection('projects')
       .doc(linkData.projectId)
-      .collection('links')
-      .doc(linkData.linkId)
-      .collection('clicks')
+      .collection('linkClicks')
       .doc();
 
     // Build click data - filter out undefined values to avoid Firestore errors
+    // Denormalize link metadata so the flat linkClicks collection is self-contained
     const clickData: Record<string, any> = {
       id: clickRef.id,
       linkId: linkData.linkId,
+      linkTitle: linkData.title || linkData.linkTitle || 'Untitled Link',
+      linkUrl: linkData.url || linkData.originalUrl || '',
+      shortCode: linkData.shortCode || '',
       timestamp: FieldValue.serverTimestamp(),
       userAgent,
       deviceType,
@@ -456,7 +477,7 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     });
 
     console.log(`📊 Recording click for link ${linkData.linkId} in project ${linkData.projectId}`);
-    console.log(`📍 Click path: organizations/${linkData.orgId}/projects/${linkData.projectId}/links/${linkData.linkId}/clicks/${clickRef.id}`);
+    console.log(`📍 Click path: organizations/${linkData.orgId}/projects/${linkData.projectId}/linkClicks/${clickRef.id}`);
 
     // Validate required fields
     if (!linkData.orgId || !linkData.projectId || !linkData.linkId) {
@@ -476,10 +497,29 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       .collection('links')
       .doc(linkData.linkId);
 
-    await linkRef.update({
+    // Check if this IP hash has clicked this link before for unique click tracking
+    const existingClicksSnapshot = await db
+      .collection('organizations')
+      .doc(linkData.orgId)
+      .collection('projects')
+      .doc(linkData.projectId)
+      .collection('linkClicks')
+      .where('linkId', '==', linkData.linkId)
+      .where('ipHash', '==', ipHash)
+      .limit(1)
+      .get();
+
+    const isNewUniqueClick = existingClicksSnapshot.empty;
+
+    const linkUpdates: Record<string, any> = {
       totalClicks: FieldValue.increment(1),
       lastClickedAt: FieldValue.serverTimestamp(),
-    });
+    };
+    if (isNewUniqueClick) {
+      linkUpdates.uniqueClicks = FieldValue.increment(1);
+    }
+
+    await linkRef.update(linkUpdates);
 
     console.log(`✅ Click recorded successfully for link ${linkData.linkId} in project ${linkData.projectId}`);
   } catch (error) {

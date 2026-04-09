@@ -16,7 +16,7 @@ export const ExtensionPromoModal: React.FC<ExtensionPromoModalProps> = ({ isOpen
     >
       <div 
         className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-white/10"
-        style={{ backgroundColor: '#121214' }}
+        style={{ backgroundColor: 'var(--surface-secondary)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}

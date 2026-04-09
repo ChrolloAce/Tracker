@@ -42,7 +42,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
         {/* Title with Info Tooltip */}
         <div className="flex items-center justify-center gap-3 mb-4">
-          <h3 className="text-2xl md:text-3xl font-bold text-white">
+          <h3 className="text-2xl md:text-3xl font-bold text-content">
             {title}
           </h3>
           
@@ -57,12 +57,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
               </button>
               
               {showTooltip && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-gray-900 border border-white/20 rounded-lg shadow-xl p-4 z-50 animate-fade-in">
-                  <div className="text-sm text-gray-300 text-left">
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-surface border border-border-hover rounded-lg shadow-xl p-4 z-50 animate-fade-in">
+                  <div className="text-sm text-content-muted text-left">
                     {tooltipText}
                   </div>
                   {/* Arrow */}
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gray-900 border-l border-t border-white/20 rotate-45"></div>
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-surface border-l border-t border-border-hover rotate-45"></div>
                 </div>
               )}
             </div>
@@ -70,7 +70,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-lg text-gray-400 mb-8 max-w-md mx-auto">
+        <p className="text-lg text-content-muted mb-8 max-w-md mx-auto">
           {description}
         </p>
 
@@ -86,8 +86,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                   className={`
                     flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl
                     ${action.primary 
-                      ? 'bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30' 
-                      : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/20'
+                      ? 'bg-surface-active hover:bg-surface-active text-content border border-border-hover hover:border-border-hover'
+                      : 'bg-surface-hover hover:bg-surface-active text-content-muted hover:text-content border border-border hover:border-border-hover'
                     }
                   `}
                 >

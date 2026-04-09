@@ -53,7 +53,7 @@ const DropdownMenu: React.FC<{
           e.stopPropagation(); // Prevent row click
           setIsOpen(!isOpen);
         }}
-        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+        className="p-1 text-content-muted hover:text-content rounded-md hover:bg-surface-hover transition-colors"
       >
         <MoreVertical className="w-4 h-4" />
       </button>
@@ -163,8 +163,8 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
   // If no thumbnail, show placeholder
   if (!submission.thumbnail || submission.thumbnail.trim() === '') {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-800">
-        <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-full h-full flex items-center justify-center bg-surface-tertiary">
+        <svg className="w-6 h-6 text-content-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
       </div>
@@ -177,8 +177,8 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
       alt="Video thumbnail"
       className="w-full h-full object-cover"
       fallback={
-        <div className="w-full h-full flex items-center justify-center bg-gray-800">
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-full h-full flex items-center justify-center bg-surface-tertiary">
+          <svg className="w-6 h-6 text-content-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
         </div>
@@ -491,7 +491,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       <>
     <th 
       className={clsx(
-        'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none',
+        'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-content-muted uppercase tracking-wider cursor-pointer hover:bg-surface-hover transition-colors select-none',
         className
       )}
       onClick={() => handleSort(column)}
@@ -504,13 +504,13 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           <ChevronUp 
             className={clsx(
               'w-2.5 sm:w-3 h-2.5 sm:h-3 -mb-1',
-              sortBy === column && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'
+              sortBy === column && sortOrder === 'asc' ? 'text-blue-600' : 'text-content-muted'
             )} 
           />
           <ChevronDown 
             className={clsx(
               'w-2.5 sm:w-3 h-2.5 sm:h-3',
-              sortBy === column && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'
+              sortBy === column && sortOrder === 'desc' ? 'text-blue-600' : 'text-content-muted'
             )} 
           />
         </div>
@@ -530,13 +530,13 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             }}
           >
             <div 
-              className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
+              className="bg-surface-tertiary backdrop-blur-xl text-content rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border p-3"
               style={{
                 maxWidth: '320px',
                 width: 'max-content'
               }}
             >
-              <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
+              <div className="text-xs text-content-secondary leading-relaxed whitespace-normal">
                 {tooltip}
               </div>
             </div>
@@ -568,11 +568,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       <>
         <th 
           className={clsx(
-            'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider',
+            'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-content-muted uppercase tracking-wider',
             sticky && 'sticky left-0 z-20',
             className
           )}
-          style={sticky ? { backgroundColor: 'rgba(18, 18, 20, 0.95)' } : undefined}
+          style={sticky ? { backgroundColor: 'var(--surface-secondary)' } : undefined}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
@@ -592,13 +592,13 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             }}
           >
             <div 
-              className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
+              className="bg-surface-tertiary backdrop-blur-xl text-content rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border p-3"
               style={{
                 maxWidth: '320px',
                 width: 'max-content'
               }}
             >
-              <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
+              <div className="text-xs text-content-secondary leading-relaxed whitespace-normal">
                 {tooltip}
               </div>
             </div>
@@ -654,20 +654,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   return (
-    <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
-      
+    <div className="relative rounded-2xl border border-border shadow-theme overflow-hidden bg-surface-secondary">
       {/* Table Header */}
-      <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+      <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-border">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{headerTitle || 'Recent Activity'}</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-content truncate">{headerTitle || 'Recent Activity'}</h2>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             {/* Actions Dropdown */}
@@ -679,8 +671,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 className={clsx(
                   "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
                   selectedVideos.size > 0
-                    ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
-                    : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
+                    ? "text-content bg-surface-active border-border-strong hover:bg-surface-active"
+                    : "text-content-muted border-border-subtle cursor-not-allowed opacity-50"
                 )}
               >
                 <MoreVertical className="w-4 h-4" />
@@ -701,7 +693,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   
                   {/* Dropdown Menu */}
                   <div 
-                    className="fixed w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-[9999] overflow-hidden"
+                    className="fixed w-48 bg-surface-tertiary border border-border rounded-lg shadow-xl z-[9999] overflow-hidden"
                     style={{
                       top: `${actionsMenuRef.current.getBoundingClientRect().bottom + 8}px`,
                       left: `${actionsMenuRef.current.getBoundingClientRect().right - 192}px`
@@ -713,7 +705,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         e.stopPropagation();
                         handleCopyLinks();
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                      className="w-full px-4 py-3 text-left text-sm text-content-secondary hover:bg-surface-hover flex items-center space-x-3 transition-colors"
                     >
                       <LinkIcon className="w-4 h-4" />
                       <span>Copy Links</span>
@@ -724,7 +716,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         setShowExportModal(true);
                         setShowActionsMenu(false);
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                      className="w-full px-4 py-3 text-left text-sm text-content-secondary hover:bg-surface-active flex items-center space-x-3 transition-colors border-t border-border"
                     >
                       <Download className="w-4 h-4" />
                       <span>Export to CSV</span>
@@ -745,7 +737,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           const label = `${selectedSubs.length} video${selectedSubs.length !== 1 ? 's' : ''} (${uniqueAccountIds.length} account${uniqueAccountIds.length !== 1 ? 's' : ''})`;
                           onAssignCreator(videoIds, uniqueAccountIds, label);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                        className="w-full px-4 py-3 text-left text-sm text-content-secondary hover:bg-surface-active flex items-center space-x-3 transition-colors border-t border-border"
                       >
                         <Users className="w-4 h-4" />
                         <span>Assign to Creator</span>
@@ -759,7 +751,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
                           onBulkRefresh(selectedSubs);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm text-blue-400 hover:bg-blue-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                        className="w-full px-4 py-3 text-left text-sm text-blue-400 hover:bg-blue-500/10 flex items-center space-x-3 transition-colors border-t border-border"
                       >
                         <RefreshCw className="w-4 h-4" />
                         <span>Refresh Selected</span>
@@ -772,7 +764,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           e.preventDefault();
                           handleBulkDelete();
                         }}
-                        className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                        className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-border"
                         type="button"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -789,7 +781,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             <div className="relative">
               <button
                 onClick={() => setShowColumnToggle(!showColumnToggle)}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm text-content-muted hover:text-content border border-border rounded-lg hover:border-border-strong transition-colors"
               >
                 <Filter className="w-4 h-4" />
                 <span className="hidden sm:inline">Columns</span>
@@ -803,8 +795,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     onClick={() => setShowColumnToggle(false)}
                   />
                   {/* Dropdown */}
-                  <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-                  <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
+                  <div className="fixed right-4 top-20 w-64 bg-surface-tertiary border border-border-strong rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                  <h3 className="text-sm font-semibold text-content mb-3">Toggle Columns</h3>
                     <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {Object.entries({
                       video: 'Video',
@@ -822,14 +814,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       dateAdded: 'Date Added',
                       lastRefresh: 'Last Refresh'
                     }).map(([key, label]) => (
-                        <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors">
+                        <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-surface-hover p-2 rounded transition-colors">
                         <input
                           type="checkbox"
                           checked={visibleColumns[key as keyof typeof visibleColumns]}
                           onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
-                            className="w-4 h-4 rounded border-white/20 bg-white/5 text-white focus:ring-white/50"
+                            className="w-4 h-4 rounded border-border-strong bg-surface-hover text-content focus:ring-border-strong"
                         />
-                          <span className="text-sm text-gray-200">{label}</span>
+                          <span className="text-sm text-content-secondary">{label}</span>
                       </label>
                     ))}
                   </div>
@@ -843,18 +835,18 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="relative overflow-x-auto z-10 -mx-3 sm:-mx-0">
+      <div className="relative overflow-x-auto -mx-3 sm:-mx-0">
         <table className="w-full min-w-max">
-          <thead>
-            <tr className="border-b border-white/5">
+          <thead className="bg-surface-secondary border-b border-border">
+            <tr>
               {/* Select All Checkbox */}
-              <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-[#121214]">
+              <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-surface-secondary">
                 <div className="flex items-center justify-center" title={`Select all ${filteredAndSortedSubmissions.length} videos`}>
                   <input
                     type="checkbox"
                     checked={filteredAndSortedSubmissions.length > 0 && selectedVideos.size === filteredAndSortedSubmissions.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20 cursor-pointer"
+                    className="w-4 h-4 rounded border-border bg-surface-tertiary text-content focus:ring-2 focus:ring-border-strong cursor-pointer"
                   />
                 </div>
               </th>
@@ -978,10 +970,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   Last Refresh
                 </ColumnHeader>
               )}
-              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sticky right-0 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}></th>
+              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sticky right-0 z-10" style={{ backgroundColor: 'var(--surface-secondary)' }}></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody>
             {paginatedSubmissions.map((submission) => {
               const engagementRate = calculateEngagementRate(submission);
               const isLoading = (submission as any).isLoading;
@@ -998,48 +990,51 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   }}
                   className={clsx(
                     'transition-colors group',
-                    isSyncing && 'bg-zinc-900/30', // Subtle background for syncing videos
+                    isSyncing && 'bg-surface-hover',
                     {
-                      'hover:bg-white/5 cursor-pointer': !isLoading,
-                      'bg-white/5 dark:bg-white/5 border-l-2 border-white/20 cursor-not-allowed pointer-events-none': isLoading
+                      'hover:bg-surface-hover cursor-pointer': !isLoading,
+                      'bg-surface-hover border-l-2 border-border-strong cursor-not-allowed pointer-events-none': isLoading
                     }
                   )}
-                  style={{ backgroundColor: isLoading ? undefined : '#121214' }}
+                  style={{
+                    backgroundColor: isLoading ? undefined : 'var(--surface-secondary)',
+                    boxShadow: 'inset 0 -1px 0 var(--border)'
+                  }}
                 >
                   {/* Checkbox Column */}
                   <td 
-                    className="w-10 px-2 sm:px-4 py-3 sm:py-4 sticky left-0 z-20 group-hover:bg-white/5"
-                    style={{ backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 18, 20, 0.95)' }}
+                    className="w-10 px-2 sm:px-4 py-3 sm:py-4 sticky left-0 z-20 group-hover:bg-surface-hover"
+                    style={{ backgroundColor: isLoading ? 'var(--surface-hover)' : 'var(--surface-secondary)' }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
                       type="checkbox"
                       checked={selectedVideos.has(submission.id)}
                       onChange={() => handleSelectVideo(submission.id)}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-white/20"
+                      className="w-4 h-4 rounded border-border bg-surface-tertiary text-content focus:ring-2 focus:ring-border-strong"
                       disabled={isLoading}
                     />
                   </td>
                   {visibleColumns.video && (
-                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-10 z-10 group-hover:bg-white/5" style={{ backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 18, 20, 0.95)' }}>
+                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-10 z-10 group-hover:bg-surface-hover" style={{ backgroundColor: isLoading ? 'var(--surface-hover)' : 'var(--surface-secondary)' }}>
                       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                         <div className="relative flex-shrink-0">
                           {isLoading ? (
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
-                              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-white/60 animate-spin" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-surface-active">
+                              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted animate-spin" />
                             </div>
                           ) : submission.uploaderProfilePicture && !imageErrors.has(submission.id) ? (
                             <img
                               src={submission.uploaderProfilePicture}
                               alt={submission.uploaderHandle || submission.uploader || 'Account'}
-                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0 ring-1 sm:ring-2 ring-border shadow-sm"
                               onError={() => {
                                 setImageErrors(prev => new Set(prev).add(submission.id));
                               }}
                             />
                           ) : (
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm">
-                              <span className="text-xs sm:text-sm font-bold text-white">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 ring-1 sm:ring-2 ring-border shadow-sm">
+                              <span className="text-xs sm:text-sm font-bold text-content-inverse">
                                 {(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}
                               </span>
                             </div>
@@ -1051,18 +1046,18 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         <div className="min-w-0 flex-1">
                           {isLoading ? (
                             <>
-                              <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                              <div className="text-xs sm:text-sm font-bold text-content flex items-center gap-1.5">
                                 Processing video...
                               </div>
-                              <div className="text-[10px] sm:text-xs text-white/40 font-medium flex items-center gap-1 mt-0.5 sm:mt-1">
-                                <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
+                              <div className="text-[10px] sm:text-xs text-content-muted font-medium flex items-center gap-1 mt-0.5 sm:mt-1">
+                                <span className="inline-block w-1.5 h-1.5 bg-content-muted rounded-full animate-pulse"></span>
                                 Fetching data from {submission.platform}...
                               </div>
                             </>
                           ) : (
                             <>
                           <div className="flex items-center gap-1 sm:gap-2">
-                            <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
+                            <p className="text-xs sm:text-sm font-medium text-content truncate" title={submission.title || submission.caption || ''}>
                               {(() => {
                                 const fullTitle = submission.title || submission.caption || '(No caption)';
                                 return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
@@ -1072,7 +1067,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                               <Loader className="animate-spin h-3 w-3 text-blue-400 flex-shrink-0" />
                             )}
                           </div>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
+                          <p className="text-[10px] sm:text-xs text-content-muted mt-0.5 sm:mt-1 truncate">
                             @{submission.uploaderHandle || submission.uploader || 'unknown'}
                           </p>
                             </>
@@ -1084,7 +1079,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.preview && (
                     <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5">
                       {isLoading ? (
-                        <div className="w-16 h-16 rounded-lg bg-white/10 animate-pulse"></div>
+                        <div className="w-16 h-16 rounded-lg bg-surface-active animate-pulse"></div>
                       ) : (
                       <button
                         onClick={(e) => {
@@ -1101,7 +1096,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         }}
                         className="block hover:opacity-80 transition-opacity group cursor-pointer"
                       >
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-tertiary shadow-sm hover:shadow-md transition-all relative">
                           <ThumbnailImage submission={submission} />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                             <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
@@ -1124,11 +1119,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.views && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
+                        <div className="w-16 h-4 bg-surface-active rounded-full animate-pulse"></div>
                       ) : (
                       <div className="flex items-center space-x-2">
-                        <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <Eye className="w-4 h-4 text-content" />
+                        <span className="text-sm font-medium text-content">
                           {formatNumber(submission.views)}
                         </span>
                       </div>
@@ -1138,11 +1133,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.likes && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-16 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
                       ) : (
                       <div className="flex items-center space-x-2">
-                        <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <Heart className="w-4 h-4 text-content" />
+                        <span className="text-sm font-medium text-content">
                           {formatNumber(submission.likes)}
                         </span>
                       </div>
@@ -1152,11 +1147,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.comments && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-16 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                       ) : (
                       <div className="flex items-center space-x-2">
-                        <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <MessageCircle className="w-4 h-4 text-content" />
+                        <span className="text-sm font-medium text-content">
                           {formatNumber(submission.comments)}
                         </span>
                       </div>
@@ -1166,11 +1161,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.shares && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                        <div className="w-16 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                       ) : (
                       <div className="flex items-center space-x-2">
-                        <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <Share2 className="w-4 h-4 text-content" />
+                        <span className="text-sm font-medium text-content">
                           {(() => {
                             // Only TikTok has shares available
                             if (submission.platform === 'tiktok') {
@@ -1187,11 +1182,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.bookmarks && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        <div className="w-16 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                       ) : (
                       <div className="flex items-center space-x-2">
-                        <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <Bookmark className="w-4 h-4 text-content" />
+                        <span className="text-sm font-medium text-content">
                           {(() => {
                             // Twitter and TikTok have bookmarks/saves
                             if (submission.platform === 'twitter' || submission.platform === 'tiktok') {
@@ -1209,8 +1204,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.duration && (
                     <td className="px-6 py-5">
                       <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <Clock className="w-4 h-4 text-content" />
+                        <span className="text-sm font-medium text-content">
                           {formatDuration(submission.duration)}
                         </span>
                       </div>
@@ -1219,7 +1214,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.engagement && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-20 h-6 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                        <div className="w-20 h-6 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                       ) : (
                       <div
                         className={clsx(
@@ -1227,7 +1222,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           {
                             "bg-green-500/15 text-green-400 border-green-500/30": engagementRate >= 5,
                             "bg-green-500/10 text-green-400 border-green-500/20": engagementRate >= 3 && engagementRate < 5,
-                            "bg-gray-500/10 text-gray-400 border-gray-500/20": engagementRate >= 1 && engagementRate < 3,
+                            "bg-surface-hover text-content-muted border-border": engagementRate >= 1 && engagementRate < 3,
                             "bg-red-500/10 text-red-400 border-red-500/20": engagementRate < 1,
                           }
                         )}
@@ -1253,7 +1248,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     if (!stats || stats.count < 2) {
                       return (
                         <td className="px-6 py-5">
-                          <span className="text-xs text-zinc-500">N/A</span>
+                          <span className="text-xs text-content-muted">N/A</span>
                         </td>
                       );
                     }
@@ -1281,9 +1276,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.uploadDate && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-24 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                        <div className="w-24 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
                       ) : (
-                      <div className="text-sm text-zinc-300">
+                      <div className="text-sm text-content-secondary">
                         {submission.uploadDate ? 
                           new Date(submission.uploadDate).toLocaleDateString('en-US', {
                             month: 'short',
@@ -1303,9 +1298,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.dateAdded && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-24 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.7s' }}></div>
+                        <div className="w-24 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.7s' }}></div>
                       ) : (
-                      <div className="text-sm text-zinc-300">
+                      <div className="text-sm text-content-secondary">
                         {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -1318,15 +1313,15 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   {visibleColumns.lastRefresh && (
                     <td className="px-6 py-5">
                       {isLoading ? (
-                        <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
+                        <div className="w-20 h-4 bg-surface-active rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
                       ) : (
-                      <div className="text-sm text-zinc-400">
+                      <div className="text-sm text-content-muted">
                         {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
                       </div>
                       )}
                     </td>
                   )}
-                  <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                  <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-surface-hover" style={{ backgroundColor: 'var(--surface-secondary)' }}>
                     <div className="relative">
                       <DropdownMenu
                         submission={submission}
@@ -1350,7 +1345,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 
       {/* Pagination */}
       {filteredAndSortedSubmissions.length > 0 && (
-        <div className="relative z-10">
+        <div>
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -1364,7 +1359,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 
       {/* Empty State */}
       {submissions.length === 0 && (
-        <div className="relative px-6 py-16 text-center z-10">
+        <div className="px-6 py-16 text-center">
           <div className="w-64 h-64 mx-auto mb-6">
             {videoMaterialAnimation && (
               <Suspense fallback={<div className="w-full h-full" />}>
@@ -1372,8 +1367,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               </Suspense>
             )}
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No videos found</h3>
-          <p className="text-gray-500 max-w-sm mx-auto">
+          <h3 className="text-lg font-semibold text-content mb-2">No videos found</h3>
+          <p className="text-content-muted max-w-sm mx-auto">
             No videos match the selected time period. Try adjusting your date filter or add some new video submissions.
           </p>
         </div>

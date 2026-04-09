@@ -92,14 +92,14 @@ interface DateRange {
 
 // Skeleton Loader Component for fast loading UX
 const DashboardSkeleton: React.FC<{ height?: string }> = memo(({ height = 'h-96' }) => (
-  <div className={`${height} bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse`}>
+  <div className={`${height} bg-surface-secondary/40 rounded-2xl border border-border-subtle animate-pulse`}>
     <div className="p-6 space-y-4">
-      <div className="h-6 bg-white/5 rounded w-1/4"></div>
-      <div className="h-4 bg-white/5 rounded w-1/2"></div>
+      <div className="h-6 bg-surface-hover rounded w-1/4"></div>
+      <div className="h-4 bg-surface-hover rounded w-1/2"></div>
       <div className="space-y-3 mt-6">
-        <div className="h-20 bg-white/5 rounded"></div>
-        <div className="h-20 bg-white/5 rounded"></div>
-        <div className="h-20 bg-white/5 rounded"></div>
+        <div className="h-20 bg-surface-hover rounded"></div>
+        <div className="h-20 bg-surface-hover rounded"></div>
+        <div className="h-20 bg-surface-hover rounded"></div>
       </div>
     </div>
   </div>
@@ -111,14 +111,14 @@ const KPICardsSkeleton: React.FC = memo(() => (
     {Array.from({ length: 8 }).map((_, i) => (
       <div
         key={i}
-        className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-5 animate-pulse"
+        className="bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border-subtle p-4 md:p-5 animate-pulse"
       >
         <div className="flex items-center justify-between mb-3">
-          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-4 w-20 bg-surface-tertiary rounded" />
+          <div className="h-5 w-5 bg-surface-tertiary rounded" />
         </div>
-        <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-8 w-24 bg-surface-tertiary rounded mb-2" />
+        <div className="h-3 w-16 bg-surface-tertiary rounded" />
       </div>
     ))}
   </div>
@@ -126,15 +126,15 @@ const KPICardsSkeleton: React.FC = memo(() => (
 
 // Skeleton for chart/top-performers sections — a simple rectangular placeholder
 const ChartSkeleton: React.FC<{ height?: string }> = memo(({ height = 'h-80' }) => (
-  <div className={`${height} bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 animate-pulse`}>
+  <div className={`${height} bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border-subtle animate-pulse`}>
     <div className="p-6">
-      <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-      <div className="h-3 w-64 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
+      <div className="h-5 w-40 bg-surface-tertiary rounded mb-2" />
+      <div className="h-3 w-64 bg-surface-tertiary rounded mb-6" />
       <div className="flex items-end space-x-2" style={{ height: 'calc(100% - 80px)' }}>
         {[45, 70, 55, 85, 40, 65, 50].map((h, i) => (
           <div
             key={i}
-            className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t"
+            className="flex-1 bg-surface-tertiary rounded-t"
             style={{ height: `${h}%` }}
           />
         ))}
@@ -145,14 +145,14 @@ const ChartSkeleton: React.FC<{ height?: string }> = memo(({ height = 'h-80' }) 
 
 // Skeleton for the video slider section
 const VideoSliderSkeleton: React.FC = memo(() => (
-  <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-6 animate-pulse">
-    <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+  <div className="bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border-subtle p-4 md:p-6 animate-pulse">
+    <div className="h-5 w-32 bg-surface-tertiary rounded mb-4" />
     <div className="flex space-x-4 overflow-hidden">
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex-shrink-0 w-40 md:w-48">
-          <div className="aspect-[9/16] bg-gray-200 dark:bg-gray-700 rounded-xl mb-2" />
-          <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded mb-1" />
-          <div className="h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="aspect-[9/16] bg-surface-tertiary rounded-xl mb-2" />
+          <div className="h-3 w-full bg-surface-tertiary rounded mb-1" />
+          <div className="h-3 w-2/3 bg-surface-tertiary rounded" />
         </div>
       ))}
     </div>
@@ -161,18 +161,18 @@ const VideoSliderSkeleton: React.FC = memo(() => (
 
 // Skeleton for the video table section
 const VideoTableSkeleton: React.FC = memo(() => (
-  <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-6 animate-pulse">
-    <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+  <div className="bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border-subtle p-4 md:p-6 animate-pulse">
+    <div className="h-5 w-48 bg-surface-tertiary rounded mb-4" />
     <div className="space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-center space-x-4">
-          <div className="w-16 h-10 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="w-16 h-10 bg-surface-tertiary rounded" />
           <div className="flex-1">
-            <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
-            <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-4 w-3/4 bg-surface-tertiary rounded mb-1" />
+            <div className="h-3 w-1/2 bg-surface-tertiary rounded" />
           </div>
-          <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-4 w-16 bg-surface-tertiary rounded" />
+          <div className="h-4 w-16 bg-surface-tertiary rounded" />
         </div>
       ))}
     </div>
@@ -2658,7 +2658,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility, topPerformersSubsectionOptions]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] relative">
+    <div className="min-h-screen bg-surface relative">
       {/* Fixed Sidebar - Always visible */}
       <Sidebar 
         onCollapsedChange={setIsSidebarCollapsed}
@@ -2680,7 +2680,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             {/* Close button */}
             <button
               onClick={() => setShowPaywall(false)}
-              className="fixed top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors z-30"
+              className="fixed top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 bg-surface-active hover:bg-surface-active rounded-full flex items-center justify-center text-content-muted hover:text-content transition-colors z-30"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
@@ -2706,7 +2706,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         
         return (
           <div className={clsx(
-            'fixed right-0 z-30 transition-all duration-300 bg-[#111111] border-b border-gray-800',
+            'fixed right-0 z-30 transition-all duration-300 bg-surface-inset border-b border-border',
             topOffset,
             {
               'left-64': !isSidebarCollapsed,
@@ -2722,11 +2722,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       <img 
                         src={filteredAccount.profilePicture} 
                         alt={filteredAccount.username}
-                        className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover ring-2 ring-white/10"
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover ring-2 ring-border"
                       />
                     ) : (
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center ring-2 ring-white/10">
-                        <Users className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-surface-secondary flex items-center justify-center ring-2 ring-border">
+                        <Users className="w-5 h-5 md:w-6 md:h-6 text-content-muted" />
                       </div>
                     )}
                     {/* Verified Badge - Twitter Blue Checkmark */}
@@ -2744,12 +2744,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {/* Account Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm md:text-base font-semibold text-white truncate">
+                      <h3 className="text-sm md:text-base font-semibold text-content truncate">
                         {filteredAccount.displayName || filteredAccount.username}
                       </h3>
-                      <span className="text-xs md:text-sm text-white/40">@{filteredAccount.username}</span>
+                      <span className="text-xs md:text-sm text-content-muted">@{filteredAccount.username}</span>
                     </div>
-                    <div className="flex items-center gap-3 md:gap-4 mt-0.5 text-[11px] md:text-xs text-white/50 flex-wrap">
+                    <div className="flex items-center gap-3 md:gap-4 mt-0.5 text-[11px] md:text-xs text-content-muted flex-wrap">
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         {(filteredAccount.followerCount || 0).toLocaleString()}
@@ -2768,7 +2768,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       </span>
                       {/* Creator Link */}
                       <button 
-                        className="flex items-center gap-1 hover:text-white/70 transition-colors group"
+                        className="flex items-center gap-1 hover:text-content-secondary transition-colors group"
                         onClick={(e) => {
                           e.stopPropagation();
                           setAccountToLinkCreator(filteredAccount);
@@ -2789,7 +2789,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   href={getPlatformProfileUrl(filteredAccount.platform, filteredAccount.username)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-shrink-0 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-white/80 hover:text-white transition-all group"
+                  className="flex-shrink-0 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 bg-surface-hover hover:bg-surface-active border border-border hover:border-border-strong rounded-xl text-content hover:text-content transition-all group"
                 >
                   <PlatformIcon platform={filteredAccount.platform} className="w-4 h-4" />
                   <span className="text-sm font-medium hidden sm:inline">
@@ -2805,9 +2805,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     setSelectedAccountIds([]);
                     navigate('/dashboard');
                   }}
-                  className="flex-shrink-0 p-1.5 md:p-2 hover:bg-white/5 rounded-lg transition-colors"
+                  className="flex-shrink-0 p-1.5 md:p-2 hover:bg-surface-hover rounded-lg transition-colors"
                 >
-                  <X className="w-4 h-4 md:w-5 md:h-5 text-white/40 hover:text-white/70" />
+                  <X className="w-4 h-4 md:w-5 md:h-5 text-content-muted hover:text-content-secondary" />
                 </button>
               </div>
             </div>
@@ -2817,7 +2817,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       {/* Fixed Header */}
       <header className={clsx(
-        'fixed right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 z-20 transition-all duration-300',
+        'fixed right-0 bg-surface-secondary border-b border-border z-20 transition-all duration-300',
         'px-3 sm:px-4 md:px-6 py-3 md:py-4', // Responsive padding
         {
           'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
@@ -2832,9 +2832,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             {/* Mobile Hamburger Menu */}
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+              className="md:hidden p-2 hover:bg-surface-hover rounded-lg transition-colors flex-shrink-0"
             >
-              <svg className="w-6 h-6 text-gray-900 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-6 h-6 text-content" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
@@ -2842,13 +2842,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             {activeTab === 'accounts' && accountsViewMode === 'details' && (
               <button
                 onClick={() => accountsPageRef.current?.handleBackToTable()}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 hover:bg-surface-hover rounded-lg transition-colors flex-shrink-0"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+                <ArrowLeft className="w-5 h-5 text-content" />
               </button>
             )}
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-content truncate">
                 {activeTab === 'dashboard' && (isEditingLayout ? 'EDIT MODE' : 'Dashboard')}
                 {activeTab === 'accounts' && 'Tracked Accounts'}
                 {activeTab === 'videos' && 'Videos'}
@@ -2858,22 +2858,25 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 {activeTab === 'campaigns' && 'Campaigns'}
                 {activeTab === 'viral' && 'Viral Content'}
                 {activeTab === 'saved' && 'Saved Content'}
-                {activeTab === 'openclaw' && 'Open Claw'}
+                {activeTab === 'team' && 'Team Members'}
+                {activeTab === 'openclaw' && 'API Keys'}
                 {activeTab === 'extension' && 'Extension'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'analytics' && (
-                <p className="hidden sm:block text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                <p className="hidden sm:block text-xs md:text-sm text-content-muted mt-1 truncate">
                   {activeTab === 'dashboard' && isEditingLayout && 'Drag sections around to make your unique dashboard'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
                   {activeTab === 'videos' && 'View and manage all tracked videos'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
+                  {activeTab === 'team' && 'Manage your team and invite new members'}
                   {activeTab === 'campaigns' && 'Create and manage creator campaigns with rewards'}
                   {activeTab === 'viral' && 'Discover trending content across platforms'}
                   {activeTab === 'saved' && 'Your bookmarked viral videos organized in folders'}
                   {activeTab === 'extension' && 'Supercharge your workflow with our browser extension'}
+                  {activeTab === 'openclaw' && (<>Create and manage API keys. <a href="/api-docs" className="text-orange-500 hover:text-orange-600 underline underline-offset-2">Explore our docs</a></>)}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
                   {activeTab === 'settings' && 'Configure your preferences'}
                 </p>
@@ -2883,7 +2886,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {activeTab === 'settings' && (
             <button
               onClick={() => setIsSignOutModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors border border-gray-200 dark:border-white/10"
+              className="flex items-center gap-2 px-4 py-2 text-content-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-border"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -2898,12 +2901,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {/* Mobile Filter Button - Shows on small screens, opens modal */}
                   <button
                     onClick={() => setIsMobileFiltersOpen(true)}
-                    className="lg:hidden p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 transition-all backdrop-blur-sm relative"
+                    className="lg:hidden p-2 bg-surface-secondary text-content rounded-lg border border-border hover:border-border-strong transition-all relative"
                     title="Filters"
                   >
                     <Filter className="w-4 h-4" />
                     {(selectedAccountIds.length > 0 || dashboardPlatformFilter.length > 0 || activeRulesCount > 0) && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-surface"></span>
                     )}
                   </button>
 
@@ -2927,7 +2930,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     <button
                       onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                       onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                      className="flex items-center gap-2 pl-2 sm:pl-3 pr-6 sm:pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-xs sm:text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[100px] sm:min-w-[140px]"
+                      className="flex items-center gap-2 pl-2 sm:pl-3 pr-6 sm:pr-8 py-2 bg-surface-secondary text-content rounded-lg text-xs sm:text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer min-w-[100px] sm:min-w-[140px]"
                       title={dashboardPlatformFilter.length === 0 ? 'All Platforms' : dashboardPlatformFilter.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')}
                     >
                       {dashboardPlatformFilter.length === 0 ? (
@@ -2940,18 +2943,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       ) : (
                         <span>{dashboardPlatformFilter.length} Platforms</span>
                       )}
-                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted" />
                     </button>
                     
                     {platformDropdownOpen && (
-                      <div className="absolute top-full mt-1 w-56 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                      <div className="absolute top-full mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
                         {/* Clear All */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setDashboardPlatformFilter([]);
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-white/60 hover:text-white/90 hover:bg-white/5 transition-colors border-b border-white/5"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
                         >
                           <span>Clear All</span>
                         </button>
@@ -2975,15 +2978,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                                     : [...prev, platform.value]
                                 );
                               }}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/90 hover:bg-white/5 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-content hover:bg-surface-hover transition-colors"
                             >
                               {/* Checkbox */}
                               <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
                                 isSelected 
-                                  ? 'bg-white border-white' 
-                                  : 'border-white/30'
+                                  ? 'bg-content border-content' 
+                                  : 'border-border-strong'
                               }`}>
-                                {isSelected && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
+                                {isSelected && <Check className="w-3 h-3 text-content-inverse" strokeWidth={3} />}
                               </div>
                               
                               {/* Platform Icon */}
@@ -3003,14 +3006,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     <select
                       value={granularity}
                       onChange={(e) => setManualGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
-                      className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                      className="appearance-none pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer"
                     >
-                      <option value="day" className="bg-gray-900">Daily</option>
-                      <option value="week" className="bg-gray-900">Weekly</option>
-                      <option value="month" className="bg-gray-900">Monthly</option>
-                      <option value="year" className="bg-gray-900">Yearly</option>
+                      <option value="day" className="bg-surface-tertiary">Daily</option>
+                      <option value="week" className="bg-surface-tertiary">Weekly</option>
+                      <option value="month" className="bg-surface-secondary">Monthly</option>
+                      <option value="year" className="bg-surface-secondary">Yearly</option>
                     </select>
-                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted pointer-events-none" />
                   </div>
                   
                   <div className="hidden sm:block">
@@ -3024,12 +3027,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {/* Rule Filter Button - Icon with Badge - Hidden on mobile */}
                   <button
                     onClick={handleOpenRuleModal}
-                    className="hidden lg:block relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                    className="hidden lg:block relative p-2 bg-surface-secondary text-content rounded-lg border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer"
                     title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
                   >
                     <Filter className="w-4 h-4" />
                     {activeRulesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-surface">
                         {activeRulesCount}
                       </span>
                     )}
@@ -3039,7 +3042,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {!isOverrideMode && (
                   <button
                     onClick={() => setIsEditingLayout(true)}
-                    className="hidden sm:block p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
+                    className="hidden sm:block p-2 rounded-lg transition-all bg-surface-secondary text-content border border-border hover:border-border-strong"
                     title="Customize dashboard layout"
                   >
                     <Edit2 className="w-4 h-4" />
@@ -3051,7 +3054,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                    {/* Edit Mode Controls */}
                    <button
                      onClick={() => setIsCardEditorOpen(true)}
-                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30"
+                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]"
                      title="Add or remove dashboard cards"
                    >
                      <Plus className="w-4 h-4" />
@@ -3060,7 +3063,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                    
                    <button
                      onClick={() => setIsEditingLayout(false)}
-                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 text-white hover:bg-white/20"
+                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-surface-secondary text-content border border-border shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]"
                    >
                      Done
                    </button>
@@ -3073,24 +3076,24 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {/* Mobile Filter Button */}
               <button
                 onClick={() => setIsMobileFiltersOpen(true)}
-                className="sm:hidden p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 transition-all backdrop-blur-sm relative"
+                className="sm:hidden p-2 bg-surface-hover text-content rounded-lg border border-border hover:border-border-strong transition-all backdrop-blur-sm relative"
                 title="Filters"
               >
                 <Filter className="w-4 h-4" />
                 {(dashboardPlatformFilter.length > 0 || activeRulesCount > 0) && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-surface"></span>
                 )}
               </button>
 
               {/* Search Bar - Responsive width */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-muted w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search..."
                   value={accountsSearchQuery}
                   onChange={(e) => setAccountsSearchQuery(e.target.value)}
-                  className="pl-10 pr-2 sm:pr-4 py-2 w-24 sm:w-40 md:w-64 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+                  className="pl-10 pr-2 sm:pr-4 py-2 w-24 sm:w-40 md:w-64 border border-border-strong rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-border-strong focus:border-transparent bg-surface-tertiary text-content"
                 />
               </div>
               
@@ -3099,7 +3102,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 <button
                   onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                   onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
+                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-surface-hover text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
                   title={dashboardPlatformFilter.length === 0 ? 'All Platforms' : dashboardPlatformFilter.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')}
                 >
                   {dashboardPlatformFilter.length === 0 ? (
@@ -3112,18 +3115,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   ) : (
                     <span>{dashboardPlatformFilter.length} Platforms</span>
                   )}
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted" />
                 </button>
                 
                 {platformDropdownOpen && (
-                  <div className="absolute top-full mt-1 w-56 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                  <div className="absolute top-full mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
                     {/* Clear All */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setDashboardPlatformFilter([]);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-white/60 hover:text-white/90 hover:bg-white/5 transition-colors border-b border-white/5"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
                     >
                       <span>Clear All</span>
                     </button>
@@ -3147,15 +3150,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                                 : [...prev, platform.value]
                             );
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/90 hover:bg-white/5 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-content hover:bg-surface-hover transition-colors"
                         >
                           {/* Checkbox */}
                           <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
                             isSelected 
-                              ? 'bg-white border-white' 
-                              : 'border-white/30'
+                              ? 'bg-content border-content' 
+                              : 'border-border-strong'
                           }`}>
-                            {isSelected && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
+                            {isSelected && <Check className="w-3 h-3 text-content-inverse" strokeWidth={3} />}
                           </div>
                           
                           {/* Platform Icon */}
@@ -3182,12 +3185,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {/* Rule Filter Button - Icon with Badge - Hidden on mobile */}
               <button
                 onClick={handleOpenRuleModal}
-                className="hidden sm:block relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="hidden sm:block relative p-2 bg-surface-hover text-content rounded-lg border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer backdrop-blur-sm"
                 title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
               >
                 <Filter className="w-4 h-4" />
                 {activeRulesCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-surface">
                     {activeRulesCount}
                   </span>
                 )}
@@ -3199,12 +3202,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {/* Mobile Filter Button - Shows on small screens */}
               <button
                 onClick={() => setIsMobileFiltersOpen(true)}
-                className="lg:hidden p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 transition-all backdrop-blur-sm relative"
+                className="lg:hidden p-2 bg-surface-hover text-content rounded-lg border border-border hover:border-border-strong transition-all backdrop-blur-sm relative"
                 title="Filters"
               >
                 <Filter className="w-4 h-4" />
                 {(selectedAccountIds.length > 0 || dashboardPlatformFilter.length > 0 || activeRulesCount > 0) && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-surface"></span>
                 )}
               </button>
 
@@ -3227,7 +3230,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 <button
                   onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                   onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
+                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-surface-hover text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
                   title={dashboardPlatformFilter.length === 0 ? 'All Platforms' : dashboardPlatformFilter.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')}
                 >
                   {dashboardPlatformFilter.length === 0 ? (
@@ -3240,18 +3243,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   ) : (
                     <span>{dashboardPlatformFilter.length} Platforms</span>
                   )}
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted" />
                 </button>
                 
                 {platformDropdownOpen && (
-                  <div className="absolute top-full mt-1 w-56 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                  <div className="absolute top-full mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
                     {/* Clear All */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setDashboardPlatformFilter([]);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-white/60 hover:text-white/90 hover:bg-white/5 transition-colors border-b border-white/5"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
                     >
                       <span>Clear All</span>
                     </button>
@@ -3275,15 +3278,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                                 : [...prev, platform.value]
                             );
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/90 hover:bg-white/5 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-content hover:bg-surface-hover transition-colors"
                         >
                           {/* Checkbox */}
                           <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
                             isSelected 
-                              ? 'bg-white border-white' 
-                              : 'border-white/30'
+                              ? 'bg-content border-content' 
+                              : 'border-border-strong'
                           }`}>
-                            {isSelected && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
+                            {isSelected && <Check className="w-3 h-3 text-content-inverse" strokeWidth={3} />}
                           </div>
                           
                           {/* Platform Icon */}
@@ -3309,12 +3312,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {/* Rule Filter Button - Icon with Badge - Hide on mobile */}
               <button
                 onClick={handleOpenRuleModal}
-                className="hidden lg:block relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="hidden lg:block relative p-2 bg-surface-hover text-content rounded-lg border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer backdrop-blur-sm"
                 title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
               >
                 <Filter className="w-4 h-4" />
                 {activeRulesCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-surface">
                     {activeRulesCount}
                   </span>
                 )}
@@ -3327,7 +3330,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               <select
                 value={linkFilter}
                 onChange={(e) => setLinkFilter(e.target.value)}
-                className="px-4 py-2 bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#222] transition-colors text-sm font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
+                className="px-4 py-2 bg-surface-tertiary text-content rounded-lg border border-border-strong hover:bg-surface-hover transition-colors text-sm font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="all">All Links ({allLinks.length})</option>
                 {allLinks.map(link => (
@@ -3624,10 +3627,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             ]}
                           />
                         ) : combinedSubmissions.length === 0 ? (
-                          <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-12 text-center">
-                            <Video className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-white mb-2">No videos match your filters</h3>
-                            <p className="text-white/60 text-sm">Try adjusting the date range or clearing some filters to see your videos.</p>
+                          <div className="bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border p-12 text-center">
+                            <Video className="w-12 h-12 text-content-muted mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-content mb-2">No videos match your filters</h3>
+                            <p className="text-content-muted text-sm">Try adjusting the date range or clearing some filters to see your videos.</p>
                           </div>
                         ) : (
                           <VideoSubmissionsTable
@@ -3716,18 +3719,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             {(!isDemoMode && (!tabDataReady.accounts || isInitialLoading)) ? (
               <div className="space-y-4">
                 {/* Loading skeleton for accounts */}
-                <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                <div className="bg-surface-secondary rounded-xl shadow-sm border border-border overflow-hidden">
                   <div className="p-6 space-y-4">
                     {[...Array(5)].map((_, i) => (
                       <div key={i} className="flex items-center gap-4 animate-pulse">
-                        <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                        <div className="w-12 h-12 bg-surface-tertiary rounded-full"></div>
                         <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                          <div className="h-4 bg-surface-tertiary rounded w-1/4"></div>
+                          <div className="h-3 bg-surface-tertiary rounded w-1/3"></div>
                         </div>
                         <div className="flex gap-4">
-                          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          <div className="h-8 w-20 bg-surface-tertiary rounded"></div>
+                          <div className="h-8 w-20 bg-surface-tertiary rounded"></div>
                         </div>
                       </div>
                     ))}
@@ -3759,19 +3762,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             {(!isDemoMode && (!tabDataReady.videos || isInitialLoading)) ? (
               <div className="space-y-4">
                 {/* Loading skeleton for videos */}
-                <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                <div className="bg-surface-secondary rounded-xl shadow-sm border border-border overflow-hidden">
                   <div className="p-6 space-y-4">
                     {[...Array(5)].map((_, i) => (
                       <div key={i} className="flex items-center gap-4 animate-pulse">
-                        <div className="w-24 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                        <div className="w-24 h-16 bg-surface-tertiary rounded-lg"></div>
                         <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                          <div className="h-4 bg-surface-tertiary rounded w-3/4"></div>
+                          <div className="h-3 bg-surface-tertiary rounded w-1/2"></div>
                         </div>
                         <div className="flex gap-4">
-                          <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                          <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                          <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          <div className="h-8 w-16 bg-surface-tertiary rounded"></div>
+                          <div className="h-8 w-16 bg-surface-tertiary rounded"></div>
+                          <div className="h-8 w-16 bg-surface-tertiary rounded"></div>
                         </div>
                       </div>
                     ))}
@@ -3794,10 +3797,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 ]}
               />
             ) : combinedSubmissions.length === 0 ? (
-              <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-12 text-center">
-                <Video className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No videos match your filters</h3>
-                <p className="text-white/60 text-sm">Try adjusting the date range or clearing some filters to see your videos.</p>
+              <div className="bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border p-12 text-center">
+                <Video className="w-12 h-12 text-content-muted mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-content mb-2">No videos match your filters</h3>
+                <p className="text-content-muted text-sm">Try adjusting the date range or clearing some filters to see your videos.</p>
               </div>
             ) : (
               <VideoSubmissionsTable
@@ -3885,12 +3888,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral', 'saved', 'openclaw'].includes(activeTab) && (
-            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-surface-secondary rounded-xl shadow-sm border border-border p-12 text-center">
+              <div className="w-16 h-16 bg-surface-tertiary rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Coming Soon</h3>
-              <p className="text-gray-500 dark:text-gray-400">
+              <h3 className="text-lg font-medium text-content mb-2">Coming Soon</h3>
+              <p className="text-content-muted">
                 This feature is under development and will be available soon.
               </p>
             </div>
@@ -3951,57 +3954,57 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {/* Delete Video Confirmation Modal */}
       {showDeleteVideoModal && videoToDelete && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-[#0A0A0A] rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
+          <div className="bg-surface rounded-2xl w-full max-w-md border border-border shadow-2xl">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-white/10">
+            <div className="px-6 py-5 border-b border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
                     <Trash2 className="w-5 h-5 text-red-400" />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Delete Video</h2>
+                  <h2 className="text-xl font-bold text-content">Delete Video</h2>
                 </div>
                 <button
                   onClick={() => {
                     setShowDeleteVideoModal(false);
                     setVideoToDelete(null);
                   }}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-2 hover:bg-surface-active rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-400" />
+                  <X className="w-5 h-5 text-content-muted" />
                 </button>
               </div>
             </div>
 
             {/* Content */}
             <div className="px-6 py-6">
-              <p className="text-gray-400 text-sm mb-3">
+              <p className="text-content-muted text-sm mb-3">
                 Are you sure you want to delete this video?
               </p>
-              <p className="text-gray-500 text-xs mb-4">
-                <span className="text-white font-medium">
+              <p className="text-content-muted text-xs mb-4">
+                <span className="text-content font-medium">
                   {videoToDelete.title || videoToDelete.caption || 'Untitled video'}
                 </span>
               </p>
-              <p className="text-gray-500 text-xs">
+              <p className="text-content-muted text-xs">
                 This action cannot be undone. The video will be permanently removed from your account.
               </p>
             </div>
 
             {/* Actions */}
-            <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
+            <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
               <button
                 onClick={() => {
                   setShowDeleteVideoModal(false);
                   setVideoToDelete(null);
                 }}
-                className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium"
+                className="px-6 py-2.5 text-content-muted hover:text-content hover:bg-surface-hover rounded-full transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteVideo}
-                className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors font-medium"
+                className="px-6 py-2.5 bg-red-500 text-white rounded-full font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
               >
                 Delete Video
               </button>
@@ -4121,10 +4124,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   ]}
                 />
               ) : (
-                <div className="bg-zinc-900 rounded-lg p-4 border border-white/10">
-                  <h3 className="text-lg font-semibold text-white mb-4">Tracked Accounts</h3>
-                  <div className="text-white/60 text-sm">
-                    <div className="grid grid-cols-5 gap-4 pb-2 border-b border-white/10 font-semibold mb-2">
+                <div className="bg-surface-secondary rounded-lg p-4 border border-border">
+                  <h3 className="text-lg font-semibold text-content mb-4">Tracked Accounts</h3>
+                  <div className="text-content-muted text-sm">
+                    <div className="grid grid-cols-5 gap-4 pb-2 border-b border-border font-semibold mb-2">
                       <div>Account</div>
                       <div>Platform</div>
                       <div>Followers</div>
@@ -4132,8 +4135,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       <div>Engagement</div>
                     </div>
                     {trackedAccounts.slice(0, 3).map((account, i) => (
-                      <div key={i} className="grid grid-cols-5 gap-4 py-2 border-b border-white/5">
-                        <div className="text-white">@{account.username}</div>
+                      <div key={i} className="grid grid-cols-5 gap-4 py-2 border-b border-border-subtle">
+                        <div className="text-content">@{account.username}</div>
                         <div className="capitalize">{account.platform}</div>
                         <div>{account.followerCount?.toLocaleString() || '—'}</div>
                         <div>{account.postCount || 0}</div>
@@ -4160,10 +4163,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   ]}
                 />
               ) : combinedSubmissions.length === 0 ? (
-                <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-8 text-center">
-                  <Video className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                  <h3 className="text-base font-semibold text-white mb-1">No videos match filters</h3>
-                  <p className="text-white/60 text-xs">Adjust filters to see videos.</p>
+                <div className="bg-surface-secondary/60 backdrop-blur rounded-2xl border border-border p-8 text-center">
+                  <Video className="w-10 h-10 text-content-muted mx-auto mb-3" />
+                  <h3 className="text-base font-semibold text-content mb-1">No videos match filters</h3>
+                  <p className="text-content-muted text-xs">Adjust filters to see videos.</p>
                 </div>
               ) : (
                 <VideoSubmissionsTable
@@ -4217,9 +4220,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             
             case 'posting-times':
               return (
-                <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 p-6">
-                  <h3 className="text-xl font-bold text-white mb-1">Best Posting Times</h3>
-                  <p className="text-sm text-gray-400 mb-4">Engagement by day & hour</p>
+                <div className="rounded-2xl bg-surface-secondary/60 backdrop-blur border border-border-subtle p-6">
+                  <h3 className="text-xl font-bold text-content mb-1">Best Posting Times</h3>
+                  <p className="text-sm text-content-muted mb-4">Engagement by day & hour</p>
                   <HeatmapByHour
                     data={filteredSubmissions.map(video => ({
                       timestamp: video.uploadDate || video.dateSubmitted,
@@ -4249,7 +4252,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             
             case 'top-platforms':
               return (
-                <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 p-6">
+                <div className="rounded-2xl bg-surface-secondary/60 backdrop-blur border border-border-subtle p-6">
                   <TopPlatformsRaceChart
                     submissions={filteredSubmissions}
                     dateFilter={dateFilter}
@@ -4272,7 +4275,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
             case 'revenue-chart':
               {
-                if (revenueIntegrations.length === 0) return <div className="text-white/50 text-sm">Connect a revenue integration to see this chart</div>;
+                if (revenueIntegrations.length === 0) return <div className="text-content-muted text-sm">Connect a revenue integration to see this chart</div>;
                 const revPreviewDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
                 return (
                   <RevenueComparisonGraph
@@ -4285,7 +4288,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               }
 
             default:
-              return <div className="text-white/50 text-sm">Preview not available</div>;
+              return <div className="text-content-muted text-sm">Preview not available</div>;
           }
         }}
       />
@@ -4322,7 +4325,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
             {/* Rule Name */}
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">
+              <label className="block text-sm font-semibold text-content mb-2">
                 Rule Name
               </label>
               <input
@@ -4330,19 +4333,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 value={ruleName}
                 onChange={(e) => setRuleName(e.target.value)}
                 placeholder="e.g., High Engagement Posts"
-                className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border-strong rounded-lg bg-surface-secondary text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             {/* Conditions */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-semibold text-white">
+                <label className="block text-sm font-semibold text-content">
                   Conditions
                 </label>
                 <button
                   onClick={addCondition}
-                  className="flex items-center gap-1 px-3 py-1 text-sm text-gray-400 hover:bg-white/10 rounded-lg transition-colors"
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-content-muted hover:bg-surface-active rounded-lg transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   Add Condition
@@ -4357,7 +4360,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         <select
                           value={conditions[index - 1].operator || 'AND'}
                           onChange={(e) => updateCondition(conditions[index - 1].id, 'operator', e.target.value as 'AND' | 'OR')}
-                          className="px-3 py-1 text-sm border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="px-3 py-1 text-sm border border-border-strong rounded-lg bg-surface-secondary text-content focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="AND">AND</option>
                           <option value="OR">OR</option>
@@ -4366,11 +4369,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                     
                     <div className="space-y-2">
-                      <div className="flex gap-2 items-start p-3 border border-gray-700 rounded-lg bg-gray-800/50">
+                      <div className="flex gap-2 items-start p-3 border border-border-strong rounded-lg bg-surface-secondary/50">
                         <select
                           value={condition.type}
                           onChange={(e) => updateCondition(condition.id, 'type', e.target.value as RuleConditionType)}
-                          className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="flex-1 px-3 py-2 border border-border-strong rounded-lg bg-surface-secondary text-content focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         >
                           <option value="description_contains">Description contains</option>
                           <option value="description_not_contains">Description does not contain</option>
@@ -4398,7 +4401,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             condition.type.includes('views') ? 'e.g., 10000' :
                             'Value'
                           }
-                          className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="flex-1 px-3 py-2 border border-border-strong rounded-lg bg-surface-secondary text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         />
 
                         {conditions.length > 1 && (
@@ -4413,12 +4416,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       
                       {/* Case-sensitive toggle for text-based conditions */}
                       {(condition.type.includes('description') || condition.type.includes('hashtag')) && (
-                        <label className="flex items-center gap-2 px-3 text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+                        <label className="flex items-center gap-2 px-3 text-sm text-content-muted cursor-pointer hover:text-content">
                           <input
                             type="checkbox"
                             checked={condition.caseSensitive || false}
                             onChange={(e) => updateCondition(condition.id, 'caseSensitive', e.target.checked)}
-                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-0"
+                            className="w-4 h-4 rounded border-border bg-surface-secondary text-content focus:ring-2 focus:ring-border-strong focus:ring-offset-0"
                           />
                           <span>Case sensitive</span>
                         </label>
@@ -4430,18 +4433,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
 
             {/* Info message */}
-            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+            <div className="p-4 bg-surface-hover border border-border rounded-lg">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
-                  <svg className="w-5 h-5 text-gray-900 dark:text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-content" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                  <h4 className="text-sm font-semibold text-content mb-1">
                     Available to All Accounts
                   </h4>
-                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                  <p className="text-xs text-content-secondary">
                     This rule will be available for filtering across all tracked accounts and platforms.
                   </p>
                 </div>
@@ -4449,17 +4452,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4 border-t border-gray-700">
+            <div className="flex gap-3 pt-4 border-t border-border-strong">
               <button
                 onClick={() => setShowCreateRuleForm(false)}
-                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
+                className="flex-1 px-4 py-2 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
               >
                 Back
               </button>
               <button
                 onClick={handleSaveRule}
                 disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
-                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Create Rule
               </button>
@@ -4467,11 +4470,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           </div>
         ) : allRules.length === 0 ? (
           <div className="text-center py-12">
-            <Filter className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">No tracking rules created yet</p>
+            <Filter className="w-12 h-12 text-content-muted mx-auto mb-3" />
+            <p className="text-content-muted mb-4">No tracking rules created yet</p>
             <button
               onClick={handleShowCreateForm}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors border border-white/10"
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
             >
               Create Your First Rule
             </button>
@@ -4479,7 +4482,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-content-muted">
                 Select multiple rules to filter videos. Videos matching ANY selected rule will be shown.
               </p>
               {activeRulesCount > 0 && (
@@ -4488,7 +4491,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     console.log('🗑️ Clear All clicked - removing all selections');
                     setSelectedRuleIds([]);
                   }}
-                  className="text-xs text-gray-400 hover:text-white transition-colors"
+                  className="text-xs text-content-muted hover:text-content transition-colors"
                 >
                   Clear All
                 </button>
@@ -4508,7 +4511,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         'px-3 py-2 rounded border transition-all cursor-pointer group flex items-center gap-2',
                         isSelected
                           ? 'bg-emerald-500/10 border-emerald-500/30'
-                          : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                          : 'bg-surface-secondary/50 border-border-strong hover:border-border'
                       )}
                       onClick={() => {
                         console.log('🖱️ Rule clicked:', rule.name, rule.id);
@@ -4530,41 +4533,41 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         {isSelected ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         ) : (
-                          <Circle className="w-4 h-4 text-gray-500 group-hover:text-gray-400" />
+                          <Circle className="w-4 h-4 text-content-muted group-hover:text-content-secondary" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className={clsx(
                             "text-sm font-medium truncate",
-                            isSelected ? "text-white" : "text-gray-300"
+                            isSelected ? "text-content" : "text-content-muted"
                           )}>
                             {rule.name}
                           </span>
                           {rule.conditions.length > 0 && (
-                            <span className="text-xs text-gray-500 flex-shrink-0">
+                            <span className="text-xs text-content-muted flex-shrink-0">
                               {rule.conditions.length} condition{rule.conditions.length > 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
                         {rule.description && (
-                          <p className="text-xs text-gray-500 truncate mt-0.5">{rule.description}</p>
+                          <p className="text-xs text-content-muted truncate mt-0.5">{rule.description}</p>
                         )}
                       </div>
                     </div>
                   );
                 })}
             </div>
-            <div className="pt-4 border-t border-gray-700 flex items-center justify-between">
+            <div className="pt-4 border-t border-border-strong flex items-center justify-between">
               <button
                 onClick={handleShowCreateForm}
-                className="text-sm text-gray-400 hover:text-white transition-colors"
+                className="text-sm text-content-muted hover:text-content transition-colors"
               >
                 Create New Rule →
               </button>
               <button
                 onClick={handleCloseRuleModal}
-                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm"
+                className="px-4 py-2 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all text-sm"
               >
                 Close
               </button>
@@ -4594,7 +4597,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           disabled={isOverrideMode}
           className={`fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${
             isOverrideMode
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
+              ? 'bg-surface-tertiary text-content-muted cursor-not-allowed opacity-60'
               : 'bg-orange-500 text-white shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]'
           }`}
           aria-label="Add"
@@ -4651,15 +4654,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           />
           
           {/* Modal Content */}
-          <div className="relative bg-[#1A1A1A] border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-surface-tertiary border border-border rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-[#1A1A1A] border-b border-white/10 px-4 py-3 flex items-center justify-between z-10">
-              <h3 className="text-lg font-semibold text-white">Filters</h3>
+            <div className="sticky top-0 bg-surface-tertiary border-b border-border px-4 py-3 flex items-center justify-between z-10">
+              <h3 className="text-lg font-semibold text-content">Filters</h3>
               <button
                 onClick={() => setIsMobileFiltersOpen(false)}
-                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-1 hover:bg-surface-active rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -4670,7 +4673,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {/* Accounts Filter - Only show for dashboard and videos tabs */}
               {(activeTab === 'dashboard' || activeTab === 'videos') && (
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Accounts</label>
+                  <label className="block text-sm font-medium text-content-secondary mb-2">Accounts</label>
                   <MultiSelectDropdown
                     options={trackedAccounts.map(account => ({
                       id: account.id,
@@ -4686,12 +4689,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
               {/* Platform Filter - Multi-select */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Platform</label>
+                <label className="block text-sm font-medium text-content-secondary mb-2">Platform</label>
                 <div className="space-y-2">
                   {/* Clear All Button */}
                   <button
                     onClick={() => setDashboardPlatformFilter([])}
-                    className="w-full px-4 py-2 rounded-lg text-xs text-white/60 hover:text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                    className="w-full px-4 py-2 rounded-lg text-xs text-content-muted hover:text-content bg-surface-hover hover:bg-surface-active border border-border transition-all"
                   >
                     Clear All
                   </button>
@@ -4714,22 +4717,22 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                               : [...prev, platform.value]
                           );
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm bg-surface-hover hover:bg-surface-active border border-border hover:border-border-strong transition-all"
                       >
                         {/* Checkbox */}
                         <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
                           isSelected 
-                            ? 'bg-white border-white' 
-                            : 'border-white/30'
+                            ? 'bg-content border-content' 
+                            : 'border-border-strong'
                         }`}>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-content-inverse" strokeWidth={3} />}
                         </div>
                         
                         {/* Platform Icon */}
                         <PlatformIcon platform={platform.icon} size="sm" />
                         
                         {/* Platform Label */}
-                        <span className="text-white/90">{platform.label}</span>
+                        <span className="text-content">{platform.label}</span>
                       </button>
                     );
                   })}
@@ -4739,14 +4742,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {/* Granularity Filter - Only show for dashboard tab */}
               {activeTab === 'dashboard' && (
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Granularity</label>
+                  <label className="block text-sm font-medium text-content-secondary mb-2">Granularity</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setManualGranularity('day')}
                       className={`px-3 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'day' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                          : 'bg-surface-hover text-content border border-border hover:border-border-strong'
                       }`}
                     >
                       Daily
@@ -4756,7 +4759,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       className={`px-3 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'week' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                          : 'bg-surface-hover text-content border border-border hover:border-border-strong'
                       }`}
                     >
                       Weekly
@@ -4766,7 +4769,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       className={`px-3 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'month' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                          : 'bg-surface-hover text-content border border-border hover:border-border-strong'
                       }`}
                     >
                       Monthly
@@ -4776,7 +4779,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       className={`px-3 py-3 rounded-lg text-sm font-medium transition-all ${
                         granularity === 'year' 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                          : 'bg-surface-hover text-content border border-border hover:border-border-strong'
                       }`}
                     >
                       Yearly
@@ -4787,7 +4790,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
               {/* Date Range Filter */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Date Range</label>
+                <label className="block text-sm font-medium text-content-secondary mb-2">Date Range</label>
                 <DateRangeFilter
                   selectedFilter={dateFilter}
                   customRange={customDateRange}
@@ -4797,25 +4800,25 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
               {/* Rules Filter */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Rules</label>
+                <label className="block text-sm font-medium text-content-secondary mb-2">Rules</label>
                 <button
                   onClick={() => {
                     setIsMobileFiltersOpen(false);
                     handleOpenRuleModal();
                   }}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
                 >
                   <span className="flex items-center gap-2">
                     <Filter className="w-4 h-4" />
                     {activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
                   </span>
-                  <ChevronDown className="w-4 h-4 text-white/50 -rotate-90" />
+                  <ChevronDown className="w-4 h-4 text-content-muted -rotate-90" />
                 </button>
               </div>
             </div>
 
             {/* Footer with Reset button */}
-            <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-4 py-3">
+            <div className="sticky bottom-0 bg-surface-tertiary border-t border-border px-4 py-3">
               <button
                 onClick={() => {
                   // Reset filters based on active tab
@@ -4828,7 +4831,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   setSelectedRuleIds([]);
                   localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify([]));
                 }}
-                className="w-full px-4 py-2.5 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
+                className="w-full px-4 py-2.5 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
               >
                 Reset All Filters
               </button>

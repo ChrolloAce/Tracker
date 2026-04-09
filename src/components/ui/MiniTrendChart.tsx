@@ -12,7 +12,7 @@ export const MiniTrendChart: React.FC<MiniTrendChartProps> = ({ data, className 
   if (!data || data.length < 2) {
     return (
       <div className={`w-8 h-4 flex items-center justify-center ${className}`}>
-        <Minus className="w-3 h-3 text-gray-400" />
+        <Minus className="w-3 h-3 text-content-muted" />
       </div>
     );
   }
@@ -46,7 +46,7 @@ export const MiniTrendChart: React.FC<MiniTrendChartProps> = ({ data, className 
 
   // Determine color based on trend
   const getColor = () => {
-    if (isFlat) return 'text-gray-400';
+    if (isFlat) return 'text-content-muted';
     return isUpward ? 'text-green-500' : 'text-red-500';
   };
 
@@ -120,7 +120,7 @@ export const MiniTrendChart: React.FC<MiniTrendChartProps> = ({ data, className 
         {/* Tooltip */}
         {hoveredPoint && (
           <div 
-            className="absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg whitespace-nowrap pointer-events-none"
+            className="absolute z-50 px-2 py-1 text-xs font-medium text-content bg-surface-tertiary rounded shadow-lg whitespace-nowrap pointer-events-none"
             style={{
               left: `${hoveredPoint.x + 8}px`,
               top: `${hoveredPoint.y - 24}px`,

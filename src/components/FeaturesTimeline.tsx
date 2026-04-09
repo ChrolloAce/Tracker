@@ -115,7 +115,7 @@ const FeaturesTimeline: React.FC = () => {
           <div 
             ref={lineRef}
             className="hidden lg:block absolute left-1/2 top-0 w-px -translate-x-1/2 z-0 transition-none"
-            style={{ height: '0%', backgroundColor: '#111' }}
+            style={{ height: '0%', backgroundColor: 'var(--surface-tertiary)' }}
           ></div>
 
           {/* Desktop Timeline - Alternating Layout */}

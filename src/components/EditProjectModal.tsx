@@ -307,7 +307,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
                     type="button"
                     onClick={handleDelete}
                     disabled={deleteConfirmText !== project.name || deleting}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    className="flex-1 px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deleting ? 'Deleting...' : 'Permanently Delete'}
                   </button>
@@ -329,7 +329,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
             <button
               type="submit"
               disabled={loading || uploadingImage || deleting || !name.trim()}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
+              className="px-6 py-2 text-sm bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploadingImage ? 'Uploading...' : loading ? 'Saving...' : 'Save Changes'}
             </button>

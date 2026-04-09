@@ -475,7 +475,7 @@ export const ApiKeysManager: React.FC<ApiKeysManagerProps> = ({ organizationId }
               <button
                 onClick={() => revokeApiKey(keyToRevoke)}
                 disabled={revoking}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
               >
                 {revoking ? (
                   <>

@@ -159,7 +159,7 @@ export default function PayoutStructureManager({
         </div>
         <button
           onClick={handleCreateNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
         >
           <Plus className="w-4 h-4" />
           New Structure
@@ -539,7 +539,7 @@ function StructureEditor({ structure, onSave, onCancel }: StructureEditorProps) 
       <div className="flex gap-3 pt-4 border-t border-white/10">
         <button
           onClick={handleSave}
-          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+          className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
         >
           Save Structure
         </button>

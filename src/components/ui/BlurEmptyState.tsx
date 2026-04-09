@@ -33,7 +33,7 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
     <div className="flex items-center justify-center min-h-[400px] py-8">
       <div className="relative">
         {/* Transparent gradient background with blur */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-white/[0.02] to-transparent backdrop-blur-xl rounded-2xl border border-white/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-white/[0.02] to-transparent backdrop-blur-xl rounded-2xl border border-border"></div>
         
         {/* Subtle glow effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl opacity-50"></div>
@@ -51,7 +51,7 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
 
           {/* Title with Info Tooltip */}
           <div className="flex items-center justify-center gap-3 mb-3">
-            <h3 className="text-xl md:text-2xl font-bold text-white">
+            <h3 className="text-xl md:text-2xl font-bold text-content">
               {title}
             </h3>
             
@@ -66,12 +66,12 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
                 </button>
                 
                 {showTooltip && (
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-gray-900/95 backdrop-blur-xl border border-white/20 rounded-lg shadow-xl p-3 z-50 animate-fade-in">
-                    <div className="text-xs text-gray-300 text-left">
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-surface backdrop-blur-xl border border-border-hover rounded-lg shadow-xl p-3 z-50 animate-fade-in">
+                    <div className="text-xs text-content-muted text-left">
                       {tooltipText}
                     </div>
                     {/* Arrow */}
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gray-900/95 border-l border-t border-white/20 rotate-45"></div>
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-surface border-l border-t border-border-hover rotate-45"></div>
                   </div>
                 )}
               </div>
@@ -79,7 +79,7 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-400 mb-6 max-w-sm mx-auto">
+          <p className="text-sm text-content-muted mb-6 max-w-sm mx-auto">
             {description}
           </p>
 
@@ -96,10 +96,10 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
                     className={`
                       flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-all
                       ${action.disabled 
-                        ? 'bg-gray-700/50 text-gray-400 border border-gray-700 cursor-not-allowed opacity-60' 
+                        ? 'bg-surface-secondary text-content-muted border border-border cursor-not-allowed opacity-60' 
                         : `transform hover:scale-105 active:scale-95 ${action.primary 
-                        ? 'bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30' 
-                        : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/20'
+                        ? 'bg-surface-active hover:bg-surface-active text-content border border-border-hover hover:border-border-hover'
+                        : 'bg-surface-hover hover:bg-surface-active text-content-muted hover:text-content border border-border hover:border-border-hover'
                         }`
                       }
                     `}

@@ -26,6 +26,9 @@ export interface LinkClick {
   accountProfilePicture?: string;
   accountPlatform?: string;
   
+  // Privacy-safe IP hash for unique click tracking
+  ipHash?: string;
+
   // Enhanced tracking
   country?: string;
   countryCode?: string;
@@ -56,9 +59,13 @@ class LinkClicksService {
    * Optimized to only check old location if new location is empty (for backward compatibility)
    * @param orgId - Organization ID
    * @param projectId - Project ID
-   * @param maxClicks - Maximum number of clicks to fetch (default: 5000, set to 0 for unlimited)
+   * @param maxClicks - Maximum number of clicks to fetch (default: 10000, set to 0 for unlimited)
    */
-  static async getProjectLinkClicks(orgId: string, projectId: string, maxClicks: number = 5000): Promise<LinkClick[]> {
+  // TODO: Implement daily aggregation (e.g., a dailyClickStats subcollection) to replace
+  // fetching raw click documents. As click volume grows, pulling 10k+ docs per query
+  // will hit Firestore read limits and degrade performance. Aggregate counts by day/link
+  // in a Cloud Function and query the rollups instead.
+  static async getProjectLinkClicks(orgId: string, projectId: string, maxClicks: number = 10000): Promise<LinkClick[]> {
     try {
       console.time('⚡ LinkClicks fetch');
       const clicks: LinkClick[] = [];
@@ -267,8 +274,8 @@ class LinkClicksService {
     const totalClicks = clicks.length;
     
     const uniqueClicks = new Set(
-      clicks.map(c => `${c.userAgent}-${c.deviceType}`)
-    ).size;
+      clicks.map(c => c.ipHash).filter(Boolean)
+    ).size || clicks.length;
     
     const deviceBreakdown = clicks.reduce((acc, click) => {
       acc[click.deviceType] = (acc[click.deviceType] || 0) + 1;

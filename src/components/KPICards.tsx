@@ -751,15 +751,15 @@ const _KPISparkline: React.FC<{
                 : formatDisplayNumber(value);
               
               return (
-                <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
+                <div className="bg-surface-secondary backdrop-blur-xl text-content px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-border pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
                   {/* Show date at top */}
                   {dateStr && (
-                    <p className="text-xs text-gray-400 font-medium tracking-wider">
+                    <p className="text-xs text-content-muted font-medium tracking-wider">
                       {dateStr}
                     </p>
                   )}
                   {/* Show value prominently */}
-                  <p className="text-lg text-white font-bold">
+                  <p className="text-lg text-content font-bold">
                     {displayValue} {metricLabel?.toLowerCase()}
                   </p>
                   {/* Show trend comparison if available */}

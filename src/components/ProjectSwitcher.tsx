@@ -108,7 +108,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
     return (
       <div className="px-3 py-2">
         <div className={clsx(
-          "h-10 bg-white/5 rounded-lg animate-pulse",
+          "h-10 bg-surface-hover rounded-lg animate-pulse",
           { "w-10": isCollapsed, "w-full": !isCollapsed }
         )} />
       </div>
@@ -120,10 +120,10 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
       <div className="px-3 py-2">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          className="w-full flex items-center justify-center p-2 rounded-lg bg-surface-hover hover:bg-surface-active transition-colors"
           title={currentProject.name}
         >
-          <Folder className="w-5 h-5 text-white/80" />
+          <Folder className="w-5 h-5 text-content-secondary" />
         </button>
       </div>
     );
@@ -133,7 +133,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
     <div className="px-3 py-2 relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-hover hover:bg-surface-active transition-colors group"
       >
         <div className="flex items-center gap-2 min-w-0">
           {currentProject.imageUrl ? (
@@ -145,21 +145,21 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
           ) : currentProject.icon ? (
             <span className="text-sm flex-shrink-0">{currentProject.icon}</span>
           ) : (
-            <Folder className="w-4 h-4 text-white/60 flex-shrink-0" />
+            <Folder className="w-4 h-4 text-content-tertiary flex-shrink-0" />
           )}
-          <span className="text-sm font-medium text-white truncate">
+          <span className="text-sm font-medium text-content truncate">
             {currentProject.name}
           </span>
         </div>
           <ChevronDown className={clsx(
-          "w-4 h-4 text-white/60 flex-shrink-0 transition-transform",
+          "w-4 h-4 text-content-tertiary flex-shrink-0 transition-transform",
           { "rotate-180": isOpen }
           )} />
         </button>
 
       {/* Dropdown */}
         {isOpen && (
-        <div className="absolute top-full left-3 right-3 mt-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+        <div className="absolute top-full left-3 right-3 mt-1 bg-surface-secondary border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
           {/* Project List */}
             {projects.map((project) => (
               <div
@@ -167,8 +167,8 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                 className={clsx(
                   "w-full flex items-center justify-between group transition-colors",
                   {
-                    "bg-white/10": project.id === currentProjectId,
-                    "hover:bg-white/5": project.id !== currentProjectId,
+                    "bg-surface-active": project.id === currentProjectId,
+                    "hover:bg-surface-hover": project.id !== currentProjectId,
                   }
                 )}
               >
@@ -185,13 +185,13 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                   ) : project.icon ? (
                     <span className="text-sm flex-shrink-0">{project.icon}</span>
                   ) : (
-                    <Folder className="w-4 h-4 flex-shrink-0 text-white/60" />
+                    <Folder className="w-4 h-4 flex-shrink-0 text-content-tertiary" />
                   )}
                   <span className={clsx(
                     "truncate",
                     {
-                      "text-white": project.id === currentProjectId,
-                      "text-white/70 group-hover:text-white": project.id !== currentProjectId,
+                      "text-content": project.id === currentProjectId,
+                      "text-content-secondary group-hover:text-content": project.id !== currentProjectId,
                     }
                   )}>
                     {project.name}
@@ -205,10 +205,10 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                   {userRole !== 'creator' && (
                     <button
                       onClick={(e) => handleEditProject(project, e)}
-                      className="p-1.5 rounded hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded hover:bg-surface-active transition-colors opacity-0 group-hover:opacity-100"
                       title="Edit project"
                     >
-                      <Pencil className="w-3.5 h-3.5 text-white/60 hover:text-white" />
+                      <Pencil className="w-3.5 h-3.5 text-content-tertiary hover:text-content" />
                     </button>
                   )}
                 </div>
@@ -219,7 +219,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
           {userRole !== 'creator' && (
             <>
               {projects.length > 0 && (
-                <div className="border-t border-white/10 my-1" />
+                <div className="border-t border-border my-1" />
               )}
               
               <button
@@ -227,7 +227,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                   setIsOpen(false);
                   setShowCreateModal(true);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-surface-hover transition-colors"
               >
                 <Plus className="w-4 h-4 flex-shrink-0" />
                 <span>Create New Project</span>

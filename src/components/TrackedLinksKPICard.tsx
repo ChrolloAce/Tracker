@@ -146,25 +146,14 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`
-        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200
+        group relative rounded-2xl bg-surface-secondary backdrop-blur border shadow-theme transition-all duration-200
         will-change-transform
         ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
         ${isDragging ? 'opacity-50 scale-95' : ''}
-        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
+        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-border-subtle hover:ring-1 hover:ring-border'}
       `}
       style={{ transform: 'translateZ(0)', minHeight: '180px', overflow: 'visible' }}
     >
-      {/* Background layers container with overflow clipping */}
-      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
-      {/* Depth Gradient Overlay */}
-      <div 
-          className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
-      </div>
-
       {/* Full-height vertical cursor line */}
       {tooltipData && (
         <div
@@ -197,44 +186,44 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
             e.stopPropagation();
             onToggleCensor();
           }}
-          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
+          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-surface-active rounded-lg transition-all duration-200 z-50"
           title={isCensored ? "Show data" : "Hide data"}
         >
           {isCensored ? (
-            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted hover:text-content" />
           ) : (
-            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted hover:text-content" />
           )}
         </button>
       )}
 
       {/* Censoring Overlay - Completely blurs card when active */}
       {isCensored && (
-        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-white/10" style={{ backdropFilter: 'blur(100px)' }}>
+        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-border" style={{ backdropFilter: 'blur(100px)' }}>
           <div className="flex flex-col items-center gap-3">
-            <EyeOff className="w-10 h-10 text-gray-400" />
-            <p className="text-gray-400 text-sm font-medium">{label} Hidden</p>
+            <EyeOff className="w-10 h-10 text-content-muted" />
+            <p className="text-content-muted text-sm font-medium">{label} Hidden</p>
           </div>
         </div>
       )}
 
       {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
-      <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2 z-10" style={{ height: '60%' }}>
+      <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2" style={{ height: '60%' }}>
         {/* Icon (top-right) */}
         <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 opacity-60" />
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted opacity-60" />
         </div>
 
         {/* Metric Content - Pushed Higher */}
         <div className="flex flex-col h-full justify-start pt-1">
           {/* Label - Smaller */}
-          <div className="text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
+          <div className="text-[10px] sm:text-xs font-medium text-content-muted tracking-wide mb-1.5 sm:mb-2">
             {label}
           </div>
 
           {/* Value Row - Number + Delta Badge aligned horizontally */}
           <div className="flex items-baseline gap-2 sm:gap-3 -mt-1">
-            <span className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white`}>
+            <span className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-content`}>
               {value}
             </span>
             
@@ -254,7 +243,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
       {/* Bottom Graph Layer - 40% (expanded for better visibility) */}
       {sparklineData && sparklineData.length > 0 && (
         <div 
-          className="relative w-full overflow-hidden z-10"
+          className="relative w-full overflow-hidden"
           style={{ 
             height: '40%',
             borderBottomLeftRadius: '1rem',
@@ -321,7 +310,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
       {/* Portal Tooltip */}
       {tooltipData && createPortal(
         <div
-          className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10"
+          className="bg-surface-secondary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border"
           style={{
             position: 'fixed',
             left: `${tooltipData.x}px`,
@@ -336,12 +325,12 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
         >
           <div className="px-5 py-4">
             {/* Date */}
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">
+            <p className="text-xs text-content-muted font-medium uppercase tracking-wider mb-2">
               {formatDate(tooltipData.point.timestamp)}
             </p>
-            
+
             {/* Value */}
-            <p className="text-2xl text-white font-bold mb-4">
+            <p className="text-2xl text-content font-bold mb-4">
               {formatNumber(tooltipData.point.value)} clicks
             </p>
 
@@ -377,8 +366,8 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                 .slice(0, 5);
               
               return (
-                <div className="space-y-1.5 border-t border-white/5 pt-3">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">
+                <div className="space-y-1.5 border-t border-border-subtle pt-3">
+                  <p className="text-xs text-content-muted uppercase tracking-wider">
                     Links ({clickGroups.size})
                   </p>
                   <div className="space-y-1">
@@ -392,7 +381,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                               onLinkClick(shortCode, new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
                             }
                           }}
-                          className="flex items-center gap-2 py-1.5 px-1.5 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                          className="flex items-center gap-2 py-1.5 px-1.5 hover:bg-surface-hover rounded-lg transition-colors cursor-pointer"
                         >
                           {/* Creator Profile Picture or Link Icon */}
                           <div className="flex-shrink-0">
@@ -403,24 +392,24 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                                 className="w-6 h-6 rounded-full object-cover"
                               />
                             ) : (
-                              <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
-                                <LinkIcon className="w-3 h-3 text-gray-500" />
+                              <div className="w-6 h-6 rounded-full bg-surface-hover flex items-center justify-center">
+                                <LinkIcon className="w-3 h-3 text-content-muted" />
                               </div>
                             )}
                           </div>
                           
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-white truncate">
+                            <p className="text-xs text-content truncate">
                               {link?.title || `/${shortCode}`}
                             </p>
                             {accountHandle && (
-                              <p className="text-[10px] text-gray-500 truncate">
+                              <p className="text-[10px] text-content-muted truncate">
                                 @{accountHandle}
                               </p>
                             )}
                           </div>
                           
-                          <span className="text-xs text-gray-400 font-medium">
+                          <span className="text-xs text-content-muted font-medium">
                             {clickCount}
                           </span>
                         </div>
@@ -428,7 +417,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                     })}
                   </div>
                   {clickGroups.size > 5 && (
-                    <p className="text-xs text-gray-500 text-center pt-1">
+                    <p className="text-xs text-content-muted text-center pt-1">
                       +{clickGroups.size - 5} more
                     </p>
                   )}

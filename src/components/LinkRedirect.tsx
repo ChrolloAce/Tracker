@@ -89,7 +89,7 @@ const LinkRedirect: React.FC = () => {
         </p>
         <a
           href="/"
-          className="inline-block px-6 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+          className="inline-block px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
         >
           Go to Dashboard
         </a>

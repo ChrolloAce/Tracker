@@ -73,11 +73,11 @@ const PostingActivityChart = React.memo<PostingActivityChartProps>(({ submission
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 min-w-[200px]">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">
+        <div className="bg-surface-secondary backdrop-blur-xl text-content px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border min-w-[200px]">
+          <p className="text-xs text-content-muted font-medium uppercase tracking-wider mb-1">
             {data.date}
           </p>
-          <p className="text-lg font-bold text-white">
+          <p className="text-lg font-bold text-content">
             {data.posts} {data.posts === 1 ? 'post' : 'posts'}
           </p>
         </div>
@@ -87,35 +87,35 @@ const PostingActivityChart = React.memo<PostingActivityChartProps>(({ submission
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-surface-secondary backdrop-blur-sm rounded-xl border border-border p-6">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Posting Activity</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Daily posting frequency over time</p>
+        <h2 className="text-lg font-semibold text-content">Posting Activity</h2>
+        <p className="text-sm text-content-secondary mt-1">Daily posting frequency over time</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Total Posts</div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.totalPosts}</div>
+        <div className="bg-surface-secondary rounded-lg p-3">
+          <div className="text-xs text-content-muted">Total Posts</div>
+          <div className="text-xl font-bold text-content mt-1">{stats.totalPosts}</div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Avg/Day</div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.avgPostsPerDay.toFixed(1)}</div>
+        <div className="bg-surface-secondary rounded-lg p-3">
+          <div className="text-xs text-content-muted">Avg/Day</div>
+          <div className="text-xl font-bold text-content mt-1">{stats.avgPostsPerDay.toFixed(1)}</div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Peak Day</div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.maxPostsInDay}</div>
+        <div className="bg-surface-secondary rounded-lg p-3">
+          <div className="text-xs text-content-muted">Peak Day</div>
+          <div className="text-xl font-bold text-content mt-1">{stats.maxPostsInDay}</div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 dark:text-gray-400">Days Tracked</div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.daysTracked}</div>
+        <div className="bg-surface-secondary rounded-lg p-3">
+          <div className="text-xs text-content-muted">Days Tracked</div>
+          <div className="text-xl font-bold text-content mt-1">{stats.daysTracked}</div>
         </div>
       </div>
 
       {/* Chart */}
       {activityData.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-12 text-content-muted">
           No posting activity data available
         </div>
       ) : (
@@ -166,7 +166,7 @@ const PostingActivityChart = React.memo<PostingActivityChartProps>(({ submission
         </div>
       )}
 
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+      <div className="mt-4 text-xs text-content-muted text-center">
         Showing posting activity for the last {stats.daysTracked} days
       </div>
     </div>

@@ -68,6 +68,9 @@ export interface LinkClick {
   utmContent?: string;
   queryParams?: Record<string, string>; // All other query parameters
   
+  // Privacy-safe IP hash for unique click tracking
+  ipHash?: string;
+
   // Additional metadata
   language?: string;
   timezone?: string;

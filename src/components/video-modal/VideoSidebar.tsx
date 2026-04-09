@@ -26,19 +26,11 @@ export const VideoSidebar: React.FC<VideoSidebarProps> = ({
 
   return (
     <div className="overflow-hidden">
-      <div className="relative rounded-xl border border-white/5 shadow-lg p-3 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-        {/* Depth Gradient Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-          }}
-        />
-        
-        <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-white/10 z-10">
+      <div className="relative rounded-xl border border-border-subtle shadow-lg p-3 overflow-hidden" style={{ backgroundColor: 'var(--surface-secondary)' }}>
+        <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-border">
           {video.platform === 'twitter' && twitterMedia.length > 0 ? (
             // Twitter: Show images in slideshow
-            <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+            <div className="relative w-full h-full flex items-center justify-center bg-black">
               <img
                 src={twitterMedia[currentMediaIndex]}
                 alt={`Tweet media ${currentMediaIndex + 1}`}
@@ -102,31 +94,31 @@ export const VideoSidebar: React.FC<VideoSidebarProps> = ({
 
         {/* Duration & Virality Info */}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-white/5 p-2" style={{ backgroundColor: '#0a0a0b' }}>
+          <div className="rounded-lg border border-border-subtle p-2" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Clock className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-xs text-gray-400">Duration</span>
+              <Clock className="w-3.5 h-3.5 text-content-muted" />
+              <span className="text-xs text-content-muted">Duration</span>
             </div>
-            <div className="text-sm font-bold text-white">
+            <div className="text-sm font-bold text-content">
               {formatDuration(video.duration || 0)}
             </div>
           </div>
-          <div className="rounded-lg border border-white/5 p-2" style={{ backgroundColor: '#0a0a0b' }}>
+          <div className="rounded-lg border border-border-subtle p-2" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
             <div className="flex items-center gap-1.5 mb-0.5">
               <Flame className="w-3.5 h-3.5 text-orange-400" />
-              <span className="text-xs text-gray-400">Virality</span>
+              <span className="text-xs text-content-muted">Virality</span>
             </div>
-            <div className="text-sm font-bold text-white">
+            <div className="text-sm font-bold text-content">
               {viralityFactor.toFixed(2)}x
             </div>
           </div>
         </div>
 
         {/* Posted & Last Refresh Info */}
-        <div className="mt-2 rounded-lg border border-white/5 p-2.5 space-y-1.5" style={{ backgroundColor: '#0a0a0b' }}>
+        <div className="mt-2 rounded-lg border border-border-subtle p-2.5 space-y-1.5" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-400">Posted:</span>
-            <span className="text-white font-medium">
+            <span className="text-content-muted">Posted:</span>
+            <span className="text-content font-medium">
               {new Date(video.uploadDate || video.dateSubmitted).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -136,8 +128,8 @@ export const VideoSidebar: React.FC<VideoSidebarProps> = ({
           </div>
           {video.lastRefreshed && (
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-400">Last refresh:</span>
-              <span className="text-white font-medium">
+              <span className="text-content-muted">Last refresh:</span>
+              <span className="text-content font-medium">
                 {new Date(video.lastRefreshed).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -153,7 +145,7 @@ export const VideoSidebar: React.FC<VideoSidebarProps> = ({
           href={video.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-sm font-medium text-white"
+          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-surface-hover hover:bg-surface-active border border-border hover:border-border-strong transition-all text-sm font-medium text-content"
         >
           <ExternalLink className="w-4 h-4" />
           View on Platform

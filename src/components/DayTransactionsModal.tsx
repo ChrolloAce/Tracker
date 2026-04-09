@@ -440,18 +440,18 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                 <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis 
                         dataKey="date" 
-                        stroke="rgba(255,255,255,0.3)"
+                        stroke="var(--content-muted)"
                         style={{ fontSize: '12px' }}
-                        tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                        tick={{ fill: 'var(--content-secondary)' }}
                       />
                       <YAxis 
                         yAxisId="left"
                         stroke="rgba(16,185,129,0.5)"
                         style={{ fontSize: '12px' }}
-                        tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                        tick={{ fill: 'var(--content-secondary)' }}
                         tickFormatter={(value) => `$${value.toFixed(0)}`}
                       />
                       <YAxis 
@@ -459,19 +459,19 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                         orientation="right"
                         stroke="rgba(59,130,246,0.5)"
                         style={{ fontSize: '12px' }}
-                        tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                        tick={{ fill: 'var(--content-secondary)' }}
                         tickFormatter={(value) => formatNumber(value)}
                       />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: 'rgba(17, 17, 17, 0.95)', 
-                          border: '1px solid rgba(255,255,255,0.1)',
+                          backgroundColor: 'var(--surface-tertiary)',
+                          border: '1px solid var(--border)',
                           borderRadius: '8px',
-                          color: 'white',
+                          color: 'var(--content)',
                           padding: '12px'
                         }}
                         labelStyle={{
-                          color: 'rgba(255, 255, 255, 0.6)',
+                          color: 'var(--content-secondary)',
                           fontSize: '11px',
                           fontWeight: 600,
                           textTransform: 'uppercase',

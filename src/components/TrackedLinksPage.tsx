@@ -643,68 +643,68 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* KPI Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Active Links */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+          <div className="bg-surface-secondary rounded-xl border border-border p-4 hover:bg-surface-active transition-colors">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm text-gray-400 font-medium">Active Links</span>
+              <span className="text-sm text-content-muted font-medium">Active Links</span>
               <div className="group relative">
-                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                <Info className="w-3.5 h-3.5 text-content-muted cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-surface-secondary border border-border-strong rounded-lg shadow-xl text-xs text-content-secondary z-50">
                   Links that received clicks during the selected time period
                 </div>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white">{totalLinks}</div>
+            <div className="text-3xl font-bold text-content">{totalLinks}</div>
           </div>
 
           {/* Total Clicks */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+          <div className="bg-surface-secondary rounded-xl border border-border p-4 hover:bg-surface-active transition-colors">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm text-gray-400 font-medium">Total Clicks</span>
+              <span className="text-sm text-content-muted font-medium">Total Clicks</span>
               <div className="group relative">
-                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                <Info className="w-3.5 h-3.5 text-content-muted cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-surface-secondary border border-border-strong rounded-lg shadow-xl text-xs text-content-secondary z-50">
                   Total number of clicks in the selected time period
                 </div>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white">{totalClicks}</div>
+            <div className="text-3xl font-bold text-content">{totalClicks}</div>
           </div>
 
           {/* Unique Visitors */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+          <div className="bg-surface-secondary rounded-xl border border-border p-4 hover:bg-surface-active transition-colors">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm text-gray-400 font-medium">Unique Visitors</span>
+              <span className="text-sm text-content-muted font-medium">Unique Visitors</span>
               <div className="group relative">
-                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                <Info className="w-3.5 h-3.5 text-content-muted cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-surface-secondary border border-border-strong rounded-lg shadow-xl text-xs text-content-secondary z-50">
                   Unique visitors based on user agent in the selected time period
                 </div>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white">{uniqueVisitors}</div>
+            <div className="text-3xl font-bold text-content">{uniqueVisitors}</div>
           </div>
 
           {/* Top Performer */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+          <div className="bg-surface-secondary rounded-xl border border-border p-4 hover:bg-surface-active transition-colors">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm text-gray-400 font-medium">Top Performer</span>
+              <span className="text-sm text-content-muted font-medium">Top Performer</span>
               <div className="group relative">
-                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                <Info className="w-3.5 h-3.5 text-content-muted cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-surface-secondary border border-border-strong rounded-lg shadow-xl text-xs text-content-secondary z-50">
                   Link with the most clicks in the selected time period
                 </div>
               </div>
             </div>
-            <div className="text-lg font-bold text-white truncate" title={topPerformer}>
+            <div className="text-lg font-bold text-content truncate" title={topPerformer}>
               {topPerformer}
             </div>
           </div>
         </div>
 
         {/* Clicks Trend Chart */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+        <div className="bg-surface-secondary rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Clicks Over Time - {getDateRangeLabel()}</h3>
+            <h3 className="text-lg font-semibold text-content">Clicks Over Time - {getDateRangeLabel()}</h3>
           </div>
           <div className="h-64 flex items-end gap-1">
             {clicksByTime.map((data, index) => {
@@ -714,7 +714,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               return (
                 <div key={index} className="flex-1 flex flex-col items-center justify-end group relative h-full">
                   {data.clicks > 0 && (
-                    <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                    <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-content text-content-inverse text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
                       {data.clicks} {data.clicks === 1 ? 'click' : 'clicks'}
                     </div>
                   )}
@@ -727,7 +727,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     }}
                   ></div>
                   {data.label && (
-                    <span className="text-xs text-gray-500 absolute -bottom-6 whitespace-nowrap">{data.label}</span>
+                    <span className="text-xs text-content-muted absolute -bottom-6 whitespace-nowrap">{data.label}</span>
                   )}
                 </div>
               );
@@ -738,24 +738,24 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* Analytics Grid - 4 sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Performing Links */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Top Performing Links - {getDateRangeLabel()}</h3>
-            <div className="divide-y divide-white/10">
+          <div className="bg-surface-secondary rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-content mb-4">Top Performing Links - {getDateRangeLabel()}</h3>
+            <div className="divide-y divide-border">
               {linkPerformance.length > 0 ? (
                 linkPerformance.map((link, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
+                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-surface-hover transition-colors first:pt-0">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-white truncate">{link.title}</div>
-                      <div className="text-xs text-gray-500">/{link.shortCode}</div>
+                      <div className="text-sm font-medium text-content truncate">{link.title}</div>
+                      <div className="text-xs text-content-muted">/{link.shortCode}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white">{link.clicks}</span>
-                      <span className="text-xs text-gray-400">clicks</span>
+                      <span className="text-sm font-semibold text-content">{link.clicks}</span>
+                      <span className="text-xs text-content-muted">clicks</span>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-content-muted">
                   <p>No link data available yet</p>
                   <p className="text-sm mt-2">Create links to see performance</p>
                 </div>
@@ -764,24 +764,24 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       </div>
 
           {/* Geographic Distribution */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Clicks by Country</h3>
-            <div className="divide-y divide-white/10">
+          <div className="bg-surface-secondary rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-content mb-4">Clicks by Country</h3>
+            <div className="divide-y divide-border">
               {topCountries.length > 0 ? (
                 topCountries.map((country, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
+                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-surface-hover transition-colors first:pt-0">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{country.flag}</span>
-                      <span className="text-sm font-medium text-white">{country.name}</span>
+                      <span className="text-sm font-medium text-content">{country.name}</span>
               </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white">{country.clicks}</span>
-                      <span className="text-xs text-gray-400">{country.clicks === 1 ? 'click' : 'clicks'}</span>
+                      <span className="text-sm font-semibold text-content">{country.clicks}</span>
+                      <span className="text-xs text-content-muted">{country.clicks === 1 ? 'click' : 'clicks'}</span>
             </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-content-muted">
                   <p>No geographic data available yet</p>
                 </div>
               )}
@@ -789,8 +789,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           </div>
 
           {/* Channel Breakdown - Traffic Sources */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Traffic Sources</h3>
+          <div className="bg-surface-secondary rounded-xl border border-border p-6">
+            <h3 className="text-lg font-semibold text-content mb-4">Traffic Sources</h3>
             {(() => {
               const sourceCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                 let source = 'Direct';
@@ -848,11 +848,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     {/* HTML Tooltip */}
                     {hoveredSource && (
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
-                        <div className="bg-zinc-900 border border-white/20 rounded-lg px-4 py-3 shadow-xl">
+                        <div className="bg-surface-secondary border border-border-strong rounded-lg px-4 py-3 shadow-xl">
                           <div className="text-center">
                             <div className="text-lg mb-1">{getSourceIcon(hoveredSource)}</div>
-                            <div className="text-sm font-semibold text-white mb-1">{hoveredSource}</div>
-                            <div className="text-xs text-white/60">
+                            <div className="text-sm font-semibold text-content mb-1">{hoveredSource}</div>
+                            <div className="text-xs text-content-muted">
                               {Math.round((sourceCounts[hoveredSource] / totalClicks) * 100)}% • {sourceCounts[hoveredSource]} {sourceCounts[hoveredSource] === 1 ? 'click' : 'clicks'}
                             </div>
                           </div>
@@ -961,7 +961,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-content-muted">
                   <p>No traffic data available yet</p>
                 </div>
               );
@@ -969,16 +969,16 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           </div>
 
           {/* Device Breakdown */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+          <div className="bg-surface-secondary rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Device Breakdown</h3>
-              <div className="flex gap-1 bg-black/40 rounded-lg border border-white/10 p-1">
+              <h3 className="text-lg font-semibold text-content">Device Breakdown</h3>
+              <div className="flex gap-1 bg-surface-tertiary rounded-lg border border-border p-1">
                 <button
                   onClick={() => setInterval('hourly')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                     interval === 'hourly'
-                      ? 'bg-white text-black'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-content text-content-inverse'
+                      : 'text-content-muted hover:text-content'
                   }`}
                 >
                   Device
@@ -987,8 +987,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   onClick={() => setInterval('monthly')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                     interval === 'monthly'
-                      ? 'bg-white text-black'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-content text-content-inverse'
+                      : 'text-content-muted hover:text-content'
                   }`}
                 >
                   Browser
@@ -998,7 +998,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
             {interval === 'hourly' ? (
               // Device View
-              <div className="divide-y divide-white/10">
+              <div className="divide-y divide-border">
                 {(() => {
                   const deviceCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                     const device = click.deviceType || 'Unknown';
@@ -1019,19 +1019,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
                   return deviceData.length > 0 ? (
                     deviceData.map(([device, clicks], index) => (
-                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
+                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-surface-hover transition-colors first:pt-0">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{getDeviceIcon(device)}</span>
-                          <span className="text-sm font-medium text-white capitalize">{device}</span>
+                          <span className="text-sm font-medium text-content capitalize">{device}</span>
                         </div>
                       <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white">{clicks}</span>
-                          <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
+                          <span className="text-sm font-semibold text-content">{clicks}</span>
+                          <span className="text-xs text-content-muted">{clicks === 1 ? 'click' : 'clicks'}</span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-content-muted">
                       <p>No device data available yet</p>
                     </div>
                   );
@@ -1039,7 +1039,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               </div>
             ) : (
               // Browser View
-              <div className="divide-y divide-white/10">
+              <div className="divide-y divide-border">
                 {(() => {
                   const browserCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                     const browser = click.browser || 'Unknown';
@@ -1063,19 +1063,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
                   return browserData.length > 0 ? (
                     browserData.map(([browser, clicks], index) => (
-                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
+                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-surface-hover transition-colors first:pt-0">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{getBrowserIcon(browser)}</span>
-                          <span className="text-sm font-medium text-white">{browser}</span>
+                          <span className="text-sm font-medium text-content">{browser}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white">{clicks}</span>
-                          <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
+                          <span className="text-sm font-semibold text-content">{clicks}</span>
+                          <span className="text-xs text-content-muted">{clicks === 1 ? 'click' : 'clicks'}</span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-content-muted">
                       <p>No browser data available yet</p>
                     </div>
                   );
@@ -1086,52 +1086,52 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         </div>
 
         {/* All Links Table */}
-        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/10">
-            <h3 className="text-lg font-semibold text-white">All Tracked Links</h3>
-            <p className="text-sm text-gray-400 mt-1">Manage and monitor your short links</p>
+        <div className="bg-surface-secondary rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h3 className="text-lg font-semibold text-content">All Tracked Links</h3>
+            <p className="text-sm text-content-muted mt-1">Manage and monitor your short links</p>
               </div>
           
           {links.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">🔗</div>
-              <p className="text-gray-400 mb-2">No links created yet</p>
-              <p className="text-sm text-gray-500">Click "Create Link" to get started</p>
-              <p className="text-xs text-gray-600 mt-2">Loaded {links.length} links from database</p>
+              <p className="text-content-muted mb-2">No links created yet</p>
+              <p className="text-sm text-content-muted">Click "Create Link" to get started</p>
+              <p className="text-xs text-content-muted mt-2">Loaded {links.length} links from database</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-black/20 border-b border-white/10">
+                <thead className="bg-surface-tertiary border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                       Link
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                       Short URL
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Clicks
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Created
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-muted uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border">
                   {links.map((link) => {
                     const clicks = linkClicks.filter(click => click.linkId === link.id).length;
                     const shortUrl = `${window.location.origin}/l/${link.shortCode}`;
                   
                   return (
-                      <tr key={link.id} className="hover:bg-white/5 transition-colors">
+                      <tr key={link.id} className="hover:bg-surface-hover transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-white">{link.title}</span>
-                            <span className="text-xs text-gray-500 truncate max-w-xs" title={link.originalUrl}>
+                            <span className="text-sm font-medium text-content">{link.title}</span>
+                            <span className="text-xs text-content-muted truncate max-w-xs" title={link.originalUrl}>
                               {link.originalUrl}
                                   </span>
                                 </div>
@@ -1150,18 +1150,18 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                               </a>
                         <button
                               onClick={() => handleCopyLink(link)}
-                              className="p-1 hover:bg-white/10 rounded transition-colors"
+                              className="p-1 hover:bg-surface-active rounded transition-colors"
                               title="Copy full link"
                             >
-                              <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-gray-200" />
+                              <Copy className="w-3.5 h-3.5 text-content-muted hover:text-content-secondary" />
                         </button>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                          <span className="text-sm font-semibold text-white">{clicks}</span>
+                          <span className="text-sm font-semibold text-content">{clicks}</span>
                     </td>
                     <td className="px-6 py-4">
-                          <span className="text-sm text-gray-400">
+                          <span className="text-sm text-content-muted">
                             {link.createdAt?.toDate?.().toLocaleDateString() || 'N/A'}
                           </span>
                     </td>
@@ -1179,7 +1179,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         </button>
                         <button
                               onClick={() => handleEditLink(link)}
-                              className="p-2 hover:bg-white/10 text-gray-400 rounded-lg transition-colors"
+                              className="p-2 hover:bg-surface-active text-content-muted rounded-lg transition-colors"
                               title="Edit"
                         >
                           <Edit2 className="w-4 h-4" />

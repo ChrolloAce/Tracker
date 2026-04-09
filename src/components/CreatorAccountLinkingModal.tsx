@@ -175,34 +175,34 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-white/10">
+      <div className="bg-surface-secondary rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-border">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold text-content flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-emerald-400" />
               Manage Linked Accounts
             </h2>
-            <p className="text-sm text-white/60 mt-1">
+            <p className="text-sm text-content-secondary mt-1">
               Link your social media accounts to track your performance
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 text-content-secondary hover:text-content hover:bg-surface-active rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
+        <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab('linked')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'linked'
                 ? 'text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/5'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
+                : 'text-content-secondary hover:text-content hover:bg-surface-hover'
             }`}
           >
             My Accounts ({linkedAccounts.length})
@@ -212,7 +212,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'available'
                 ? 'text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/5'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
+                : 'text-content-secondary hover:text-content hover:bg-surface-hover'
             }`}
           >
             Link Existing ({availableAccounts.length})
@@ -222,7 +222,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'request'
                 ? 'text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/5'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
+                : 'text-content-secondary hover:text-content hover:bg-surface-hover'
             }`}
           >
             Add New
@@ -242,9 +242,9 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                 <div className="space-y-3">
                   {linkedAccounts.length === 0 ? (
                     <div className="text-center py-12">
-                      <LinkIcon className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                      <p className="text-white/60">No accounts linked yet</p>
-                      <p className="text-sm text-white/40 mt-1">
+                      <LinkIcon className="w-12 h-12 text-content-muted mx-auto mb-3" />
+                      <p className="text-content-secondary">No accounts linked yet</p>
+                      <p className="text-sm text-content-muted mt-1">
                         Go to "Link Existing" to connect your accounts
                       </p>
                     </div>
@@ -266,23 +266,23 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                 <div className="space-y-4">
                   {/* Search */}
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search accounts..."
-                      className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                      className="w-full pl-10 pr-4 py-2.5 bg-surface-hover border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
                     />
                   </div>
 
                   {filteredAvailableAccounts.length === 0 ? (
                     <div className="text-center py-12">
-                      <AlertCircle className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                      <p className="text-white/60">
+                      <AlertCircle className="w-12 h-12 text-content-muted mx-auto mb-3" />
+                      <p className="text-content-secondary">
                         {searchQuery ? 'No accounts match your search' : 'No available accounts'}
                       </p>
-                      <p className="text-sm text-white/40 mt-1">
+                      <p className="text-sm text-content-muted mt-1">
                         Request to add a new account in the "Add New" tab
                       </p>
                     </div>
@@ -303,7 +303,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
 
                   {/* Link Selected Button */}
                   {selectedAccountIds.length > 0 && (
-                    <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur pt-4 border-t border-white/10 -mx-6 px-6 -mb-6 pb-6">
+                    <div className="sticky bottom-0 bg-surface-secondary/95 backdrop-blur pt-4 border-t border-border -mx-6 px-6 -mb-6 pb-6">
                       <button
                         onClick={handleRequestLink}
                         disabled={requestingLink}
@@ -334,22 +334,22 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                       <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Check className="w-8 h-8 text-emerald-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Request Submitted!</h3>
-                      <p className="text-white/60">
+                      <h3 className="text-lg font-semibold text-content mb-2">Request Submitted!</h3>
+                      <p className="text-content-secondary">
                         Your request has been sent to the admin for review.
                       </p>
                     </div>
                   ) : (
                     <>
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <p className="text-sm text-white/70">
+                      <div className="bg-surface-hover border border-border rounded-lg p-4">
+                        <p className="text-sm text-content-secondary">
                           Don't see your account? Submit the URL below and an admin will review and add it to your linked accounts.
                         </p>
                       </div>
 
                       {/* Platform Selection */}
                       <div>
-                        <label className="block text-sm font-medium text-white/80 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Platform
                         </label>
                         <div className="grid grid-cols-4 gap-2">
@@ -360,7 +360,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                               className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                                 newAccountPlatform === platform
                                   ? 'border-emerald-500 bg-emerald-500/10'
-                                  : 'border-white/10 hover:border-white/20 bg-white/5'
+                                  : 'border-border hover:border-border bg-surface-hover'
                               }`}
                             >
                               <img
@@ -368,7 +368,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                                 alt={platform}
                                 className="w-6 h-6 object-contain"
                               />
-                              <span className="text-xs text-white/80 capitalize">{platform}</span>
+                              <span className="text-xs text-content capitalize">{platform}</span>
                             </button>
                           ))}
                         </div>
@@ -376,7 +376,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
 
                       {/* Account URL */}
                       <div>
-                        <label className="block text-sm font-medium text-white/80 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Profile or Video URL
                         </label>
                         <input
@@ -384,13 +384,13 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                           value={newAccountUrl}
                           onChange={(e) => setNewAccountUrl(e.target.value)}
                           placeholder={`https://${newAccountPlatform}.com/...`}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                          className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
                         />
                       </div>
 
                       {/* Notes */}
                       <div>
-                        <label className="block text-sm font-medium text-white/80 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Notes (Optional)
                         </label>
                         <textarea
@@ -398,7 +398,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                           onChange={(e) => setNewAccountNotes(e.target.value)}
                           placeholder="Any additional information for the admin..."
                           rows={3}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 resize-none"
+                          className="w-full px-4 py-3 bg-surface-hover border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 resize-none"
                         />
                       </div>
 
@@ -448,7 +448,7 @@ const AccountCard: React.FC<{
           ? 'bg-emerald-500/5 border-emerald-500/20'
           : isSelected
           ? 'bg-emerald-500/10 border-emerald-500/40 cursor-pointer'
-          : 'bg-white/5 border-white/10 hover:border-white/20 cursor-pointer'
+          : 'bg-surface-hover border-border hover:border-border cursor-pointer'
       }`}
     >
       {/* Selection Checkbox (for available accounts) */}
@@ -456,7 +456,7 @@ const AccountCard: React.FC<{
         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
           isSelected
             ? 'bg-emerald-500 border-emerald-500'
-            : 'border-white/30 hover:border-white/50'
+            : 'border-border-strong hover:border-border-strong'
         }`}>
           {isSelected && <Check className="w-3 h-3 text-white" />}
         </div>
@@ -467,15 +467,15 @@ const AccountCard: React.FC<{
         <ProxiedImage
           src={account.profilePicture}
           alt={account.displayName || account.username || 'Account'}
-          className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
+          className="w-12 h-12 rounded-full object-cover ring-2 ring-border"
           fallback={
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-white/10 text-white font-bold">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-border text-content-inverse font-bold">
               {(account.displayName || account.username || 'A').charAt(0).toUpperCase()}
             </div>
           }
         />
       ) : (
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-white/10 text-white font-bold">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-border text-content-inverse font-bold">
           {(account.displayName || account.username || 'A').charAt(0).toUpperCase()}
         </div>
       )}
@@ -483,22 +483,22 @@ const AccountCard: React.FC<{
       {/* Account Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-white truncate">
+          <h3 className="font-semibold text-content truncate">
             {account.displayName || account.username}
           </h3>
           {platformIcon && (
             <img src={platformIcon} alt={account.platform} className="w-4 h-4 object-contain" />
           )}
         </div>
-        <p className="text-sm text-white/50 truncate">@{account.username}</p>
+        <p className="text-sm text-content-muted truncate">@{account.username}</p>
       </div>
 
       {/* Stats */}
       <div className="text-right">
-        <div className="text-sm font-semibold text-white">
+        <div className="text-sm font-semibold text-content">
           {account.followerCount?.toLocaleString() || 0}
         </div>
-        <div className="text-xs text-white/40">followers</div>
+        <div className="text-xs text-content-muted">followers</div>
       </div>
 
       {/* Status Badge */}

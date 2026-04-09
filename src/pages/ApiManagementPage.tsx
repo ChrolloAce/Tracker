@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Key,
-  Plus,
   Copy,
   Check,
   Trash2,
@@ -9,7 +8,6 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  RefreshCw,
   Loader2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -97,31 +95,6 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
   return (
     <div className="relative">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-            <p className="text-sm text-gray-500">
-              Create and manage API keys.{' '}
-              <a href="/api-docs" className="text-[#007BFF] hover:text-[#007BFF]/80 underline underline-offset-2 transition-colors">
-                Explore our docs to get started
-              </a>
-            </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-white">API Keys</h2>
-          <div className="flex items-center gap-2">
-            <button onClick={loadKeys} className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => { if (onRequiresPaidPlan?.('to bring your self-learning agent to life')) return; setShowCreate(true); setNewKeyResult(null); }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-medium text-white transition-all"
-            >
-              <Plus className="w-4 h-4" /> Generate Key
-            </button>
-          </div>
-        </div>
 
         {/* Error */}
         {error && (
@@ -133,7 +106,7 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
         {/* Keys table */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-content-muted animate-spin" />
           </div>
         ) : keys.length === 0 ? (
           <EmptyState onGenerate={() => { if (onRequiresPaidPlan?.('to bring your self-learning agent to life')) return; setShowCreate(true); }} />
@@ -158,17 +131,17 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
 // ─── Empty State ──────────────────────────────────────────
 
 const EmptyState: React.FC<{ onGenerate: () => void }> = ({ onGenerate }) => (
-  <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
-    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-      <Key className="w-8 h-8 text-gray-600" />
+  <div className="rounded-2xl bg-surface-hover border border-border p-12 text-center">
+    <div className="w-16 h-16 bg-surface-hover rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <Key className="w-8 h-8 text-content-muted" />
     </div>
-    <h3 className="text-lg font-medium text-white mb-2">No API Keys</h3>
-    <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">
+    <h3 className="text-lg font-medium text-content mb-2">No API Keys</h3>
+    <p className="text-content-muted text-sm max-w-sm mx-auto mb-6">
       Generate your first API key to start using the ViewTrack API programmatically.
     </p>
     <button
       onClick={onGenerate}
-      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-medium text-white transition-all"
+      className="px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
     >
       Generate Key
     </button>
@@ -198,41 +171,41 @@ const KeysTable: React.FC<{ keys: ApiKeyResponse[]; orgId: string; onRevoked: ()
   };
 
   return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-hidden">
+    <div className="rounded-2xl bg-surface-secondary border border-border overflow-hidden">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-white/10">
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Key Prefix</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Scopes</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Usage</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Created</th>
+          <tr className="border-b border-border">
+            <th className="px-4 py-3 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">Key Prefix</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">Scopes</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">Usage</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-content-muted uppercase tracking-wider">Created</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5">
+        <tbody className="divide-y divide-border-subtle">
           {keys.map((k) => (
-            <tr key={k.id} className="hover:bg-white/[0.02]">
-              <td className="px-4 py-3 text-sm text-white font-medium">{k.name}</td>
+            <tr key={k.id} className="hover:bg-surface-hover">
+              <td className="px-4 py-3 text-sm text-content font-medium">{k.name}</td>
               <td className="px-4 py-3">
                 <code className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">{k.keyPrefix}…</code>
               </td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">
                   {k.scopes.slice(0, 3).map((s) => (
-                    <span key={s} className="text-[10px] text-gray-400 bg-white/5 px-1.5 py-0.5 rounded">{s}</span>
+                    <span key={s} className="text-[10px] text-content-muted bg-surface-hover px-1.5 py-0.5 rounded">{s}</span>
                   ))}
                   {k.scopes.length > 3 && (
-                    <span className="text-[10px] text-gray-500">+{k.scopes.length - 3}</span>
+                    <span className="text-[10px] text-content-muted">+{k.scopes.length - 3}</span>
                   )}
                 </div>
               </td>
               <td className="px-4 py-3">
                 <StatusBadge status={k.status} />
               </td>
-              <td className="px-4 py-3 text-xs text-gray-400">{k.usageCount.toLocaleString()} calls</td>
-              <td className="px-4 py-3 text-xs text-gray-500">
+              <td className="px-4 py-3 text-xs text-content-muted">{k.usageCount.toLocaleString()} calls</td>
+              <td className="px-4 py-3 text-xs text-content-muted">
                 {k.createdAt ? new Date(k.createdAt).toLocaleDateString() : '—'}
               </td>
               <td className="px-4 py-3">
@@ -262,7 +235,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     expired: 'text-amber-400 bg-amber-400/10',
   };
   return (
-    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${styles[status] || 'text-gray-400 bg-white/5'}`}>
+    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${styles[status] || 'text-content-muted bg-surface-hover'}`}>
       {status}
     </span>
   );
@@ -316,10 +289,10 @@ const CreateKeyModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-[#111113] border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">{result ? 'API Key Created' : 'Generate API Key'}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-all text-xl">×</button>
+      <div className="bg-surface-secondary border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-content">{result ? 'API Key Created' : 'Generate API Key'}</h3>
+          <button onClick={onClose} className="text-content-muted hover:text-content transition-all text-xl">×</button>
         </div>
 
         <div className="px-6 py-5 space-y-5">
@@ -334,28 +307,28 @@ const CreateKeyModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1.5">API Key</label>
-                <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5">
+                <label className="block text-xs text-content-muted mb-1.5">API Key</label>
+                <div className="flex items-center gap-2 bg-surface-inset border border-border rounded-xl px-3 py-2.5">
                   <code className="flex-1 text-sm text-emerald-400 font-mono truncate">
                     {showKey ? result.key : result.keyPrefix + '•'.repeat(24)}
                   </code>
-                  <button onClick={() => setShowKey(!showKey)} className="text-gray-500 hover:text-white transition-all">
+                  <button onClick={() => setShowKey(!showKey)} className="text-content-muted hover:text-content transition-all">
                     {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                  <button onClick={copyKey} className="text-gray-500 hover:text-white transition-all">
+                  <button onClick={copyKey} className="text-content-muted hover:text-content transition-all">
                     {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                  <span className="text-gray-500">Name</span>
-                  <p className="text-white font-medium">{result.name}</p>
+                <div className="bg-surface-secondary rounded-lg px-3 py-2">
+                  <span className="text-content-muted">Name</span>
+                  <p className="text-content font-medium">{result.name}</p>
                 </div>
-                <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                  <span className="text-gray-500">Scopes</span>
-                  <p className="text-white font-medium">{result.scopes.length} permissions</p>
+                <div className="bg-surface-secondary rounded-lg px-3 py-2">
+                  <span className="text-content-muted">Scopes</span>
+                  <p className="text-content font-medium">{result.scopes.length} permissions</p>
                 </div>
               </div>
             </>
@@ -366,18 +339,18 @@ const CreateKeyModal: React.FC<{
               )}
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Key Name</label>
+                <label className="block text-xs text-content-muted mb-1.5">Key Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Production API, Dashboard Integration"
-                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-white/20"
+                  className="w-full px-3 py-2.5 bg-surface-hover border border-border rounded-xl text-content placeholder-content-muted text-sm focus:outline-none focus:border-border-strong"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-2">Permissions</label>
+                <label className="block text-xs text-content-muted mb-2">Permissions</label>
                 <div className="grid grid-cols-2 gap-2">
                   {ALL_SCOPES.map((scope) => (
                     <button
@@ -385,8 +358,8 @@ const CreateKeyModal: React.FC<{
                       onClick={() => toggleScope(scope.value)}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all border ${
                         selectedScopes.includes(scope.value)
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                          : 'bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/5'
+                          ? 'bg-orange-500/10 border-orange-500/30 text-orange-500'
+                          : 'bg-surface-secondary border-border text-content-muted hover:bg-surface-hover'
                       }`}
                     >
                       <Shield className="w-3 h-3" />
@@ -399,15 +372,15 @@ const CreateKeyModal: React.FC<{
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-all">
+        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-content bg-surface-secondary border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
             {result ? 'Done' : 'Cancel'}
           </button>
           {!result && (
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-medium text-white transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
               Generate

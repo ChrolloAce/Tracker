@@ -250,85 +250,85 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-12 overflow-y-auto">
-      <div className="bg-[#111113] rounded-2xl border border-white/10 w-full max-w-4xl shadow-2xl mb-12">
+      <div className="bg-surface-secondary rounded-2xl border border-border w-full max-w-4xl shadow-2xl mb-12">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-white/10">
+        <div className="flex items-start justify-between p-6 border-b border-border">
           <div className="flex items-center gap-4">
             <div className="relative w-14 h-14 flex-shrink-0">
               {creator.photoURL ? (
                 <ProxiedImage
                   src={creator.photoURL}
                   alt={creator.displayName || 'Creator'}
-                  className="w-14 h-14 rounded-full object-cover ring-2 ring-white/10"
+                  className="w-14 h-14 rounded-full object-cover ring-2 ring-border"
                   fallback={
-                    <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-white/10 text-white font-bold text-lg">
+                    <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-border text-content-inverse font-bold text-lg">
                       {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
                     </div>
                   }
                 />
               ) : (
-                <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-white/10 text-white font-bold text-lg">
+                <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-border text-content-inverse font-bold text-lg">
                   {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{creator.displayName || 'Unknown Creator'}</h2>
-              <p className="text-sm text-gray-400">{creator.email || 'No email'}</p>
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+              <h2 className="text-xl font-bold text-content">{creator.displayName || 'Unknown Creator'}</h2>
+              <p className="text-sm text-content-muted">{creator.email || 'No email'}</p>
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-content-muted">
                 <Calendar className="w-3 h-3" />
                 Joined {formatDate(creator.joinedAt)}
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-400" />
+          <button onClick={onClose} className="p-2 hover:bg-surface-hover rounded-lg transition-colors">
+            <X className="w-5 h-5 text-content-muted" />
           </button>
         </div>
 
         {loadingData ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-content-muted" />
           </div>
         ) : (
           <>
             {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 border-b border-white/10">
-              <div className="bg-white/5 rounded-xl p-4">
-                <div className="flex items-center gap-2 text-gray-400 mb-1">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 border-b border-border">
+              <div className="bg-surface-hover rounded-xl p-4">
+                <div className="flex items-center gap-2 text-content-muted mb-1">
                   <DollarSign className="w-4 h-4" />
                   <span className="text-xs">{paidAmount > 0 ? 'Total Paid' : 'Earnings'}</span>
                 </div>
-                <div className="text-xl font-bold text-white">
+                <div className="text-xl font-bold text-content">
                   ${paidAmount > 0 ? paidAmount.toFixed(2) : earnings.toFixed(2)}
                 </div>
               </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <div className="flex items-center gap-2 text-gray-400 mb-1">
+              <div className="bg-surface-hover rounded-xl p-4">
+                <div className="flex items-center gap-2 text-content-muted mb-1">
                   <Video className="w-4 h-4" />
                   <span className="text-xs">Videos</span>
                 </div>
-                <div className="text-xl font-bold text-white">{videos.length}</div>
+                <div className="text-xl font-bold text-content">{videos.length}</div>
               </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <div className="flex items-center gap-2 text-gray-400 mb-1">
+              <div className="bg-surface-hover rounded-xl p-4">
+                <div className="flex items-center gap-2 text-content-muted mb-1">
                   <Eye className="w-4 h-4" />
                   <span className="text-xs">Total Views</span>
                 </div>
-                <div className="text-xl font-bold text-white">{formatNumber(totalViews)}</div>
+                <div className="text-xl font-bold text-content">{formatNumber(totalViews)}</div>
               </div>
-              <div className="bg-white/5 rounded-xl p-4">
-                <div className="flex items-center gap-2 text-gray-400 mb-1">
+              <div className="bg-surface-hover rounded-xl p-4">
+                <div className="flex items-center gap-2 text-content-muted mb-1">
                   <Heart className="w-4 h-4" />
                   <span className="text-xs">Total Likes</span>
                 </div>
-                <div className="text-xl font-bold text-white">{formatNumber(totalLikes)}</div>
+                <div className="text-xl font-bold text-content">{formatNumber(totalLikes)}</div>
               </div>
             </div>
 
             {/* Payment Plan */}
             {profile?.paymentPlan && (
-              <div className="p-6 border-b border-white/10 space-y-4">
+              <div className="p-6 border-b border-border space-y-4">
                 <CreatorPaymentPlanCard
                   plan={profile.paymentPlan}
                   totalViews={totalViews}
@@ -342,11 +342,11 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
 
                 {/* ── Record Payment Inline Form ─────────────────── */}
                 {showRecordPayment && (
-                  <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4 space-y-3">
-                    <div className="text-sm font-semibold text-white/80">Record Payment</div>
+                  <div className="bg-surface-inset border border-border rounded-xl p-4 space-y-3">
+                    <div className="text-sm font-semibold text-content-secondary">Record Payment</div>
                     <div className="flex gap-3">
                       <div className="flex-1">
-                        <label className="text-[11px] text-white/40 mb-1 block">Amount ($)</label>
+                        <label className="text-[11px] text-content-muted mb-1 block">Amount ($)</label>
                         <input
                           type="number"
                           step="0.01"
@@ -354,32 +354,32 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
                           value={paymentAmount}
                           onChange={e => setPaymentAmount(e.target.value)}
                           placeholder="0.00"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/25 placeholder-white/20"
+                          className="w-full px-3 py-2 bg-surface-hover border border-border rounded-lg text-content text-sm focus:outline-none focus:border-border-strong placeholder-content-muted"
                           autoFocus
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="text-[11px] text-white/40 mb-1 block">Note (optional)</label>
+                        <label className="text-[11px] text-content-muted mb-1 block">Note (optional)</label>
                         <input
                           type="text"
                           value={paymentNote}
                           onChange={e => setPaymentNote(e.target.value)}
                           placeholder="e.g. PayPal transfer"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/25 placeholder-white/20"
+                          className="w-full px-3 py-2 bg-surface-hover border border-border rounded-lg text-content text-sm focus:outline-none focus:border-border-strong placeholder-content-muted"
                         />
                       </div>
                     </div>
                     <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => { setShowRecordPayment(false); setPaymentAmount(''); setPaymentNote(''); }}
-                        className="px-3 py-1.5 text-xs text-white/50 hover:text-white/70 transition-colors"
+                        className="px-3 py-1.5 text-xs text-content-muted hover:text-content-secondary transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleRecordPayment}
                         disabled={savingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
-                        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-surface-active hover:bg-surface-active text-content border border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                       >
                         {savingPayment && <Loader2 className="w-3 h-3 animate-spin" />}
                         Save Payment
@@ -390,22 +390,22 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
 
                 {/* ── Complete Campaign Confirmation ──────────────── */}
                 {showCompleteConfirm && (
-                  <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4 space-y-3">
-                    <div className="text-sm font-semibold text-white/80">Mark Campaign Complete?</div>
-                    <p className="text-xs text-white/40">
+                  <div className="bg-surface-inset border border-border rounded-xl p-4 space-y-3">
+                    <div className="text-sm font-semibold text-content-secondary">Mark Campaign Complete?</div>
+                    <p className="text-xs text-content-muted">
                       This will mark the current payment plan as completed. You can then renew it or assign a new plan.
                     </p>
                     <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => setShowCompleteConfirm(false)}
-                        className="px-3 py-1.5 text-xs text-white/50 hover:text-white/70 transition-colors"
+                        className="px-3 py-1.5 text-xs text-content-muted hover:text-content-secondary transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleMarkComplete}
                         disabled={savingCampaign}
-                        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all disabled:opacity-40 flex items-center gap-1.5"
+                        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-surface-active hover:bg-surface-active text-content border border-border transition-all disabled:opacity-40 flex items-center gap-1.5"
                       >
                         {savingCampaign && <Loader2 className="w-3 h-3 animate-spin" />}
                         Confirm Complete
@@ -430,12 +430,12 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
             )}
 
             {/* Linked Accounts */}
-            <div className="p-6 border-b border-white/10">
-              <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+            <div className="p-6 border-b border-border">
+              <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wider mb-3">
                 Linked Accounts ({linkedAccounts.length})
               </h3>
               {linkedAccounts.length === 0 ? (
-                <p className="text-sm text-gray-500">No linked accounts</p>
+                <p className="text-sm text-content-muted">No linked accounts</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {linkedAccounts.map(account => (
@@ -444,29 +444,29 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
                       href={getPlatformUrl(account.platform, account.username)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
+                      className="flex items-center gap-3 p-3 bg-surface-hover hover:bg-surface-hover border border-border rounded-xl transition-all group"
                     >
                       {account.profilePicture ? (
                         <img src={account.profilePicture} alt="" className="w-9 h-9 rounded-full object-cover" />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-400">
+                        <div className="w-9 h-9 rounded-full bg-surface-active flex items-center justify-center text-content-muted">
                           {getPlatformIcon(account.platform)}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-medium text-white truncate">
+                          <span className="text-sm font-medium text-content truncate">
                             @{account.username}
                           </span>
                           {getPlatformIcon(account.platform)}
                         </div>
                         {account.followerCount !== undefined && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-content-muted">
                             {formatNumber(account.followerCount)} followers
                           </span>
                         )}
                       </div>
-                      <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-gray-300 transition-colors flex-shrink-0" />
+                      <ExternalLink className="w-4 h-4 text-content-muted group-hover:text-content-secondary transition-colors flex-shrink-0" />
                     </a>
                   ))}
                 </div>
@@ -475,16 +475,16 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
 
             {/* Recent Videos */}
             <div className="p-6">
-              <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+              <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wider mb-3">
                 Recent Videos ({videos.length})
               </h3>
               {videoSubmissions.length === 0 ? (
                 <div className="text-center py-8">
-                  <Video className="w-10 h-10 text-gray-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No videos yet</p>
+                  <Video className="w-10 h-10 text-content-muted mx-auto mb-2" />
+                  <p className="text-sm text-content-muted">No videos yet</p>
                 </div>
               ) : (
-                <div className="max-h-[400px] overflow-y-auto rounded-xl border border-white/5">
+                <div className="max-h-[400px] overflow-y-auto rounded-xl border border-border-subtle">
                   <VideoSubmissionsTable submissions={videoSubmissions.slice(0, 20)} />
                 </div>
               )}

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+// ThemeProvider is in main.tsx
 import EmailVerificationScreen from './components/EmailVerificationScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFoundPage from './pages/NotFoundPage';
@@ -28,7 +29,7 @@ const SettingsPageWrapper = lazy(() => import('./pages/SettingsPageWrapper'));
 // const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
 // const RevenuePage = lazy(() => import('./pages/RevenuePage'));
 const TeamMembersPage = lazy(() => import('./pages/TeamMembersPage'));
-const LinkRedirect = lazy(() => import('./components/LinkRedirect'));
+// LinkRedirect removed - Vercel server-side redirect in vercel.json + api/redirect.ts handles /l/:shortId
 const ContractSigningPage = lazy(() => import('./pages/ContractSigningPage'));
 const ContractEditorPage = lazy(() => import('./pages/ContractEditorPage'));
 const CreateContractPage = lazy(() => import('./pages/CreateContractPage'));
@@ -150,8 +151,8 @@ function App() {
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
-        <Route path="/l/:shortId" element={<LinkRedirect />} />
-        
+        {/* /l/:shortId handled by Vercel server-side redirect (api/redirect.ts) - no React fallback needed */}
+
         {/* Creator invitation portal - public route */}
         <Route path="/invitations/:invitationId" element={<CreatorInvitationPage />} />
 

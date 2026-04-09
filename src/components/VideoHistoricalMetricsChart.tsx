@@ -217,10 +217,9 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
 
     return (
       <div
-        className="rounded-lg border border-white/10 shadow-xl p-3 min-w-[160px]"
-        style={{ backgroundColor: 'rgba(18, 18, 20, 0.98)' }}
+        className="rounded-lg border border-border shadow-xl p-3 min-w-[160px] bg-surface-tertiary"
       >
-        <div className="text-xs text-gray-400 mb-2">{dataPoint.date}</div>
+        <div className="text-xs text-content-muted mb-2">{dataPoint.date}</div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -228,11 +227,11 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: '#3b82f6' }}
               />
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-content-muted">
                 {currentMetric.label}:
               </span>
             </div>
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-content">
               {displayValue}
             </span>
           </div>
@@ -243,11 +242,11 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
 
   if (data.length === 0) {
     return (
-      <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214', height: '400px' }}>
+      <div className="relative rounded-2xl border border-border-subtle shadow-theme overflow-hidden bg-surface-secondary" style={{ height: '400px' }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-gray-500 text-sm mb-2">No historical data available</div>
-            <div className="text-gray-600 text-xs">Snapshots will appear as data is collected</div>
+            <div className="text-content-muted text-sm mb-2">No historical data available</div>
+            <div className="text-content-muted text-xs">Snapshots will appear as data is collected</div>
           </div>
         </div>
       </div>
@@ -255,22 +254,14 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
   }
 
   return (
-    <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden select-none" style={{ backgroundColor: '#121214', userSelect: 'none' }}>
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
-
+    <div className="relative rounded-2xl border border-border-subtle shadow-theme overflow-hidden select-none bg-surface-secondary" style={{ userSelect: 'none' }}>
       {/* Header with Title and Selectors */}
-      <div className="relative px-6 pt-5 pb-3 flex items-center justify-between border-b border-white/5" style={{ zIndex: 100 }}>
+      <div className="relative px-6 pt-5 pb-3 flex items-center justify-between border-b border-border-subtle" style={{ zIndex: 100 }}>
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-white/5 border border-white/5">
-            <TrendingUp className="w-4 h-4 text-gray-400" />
+          <div className="p-1.5 rounded-lg bg-surface-hover border border-border-subtle">
+            <TrendingUp className="w-4 h-4 text-content-muted" />
           </div>
-          <h3 className="text-base font-semibold text-white">
+          <h3 className="text-base font-semibold text-content">
             Performance Over Time
           </h3>
         </div>
@@ -281,16 +272,12 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           <div className="relative z-30">
             <button
               onClick={() => setIsTimeFrameDropdownOpen(!isTimeFrameDropdownOpen)}
-              className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none"
-              style={{
-                backgroundColor: isTimeFrameDropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-                borderColor: isTimeFrameDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
-              }}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none ${isTimeFrameDropdownOpen ? 'bg-surface-tertiary border-border-strong' : 'bg-surface-hover border-border'}`}
             >
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-sm font-semibold text-white">{currentTimeFrame.label}</span>
-              <ChevronDown 
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isTimeFrameDropdownOpen ? 'rotate-180' : ''}`} 
+              <Calendar className="w-3.5 h-3.5 text-content-muted" />
+              <span className="text-sm font-semibold text-content">{currentTimeFrame.label}</span>
+              <ChevronDown
+                className={`w-4 h-4 text-content-muted transition-transform duration-200 ${isTimeFrameDropdownOpen ? 'rotate-180' : ''}`} 
               />
             </button>
 
@@ -305,11 +292,9 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 />
                 
                 {/* Menu */}
-                <div 
-                  className="absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl overflow-hidden"
-                  style={{ 
-                    backgroundColor: '#0a0a0b',
-                    borderColor: 'rgba(255,255,255,0.1)',
+                <div
+                  className="absolute right-0 mt-2 w-48 rounded-xl border border-border shadow-2xl overflow-hidden bg-surface-secondary"
+                  style={{
                     zIndex: 10000,
                   }}
                 >
@@ -323,26 +308,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                           setTimeFrame(option.value);
                           setIsTimeFrameDropdownOpen(false);
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 transition-all outline-none focus:outline-none"
-                        style={{
-                          backgroundColor: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }
-                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 transition-all outline-none focus:outline-none ${isSelected ? 'bg-surface-hover' : 'hover:bg-surface-hover'}`}
                       >
-                        <span className="text-sm font-medium text-white flex-1 text-left">
+                        <span className="text-sm font-medium text-content flex-1 text-left">
                           {option.label}
                         </span>
                         {isSelected && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-content" />
                         )}
                       </button>
                     );
@@ -356,15 +328,11 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           <div className="relative z-30">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none"
-            style={{
-              backgroundColor: isDropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-              borderColor: isDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
-            }}
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none ${isDropdownOpen ? 'bg-surface-tertiary border-border-strong' : 'bg-surface-hover border-border'}`}
           >
-            <span className="text-sm font-semibold text-white">{currentMetric.label}</span>
-            <ChevronDown 
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
+            <span className="text-sm font-semibold text-content">{currentMetric.label}</span>
+            <ChevronDown
+              className={`w-4 h-4 text-content-muted transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
             />
           </button>
 
@@ -379,11 +347,9 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               />
               
               {/* Menu */}
-              <div 
-                className="absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl overflow-hidden"
-                style={{ 
-                  backgroundColor: '#0a0a0b',
-                  borderColor: 'rgba(255,255,255,0.1)',
+              <div
+                className="absolute right-0 mt-2 w-48 rounded-xl border border-border shadow-2xl overflow-hidden bg-surface-secondary"
+                style={{
                   zIndex: 10000,
                 }}
               >
@@ -397,26 +363,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                         setSelectedMetric(metric.key);
                         setIsDropdownOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 transition-all outline-none focus:outline-none"
-                      style={{
-                        backgroundColor: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }
-                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 transition-all outline-none focus:outline-none ${isSelected ? 'bg-surface-hover' : 'hover:bg-surface-hover'}`}
                     >
-                      <span className="text-sm font-medium text-white flex-1 text-left">
+                      <span className="text-sm font-medium text-content flex-1 text-left">
                         {metric.label}
                       </span>
                       {isSelected && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-content" />
                       )}
                     </button>
                   );
@@ -429,13 +382,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
       </div>
 
       {/* Chart */}
-      <div className="relative z-10 p-6 pt-16" style={{ height: '400px' }}>
+      <div className="relative p-6 pt-16" style={{ height: '400px' }}>
         {/* Total Amount Display - Above Chart */}
         <div className="absolute top-6 right-8 z-20 text-right">
-          <div className="text-xs text-gray-500 mb-0.5 font-medium tracking-wide uppercase">
+          <div className="text-xs text-content-muted mb-0.5 font-medium tracking-wide uppercase">
             Current {currentMetric.label}
           </div>
-          <div className="text-4xl font-bold tracking-tight text-white">
+          <div className="text-4xl font-bold tracking-tight text-content">
             {formattedTotal}
           </div>
         </div>
@@ -454,23 +407,23 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             
             <CartesianGrid 
               strokeDasharray="3 3" 
-              stroke="rgba(255,255,255,0.03)" 
+              stroke="var(--border)" 
               vertical={false}
             />
             
             <XAxis 
               dataKey="date"
-              stroke="rgba(255,255,255,0.3)"
-              tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
-              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+              stroke="var(--content-muted)"
+              tick={{ fill: 'var(--content-secondary)', fontSize: 12 }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickLine={false}
               dy={5}
             />
             
             <YAxis 
-              stroke="rgba(255,255,255,0.3)"
-              tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
-              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+              stroke="var(--content-muted)"
+              tick={{ fill: 'var(--content-secondary)', fontSize: 12 }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickLine={false}
               dx={-5}
               tickFormatter={(value) => {
@@ -513,13 +466,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 fill: '#3b82f6', 
                 strokeWidth: 2, 
                 r: 5,
-                stroke: '#121214',
+                stroke: 'var(--surface-secondary)',
                 style: { cursor: 'pointer' }
               }}
               activeDot={{ 
                 r: 7, 
                 fill: '#3b82f6',
-                stroke: '#121214',
+                stroke: 'var(--surface-secondary)',
                 strokeWidth: 2,
                 style: { cursor: 'pointer' }
               }}
@@ -532,8 +485,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
 
       {/* Watermark */}
       <div 
-        className="absolute bottom-4 right-6 text-xs font-semibold tracking-wider opacity-10 pointer-events-none"
-        style={{ color: 'white' }}
+        className="absolute bottom-4 right-6 text-xs font-semibold tracking-wider opacity-10 pointer-events-none text-content"
       >
         viewtrack.app
       </div>

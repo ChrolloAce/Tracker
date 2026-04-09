@@ -265,26 +265,22 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
     <div className="min-h-[400px]">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-white">Top Platforms</h2>
+          <h2 className="text-lg font-semibold text-content">Top Platforms</h2>
           <div className="relative">
             <button
               onMouseEnter={() => setShowInfo(true)}
               onMouseLeave={() => setShowInfo(false)}
-              className="text-gray-500 hover:text-gray-400 transition-colors"
+              className="text-content-muted hover:text-content-secondary transition-colors"
             >
               <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
             </button>
             
             {/* Info Tooltip */}
             {showInfo && (
-              <div 
-                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg border shadow-xl z-50"
-                style={{
-                  backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                  borderColor: 'rgba(255, 255, 255, 0.1)'
-                }}
+              <div
+                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg bg-surface-tertiary border border-border shadow-xl z-50"
               >
-                <p className="text-xs text-gray-300 leading-relaxed">
+                <p className="text-xs text-content-secondary leading-relaxed">
                   Compares performance across Instagram, TikTok, YouTube, and Twitter. Helps you identify which platforms drive the most engagement.
                 </p>
               </div>
@@ -298,13 +294,13 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
             <select
               value={topCount}
               onChange={(e) => setTopCount(Number(e.target.value))}
-              className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+              className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border-subtle hover:bg-surface-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-all cursor-pointer"
             >
-              <option value={3} className="bg-gray-900">3</option>
-              <option value={5} className="bg-gray-900">5</option>
-              <option value={10} className="bg-gray-900">10</option>
+              <option value={3} className="bg-surface-secondary">3</option>
+              <option value={5} className="bg-surface-secondary">5</option>
+              <option value={10} className="bg-surface-secondary">10</option>
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
           </div>
 
           {/* Metric Selector */}
@@ -312,16 +308,16 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
             <select
               value={selectedMetric}
               onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
-              className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+              className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border-subtle hover:bg-surface-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-all cursor-pointer"
             >
-              <option value="views" className="bg-gray-900">Views</option>
-              <option value="likes" className="bg-gray-900">Likes</option>
-              <option value="comments" className="bg-gray-900">Comments</option>
-              <option value="shares" className="bg-gray-900">Shares</option>
-              <option value="engagement" className="bg-gray-900">Engagement</option>
-              <option value="videos" className="bg-gray-900">Video Count</option>
+              <option value="views" className="bg-surface-secondary">Views</option>
+              <option value="likes" className="bg-surface-secondary">Likes</option>
+              <option value="comments" className="bg-surface-secondary">Comments</option>
+              <option value="shares" className="bg-surface-secondary">Shares</option>
+              <option value="engagement" className="bg-surface-secondary">Engagement</option>
+              <option value="videos" className="bg-surface-secondary">Video Count</option>
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
           </div>
         </div>
       </div>
@@ -329,7 +325,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
       {/* Platform Race Bars */}
       <div className="space-y-3">
         {topPlatforms.length === 0 ? (
-          <div className="text-center py-16 text-white/40">
+          <div className="text-center py-16 text-content-muted">
             <p className="text-sm">No platform data available</p>
           </div>
         ) : (
@@ -340,7 +336,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
             return (
               <div
                 key={platform.platform}
-                className="group relative cursor-pointer"
+                className={`group relative cursor-pointer py-2 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                 }}
@@ -356,14 +352,14 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
-                    barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                    barElement.style.background = 'linear-gradient(to right, #fb923c, #f97316)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   setHoveredPlatform(null);
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
-                    barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
+                    barElement.style.background = 'linear-gradient(to right, #f97316, #ea580c)';
                   }
                 }}
               >
@@ -371,7 +367,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                 <div className="relative h-10 flex items-center">
                   {/* Platform Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm relative flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-subtle bg-surface-tertiary backdrop-blur-sm relative flex items-center justify-center">
                       <PlatformIcon platform={platform.platform} className="w-6 h-6" />
                     </div>
                   </div>
@@ -384,14 +380,14 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                         style={{
                           width: `${percentage}%`,
                           minWidth: '8%',
-                          background: 'linear-gradient(to right, #52525B, #3F3F46)'
+                          background: 'linear-gradient(to right, #f97316, #ea580c)'
                         }}
                       >
                       </div>
                     </div>
                     {/* Metric Value - Always on Right */}
                     <div className="ml-4 min-w-[100px] text-right">
-                      <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                      <span className="text-lg font-semibold text-content tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                         {formatNumber(value, selectedMetric)}
                       </span>
                     </div>
@@ -413,7 +409,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
             transform: 'translate(-50%, -100%)'
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[380px]">
+          <div className="bg-surface-tertiary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border w-[380px]">
             {(() => {
               // Find the platform data
               const platformStats = topPlatforms.find(p => p.platform === hoveredPlatform.platform);
@@ -432,18 +428,18 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                 <>
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
                       {getPlatformName(hoveredPlatform.platform)}
                     </p>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-2xl font-bold text-content">
                         {formatNumber(totalValue, selectedMetric)}
                       </p>
                     </div>
                   </div>
                   
                   {/* Divider */}
-                  <div className="border-t border-white/10 mx-5"></div>
+                  <div className="border-t border-border-subtle mx-5"></div>
                   
                   {/* Video List */}
                   <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '400px' }}>
@@ -461,10 +457,10 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                       return (
                         <div
                           key={video.id || idx}
-                          className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-b-0"
+                          className="flex items-center gap-3 py-2.5 border-b border-border-subtle last:border-b-0"
                         >
                           {/* Thumbnail */}
-                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-surface-tertiary">
                             {video.thumbnail ? (
                               <img 
                                 src={video.thumbnail} 
@@ -473,21 +469,21 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Play className="w-5 h-5 text-gray-600" />
+                                <Play className="w-5 h-5 text-content-muted" />
                               </div>
                             )}
                           </div>
 
                           {/* Metadata */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                            <p className="text-sm text-content font-medium truncate leading-tight mb-1">
                               {video.title || video.caption || '(No caption)'}
                             </p>
                             <div className="flex items-center gap-1.5">
                               <div className="w-4 h-4">
                                 <PlatformIcon platform={video.platform} size="sm" />
                               </div>
-                              <span className="text-xs text-gray-400 lowercase">
+                              <span className="text-xs text-content-muted lowercase">
                                 {video.uploaderHandle || video.platform}
                               </span>
                             </div>
@@ -495,7 +491,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
 
                           {/* Metric Value */}
                           <div className="flex-shrink-0 text-right">
-                            <p className="text-sm font-semibold text-white tabular-nums">
+                            <p className="text-sm font-semibold text-content tabular-nums">
                               {formatNum(videoValue)}
                             </p>
                           </div>
@@ -504,15 +500,15 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                     })}
 
                     {platformVideos.length === 0 && (
-                      <div className="text-center py-4 text-gray-400 text-sm">
+                      <div className="text-center py-4 text-content-muted text-sm">
                         No videos found
                       </div>
                     )}
                   </div>
 
                   {/* Footer */}
-                  <div className="px-5 py-3 border-t border-white/10">
-                    <div className="text-xs text-gray-400 text-center">
+                  <div className="px-5 py-3 border-t border-border-subtle">
+                    <div className="text-xs text-content-muted text-center">
                       {platformStats.videoCount} total {platformStats.videoCount === 1 ? 'video' : 'videos'}
                     </div>
                   </div>

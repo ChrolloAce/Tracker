@@ -229,24 +229,24 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
       case 'flat':
         if (!flatAmount || !flatViewTarget) return null;
         return (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold text-white">${parseFloat(flatAmount).toLocaleString()}</div>
-            <div className="text-sm text-white/50 mt-1">for reaching {fmtViews(parseInt(flatViewTarget))} views</div>
+          <div className="bg-surface-hover border border-border rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-content">${parseFloat(flatAmount).toLocaleString()}</div>
+            <div className="text-sm text-content-muted mt-1">for reaching {fmtViews(parseInt(flatViewTarget))} views</div>
           </div>
         );
       case 'tiered':
         if (tiers.length === 0) return null;
         return (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
+          <div className="bg-surface-hover border border-border rounded-xl p-4 space-y-2">
             {[...tiers].sort((a, b) => a.viewThreshold - b.viewThreshold).map((t, i) => (
               <div key={i} className="flex items-center justify-between text-sm">
-                <span className="text-white/60">{fmtViews(t.viewThreshold)} views</span>
-                <span className="text-white font-semibold">${t.payout.toLocaleString()}</span>
+                <span className="text-content-secondary">{fmtViews(t.viewThreshold)} views</span>
+                <span className="text-content font-semibold">${t.payout.toLocaleString()}</span>
               </div>
             ))}
-            <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm font-bold">
-              <span className="text-white/60">Max payout</span>
-              <span className="text-white">${tiers.reduce((s, t) => s + t.payout, 0).toLocaleString()}</span>
+            <div className="border-t border-border pt-2 flex items-center justify-between text-sm font-bold">
+              <span className="text-content-secondary">Max payout</span>
+              <span className="text-content">${tiers.reduce((s, t) => s + t.payout, 0).toLocaleString()}</span>
             </div>
           </div>
         );
@@ -254,10 +254,10 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
         if (!cpmRate) return null;
         const rate = parseFloat(cpmRate);
         return (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="bg-surface-hover border border-border rounded-xl p-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">${rate.toFixed(2)} <span className="text-sm font-normal text-white/50">CPM</span></div>
-              <div className="text-xs text-white/40 mt-2">Example: 100K views = ${(rate * 100).toLocaleString()}</div>
+              <div className="text-2xl font-bold text-content">${rate.toFixed(2)} <span className="text-sm font-normal text-content-muted">CPM</span></div>
+              <div className="text-xs text-content-muted mt-2">Example: 100K views = ${(rate * 100).toLocaleString()}</div>
             </div>
           </div>
         );
@@ -266,11 +266,11 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
         const base = parseFloat(flatBase);
         const cpmTop = parseFloat(cpmRateOnTop);
         return (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold text-white">
-              ${base.toLocaleString()} <span className="text-white/40 text-lg">+</span> ${cpmTop.toFixed(2)} <span className="text-sm font-normal text-white/50">CPM</span>
+          <div className="bg-surface-hover border border-border rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-content">
+              ${base.toLocaleString()} <span className="text-content-muted text-lg">+</span> ${cpmTop.toFixed(2)} <span className="text-sm font-normal text-content-muted">CPM</span>
             </div>
-            <div className="text-xs text-white/40 mt-2">
+            <div className="text-xs text-content-muted mt-2">
               Example at 100K views: ${base.toLocaleString()} + ${(cpmTop * 100).toLocaleString()} = ${(base + cpmTop * 100).toLocaleString()}
             </div>
           </div>
@@ -283,17 +283,17 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-[#0A0A0A] rounded-2xl shadow-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col"
+        className="bg-surface-secondary rounded-2xl shadow-2xl border border-border w-full max-w-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div>
-            <h2 className="text-lg font-semibold text-white">Payment Plan</h2>
-            <p className="text-sm text-white/50 mt-0.5">{creator.displayName || creator.email}</p>
+            <h2 className="text-lg font-semibold text-content">Payment Plan</h2>
+            <p className="text-sm text-content-muted mt-0.5">{creator.displayName || creator.email}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-white/40" />
+          <button onClick={onClose} className="p-2 hover:bg-surface-hover rounded-lg transition-colors">
+            <X className="w-5 h-5 text-content-muted" />
           </button>
         </div>
 
@@ -301,13 +301,13 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 text-white/40 animate-spin" />
+              <Loader2 className="w-8 h-8 text-content-muted animate-spin" />
             </div>
           ) : (
             <>
               {/* Plan type selector */}
               <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-3">Deal Type</label>
+                <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Deal Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {PLAN_TYPES.map(pt => (
                     <button
@@ -315,21 +315,21 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                       onClick={() => setPlanType(pt.value)}
                       className={`p-3 rounded-xl border-2 text-left transition-all ${
                         planType === pt.value
-                          ? 'bg-white/10 border-white/30'
-                          : 'bg-white/[0.02] border-transparent hover:border-white/10'
+                          ? 'bg-surface-active border-border-strong'
+                          : 'bg-surface-inset border-transparent hover:border-border'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                          planType === pt.value ? 'bg-white/15 text-white' : 'bg-white/5 text-white/40'
+                          planType === pt.value ? 'bg-surface-active text-content' : 'bg-surface-hover text-content-muted'
                         }`}>
                           {pt.icon}
                         </div>
-                        <span className={`text-sm font-semibold ${planType === pt.value ? 'text-white' : 'text-white/70'}`}>
+                        <span className={`text-sm font-semibold ${planType === pt.value ? 'text-content' : 'text-content-secondary'}`}>
                           {pt.label}
                         </span>
                       </div>
-                      <p className="text-[11px] text-white/40 leading-tight ml-9">{pt.example}</p>
+                      <p className="text-[11px] text-content-muted leading-tight ml-9">{pt.example}</p>
                     </button>
                   ))}
                 </div>
@@ -337,35 +337,35 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
 
               {/* Plan-specific fields */}
               <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-3">Details</label>
+                <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Details</label>
 
                 {/* ── Flat ── */}
                 {planType === 'flat' && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-white/50 mb-1.5">Payout Amount</label>
+                      <label className="block text-xs text-content-muted mb-1.5">Payout Amount</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted text-sm">$</span>
                         <input
                           type="number"
                           value={flatAmount}
                           onChange={e => setFlatAmount(e.target.value)}
                           placeholder="300"
-                          className="w-full pl-7 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-white/50 mb-1.5">View Target</label>
+                      <label className="block text-xs text-content-muted mb-1.5">View Target</label>
                       <input
                         type="number"
                         value={flatViewTarget}
                         onChange={e => setFlatViewTarget(e.target.value)}
                         placeholder="150000"
-                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                        className="w-full px-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                       />
                       {flatViewTarget && (
-                        <div className="text-[11px] text-white/30 mt-1">{fmtViews(parseInt(flatViewTarget) || 0)} views</div>
+                        <div className="text-[11px] text-content-muted mt-1">{fmtViews(parseInt(flatViewTarget) || 0)} views</div>
                       )}
                     </div>
                   </div>
@@ -375,40 +375,40 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                 {planType === 'tiered' && (
                   <div className="space-y-3">
                     {tiers.map((tier, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded-lg p-3">
-                        <GripVertical className="w-4 h-4 text-white/20 flex-shrink-0" />
+                      <div key={i} className="flex items-center gap-2 bg-surface-inset border border-border-subtle rounded-lg p-3">
+                        <GripVertical className="w-4 h-4 text-content-muted flex-shrink-0" />
                         <div className="flex-1 grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-[10px] text-white/40 mb-1">Views</label>
+                            <label className="block text-[10px] text-content-muted mb-1">Views</label>
                             <input
                               type="number"
                               value={tier.viewThreshold || ''}
                               onChange={e => updateTier(i, { viewThreshold: parseInt(e.target.value) || 0 })}
                               placeholder="50000"
-                              className="w-full px-2.5 py-2 bg-white/5 border border-white/10 rounded text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                              className="w-full px-2.5 py-2 bg-surface-hover border border-border rounded text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-white/40 mb-1">Payout ($)</label>
+                            <label className="block text-[10px] text-content-muted mb-1">Payout ($)</label>
                             <div className="relative">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-xs">$</span>
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-content-muted text-xs">$</span>
                               <input
                                 type="number"
                                 value={tier.payout || ''}
                                 onChange={e => updateTier(i, { payout: parseFloat(e.target.value) || 0 })}
                                 placeholder="100"
-                                className="w-full pl-5 pr-2.5 py-2 bg-white/5 border border-white/10 rounded text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                                className="w-full pl-5 pr-2.5 py-2 bg-surface-hover border border-border rounded text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="block text-[10px] text-white/40 mb-1">Label</label>
+                            <label className="block text-[10px] text-content-muted mb-1">Label</label>
                             <input
                               type="text"
                               value={tier.label || ''}
                               onChange={e => updateTier(i, { label: e.target.value })}
                               placeholder="Bronze"
-                              className="w-full px-2.5 py-2 bg-white/5 border border-white/10 rounded text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                              className="w-full px-2.5 py-2 bg-surface-hover border border-border rounded text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                             />
                           </div>
                         </div>
@@ -422,7 +422,7 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                     ))}
                     <button
                       onClick={addTier}
-                      className="w-full px-4 py-2.5 bg-white/5 border border-dashed border-white/10 hover:border-white/20 rounded-lg flex items-center justify-center gap-2 text-white/50 hover:text-white text-sm transition-colors"
+                      className="w-full px-4 py-2.5 bg-surface-hover border border-dashed border-border hover:border-border rounded-lg flex items-center justify-center gap-2 text-content-muted hover:text-content text-sm transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Add Tier
@@ -433,16 +433,16 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                 {/* ── CPM ── */}
                 {planType === 'cpm' && (
                   <div className="max-w-xs">
-                    <label className="block text-xs text-white/50 mb-1.5">CPM Rate ($ per 1K views)</label>
+                    <label className="block text-xs text-content-muted mb-1.5">CPM Rate ($ per 1K views)</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted text-sm">$</span>
                       <input
                         type="number"
                         step="0.01"
                         value={cpmRate}
                         onChange={e => setCpmRate(e.target.value)}
                         placeholder="5.00"
-                        className="w-full pl-7 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                        className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                       />
                     </div>
                   </div>
@@ -452,29 +452,29 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                 {planType === 'flat_plus_cpm' && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-white/50 mb-1.5">Base Flat Amount</label>
+                      <label className="block text-xs text-content-muted mb-1.5">Base Flat Amount</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted text-sm">$</span>
                         <input
                           type="number"
                           value={flatBase}
                           onChange={e => setFlatBase(e.target.value)}
                           placeholder="200"
-                          className="w-full pl-7 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-white/50 mb-1.5">CPM Rate ($ per 1K views)</label>
+                      <label className="block text-xs text-content-muted mb-1.5">CPM Rate ($ per 1K views)</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted text-sm">$</span>
                         <input
                           type="number"
                           step="0.01"
                           value={cpmRateOnTop}
                           onChange={e => setCpmRateOnTop(e.target.value)}
                           placeholder="3.00"
-                          className="w-full pl-7 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full pl-7 pr-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                         />
                       </div>
                     </div>
@@ -485,14 +485,14 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
               {/* Preview */}
               {renderPreview() && (
                 <div>
-                  <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-3">Preview</label>
+                  <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Preview</label>
                   {renderPreview()}
                 </div>
               )}
 
               {/* Schedule */}
               <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-3">Payment Schedule</label>
+                <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Payment Schedule</label>
                 <div className="flex flex-wrap gap-2">
                   {SCHEDULES.map(s => (
                     <button
@@ -500,8 +500,8 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                       onClick={() => setSchedule(s.value)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                         schedule === s.value
-                          ? 'bg-white/10 border-white/30 text-white'
-                          : 'bg-white/[0.02] border-white/5 text-white/40 hover:text-white/60 hover:border-white/10'
+                          ? 'bg-surface-active border-border-strong text-content'
+                          : 'bg-surface-inset border-border-subtle text-content-muted hover:text-content-secondary hover:border-border'
                       }`}
                     >
                       {s.label}
@@ -514,20 +514,20 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
                     value={customSchedule}
                     onChange={e => setCustomSchedule(e.target.value)}
                     placeholder="e.g. Every 2 weeks after video goes live"
-                    className="w-full mt-2 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="w-full mt-2 px-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border"
                   />
                 )}
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-3">Notes <span className="font-normal">(optional)</span></label>
+                <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wider mb-3">Notes <span className="font-normal">(optional)</span></label>
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   placeholder="Any additional terms or notes about this deal..."
                   rows={2}
-                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
+                  className="w-full px-3 py-2.5 bg-surface-hover border border-border rounded-lg text-content text-sm placeholder-content-muted focus:outline-none focus:ring-1 focus:ring-border resize-none"
                 />
               </div>
             </>
@@ -542,7 +542,7 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border flex-shrink-0">
           <div>
             {existingPlan && (
               <button
@@ -558,7 +558,7 @@ const CreatorPaymentPlanModal: React.FC<CreatorPaymentPlanModalProps> = ({
             <button
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors"
+              className="px-4 py-2 text-sm font-medium text-content-secondary hover:text-content transition-colors"
             >
               Cancel
             </button>

@@ -218,7 +218,7 @@ const ContractsManagementPage: React.FC = () => {
           signedDate = formatTimestamp(laterTimestamp);
         }
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 rounded-md text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 border border-green-200 rounded-md text-xs font-medium">
             <Check className="w-3 h-3" />
             Signed {signedDate}
           </span>
@@ -227,8 +227,8 @@ const ContractsManagementPage: React.FC = () => {
       case 'pending': {
         const pendingCount = countPendingSignatures(contract);
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 text-neutral-300 rounded-md text-xs font-medium whitespace-nowrap">
-            <Clock className="w-3 h-3 text-neutral-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-xs font-medium whitespace-nowrap">
+            <Clock className="w-3 h-3 text-amber-500" />
             {pendingCount} signature{pendingCount !== 1 ? 's' : ''} pending
           </span>
         );
@@ -249,7 +249,7 @@ const ContractsManagementPage: React.FC = () => {
           }
         }
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-400 rounded-md text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 border border-red-200 rounded-md text-xs font-medium">
             <X className="w-3 h-3" />
             Expired {expiredDate}
           </span>
@@ -257,7 +257,7 @@ const ContractsManagementPage: React.FC = () => {
       }
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 text-neutral-400 rounded-md text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-tertiary text-content-muted border border-border rounded-md text-xs font-medium">
             <FileText className="w-3 h-3" />
             Draft
           </span>
@@ -307,7 +307,7 @@ const ContractsManagementPage: React.FC = () => {
                 : 'bg-transparent border-gray-500'
             }`}
           />
-          <span className="text-[11px] text-gray-400">Creator</span>
+          <span className="text-[11px] text-content-muted">Creator</span>
         </div>
         {/* Company */}
         <div className="flex items-center gap-1" title={companySigned ? `Company signed: ${contract.companySignature?.name}` : 'Company has not signed'}>
@@ -318,7 +318,7 @@ const ContractsManagementPage: React.FC = () => {
                 : 'bg-transparent border-gray-500'
             }`}
           />
-          <span className="text-[11px] text-gray-400">Company</span>
+          <span className="text-[11px] text-content-muted">Company</span>
         </div>
       </div>
     );
@@ -328,8 +328,8 @@ const ContractsManagementPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading contracts...</p>
+          <div className="w-12 h-12 border-4 border-border-strong border-t-content rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-content-muted">Loading contracts...</p>
         </div>
       </div>
     );
@@ -341,7 +341,7 @@ const ContractsManagementPage: React.FC = () => {
       <div className="flex gap-3 mb-6">
         {/* Search */}
         <div className="relative w-80">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input
             type="text"
             placeholder="Search by creator name or email..."
@@ -350,20 +350,20 @@ const ContractsManagementPage: React.FC = () => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+            className="w-full pl-10 pr-4 py-2 bg-surface-secondary border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-strong"
           />
         </div>
 
         {/* Status Filter - Icon Only */}
         <div className="relative">
-          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none z-10" />
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value as any);
               setCurrentPage(1);
             }}
-            className="pl-10 pr-3 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer"
+            className="pl-10 pr-3 py-2 bg-surface-secondary border border-border rounded-lg text-content focus:outline-none focus:ring-2 focus:ring-border-strong appearance-none cursor-pointer"
             title="Filter by status"
           >
             <option value="all">All</option>
@@ -377,20 +377,20 @@ const ContractsManagementPage: React.FC = () => {
 
       {/* Contracts List - Dashboard Style */}
       {filteredContracts.length === 0 ? (
-        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
-          <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No contracts found</h3>
-          <p className="text-gray-400">
+        <div className="rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-theme p-12 text-center">
+          <FileText className="w-16 h-16 text-content-muted mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-content mb-2">No contracts found</h3>
+          <p className="text-content-muted">
             {searchTerm || statusFilter !== 'all'
               ? 'Try adjusting your filters'
               : 'Create your first contract to get started'}
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+        <div className="rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-theme overflow-hidden">
           {/* Table Header */}
-          <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
+          <div className="px-6 py-5 border-b border-border-subtle bg-surface-secondary flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-content">
               All Contracts ({filteredContracts.length})
             </h2>
           </div>
@@ -399,35 +399,35 @@ const ContractsManagementPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                <tr className="border-b border-border-subtle">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Creator
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Signatures
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Contract Period
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Quick Actions
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-medium text-content-muted uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {paginatedContracts.map((contract) => {
                   const effectiveStatus = resolveEffectiveStatus(contract);
                   return (
-                  <tr key={contract.id} className="hover:bg-white/5 transition-colors group">
+                  <tr key={contract.id} className="hover:bg-surface-hover transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2.5">
                         {contract.creatorPhotoURL ? (
@@ -438,8 +438,8 @@ const ContractsManagementPage: React.FC = () => {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white truncate">{contract.creatorName}</div>
-                          {contract.creatorEmail && <div className="text-xs text-gray-400 truncate">{contract.creatorEmail}</div>}
+                          <div className="text-sm font-semibold text-content truncate">{contract.creatorName}</div>
+                          {contract.creatorEmail && <div className="text-xs text-content-muted truncate">{contract.creatorEmail}</div>}
                         </div>
                       </div>
                     </td>
@@ -453,12 +453,12 @@ const ContractsManagementPage: React.FC = () => {
                       {getSignatureProgress(contract)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-white whitespace-nowrap">
+                      <div className="text-sm text-content whitespace-nowrap">
                         {formatDate(contract.contractStartDate)}{contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? ` - ${formatDate(contract.contractEndDate)}` : ' - Indefinite'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-content-muted">
                         {contract.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                       </div>
                     </td>
@@ -512,10 +512,10 @@ const ContractsManagementPage: React.FC = () => {
                             e.stopPropagation();
                             setOpenMenuId(openMenuId === contract.id ? null : contract.id);
                           }}
-                          className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                          className="p-1.5 hover:bg-surface-active rounded transition-colors"
                           title="More actions"
                         >
-                          <MoreVertical className="w-4 h-4 text-gray-400" />
+                          <MoreVertical className="w-4 h-4 text-content-muted" />
                         </button>
 
                         {/* Dropdown Menu */}
@@ -528,15 +528,15 @@ const ContractsManagementPage: React.FC = () => {
                             />
 
                             {/* Menu */}
-                            <div className="absolute right-0 top-8 w-48 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-[9999] overflow-hidden">
+                            <div className="absolute right-0 top-8 w-48 bg-surface-tertiary border border-border rounded-lg shadow-xl z-[9999] overflow-hidden">
                               {/* Edit */}
                               <button
                                 onClick={() => { setOpenMenuId(null); navigate(`/contracts/edit/${contract.id}`); }}
                                 disabled={!!contract.creatorSignature}
                                 className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-3 ${
                                   contract.creatorSignature
-                                    ? 'text-gray-500 cursor-not-allowed opacity-50'
-                                    : 'text-white hover:bg-white/10'
+                                    ? 'text-content-muted cursor-not-allowed opacity-50'
+                                    : 'text-content hover:bg-surface-active'
                                 }`}
                                 title={contract.creatorSignature ? 'Cannot edit — creator already signed' : 'Edit contract'}
                               >
@@ -547,7 +547,7 @@ const ContractsManagementPage: React.FC = () => {
                               {/* Download */}
                               <button
                                 onClick={() => handleDownloadContract(contract)}
-                                className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                                className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-active transition-colors flex items-center gap-3"
                               >
                                 <Download className="w-4 h-4 text-blue-400" />
                                 Download Contract
@@ -559,8 +559,8 @@ const ContractsManagementPage: React.FC = () => {
                                 disabled={!contract.creatorEmail}
                                 className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-3 ${
                                   contract.creatorEmail
-                                    ? 'text-white hover:bg-white/10'
-                                    : 'text-gray-500 cursor-not-allowed opacity-50'
+                                    ? 'text-content hover:bg-surface-active'
+                                    : 'text-content-muted cursor-not-allowed opacity-50'
                                 }`}
                                 title={!contract.creatorEmail ? 'No email available' : 'Send copy to creator'}
                               >
@@ -573,7 +573,7 @@ const ContractsManagementPage: React.FC = () => {
                                 <button
                                   onClick={() => handleRenewContract(contract.id)}
                                   disabled={renewingId === contract.id}
-                                  className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-active transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   <RefreshCw className={`w-4 h-4 text-amber-400 ${renewingId === contract.id ? 'animate-spin' : ''}`} />
                                   {renewingId === contract.id ? 'Renewing...' : 'Renew Contract'}
@@ -586,7 +586,7 @@ const ContractsManagementPage: React.FC = () => {
                                   setDeleteConfirmId(contract.id);
                                   setOpenMenuId(null);
                                 }}
-                                className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-red-500/20 transition-colors flex items-center gap-3 border-t border-white/5"
+                                className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-red-500/20 transition-colors flex items-center gap-3 border-t border-border-subtle"
                               >
                                 <Trash2 className="w-4 h-4 text-red-400" />
                                 Delete Contract
@@ -634,14 +634,14 @@ const ContractsManagementPage: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-2xl border border-white/10 max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-surface-secondary rounded-2xl border border-border max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
                 <Trash2 className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">Delete Contract</h3>
-                <p className="text-sm text-gray-400">This action cannot be undone</p>
+                <h3 className="text-lg font-semibold text-content">Delete Contract</h3>
+                <p className="text-sm text-content-muted">This action cannot be undone</p>
               </div>
             </div>
 
@@ -653,18 +653,18 @@ const ContractsManagementPage: React.FC = () => {
               <button
                 onClick={() => setDeleteConfirmId(null)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteContract(deleteConfirmId)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-border-strong border-t-content rounded-full animate-spin"></div>
                     Deleting...
                   </>
                 ) : (

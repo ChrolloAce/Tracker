@@ -225,6 +225,21 @@
         { "fieldPath": "folderId", "order": "ASCENDING" },
         { "fieldPath": "savedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "linkClicks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "linkClicks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "linkId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -661,41 +661,27 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
     <div className={showBoth ? "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" : ""}>
       {/* Top Videos */}
       {showVideos && (
-      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-        {/* Depth Gradient Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-          }}
-        />
-        
-        {/* Content Layer */}
-        <div className="relative z-10">
+      <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-white">{type === 'gainers' ? 'Top Refreshed Videos' : 'Top New Videos'}</h2>
+            <h2 className="text-lg font-semibold text-content">{type === 'gainers' ? 'Top Refreshed Videos' : 'Top New Videos'}</h2>
             <div className="relative">
               <button
                 onMouseEnter={() => setShowVideosInfo(true)}
                 onMouseLeave={() => setShowVideosInfo(false)}
-                className="text-gray-500 hover:text-gray-400 transition-colors"
+                className="text-content-muted hover:text-content-secondary transition-colors"
               >
                 <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
               </button>
               
               {/* Info Tooltip */}
               {showVideosInfo && (
-                <div 
-                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
-                  style={{
-                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                    borderColor: 'rgba(255, 255, 255, 0.1)'
-                  }}
+                <div
+                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg bg-surface-tertiary border border-border shadow-xl z-50"
                 >
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    {type === 'gainers' 
+                  <p className="text-xs text-content-secondary leading-relaxed">
+                    {type === 'gainers'
                       ? 'Shows old videos (uploaded before the selected period) that gained the most engagement during the selected timeframe. Only shows snapshot growth during this period.'
                       : 'Shows videos uploaded during the selected timeframe with their full performance metrics. Perfect for seeing what new content performed best.'
                     }
@@ -710,31 +696,31 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
               <select
                 value={topVideosCount}
                 onChange={(e) => setTopVideosCount(Number(e.target.value))}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+                className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border-subtle hover:bg-surface-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-all cursor-pointer"
               >
-                <option value={3} className="bg-gray-900">3</option>
-                <option value={5} className="bg-gray-900">5</option>
-                <option value={10} className="bg-gray-900">10</option>
+                <option value={3} className="bg-surface-secondary">3</option>
+                <option value={5} className="bg-surface-secondary">5</option>
+                <option value={10} className="bg-surface-secondary">10</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
             </div>
             {/* Metric Selector */}
             <div className="relative">
               <select
                 value={videosMetric}
                 onChange={(e) => setVideosMetric(e.target.value as MetricType)}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+                className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border-subtle hover:bg-surface-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-all cursor-pointer"
               >
-                <option value="views" className="bg-gray-900">Views</option>
-                <option value="likes" className="bg-gray-900">Likes</option>
-                <option value="comments" className="bg-gray-900">Comments</option>
-                <option value="shares" className="bg-gray-900">Shares</option>
-                <option value="bookmarks" className="bg-gray-900">Bookmarks</option>
-                <option value="engagement" className="bg-gray-900">Engagement</option>
-                <option value="virality" className="bg-gray-900">Virality Score</option>
-                <option value="followersGained" className="bg-gray-900">Followers Gained</option>
+                <option value="views" className="bg-surface-secondary">Views</option>
+                <option value="likes" className="bg-surface-secondary">Likes</option>
+                <option value="comments" className="bg-surface-secondary">Comments</option>
+                <option value="shares" className="bg-surface-secondary">Shares</option>
+                <option value="bookmarks" className="bg-surface-secondary">Bookmarks</option>
+                <option value="engagement" className="bg-surface-secondary">Engagement</option>
+                <option value="virality" className="bg-surface-secondary">Virality Score</option>
+                <option value="followersGained" className="bg-surface-secondary">Followers Gained</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
             </div>
           </div>
         </div>
@@ -742,15 +728,15 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
         {/* Race Bars */}
         <div className="space-y-3">
           {topVideos.map((video, index) => {
-            const value = type === 'gainers' 
+            const value = type === 'gainers'
               ? calculateSnapshotGainInDateRange(video, videosMetric)
               : getMetricValue(video, videosMetric);
             const percentage = maxVideoValue > 0 ? (value / maxVideoValue) * 100 : 0;
-            
+
             return (
-              <div 
-                key={video.id || `${video.platform}_${video.uploaderHandle}_${index}`} 
-                className="group relative cursor-pointer"
+              <div
+                key={video.id || `${video.platform}_${video.uploaderHandle}_${index}`}
+                className={`group relative cursor-pointer py-2 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                 }}
@@ -766,7 +752,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
-                    barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                    barElement.style.background = 'linear-gradient(to right, #fb923c, #f97316)';
                   }
                 }}
                 onMouseMove={(e) => {
@@ -782,7 +768,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                   setHoveredVideo(null);
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
-                    barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
+                    barElement.style.background = 'linear-gradient(to right, #f97316, #ea580c)';
                   }
                 }}
               >
@@ -790,7 +776,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                 <div className="relative h-10 flex items-center">
                   {/* Profile Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm relative">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-subtle bg-surface-tertiary backdrop-blur-sm relative">
                       {video.thumbnail ? (
                         <>
                           <img 
@@ -819,14 +805,14 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                         style={{
                           width: `${percentage}%`,
                           minWidth: '8%',
-                          background: 'linear-gradient(to right, #52525B, #3F3F46)'
+                          background: 'linear-gradient(to right, #f97316, #ea580c)'
                         }}
                       >
                       </div>
                     </div>
                     {/* Metric Value - Always on Right */}
                     <div className="ml-4 min-w-[100px] text-right">
-                      <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                      <span className="text-lg font-semibold text-content tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                         {formatNumber(value, videosMetric)}
                       </span>
                     </div>
@@ -838,59 +824,44 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
         </div>
 
         {topVideos.length === 0 && (
-          <div className="text-center py-16 text-white/40">
+          <div className="text-center py-16 text-content-muted">
             <p className="text-sm">
               {type === 'gainers' 
                 ? 'No refreshed videos with growth found during this period' 
                 : 'No new videos found during this period'}
             </p>
-            <p className="text-xs mt-2 text-white/30">
+            <p className="text-xs mt-2 text-content-muted/70">
               {type === 'gainers' 
                 ? 'Refreshed videos must be uploaded before the selected period and have positive growth' 
                 : 'Try selecting a different date range'}
             </p>
           </div>
         )}
-        </div>
       </div>
       )}
 
       {/* Top Accounts */}
       {showAccounts && (
-      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-        {/* Depth Gradient Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-          }}
-        />
-        
-        {/* Content Layer */}
-        <div className="relative z-10">
+      <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-white">Top Accounts</h2>
+            <h2 className="text-lg font-semibold text-content">Top Accounts</h2>
             <div className="relative">
               <button
                 onMouseEnter={() => setShowAccountsInfo(true)}
                 onMouseLeave={() => setShowAccountsInfo(false)}
-                className="text-gray-500 hover:text-gray-400 transition-colors"
+                className="text-content-muted hover:text-content-secondary transition-colors"
               >
                 <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
               </button>
               
               {/* Info Tooltip */}
               {showAccountsInfo && (
-                <div 
-                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
-                  style={{
-                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                    borderColor: 'rgba(255, 255, 255, 0.1)'
-                  }}
+                <div
+                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg bg-surface-tertiary border border-border shadow-xl z-50"
                 >
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-xs text-content-secondary leading-relaxed">
                     Tracks your top performing accounts ranked by aggregated metrics across all their videos. Click to filter the dashboard by account.
                   </p>
                 </div>
@@ -903,31 +874,31 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
               <select
                 value={topAccountsCount}
                 onChange={(e) => setTopAccountsCount(Number(e.target.value))}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+                className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border-subtle hover:bg-surface-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-all cursor-pointer"
               >
-                <option value={3} className="bg-gray-900">3</option>
-                <option value={5} className="bg-gray-900">5</option>
-                <option value={10} className="bg-gray-900">10</option>
+                <option value={3} className="bg-surface-secondary">3</option>
+                <option value={5} className="bg-surface-secondary">5</option>
+                <option value={10} className="bg-surface-secondary">10</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
             </div>
             {/* Metric Selector */}
             <div className="relative">
               <select
                 value={accountsMetric}
                 onChange={(e) => setAccountsMetric(e.target.value as MetricType)}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+                className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border-subtle hover:bg-surface-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-all cursor-pointer"
               >
-                <option value="views" className="bg-gray-900">Views</option>
-                <option value="likes" className="bg-gray-900">Likes</option>
-                <option value="comments" className="bg-gray-900">Comments</option>
-                <option value="shares" className="bg-gray-900">Shares</option>
-                <option value="bookmarks" className="bg-gray-900">Bookmarks</option>
-                <option value="engagement" className="bg-gray-900">Engagement</option>
-                <option value="virality" className="bg-gray-900">Virality Score</option>
-                <option value="followersGained" className="bg-gray-900">Followers Gained</option>
+                <option value="views" className="bg-surface-secondary">Views</option>
+                <option value="likes" className="bg-surface-secondary">Likes</option>
+                <option value="comments" className="bg-surface-secondary">Comments</option>
+                <option value="shares" className="bg-surface-secondary">Shares</option>
+                <option value="bookmarks" className="bg-surface-secondary">Bookmarks</option>
+                <option value="engagement" className="bg-surface-secondary">Engagement</option>
+                <option value="virality" className="bg-surface-secondary">Virality Score</option>
+                <option value="followersGained" className="bg-surface-secondary">Followers Gained</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
             </div>
           </div>
         </div>
@@ -948,7 +919,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
             return (
               <div 
                 key={`${account.platform}_${account.handle}_${index}`} 
-                className="group relative cursor-pointer hover:opacity-90 transition-opacity"
+                className={`group relative cursor-pointer hover:opacity-90 transition-opacity py-2 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                 }}
@@ -966,7 +937,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                   }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
-                    barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                    barElement.style.background = 'linear-gradient(to right, #fb923c, #f97316)';
                   }
                 }}
                 onMouseMove={(e) => {
@@ -982,7 +953,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                   setHoveredAccount(null);
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
-                    barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
+                    barElement.style.background = 'linear-gradient(to right, #f97316, #ea580c)';
                   }
                 }}
               >
@@ -990,7 +961,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                 <div className="relative h-10 flex items-center">
                   {/* Profile Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm relative">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-subtle bg-surface-tertiary backdrop-blur-sm relative">
                       {account.profileImage ? (
                         <>
                           <img 
@@ -1005,7 +976,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                         </>
                       ) : (
                         <>
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white/70 font-semibold text-sm">
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-tertiary to-surface-secondary text-content-muted font-semibold text-sm">
                             {account.displayName.charAt(0).toUpperCase()}
                           </div>
                           {/* Platform Logo Badge */}
@@ -1025,14 +996,14 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                         style={{
                           width: `${percentage}%`,
                           minWidth: '8%',
-                          background: 'linear-gradient(to right, #52525B, #3F3F46)'
+                          background: 'linear-gradient(to right, #f97316, #ea580c)'
                         }}
                       >
                       </div>
                     </div>
                     {/* Metric Value - Always on Right */}
                     <div className="ml-4 min-w-[100px] text-right">
-                      <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                      <span className="text-lg font-semibold text-content tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                         {formatNumber(value, accountsMetric)}
                       </span>
                     </div>
@@ -1044,11 +1015,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
         </div>
 
         {topAccounts.length === 0 && (
-          <div className="text-center py-16 text-white/40">
+          <div className="text-center py-16 text-content-muted">
             <p className="text-sm">No accounts found</p>
           </div>
         )}
-        </div>
       </div>
       )}
 
@@ -1062,7 +1032,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
             transform: 'translateX(-50%)'
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[320px]">
+          <div className="bg-surface-tertiary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border w-[320px]">
             {(() => {
               const formatNum = (num: number) => {
                 if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
@@ -1104,12 +1074,12 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                 <>
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
                       Posted: {dateStr}
                     </p>
                     <div className="flex flex-col items-end">
                       <div className="flex items-baseline gap-2">
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-2xl font-bold text-content">
                           {type === 'gainers' ? '+' : ''}{formatNum(displayValue)}
                       </p>
                         {type !== 'gainers' && 'viewChange' in stats && stats.viewChange !== 0 && (
@@ -1119,7 +1089,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                         )}
                       </div>
                       {type === 'gainers' && (
-                        <p className="text-[10px] text-gray-500 mt-0.5">
+                        <p className="text-[10px] text-content-muted mt-0.5">
                           growth in period
                         </p>
                       )}
@@ -1127,13 +1097,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                   </div>
                   
                   {/* Divider */}
-                  <div className="border-t border-white/10 mx-5"></div>
+                  <div className="border-t border-border-subtle mx-5"></div>
                   
                   {/* Video Info */}
                   <div className="px-5 py-3">
                     <div className="flex items-center gap-3 py-2.5">
                       {/* Thumbnail */}
-                      <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-surface-tertiary">
                         {hoveredVideo.video.thumbnail ? (
                           <img 
                             src={hoveredVideo.video.thumbnail} 
@@ -1142,21 +1112,21 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Play className="w-5 h-5 text-gray-600" />
+                            <Play className="w-5 h-5 text-content-muted" />
                           </div>
                         )}
                       </div>
 
                       {/* Metadata */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                        <p className="text-sm text-content font-medium truncate leading-tight mb-1">
                           {hoveredVideo.video.title || hoveredVideo.video.caption || '(No caption)'}
                         </p>
                         <div className="flex items-center gap-1.5">
                           <div className="w-4 h-4">
                             <PlatformIcon platform={hoveredVideo.video.platform} size="sm" />
                           </div>
-                          <span className="text-xs text-gray-400 lowercase">
+                          <span className="text-xs text-content-muted lowercase">
                             {hoveredVideo.video.uploaderHandle || hoveredVideo.video.platform}
                           </span>
                         </div>
@@ -1165,8 +1135,8 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
 
                     {/* Last Refresh Date (for refreshed videos only) */}
                     {type === 'gainers' && lastSnapshotDate && (
-                      <div className="mt-2 pt-2 border-t border-white/10">
-                        <p className="text-xs text-gray-400">
+                      <div className="mt-2 pt-2 border-t border-border-subtle">
+                        <p className="text-xs text-content-muted">
                           Last refresh: {lastSnapshotDate.toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -1177,8 +1147,8 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                     )}
 
                     {/* Click to Expand */}
-                    <div className="mt-2 pt-3 border-t border-white/10">
-                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                    <div className="mt-2 pt-3 border-t border-border-subtle">
+                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-content-muted hover:text-content transition-colors">
                         <span>Click to view details</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
@@ -1202,7 +1172,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
             transform: 'translateX(-50%)'
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[380px]">
+          <div className="bg-surface-tertiary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border w-[380px]">
             {(() => {
               // Find the account data
               const account = topAccounts.find(acc => acc.handle === hoveredAccount.handle);
@@ -1235,11 +1205,11 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                 <>
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
                       @{hoveredAccount.handle}
                     </p>
                     <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-2xl font-bold text-content">
                         {formatNum(totalViews)}
                       </p>
                       {hasGrowthData && avgGrowth !== 0 && (
@@ -1251,7 +1221,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                   </div>
                   
                   {/* Divider */}
-                  <div className="border-t border-white/10 mx-5"></div>
+                  <div className="border-t border-border-subtle mx-5"></div>
                   
                   {/* Video List */}
                   <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '400px' }}>
@@ -1261,10 +1231,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                       return (
                         <div 
                           key={video.id} 
-                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                          className="flex items-center gap-3 py-2.5 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors"
                         >
                           {/* Thumbnail */}
-                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-surface-tertiary">
                             {video.thumbnail ? (
                               <img 
                                 src={video.thumbnail} 
@@ -1273,21 +1243,21 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Play className="w-5 h-5 text-gray-600" />
+                                <Play className="w-5 h-5 text-content-muted" />
                               </div>
                             )}
                           </div>
 
                           {/* Metadata */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                            <p className="text-sm text-content font-medium truncate leading-tight mb-1">
                               {video.title || video.caption || '(No caption)'}
                             </p>
                             <div className="flex items-center gap-1.5">
                               <div className="w-4 h-4">
                                 <PlatformIcon platform={video.platform} size="sm" />
                               </div>
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-content-muted">
                                 {stats.uploadDate ? new Date(stats.uploadDate).toLocaleDateString('en-US', { 
                                   month: 'short', 
                                   day: 'numeric'
@@ -1298,18 +1268,18 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
                           
                           {/* Metric Value */}
                           <div className="flex-shrink-0 text-right">
-                            <p className="text-sm font-bold text-white">
+                            <p className="text-sm font-bold text-content">
                               {formatNum(video.views || 0)}
                             </p>
-                            <p className="text-xs text-gray-500">Views</p>
+                            <p className="text-xs text-content-muted">Views</p>
                           </div>
                         </div>
                       );
                     })}
                     
                     {/* Click to Expand */}
-                    <div className="mt-2 pt-3 border-t border-white/10">
-                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                    <div className="mt-2 pt-3 border-t border-border-subtle">
+                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-content-muted hover:text-content transition-colors">
                         <span>Click to view details</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>

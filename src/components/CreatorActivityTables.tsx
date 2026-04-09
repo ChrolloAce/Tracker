@@ -103,19 +103,19 @@ function CreatorCell({ row }: { row: CreatorRow }) {
           alt={row.displayName}
           className="w-9 h-9 rounded-full object-cover"
           fallback={
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-content-inverse text-sm font-bold">
               {row.displayName.charAt(0).toUpperCase()}
             </div>
           }
         />
       ) : (
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-content-inverse text-sm font-bold">
           {row.displayName.charAt(0).toUpperCase()}
         </div>
       )}
       <div>
-        <p className="text-sm font-medium text-white">{row.displayName}</p>
-        <p className="text-xs text-white/40">
+        <p className="text-sm font-medium text-content">{row.displayName}</p>
+        <p className="text-xs text-content-muted">
           {row.accountCount} account{row.accountCount !== 1 ? 's' : ''}
         </p>
       </div>
@@ -126,7 +126,7 @@ function CreatorCell({ row }: { row: CreatorRow }) {
 // ─── Engagement Badge ───────────────────────────────────────
 
 function EngagementBadge({ rate }: { rate: number }) {
-  let color = 'text-white/50 bg-white/5';
+  let color = 'text-content-muted bg-surface-hover';
   if (rate >= 8) color = 'text-green-400 bg-green-500/10';
   else if (rate >= 5) color = 'text-emerald-400 bg-emerald-500/10';
   else if (rate >= 2) color = 'text-yellow-400 bg-yellow-500/10';
@@ -145,7 +145,7 @@ function EngagementBadge({ rate }: { rate: number }) {
 function HeatmapSquareTooltip({ cell, position }: { cell: DayCellData; position: { x: number; y: number } }) {
   return createPortal(
     <div
-      className="bg-[#1a1a1a] text-white rounded-lg shadow-2xl border border-white/10 px-3 py-2 pointer-events-none"
+      className="bg-surface-tertiary text-content rounded-lg shadow-2xl border border-border px-3 py-2 pointer-events-none"
       style={{
         position: 'fixed',
         left: `${position.x}px`,
@@ -155,19 +155,19 @@ function HeatmapSquareTooltip({ cell, position }: { cell: DayCellData; position:
         minWidth: 140,
       }}
     >
-      <p className="text-[11px] text-white/50 font-medium">{format(cell.date, 'EEE, MMM d')}</p>
-      <p className="text-sm font-bold text-white mt-0.5">
+      <p className="text-[11px] text-content-muted font-medium">{format(cell.date, 'EEE, MMM d')}</p>
+      <p className="text-sm font-bold text-content mt-0.5">
         {cell.count} post{cell.count !== 1 ? 's' : ''}
       </p>
       {cell.videos.length > 0 && (
         <div className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
           {cell.videos.slice(0, 4).map((v, i) => (
-            <p key={i} className="text-[10px] text-white/40 truncate max-w-[200px]">
+            <p key={i} className="text-[10px] text-content-muted truncate max-w-[200px]">
               {(v as any).title || (v as any).description || (v as any).videoTitle || 'Untitled'} — {formatNumber(v.views || 0)} views
             </p>
           ))}
           {cell.videos.length > 4 && (
-            <p className="text-[10px] text-white/30">+{cell.videos.length - 4} more</p>
+            <p className="text-[10px] text-content-muted">+{cell.videos.length - 4} more</p>
           )}
         </div>
       )}
@@ -184,7 +184,7 @@ function PostActivityHeatmapInline({ videos }: { videos: VideoDoc[] }) {
   const maxCount = Math.max(...cells.map(c => c.count), 1);
 
   const getSquareColor = (count: number) => {
-    if (count === 0) return 'bg-white/[0.04]';
+    if (count === 0) return 'bg-surface-inset';
     const intensity = count / maxCount;
     if (intensity >= 0.8) return 'bg-emerald-500/80';
     if (intensity >= 0.5) return 'bg-emerald-500/50';
@@ -198,7 +198,7 @@ function PostActivityHeatmapInline({ videos }: { videos: VideoDoc[] }) {
         <div
           key={i}
           className={`w-4 h-4 rounded-[3px] transition-all cursor-pointer ${getSquareColor(cell.count)} ${
-            cell.count > 0 ? 'hover:ring-1 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''
+            cell.count > 0 ? 'hover:ring-1 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-surface-secondary' : ''
           }`}
           onMouseEnter={(e) => {
             setHoveredCell(cell);
@@ -223,50 +223,50 @@ export function ActivityTable({
   SortIcon: React.FC<{ field: SortField }>;
 }) {
   return (
-    <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+    <div className="bg-surface-secondary backdrop-blur rounded-2xl border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
         <div className="flex items-center space-x-2">
-          <h2 className="text-lg font-semibold text-white">Creator Activity</h2>
-          <button className="text-white/30 hover:text-white/60 transition-colors" title="Shows posting activity per creator in the selected period">
+          <h2 className="text-lg font-semibold text-content">Creator Activity</h2>
+          <button className="text-content-muted hover:text-content-secondary transition-colors" title="Shows posting activity per creator in the selected period">
             <Info className="w-4 h-4" />
           </button>
         </div>
-        <Settings2 className="w-4 h-4 text-white/30" />
+        <Settings2 className="w-4 h-4 text-content-muted" />
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-left text-xs text-white/50 uppercase tracking-wider border-b border-white/5">
-              <th className="px-6 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('creator')}>
+            <tr className="text-left text-xs text-content-muted uppercase tracking-wider border-b border-border-subtle">
+              <th className="px-6 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('creator')}>
                 Creator <SortIcon field="creator" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('posted')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('posted')}>
                 Posted <SortIcon field="posted" />
               </th>
               <th className="px-4 py-3">Eligible</th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('views')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('views')}>
                 Total Views <SortIcon field="views" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('engagement')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('engagement')}>
                 Eng. Rate <SortIcon field="engagement" />
               </th>
               <th className="px-4 py-3">Post Activity (14d)</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-border-subtle">
             {rows.map(row => {
               const totalViews = row.videos.reduce((s, v) => s + (v.views || 0), 0);
               const engagement = getEngagementRate(row.videos);
 
               return (
-                <tr key={row.creatorId} className="hover:bg-white/5 transition-colors">
+                <tr key={row.creatorId} className="hover:bg-surface-hover transition-colors">
                   <td className="px-6 py-4"><CreatorCell row={row} /></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white font-medium">{row.videos.length}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white/60">{row.allVideos.length}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white font-medium">{formatNumber(totalViews)}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content font-medium">{row.videos.length}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content-secondary">{row.allVideos.length}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content font-medium">{formatNumber(totalViews)}</span></td>
                   <td className="px-4 py-4">
-                    <span className={`text-sm font-medium ${engagement >= 5 ? 'text-green-400' : engagement >= 2 ? 'text-yellow-400' : 'text-white/60'}`}>
+                    <span className={`text-sm font-medium ${engagement >= 5 ? 'text-green-400' : engagement >= 2 ? 'text-yellow-400' : 'text-content-secondary'}`}>
                       {engagement.toFixed(1)}%
                     </span>
                   </td>
@@ -295,55 +295,55 @@ export function PerformanceTable({
   SortIcon: React.FC<{ field: SortField }>;
 }) {
   return (
-    <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+    <div className="bg-surface-secondary backdrop-blur rounded-2xl border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
         <div className="flex items-center space-x-2">
-          <h2 className="text-lg font-semibold text-white">Creator Performance</h2>
-          <button className="text-white/30 hover:text-white/60 transition-colors" title="Detailed performance metrics per creator">
+          <h2 className="text-lg font-semibold text-content">Creator Performance</h2>
+          <button className="text-content-muted hover:text-content-secondary transition-colors" title="Detailed performance metrics per creator">
             <Info className="w-4 h-4" />
           </button>
         </div>
-        <Settings2 className="w-4 h-4 text-white/30" />
+        <Settings2 className="w-4 h-4 text-content-muted" />
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-left text-xs text-white/50 uppercase tracking-wider border-b border-white/5">
-              <th className="px-6 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('creator')}>
+            <tr className="text-left text-xs text-content-muted uppercase tracking-wider border-b border-border-subtle">
+              <th className="px-6 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('creator')}>
                 Creator <SortIcon field="creator" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('posted')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('posted')}>
                 <span className="inline-flex items-center"><span className="mr-1">📹</span> Videos</span>
                 <SortIcon field="posted" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('views')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('views')}>
                 <span className="inline-flex items-center"><Eye className="w-3.5 h-3.5 mr-1" /> Views</span>
                 <SortIcon field="views" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('likes')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('likes')}>
                 <span className="inline-flex items-center"><Heart className="w-3.5 h-3.5 mr-1" /> Likes</span>
                 <SortIcon field="likes" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('comments')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('comments')}>
                 <span className="inline-flex items-center"><MessageCircle className="w-3.5 h-3.5 mr-1" /> Comments</span>
                 <SortIcon field="comments" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('shares')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('shares')}>
                 <span className="inline-flex items-center"><Share2 className="w-3.5 h-3.5 mr-1" /> Shares</span>
                 <SortIcon field="shares" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('saves')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('saves')}>
                 <span className="inline-flex items-center"><Bookmark className="w-3.5 h-3.5 mr-1" /> Saves</span>
                 <SortIcon field="saves" />
               </th>
-              <th className="px-4 py-3 cursor-pointer hover:text-white/80" onClick={() => toggleSort('engagement')}>
+              <th className="px-4 py-3 cursor-pointer hover:text-content" onClick={() => toggleSort('engagement')}>
                 <span className="inline-flex items-center"><Percent className="w-3.5 h-3.5 mr-1" /> Eng.</span>
                 <SortIcon field="engagement" />
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-border-subtle">
             {rows.map(row => {
               const totalViews = row.videos.reduce((s, v) => s + (v.views || 0), 0);
               const totalLikes = row.videos.reduce((s, v) => s + (v.likes || 0), 0);
@@ -353,14 +353,14 @@ export function PerformanceTable({
               const engagement = getEngagementRate(row.videos);
 
               return (
-                <tr key={row.creatorId} className="hover:bg-white/5 transition-colors">
+                <tr key={row.creatorId} className="hover:bg-surface-hover transition-colors">
                   <td className="px-6 py-4"><CreatorCell row={row} /></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white font-medium">{row.videos.length}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white font-medium">{formatNumber(totalViews)}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white/80">{formatNumber(totalLikes)}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white/80">{formatNumber(totalComments)}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white/80">{formatNumber(totalShares)}</span></td>
-                  <td className="px-4 py-4"><span className="text-sm text-white/80">{formatNumber(totalSaves)}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content font-medium">{row.videos.length}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content font-medium">{formatNumber(totalViews)}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content">{formatNumber(totalLikes)}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content">{formatNumber(totalComments)}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content">{formatNumber(totalShares)}</span></td>
+                  <td className="px-4 py-4"><span className="text-sm text-content">{formatNumber(totalSaves)}</span></td>
                   <td className="px-4 py-4"><EngagementBadge rate={engagement} /></td>
                 </tr>
               );

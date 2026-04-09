@@ -113,11 +113,11 @@ const KPICard = React.memo(function KPICard({
   // Determine colors based on trend (green for increase, red for decrease)
   const isIncreasing = data.isIncreasing !== undefined ? data.isIncreasing : true;
   const colors = {
-    icon: 'bg-white/5',
-    iconColor: 'text-white',
+    icon: 'bg-surface-hover',
+    iconColor: 'text-content',
     gradient: isIncreasing ? ['#22c55e', '#22c55e00'] : ['#ef4444', '#ef444400'], // green-500 : red-500
     stroke: isIncreasing ? '#22c55e' : '#ef4444',
-    deltaBg: 'bg-white/10 text-white'
+    deltaBg: 'bg-surface-active text-content'
   };
 
   const Icon = data.icon;
@@ -212,24 +212,15 @@ const KPICard = React.memo(function KPICard({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`
-        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200
+        group relative rounded-2xl bg-surface-secondary backdrop-blur border shadow-theme transition-all duration-200
         will-change-transform
         ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
         ${isDragging ? 'opacity-50 scale-95' : ''}
-        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
+        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-border-subtle hover:ring-1 hover:ring-border'}
       `}
       style={{ transform: 'translateZ(0)', minHeight: '180px', overflow: 'visible' }}
     >
       {/* Background layers container with overflow clipping */}
-      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
-        {/* Depth Gradient Overlay */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-          }}
-        />
-      </div>
       
       {/* Full-height vertical cursor line */}
       {tooltipData && (
@@ -260,23 +251,23 @@ const KPICard = React.memo(function KPICard({
       {isHovered && !isEditMode && onToggleCensor && (
         <button
           onClick={handleToggleCensor}
-          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
+          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-surface-active rounded-lg transition-all duration-200 z-50"
           title={isCensored ? "Show data" : "Hide data"}
         >
           {isCensored ? (
-            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted hover:text-content" />
           ) : (
-            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted hover:text-content" />
           )}
         </button>
       )}
 
       {/* Censoring Overlay - Completely blurs card when active */}
       {isCensored && (
-        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-white/10" style={{ backdropFilter: 'blur(100px)' }}>
+        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-border" style={{ backdropFilter: 'blur(100px)' }}>
           <div className="flex flex-col items-center gap-3">
-            <EyeOff className="w-10 h-10 text-gray-400" />
-            <p className="text-gray-400 text-sm font-medium">{data.label} Hidden</p>
+            <EyeOff className="w-10 h-10 text-content-muted" />
+            <p className="text-content-muted text-sm font-medium">{data.label} Hidden</p>
           </div>
         </div>
       )}
@@ -285,13 +276,13 @@ const KPICard = React.memo(function KPICard({
       <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2 z-10" style={{ height: '60%' }}>
         {/* Icon (top-right) */}
         <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 opacity-60" />
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-content-muted opacity-60" />
         </div>
 
         {/* Metric Content - Pushed Higher */}
         <div className="flex flex-col h-full justify-start pt-1">
           {/* Label - Smaller */}
-          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-content-muted tracking-wide mb-1.5 sm:mb-2">
             {data.appIcon && (
               <img 
                 src={data.appIcon} 
@@ -309,7 +300,7 @@ const KPICard = React.memo(function KPICard({
           <div className="flex items-baseline gap-2 sm:gap-3 -mt-1">
             <AnimatedNumber 
               value={data.value} 
-              className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}
+              className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-content-muted' : 'text-content'}`}
             />
             
             {/* Delta Badge (if exists) - Aligned with number baseline */}
@@ -327,8 +318,8 @@ const KPICard = React.memo(function KPICard({
 
           {/* Period/Subtitle */}
           {data.period && (
-            <span className="text-[10px] sm:text-xs text-zinc-500 mt-1 sm:mt-1.5 flex items-center gap-1">
-              <span className="inline-block w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-zinc-700"></span>
+            <span className="text-[10px] sm:text-xs text-content-muted mt-1 sm:mt-1.5 flex items-center gap-1">
+              <span className="inline-block w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-content-muted/30"></span>
               {data.period}
             </span>
           )}
@@ -336,7 +327,7 @@ const KPICard = React.memo(function KPICard({
 
         {/* CTA Button (if exists) */}
       {!data.delta && data.ctaText && (
-          <button className="absolute bottom-2 sm:bottom-3 right-3 sm:right-5 inline-flex items-center gap-0.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
+          <button className="absolute bottom-2 sm:bottom-3 right-3 sm:right-5 inline-flex items-center gap-0.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs text-content-muted bg-surface-hover hover:bg-surface-active transition-colors">
           {data.ctaText}
           <ChevronRight className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
         </button>

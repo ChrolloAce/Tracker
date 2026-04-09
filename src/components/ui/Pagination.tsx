@@ -30,16 +30,16 @@ const Pagination: React.FC<PaginationProps> = ({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-white dark:bg-[#161616] border-t border-gray-100 dark:border-gray-800">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-surface border-t border-border">
       {/* Left side - Items per page */}
       <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-center sm:justify-start">
-        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:inline">Items per page:</span>
-        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 sm:hidden">Show:</span>
+        <span className="text-xs sm:text-sm text-content-muted hidden sm:inline">Items per page:</span>
+        <span className="text-xs sm:text-sm text-content-muted sm:hidden">Show:</span>
         <div className="relative">
           <select
             value={itemsPerPage}
             onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="appearance-none px-2 sm:px-3 py-1 sm:py-1.5 pr-6 sm:pr-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs sm:text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            className="appearance-none px-2 sm:px-3 py-1 sm:py-1.5 pr-6 sm:pr-8 bg-surface-secondary border border-border rounded-lg text-xs sm:text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             {itemsPerPageOptions.map(option => (
               <option key={option} value={option}>
@@ -47,16 +47,16 @@ const Pagination: React.FC<PaginationProps> = ({
               </option>
             ))}
           </select>
-          <ChevronDown className="absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 w-3 sm:w-4 h-3 sm:h-4 text-gray-400 pointer-events-none" />
+          <ChevronDown className="absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 w-3 sm:w-4 h-3 sm:h-4 text-content-muted pointer-events-none" />
         </div>
-        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-xs sm:text-sm text-content-muted">
           {startItem}-{endItem} of {totalItems}
         </span>
       </div>
 
       {/* Center - Page indicator - Hidden on mobile to save space */}
       <div className="hidden md:flex items-center space-x-2">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <span className="text-sm font-medium text-content">
           Page {totalPages === 0 ? 0 : currentPage} of {totalPages}
         </span>
       </div>
@@ -70,8 +70,8 @@ const Pagination: React.FC<PaginationProps> = ({
           className={clsx(
             'hidden sm:block p-1.5 sm:p-2 rounded-lg border transition-colors',
             currentPage === 1 || totalPages === 0
-              ? 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed'
-              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              ? 'border-border text-content-muted cursor-not-allowed'
+              : 'border-border text-content hover:bg-surface-hover'
           )}
           title="First page"
         >
@@ -85,8 +85,8 @@ const Pagination: React.FC<PaginationProps> = ({
           className={clsx(
             'p-1.5 sm:p-2 rounded-lg border transition-colors',
             currentPage === 1 || totalPages === 0
-              ? 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed'
-              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              ? 'border-border text-content-muted cursor-not-allowed'
+              : 'border-border text-content hover:bg-surface-hover'
           )}
           title="Previous page"
         >
@@ -94,7 +94,7 @@ const Pagination: React.FC<PaginationProps> = ({
         </button>
         
         {/* Page indicator - Show on mobile between arrows */}
-        <span className="md:hidden text-xs font-medium text-gray-700 dark:text-gray-300 px-2">
+        <span className="md:hidden text-xs font-medium text-content px-2">
           {totalPages === 0 ? 0 : currentPage}/{totalPages}
         </span>
         
@@ -105,8 +105,8 @@ const Pagination: React.FC<PaginationProps> = ({
           className={clsx(
             'p-1.5 sm:p-2 rounded-lg border transition-colors',
             currentPage === totalPages || totalPages === 0
-              ? 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed'
-              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              ? 'border-border text-content-muted cursor-not-allowed'
+              : 'border-border text-content hover:bg-surface-hover'
           )}
           title="Next page"
         >
@@ -120,8 +120,8 @@ const Pagination: React.FC<PaginationProps> = ({
           className={clsx(
             'hidden sm:block p-1.5 sm:p-2 rounded-lg border transition-colors',
             currentPage === totalPages || totalPages === 0
-              ? 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed'
-              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              ? 'border-border text-content-muted cursor-not-allowed'
+              : 'border-border text-content hover:bg-surface-hover'
           )}
           title="Last page"
         >

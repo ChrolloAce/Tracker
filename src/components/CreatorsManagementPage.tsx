@@ -10,6 +10,7 @@ import { User, TrendingUp, Plus, FileText, UserPlus } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
+import EditCreatorProfileModal from './EditCreatorProfileModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import ContractsManagementPage from './ContractsManagementPage';
@@ -75,6 +76,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [detailCreator, setDetailCreator] = useState<OrgMember | null>(null);
   const [paymentPlanCreator, setPaymentPlanCreator] = useState<OrgMember | null>(null);
+  const [editingProfileCreator, setEditingProfileCreator] = useState<OrgMember | null>(null);
 
   // Check if user is a creator
   useEffect(() => {
@@ -230,6 +232,46 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     }
   };
 
+  const handleInviteToPortal = async (creator: OrgMember) => {
+    if (!user || !currentOrgId || !currentProjectId) return;
+
+    const creatorEmail = creator.email || creatorProfiles.get(creator.userId)?.email;
+    if (!creatorEmail) {
+      alert('This creator has no email address. Please edit their profile to add an email first.');
+      return;
+    }
+
+    if (!confirm(`Send a portal invitation to ${creator.displayName || creatorEmail}?\n\nThey will receive an email with a link to access the Creator Portal.`)) {
+      return;
+    }
+
+    try {
+      setActionLoading(creator.userId);
+      const orgs = await OrganizationService.getUserOrganizations(user.uid);
+      const currentOrg = orgs.find(o => o.id === currentOrgId);
+      if (!currentOrg) throw new Error('Organization not found');
+
+      await TeamInvitationService.createInvitation(
+        currentOrgId,
+        creatorEmail,
+        'creator',
+        user.uid,
+        user.displayName || user.email || 'Team Member',
+        user.email || '',
+        currentOrg.name,
+        currentProjectId
+      );
+
+      alert(`Invitation sent to ${creatorEmail}`);
+      await loadData();
+    } catch (error: any) {
+      console.error('Failed to send portal invitation:', error);
+      alert(error.message || 'Failed to send invitation');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // If user is a creator, show their personal payouts page
   if (isCreator) {
     return <CreatorPayoutsPage />;
@@ -255,15 +297,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 dark:border-white/10">
+      <div className="border-b border-border">
         <nav className="flex space-x-8">
         <button
           onClick={() => setActiveTab('accounts')}
             className={`
               flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
               ${activeTab === 'accounts'
-                ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-content text-content'
+                : 'border-transparent text-content-muted hover:text-content-secondary'
               }
             `}
         >
@@ -275,8 +317,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
             className={`
               flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
               ${activeTab === 'activity'
-                ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-content text-content'
+                : 'border-transparent text-content-muted hover:text-content-secondary'
               }
             `}
         >
@@ -288,8 +330,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
             className={`
               flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
               ${activeTab === 'contracts'
-                ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-content text-content'
+                : 'border-transparent text-content-muted hover:text-content-secondary'
               }
             `}
         >
@@ -354,6 +396,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           onEditPayment={setEditingPaymentCreator}
           onSetPaymentPlan={setPaymentPlanCreator}
           onEditLinks={setLinkingCreator}
+          onEditProfile={setEditingProfileCreator}
+          onInviteToPortal={handleInviteToPortal}
           onRemoveCreator={(creator) => {
             if (confirm(`Remove ${creator.displayName || creator.email} from your team?\n\nThis will:\n• Remove them from the organization\n• Delete their creator profile\n• Unlink all their accounts\n• Remove all creator links`)) {
               handleRemoveCreator(creator.userId);
@@ -406,6 +450,20 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           onClose={() => setEditingPaymentCreator(null)}
           onSuccess={() => {
             setEditingPaymentCreator(null);
+            loadData();
+          }}
+        />
+      )}
+
+      {/* Edit Creator Profile Modal */}
+      {editingProfileCreator && (
+        <EditCreatorProfileModal
+          isOpen={!!editingProfileCreator}
+          creator={editingProfileCreator}
+          profile={creatorProfiles.get(editingProfileCreator.userId)}
+          onClose={() => setEditingProfileCreator(null)}
+          onSuccess={() => {
+            setEditingProfileCreator(null);
             loadData();
           }}
         />

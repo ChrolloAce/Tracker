@@ -37,10 +37,10 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
   onAssignCreator
 }) => {
   return (
-    <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+    <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-border z-10" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+          <h2 className="text-base sm:text-lg font-semibold text-content truncate">
             {dateFilter === 'all' 
               ? 'Account stats - All Time' 
               : dateFilter === 'today'
@@ -76,8 +76,8 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
               className={clsx(
                 "flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm border rounded-lg transition-colors",
                 selectedCount > 0
-                  ? "text-white bg-white/10 border-white/20 hover:bg-white/15"
-                  : "text-gray-500 border-white/5 cursor-not-allowed opacity-50"
+                  ? "text-content bg-surface-active border-border-hover hover:bg-surface-active"
+                  : "text-content-muted border-border cursor-not-allowed opacity-50"
               )}
             >
               <MoreVertical className="w-4 h-4" />
@@ -98,7 +98,7 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                 
                 {/* Dropdown Menu */}
                 <div 
-                  className="fixed w-48 bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-xl z-[9999] overflow-hidden"
+                  className="fixed w-48 bg-surface border border-border rounded-lg shadow-xl z-[9999] overflow-hidden"
                   style={{
                     top: `${actionsMenuRef.current.getBoundingClientRect().bottom + 8}px`,
                     left: `${actionsMenuRef.current.getBoundingClientRect().right - 192}px`
@@ -110,7 +110,7 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                       e.stopPropagation();
                       onCopyLinks();
                     }}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                    className="w-full px-4 py-3 text-left text-sm text-content-muted hover:bg-surface-active flex items-center space-x-3 transition-colors"
                   >
                     <LinkIcon className="w-4 h-4" />
                     <span>Copy Links</span>
@@ -120,7 +120,7 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                       e.stopPropagation();
                       onExport();
                     }}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                    className="w-full px-4 py-3 text-left text-sm text-content-muted hover:bg-surface-active flex items-center space-x-3 transition-colors border-t border-border"
                   >
                     <Download className="w-4 h-4" />
                     <span>Export to CSV</span>
@@ -132,7 +132,7 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                         setShowActionsMenu(false);
                         onAssignCreator();
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                      className="w-full px-4 py-3 text-left text-sm text-content-muted hover:bg-surface-active flex items-center space-x-3 transition-colors border-t border-border"
                     >
                       <Users className="w-4 h-4" />
                       <span>Assign to Creator</span>
@@ -145,7 +145,7 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                       e.preventDefault();
                       onDelete();
                     }}
-                    className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-gray-800"
+                    className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center space-x-3 transition-colors border-t border-border"
                     type="button"
                   >
                     <Trash2 className="w-4 h-4" />

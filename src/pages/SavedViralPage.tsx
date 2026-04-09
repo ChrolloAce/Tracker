@@ -191,7 +191,7 @@ const SavedViralPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-content-muted animate-spin" />
       </div>
     );
   }
@@ -205,14 +205,14 @@ const SavedViralPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setOpenFolderId(null)}
-            className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+            className="p-2 rounded-lg bg-surface-hover border border-border text-content-muted hover:text-content hover:bg-surface-active transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Folder className="w-5 h-5 text-blue-400 flex-shrink-0" />
-            <h2 className="text-lg font-semibold text-white truncate">{currentFolderName}</h2>
-            <span className="text-xs text-gray-500">{currentFolderVideos.length} video{currentFolderVideos.length !== 1 ? 's' : ''}</span>
+            <h2 className="text-lg font-semibold text-content truncate">{currentFolderName}</h2>
+            <span className="text-xs text-content-muted">{currentFolderVideos.length} video{currentFolderVideos.length !== 1 ? 's' : ''}</span>
           </div>
           {openFolderId !== 'default' && (
             <button
@@ -226,10 +226,10 @@ const SavedViralPage: React.FC = () => {
         </div>
 
         {currentFolderVideos.length === 0 ? (
-          <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-16 text-center">
-            <Bookmark className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <h3 className="text-base font-medium text-white mb-1">No videos yet</h3>
-            <p className="text-gray-500 text-sm">Bookmark viral videos and save them to this folder.</p>
+          <div className="rounded-2xl bg-surface-secondary border border-border p-16 text-center">
+            <Bookmark className="w-10 h-10 text-content-muted mx-auto mb-3" />
+            <h3 className="text-base font-medium text-content mb-1">No videos yet</h3>
+            <p className="text-content-muted text-sm">Bookmark viral videos and save them to this folder.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -261,8 +261,8 @@ const SavedViralPage: React.FC = () => {
 
         {toast && (
           <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-            <div className="px-4 py-2.5 bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl">
-              <span className="text-sm font-medium text-white">{toast}</span>
+            <div className="px-4 py-2.5 bg-surface-active backdrop-blur-xl border border-border rounded-xl shadow-2xl">
+              <span className="text-sm font-medium text-content">{toast}</span>
             </div>
           </div>
         )}
@@ -295,7 +295,7 @@ const SavedViralPage: React.FC = () => {
           editingFolderId === f.id ? (
             <div
               key={f.id}
-              className="rounded-2xl bg-white/[0.03] border border-white/20 p-4 flex flex-col items-center justify-center"
+              className="rounded-2xl bg-surface-secondary border border-border-strong p-4 flex flex-col items-center justify-center"
             >
               <input
                 autoFocus
@@ -306,7 +306,7 @@ const SavedViralPage: React.FC = () => {
                   if (e.key === 'Escape') setEditingFolderId(null);
                 }}
                 onBlur={() => { if (editFolderName.trim()) handleRenameFolder(f.id); else setEditingFolderId(null); }}
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-sm text-white text-center placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+                className="w-full bg-surface-hover border border-border-strong rounded-lg px-3 py-2 text-sm text-content text-center placeholder-content-muted focus:outline-none focus:border-blue-500/50"
               />
             </div>
           ) : (
@@ -330,7 +330,7 @@ const SavedViralPage: React.FC = () => {
 
         {/* New Folder Card */}
         {creatingFolder ? (
-          <div className="rounded-2xl bg-white/[0.03] border border-dashed border-blue-500/30 p-4 flex flex-col items-center justify-center gap-3">
+          <div className="rounded-2xl bg-surface-secondary border border-dashed border-blue-500/30 p-4 flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
               <FolderPlus className="w-6 h-6 text-blue-400" />
             </div>
@@ -352,18 +352,18 @@ const SavedViralPage: React.FC = () => {
                 else { setCreatingFolder(false); setNewFolderName(''); }
               }}
               placeholder="Folder name..."
-              className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-sm text-white text-center placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-surface-hover border border-border rounded-lg px-3 py-2 text-sm text-content text-center placeholder-content-muted focus:outline-none focus:border-blue-500/50"
             />
           </div>
         ) : (
           <button
             onClick={() => setCreatingFolder(true)}
-            className="group rounded-2xl bg-white/[0.02] border border-dashed border-white/10 hover:border-white/25 p-4 flex flex-col items-center justify-center gap-3 transition-all hover:bg-white/[0.04] min-h-[200px]"
+            className="group rounded-2xl bg-surface-secondary border border-dashed border-border hover:border-border-strong p-4 flex flex-col items-center justify-center gap-3 transition-all hover:bg-surface-hover min-h-[200px]"
           >
-            <div className="w-12 h-12 rounded-xl bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-all">
-              <Plus className="w-6 h-6 text-gray-500 group-hover:text-white transition-colors" />
+            <div className="w-12 h-12 rounded-xl bg-surface-hover group-hover:bg-surface-active flex items-center justify-center transition-all">
+              <Plus className="w-6 h-6 text-content-muted group-hover:text-content transition-colors" />
             </div>
-            <span className="text-sm text-gray-500 group-hover:text-gray-300 font-medium transition-colors">New Folder</span>
+            <span className="text-sm text-content-muted group-hover:text-content-secondary font-medium transition-colors">New Folder</span>
           </button>
         )}
       </div>
@@ -375,8 +375,8 @@ const SavedViralPage: React.FC = () => {
       {/* Toast */}
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-          <div className="px-4 py-2.5 bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl">
-            <span className="text-sm font-medium text-white">{toast}</span>
+          <div className="px-4 py-2.5 bg-surface-active backdrop-blur-xl border border-border rounded-xl shadow-2xl">
+            <span className="text-sm font-medium text-content">{toast}</span>
           </div>
         </div>
       )}
@@ -401,14 +401,14 @@ const FolderCard: React.FC<{
   <div className="group relative">
     <button
       onClick={onOpen}
-      className="w-full rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/25 overflow-hidden transition-all hover:bg-white/[0.05] text-left"
+      className="w-full rounded-2xl bg-surface-secondary border border-border hover:border-border-strong overflow-hidden transition-all hover:bg-surface-hover text-left"
     >
       {/* Thumbnail grid */}
       <div className="aspect-square p-2">
         {thumbnails.length > 0 ? (
           <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-1 rounded-xl overflow-hidden">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="bg-white/5 overflow-hidden">
+              <div key={i} className="bg-surface-hover overflow-hidden">
                 {thumbnails[i] ? (
                   <img
                     src={thumbnails[i]}
@@ -417,22 +417,22 @@ const FolderCard: React.FC<{
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full bg-white/[0.03]" />
+                  <div className="w-full h-full bg-surface-secondary" />
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <div className="w-full h-full rounded-xl bg-white/[0.03] flex items-center justify-center">
-            <Folder className="w-12 h-12 text-gray-700" />
+          <div className="w-full h-full rounded-xl bg-surface-secondary flex items-center justify-center">
+            <Folder className="w-12 h-12 text-content-muted" />
           </div>
         )}
       </div>
 
       {/* Label */}
       <div className="px-3 pb-3">
-        <p className="text-sm font-medium text-white truncate">{name}</p>
-        <p className="text-xs text-gray-500">{count} video{count !== 1 ? 's' : ''}</p>
+        <p className="text-sm font-medium text-content truncate">{name}</p>
+        <p className="text-xs text-content-muted">{count} video{count !== 1 ? 's' : ''}</p>
       </div>
     </button>
 
@@ -440,7 +440,7 @@ const FolderCard: React.FC<{
     {onContextMenu && (
       <button
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); onContextMenu(); }}
-        className="absolute top-4 right-4 p-2 rounded-lg bg-black/70 backdrop-blur-sm text-white hover:bg-black/90 opacity-0 group-hover:opacity-100 transition-all z-20"
+        className="absolute top-4 right-4 p-2 rounded-lg bg-black/70 backdrop-blur-sm text-content hover:bg-black/90 opacity-0 group-hover:opacity-100 transition-all z-20"
       >
         <MoreVertical className="w-4 h-4" />
       </button>
@@ -448,11 +448,11 @@ const FolderCard: React.FC<{
 
     {/* Context menu */}
     {showContextMenu && (
-      <div className="absolute top-12 right-3 w-40 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+      <div className="absolute top-12 right-3 w-40 bg-surface-secondary border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
         {onRename && (
           <button
             onClick={(e) => { e.stopPropagation(); onRename(); }}
-            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/5 transition-colors flex items-center gap-2"
+            className="w-full px-4 py-2.5 text-left text-sm text-content-secondary hover:bg-surface-hover transition-colors flex items-center gap-2"
           >
             <Pencil className="w-3.5 h-3.5" /> Rename
           </button>
@@ -460,7 +460,7 @@ const FolderCard: React.FC<{
         {onShare && (
           <button
             onClick={(e) => { e.stopPropagation(); onShare(); }}
-            className="w-full px-4 py-2.5 text-left text-sm text-blue-400 hover:bg-blue-500/10 transition-colors flex items-center gap-2 border-t border-white/5"
+            className="w-full px-4 py-2.5 text-left text-sm text-blue-400 hover:bg-blue-500/10 transition-colors flex items-center gap-2 border-t border-border-subtle"
           >
             <Share2 className="w-3.5 h-3.5" /> Share
           </button>
@@ -468,7 +468,7 @@ const FolderCard: React.FC<{
         {onDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 border-t border-white/5"
+            className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 border-t border-border-subtle"
           >
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
@@ -500,7 +500,7 @@ const VideoCard: React.FC<{
   ].filter((o) => o.id !== currentFolderId);
 
   return (
-    <div className="group relative bg-black rounded-2xl overflow-hidden border border-white/10 hover:border-white/25 transition-all">
+    <div className="group relative bg-black rounded-2xl overflow-hidden border border-border hover:border-border-strong transition-all">
       <div className="cursor-pointer" onClick={onOpenDetail}>
         <div className="relative aspect-[9/16]">
           <img loading="lazy" src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
@@ -540,7 +540,7 @@ const VideoCard: React.FC<{
       </button>
 
       {showContextMenu && (
-        <div className="absolute top-10 right-3 w-44 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute top-10 right-3 w-44 bg-surface-secondary border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
           <button
             onClick={(e) => { e.stopPropagation(); onUnsave(); }}
             className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
@@ -549,14 +549,14 @@ const VideoCard: React.FC<{
           </button>
           {moveOptions.length > 0 && (
             <>
-              <div className="border-t border-white/5 px-4 py-1.5">
-                <span className="text-[10px] text-gray-600 uppercase tracking-wider">Move to</span>
+              <div className="border-t border-border-subtle px-4 py-1.5">
+                <span className="text-[10px] text-content-muted uppercase tracking-wider">Move to</span>
               </div>
               {moveOptions.map((o) => (
                 <button
                   key={o.id}
                   onClick={(e) => { e.stopPropagation(); onMoveToFolder(o.id); }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 transition-colors flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-content-secondary hover:bg-surface-hover transition-colors flex items-center gap-2"
                 >
                   <ArrowRight className="w-3 h-3" /> {o.name}
                 </button>

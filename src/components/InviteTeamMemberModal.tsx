@@ -144,18 +144,18 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-md shadow-2xl">
+      <div className="bg-surface-secondary rounded-2xl border border-border w-full max-w-md shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-white/10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black dark:bg-white rounded-xl flex items-center justify-center">
-              <UserPlus className="w-5 h-5 text-white dark:text-black" />
+            <div className="w-10 h-10 bg-content rounded-xl flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-content-inverse" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Invite Team Member</h2>
+            <h2 className="text-xl font-semibold text-content">Invite Team Member</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-content hover:bg-surface-hover rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -165,14 +165,14 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Team Limit Warning */}
           {!checkingLimit && isAtLimit && limitInfo && (
-            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <div className="flex items-start gap-3 mb-3">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">
+                  <div className="text-sm font-semibold text-red-500 mb-1">
                     Team Member Limit Reached
                   </div>
-                  <div className="text-xs text-red-600/80 dark:text-red-400/80">
+                  <div className="text-xs text-red-500/80">
                     You're using {limitInfo.current}/{limitInfo.limit} seats 
                     ({limitInfo.active} active {limitInfo.active === 1 ? 'member' : 'members'} + {limitInfo.pending} pending {limitInfo.pending === 1 ? 'invitation' : 'invitations'})
                   </div>
@@ -180,7 +180,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
               </div>
               <a
                 href="/settings?tab=billing"
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-white text-black hover:bg-gray-100 dark:hover:bg-gray-100 text-sm font-semibold rounded-lg transition-all"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-content text-content-inverse hover:opacity-90 text-sm font-semibold rounded-lg transition-all"
               >
                 <Crown className="w-4 h-4" />
                 Upgrade Plan
@@ -190,17 +190,17 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-red-500">{error}</div>
               </div>
             </div>
           )}
 
           {/* Email Input */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <label className="block text-sm font-semibold text-content mb-2">
               Email Address
             </label>
             <div className="relative">
@@ -211,33 +211,33 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="colleague@example.com"
                 required
-                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 focus:border-transparent transition-colors"
+                className="w-full pl-10 pr-4 py-3 bg-surface-tertiary border border-border rounded-xl text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-strong focus:border-transparent transition-colors"
               />
             </div>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-xs text-content-muted">
               We'll send an invitation link to this email address
             </p>
           </div>
 
           {/* Role Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <label className="block text-sm font-semibold text-content mb-2">
               Role
             </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
-              className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-black/20 dark:focus:ring-white/20 focus:border-transparent transition-colors"
+              className="w-full px-4 py-3 bg-surface-tertiary border border-border rounded-xl text-content focus:outline-none focus:ring-2 focus:ring-border-strong focus:border-transparent transition-colors"
             >
               <option value="member">Member</option>
               <option value="admin">Admin</option>
             </select>
-            <div className="mt-3 space-y-2 bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-200 dark:border-white/10">
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                <span className="font-semibold text-gray-900 dark:text-white">Member:</span> Can view and manage content
+            <div className="mt-3 space-y-2 bg-surface-tertiary p-4 rounded-xl border border-border">
+              <div className="text-xs text-content-muted">
+                <span className="font-semibold text-content">Member:</span> Can view and manage content
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                <span className="font-semibold text-gray-900 dark:text-white">Admin:</span> Can manage content and team members
+              <div className="text-xs text-content-muted">
+                <span className="font-semibold text-content">Admin:</span> Can manage content and team members
               </div>
             </div>
           </div>
@@ -248,17 +248,17 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 px-4 py-3 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] font-semibold transition-all disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !email || isAtLimit || checkingLimit}
-              className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
-                isAtLimit 
-                  ? 'bg-red-500 dark:bg-red-500 text-white opacity-75 cursor-not-allowed' 
-                  : 'bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black disabled:opacity-50'
+              className={`flex-1 px-4 py-3 font-semibold rounded-lg transition-all disabled:cursor-not-allowed ${
+                isAtLimit
+                  ? 'bg-red-500 text-white opacity-75 cursor-not-allowed shadow-[0_2px_0_0_#b91c1c]'
+                  : 'bg-content text-content-inverse shadow-[0_2px_0_0_var(--border-strong)] hover:shadow-[0_1px_0_0_var(--border-strong)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] disabled:opacity-50'
               }`}
             >
               {checkingLimit ? 'Checking...' : loading ? 'Sending...' : isAtLimit ? 'Limit Reached' : 'Send Invitation'}

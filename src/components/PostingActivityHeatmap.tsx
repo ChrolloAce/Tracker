@@ -204,12 +204,12 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
 
   // Get color intensity based on count
   const getColorIntensity = (count: number): string => {
-    if (count === 0) return 'bg-zinc-800/50';
-    if (count === 1) return 'bg-emerald-500/20';
-    if (count === 2) return 'bg-emerald-500/40';
-    if (count === 3) return 'bg-emerald-500/60';
-    if (count >= 4) return 'bg-emerald-500/80';
-    return 'bg-zinc-800/50';
+    if (count === 0) return 'bg-surface-hover';
+    if (count === 1) return 'bg-orange-500/20';
+    if (count === 2) return 'bg-orange-500/40';
+    if (count === 3) return 'bg-orange-500/60';
+    if (count >= 4) return 'bg-orange-500/80';
+    return 'bg-surface-hover';
   };
 
   const handleCellClick = (dayData: DayData) => {
@@ -266,17 +266,17 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   }, [heatmapData]);
 
   return (
-    <div className="bg-zinc-900 rounded-lg shadow-lg p-3 sm:p-4 md:p-6 border border-white/10">
+    <div className="bg-surface-secondary rounded-lg shadow-theme p-3 sm:p-4 md:p-6 border border-border">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
-        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-white">Posting Activity</h2>
-        <div className="text-[10px] sm:text-xs md:text-sm text-white/60">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-content">Posting Activity</h2>
+        <div className="text-[10px] sm:text-xs md:text-sm text-content-secondary">
           {stats.totalPosts} posts • {stats.activeDays} active days
         </div>
       </div>
 
       {/* Day labels and Heatmap grid */}
-      <div className="flex items-start gap-2 sm:gap-3 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20">
-        <div className="w-6 sm:w-8 md:w-10 flex-shrink-0 flex flex-col gap-[3px] text-[10px] sm:text-xs text-white/40 pt-1">
+      <div className="flex items-start gap-2 sm:gap-3 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent hover:scrollbar-thumb-border-subtle">
+        <div className="w-6 sm:w-8 md:w-10 flex-shrink-0 flex flex-col gap-[3px] text-[10px] sm:text-xs text-content-muted pt-1">
           <div className="h-3 sm:h-4 leading-none">M</div>
           <div className="h-3 sm:h-4 leading-none">T</div>
           <div className="h-3 sm:h-4 leading-none">W</div>
@@ -307,7 +307,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                     className={`
                       w-full aspect-square rounded-sm transition-all cursor-pointer
                       ${getColorIntensity(day.count)}
-                      ${day.count > 0 ? 'hover:ring-1 sm:hover:ring-2 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''}
+                      ${day.count > 0 ? 'hover:ring-1 sm:hover:ring-2 hover:ring-orange-400 hover:ring-offset-1 hover:ring-offset-surface-secondary' : ''}
                     `}
                     onClick={() => handleCellClick(day)}
                     onMouseEnter={(e) => handleMouseEnter(day, e)}
@@ -322,15 +322,15 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-between mt-3 sm:mt-4 text-[10px] sm:text-xs text-white/40">
+      <div className="flex items-center justify-between mt-3 sm:mt-4 text-[10px] sm:text-xs text-content-muted">
         <div className="hidden sm:block">Fewer Posts</div>
         <div className="sm:hidden">Less</div>
         <div className="flex items-center gap-[2px]">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-zinc-800/50" />
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/20" />
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/40" />
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/60" />
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/80" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-surface-hover" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-orange-500/20" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-orange-500/40" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-orange-500/60" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-orange-500/80" />
         </div>
         <div className="hidden sm:block">More Posts</div>
         <div className="sm:hidden">More</div>
@@ -339,7 +339,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       {/* KPI-Style Tooltip with Videos */}
       {hoveredDay && hoveredDay.count > 0 && createPortal(
         <div 
-          className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
+          className="bg-surface-secondary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border" 
           style={{
             position: 'fixed',
             left: `${tooltipPosition.x - 200}px`,
@@ -354,16 +354,16 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-4 pb-3">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+            <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
               {format(hoveredDay.date, 'EEEE, MMMM d, yyyy')}
             </p>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-2xl font-bold text-content">
               {hoveredDay.count}
             </p>
           </div>
           
           {/* Divider */}
-          <div className="border-t border-white/10 mx-5"></div>
+          <div className="border-t border-border mx-5"></div>
           
           {/* Videos List */}
           <div className="px-5 py-3 max-h-[400px] overflow-y-auto">
@@ -373,10 +373,10 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
               .map((video, idx) => (
               <div 
                 key={idx}
-                className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                className="flex items-center gap-3 py-2.5 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors"
               >
                 {/* Video Thumbnail */}
-                <div className="flex-shrink-0 w-16 h-12 relative rounded-md overflow-hidden bg-gray-800">
+                <div className="flex-shrink-0 w-16 h-12 relative rounded-md overflow-hidden bg-surface-tertiary">
                   {video.thumbnail ? (
                     <>
                       <img 
@@ -394,11 +394,11 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                     </>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Play className="w-6 h-6 text-gray-600" />
+                      <Play className="w-6 h-6 text-content-muted" />
                     </div>
                   )}
                   {/* Platform Icon Badge */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#1a1a1a] border-2 border-[#1a1a1a] flex items-center justify-center">
+                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-surface-secondary border-2 border-surface-secondary flex items-center justify-center">
                     <div className="w-3.5 h-3.5">
                       <PlatformIcon platform={video.platform} className="w-full h-full" />
                     </div>
@@ -407,10 +407,10 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
 
                 {/* Metadata */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate leading-tight">
+                  <p className="text-sm font-medium text-content truncate leading-tight">
                     {video.title || video.caption || 'Untitled'}
                   </p>
-                  <div className="text-xs text-gray-400 flex items-center gap-2 mt-1">
+                  <div className="text-xs text-content-muted flex items-center gap-2 mt-1">
                     <span className="truncate">{video.uploaderHandle}</span>
                     <span>•</span>
                     <span>{(video.views || 0).toLocaleString()} views</span>
@@ -419,14 +419,14 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
               </div>
             ))}
             {hoveredDay.videos.length > 5 && (
-              <div className="text-xs text-gray-400 text-center mt-2">
+              <div className="text-xs text-content-muted text-center mt-2">
                 +{hoveredDay.videos.length - 5} more video{hoveredDay.videos.length - 5 !== 1 ? 's' : ''}
               </div>
             )}
           </div>
           
           {/* Footer hint */}
-          <div className="border-t border-white/10 px-5 py-2 text-[10px] text-gray-500 text-center">
+          <div className="border-t border-border px-5 py-2 text-[10px] text-content-muted text-center">
             Click to view all videos
           </div>
         </div>,

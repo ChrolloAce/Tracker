@@ -27,12 +27,12 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duratio
 
   return createPortal(
     <div className="fixed bottom-4 right-4 z-[99999] animate-slide-up">
-      <div className="bg-[#1A1A1A] border border-gray-800 rounded-lg shadow-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-[500px]">
+      <div className="bg-surface border border-border rounded-lg shadow-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-[500px]">
         {icons[type]}
-        <span className="text-white text-sm flex-1">{message}</span>
+        <span className="text-content text-sm flex-1">{message}</span>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-content-muted hover:text-content transition-colors"
         >
           <X className="w-4 h-4" />
         </button>

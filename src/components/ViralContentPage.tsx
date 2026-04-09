@@ -347,8 +347,8 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
     <div className="space-y-6">
       {/* Super-admin seed tool */}
       {isSuperAdmin && (
-        <div className="flex items-center justify-between bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3">
-          <span className="text-xs text-gray-500">Admin: seed viral library from CSV</span>
+        <div className="flex items-center justify-between bg-surface-secondary border border-border rounded-xl px-4 py-3">
+          <span className="text-xs text-content-muted">Admin: seed viral library from CSV</span>
           <SeedViralButton />
         </div>
       )}
@@ -357,17 +357,17 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex items-center gap-3 flex-1">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => { if (onRequiresPaidPlan?.('to discover viral content')) return; }}
             placeholder="Search content, creators, hashtags..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 text-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-surface-hover border border-border rounded-xl text-content placeholder-content-muted focus:outline-none focus:border-border-strong text-sm"
           />
         </div>
-          <span className="text-xs text-gray-500 whitespace-nowrap">
+          <span className="text-xs text-content-muted whitespace-nowrap">
             {totalFiltered.toLocaleString()} video{totalFiltered !== 1 ? 's' : ''}
           </span>
         </div>
@@ -379,14 +379,14 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
               onClick={() => { if (onRequiresPaidPlan?.('to discover viral content')) return; toggleDropdown('filters'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
                 openDropdown === 'filters' || activeFilterCount > 0
-                  ? 'bg-white/15 border-white/30 text-white'
-                  : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+                  ? 'bg-surface-active border-border-strong text-content'
+                  : 'bg-surface-hover border-border text-content-muted hover:bg-surface-active hover:text-content'
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
               Filters
               {activeFilterCount > 0 && (
-                <span className="ml-0.5 w-5 h-5 bg-white/20 rounded-full text-xs flex items-center justify-center text-white">
+                <span className="ml-0.5 w-5 h-5 bg-surface-active rounded-full text-xs flex items-center justify-center text-content">
                   {activeFilterCount}
                 </span>
               )}
@@ -394,7 +394,7 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
             </button>
 
             {openDropdown === 'filters' && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="absolute right-0 top-full mt-2 w-72 bg-surface-secondary border border-border rounded-2xl shadow-2xl z-50 p-4 space-y-4 max-h-[70vh] overflow-y-auto">
                 <FilterSection label="Platform">
                   {PLATFORMS.map((p) => {
                     const Icon = p.icon;
@@ -428,7 +428,7 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
                 {activeFilterCount > 0 && (
           <button
                     onClick={() => { setSelectedPlatform('all'); setSelectedCategory('All'); setContentTypeFilter('all'); }}
-                    className="w-full text-center py-2 text-xs text-gray-500 hover:text-white transition-all"
+                    className="w-full text-center py-2 text-xs text-content-muted hover:text-content transition-all"
           >
                     Reset All Filters
           </button>
@@ -443,8 +443,8 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
               onClick={() => { if (onRequiresPaidPlan?.('to discover viral content')) return; toggleDropdown('sort'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium border ${
                 openDropdown === 'sort' || sortBy !== 'recently_added'
-                  ? 'bg-white/15 border-white/30 text-white'
-                  : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+                  ? 'bg-surface-active border-border-strong text-content'
+                  : 'bg-surface-hover border-border text-content-muted hover:bg-surface-active hover:text-content'
               }`}
             >
               <ArrowUpDown className="w-4 h-4" />
@@ -453,13 +453,13 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
             </button>
 
             {openDropdown === 'sort' && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-[#111113] border border-white/10 rounded-2xl shadow-2xl z-50 p-3 space-y-1">
+              <div className="absolute right-0 top-full mt-2 w-56 bg-surface-secondary border border-border rounded-2xl shadow-2xl z-50 p-3 space-y-1">
                 {SORT_OPTIONS.map((o) => (
           <button
                     key={o.value}
                     onClick={() => { setSortBy(o.value); setOpenDropdown('none'); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      sortBy === o.value ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                      sortBy === o.value ? 'bg-surface-active text-content font-medium' : 'text-content-muted hover:bg-surface-hover hover:text-content'
             }`}
           >
                     {o.label}
@@ -481,15 +481,15 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
       {/* Content Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-content-muted animate-spin" />
         </div>
       ) : displayVideos.length === 0 ? (
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
-          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Flame className="w-8 h-8 text-gray-600" />
+        <div className="rounded-2xl bg-surface-hover border border-border p-12 text-center">
+          <div className="w-16 h-16 bg-surface-hover rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Flame className="w-8 h-8 text-content-muted" />
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">No viral content found</h3>
-          <p className="text-gray-500 text-sm max-w-sm mx-auto">
+          <h3 className="text-lg font-medium text-content mb-2">No viral content found</h3>
+          <p className="text-content-muted text-sm max-w-sm mx-auto">
             {totalFiltered === 0 && !debouncedSearch
               ? 'The viral library is empty. Use the admin seed tool above to import content.'
               : 'Try adjusting your filters or search to find content.'}
@@ -532,22 +532,22 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
               <button
                 onClick={() => goToPage(safePage - 1)}
                 disabled={safePage === 1}
-                className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg bg-surface-hover border border-border text-content-muted hover:bg-surface-active hover:text-content transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
               {pageNumbers.map((p, idx) =>
                 p === '...' ? (
-                  <span key={`dots-${idx}`} className="px-2 text-gray-600 text-sm select-none">…</span>
+                  <span key={`dots-${idx}`} className="px-2 text-content-muted text-sm select-none">…</span>
                 ) : (
                   <button
                     key={p}
                     onClick={() => goToPage(p)}
                     className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-all ${
                       p === safePage
-                        ? 'bg-white/15 border border-white/30 text-white'
-                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+                        ? 'bg-surface-active border border-border-strong text-content'
+                        : 'bg-surface-hover border border-border text-content-muted hover:bg-surface-active hover:text-content'
                     }`}
                   >
                     {p}
@@ -558,12 +558,12 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
           <button
                 onClick={() => goToPage(safePage + 1)}
                 disabled={safePage === totalPages}
-                className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg bg-surface-hover border border-border text-content-muted hover:bg-surface-active hover:text-content transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
                 <ChevronRight className="w-4 h-4" />
           </button>
 
-              <span className="ml-3 text-xs text-gray-500">
+              <span className="ml-3 text-xs text-content-muted">
                 Page {safePage} of {totalPages}
               </span>
             </div>
@@ -583,7 +583,7 @@ const ViralContentPage: React.FC<{ onRequiresPaidPlan?: (context: string) => boo
 
 const FilterSection: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
           <div>
-    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{label}</label>
+    <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">{label}</label>
     <div className="space-y-1">{children}</div>
           </div>
 );
@@ -596,7 +596,7 @@ const FilterButton: React.FC<{ active: boolean; onClick: () => void; children: R
             <button
     onClick={onClick}
     className={`w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-sm transition-all ${
-      active ? 'bg-white/10 text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+      active ? 'bg-surface-active text-content font-medium' : 'text-content-muted hover:bg-surface-hover hover:text-content'
     }`}
   >
     {children}

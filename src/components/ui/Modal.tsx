@@ -31,19 +31,19 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Modal - Dark theme with max constraints to prevent overflow */}
         <div 
           className={clsx(
-            'relative w-full max-w-2xl max-h-[85vh] transform overflow-hidden rounded-2xl bg-[#1a1a1a] border border-white/10 p-6 shadow-2xl transition-all',
+            'relative w-full max-w-2xl max-h-[85vh] transform overflow-hidden rounded-2xl bg-surface border border-border p-6 shadow-2xl transition-all',
             className
           )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
-            <h3 className="text-xl font-bold text-white">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
+            <h3 className="text-xl font-bold text-content">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="rounded-lg p-2 text-content-muted hover:text-content hover:bg-surface-active transition-colors"
             >
               <X className="h-5 w-5" />
             </button>

@@ -132,7 +132,7 @@ const EditCampaignPage: React.FC = () => {
           <p className="text-white text-xl mb-4">Campaign not found</p>
           <button
             onClick={() => navigate('/campaigns')}
-            className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"
+            className="px-6 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
           >
             Back to Campaigns
           </button>
@@ -159,7 +159,7 @@ const EditCampaignPage: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saving || !name.trim()}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+            className="flex items-center gap-2 px-6 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <>
@@ -205,7 +205,7 @@ const EditCampaignPage: React.FC = () => {
                   </label>
                   <button
                     onClick={() => setCoverImage('')}
-                    className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all flex items-center gap-2"
                   >
                     <X className="w-4 h-4" />
                     Remove
@@ -309,7 +309,7 @@ const EditCampaignPage: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving || !name.trim()}
-              className="flex-1 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+              className="flex-1 px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>

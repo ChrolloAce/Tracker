@@ -327,7 +327,7 @@ const CampaignVideoSubmissionModal: React.FC<CampaignVideoSubmissionModalProps> 
                   <button
                     type="button"
                     onClick={handleCreateRule}
-                    className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all"
+                    className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
                   >
                     Create Rule
                   </button>
@@ -359,7 +359,7 @@ const CampaignVideoSubmissionModal: React.FC<CampaignVideoSubmissionModalProps> 
             <button
               type="submit"
               disabled={loading || !videoUrl.trim()}
-              className="flex-1 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all"
+              className="flex-1 px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Submitting...' : 'Submit Video'}
             </button>

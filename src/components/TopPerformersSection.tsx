@@ -239,25 +239,18 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
         return (
           <div 
             {...dragHandlers}
-            className={getDragClasses(id, "group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden")}
+            className={getDragClasses(id, "rounded-2xl bg-surface-secondary border border-border shadow-theme p-6")}
           >
-            {/* Depth Gradient Overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-              }}
-            />
             
             {/* Header */}
             <div className="relative z-10 mb-4">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-xl font-bold text-white">Best Posting Times</h3>
+                <h3 className="text-xl font-bold text-content">Best Posting Times</h3>
                 <div className="relative">
                   <button
                     onMouseEnter={() => setShowPostingTimesInfo(true)}
                     onMouseLeave={() => setShowPostingTimesInfo(false)}
-                    className="text-gray-500 hover:text-gray-400 transition-colors"
+                    className="text-content-muted hover:text-content-secondary transition-colors"
                   >
                     <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
                   </button>
@@ -265,16 +258,16 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
                   {/* Info Tooltip */}
                   {showPostingTimesInfo && (
                     <div 
-                      className="absolute left-0 top-full mt-2 w-64 p-4 rounded-xl border shadow-[0_8px_32px_rgba(0,0,0,0.8)] z-50 bg-[#1a1a1a] backdrop-blur-xl border-white/10"
+                      className="absolute left-0 top-full mt-2 w-64 p-4 rounded-xl border shadow-[0_8px_32px_rgba(0,0,0,0.8)] z-50 bg-surface-tertiary backdrop-blur-xl border-border"
                     >
-                      <p className="text-xs text-gray-300 leading-relaxed">
+                      <p className="text-xs text-content-secondary leading-relaxed">
                         Shows when you post most frequently throughout the week. Brighter cells indicate more videos posted during those hours.
                       </p>
                     </div>
                   )}
                 </div>
               </div>
-              <p className="text-sm text-gray-400">Posting frequency by day & hour</p>
+              <p className="text-sm text-content-secondary">Posting frequency by day & hour</p>
             </div>
 
             {/* Heatmap */}
@@ -305,15 +298,8 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
         return (
           <div 
             {...dragHandlers}
-            className={getDragClasses(id, "group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden")}
+            className={getDragClasses(id, "rounded-2xl bg-surface-secondary border border-border shadow-theme p-6")}
           >
-            {/* Depth Gradient Overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-              }}
-            />
             
             {/* Content */}
             <div className="relative z-10">
@@ -349,16 +335,16 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
   // Show message if no subsections are visible
   if (visibleSubsections.length === 0) {
     return (
-      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
+      <div className="relative rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-lg p-12 text-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="p-4 bg-white/5 rounded-full border border-white/10">
-            <Activity className="w-8 h-8 text-gray-400" />
+          <div className="p-4 bg-surface-hover rounded-full border border-border">
+            <Activity className="w-8 h-8 text-content-muted" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-lg font-semibold text-content mb-2">
               No Components Selected
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-content-muted">
               Toggle components on in the editor to see them here
             </p>
           </div>

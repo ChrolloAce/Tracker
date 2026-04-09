@@ -230,12 +230,12 @@ class FirestoreDataService {
     clickData: Omit<LinkClick, 'id' | 'linkId' | 'timestamp' | 'linkTitle' | 'linkUrl' | 'shortCode'>
   ): Promise<void> {
     const batch = writeBatch(db);
-    
+
     // Get link details first
     const linkRef = doc(db, 'organizations', orgId, 'projects', projectId, 'links', linkId);
     const linkDoc = await getDoc(linkRef);
     const linkData = linkDoc.data();
-    
+
     // Add click record to project-level linkClicks collection for easy querying
     const clickRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'linkClicks'));
     const fullClickData = {
@@ -247,16 +247,31 @@ class FirestoreDataService {
       shortCode: linkData?.shortCode || '',
       timestamp: Timestamp.now()
     };
-    
+
     batch.set(clickRef, fullClickData);
-    
-    // Update link analytics
-    batch.update(linkRef, {
+
+    // Check if this IP hash has clicked this link before to determine unique click
+    let isNewUniqueClick = false;
+    if (clickData.ipHash) {
+      const existingClicksQuery = query(
+        collection(db, 'organizations', orgId, 'projects', projectId, 'linkClicks'),
+        where('linkId', '==', linkId),
+        where('ipHash', '==', clickData.ipHash)
+      );
+      const existingClicks = await getDocs(existingClicksQuery);
+      isNewUniqueClick = existingClicks.empty;
+    }
+
+    // Update link analytics - only increment uniqueClicks for new IP hashes
+    const linkUpdates: Record<string, any> = {
       totalClicks: increment(1),
-      uniqueClicks: increment(1), // Simplified for now - could be improved with better uniqueness tracking
       lastClickedAt: Timestamp.now()
-    });
-    
+    };
+    if (isNewUniqueClick) {
+      linkUpdates.uniqueClicks = increment(1);
+    }
+    batch.update(linkRef, linkUpdates);
+
     await batch.commit();
   }
 

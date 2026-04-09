@@ -57,40 +57,40 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[#0A0A0A] rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
+      <div className="relative w-full max-w-md bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
             {isDanger && (
               <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-red-400" />
               </div>
             )}
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <h2 className="text-xl font-bold text-content">{title}</h2>
           </div>
           <button
             onClick={handleCancel}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-surface-active rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-content-muted" />
           </button>
         </div>
 
         {/* Content */}
         <div className="px-6 py-6">
-          <p className="text-gray-400 text-sm whitespace-pre-line mb-4">{message}</p>
+          <p className="text-content-muted text-sm whitespace-pre-line mb-4">{message}</p>
           
           {requireTyping && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-400">
-                Type <span className="font-mono text-white">{typingConfirmation}</span> to confirm:
+              <label className="block text-sm font-medium text-content-muted">
+                Type <span className="font-mono text-content">{typingConfirmation}</span> to confirm:
               </label>
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={typingConfirmation}
-                className="w-full px-4 py-3 bg-[#161616] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent"
+                className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-hover focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -98,10 +98,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button
             onClick={handleCancel}
-            className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium"
+            className="px-6 py-2.5 text-content-muted hover:text-content hover:bg-surface-hover rounded-full transition-colors font-medium"
           >
             {cancelText}
           </button>
@@ -110,7 +110,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             disabled={!canConfirm}
             className={`px-6 py-2.5 text-sm font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               isDanger
-                ? 'text-white bg-red-500 hover:bg-red-600 disabled:hover:bg-red-500'
+                ? 'text-content bg-red-500 hover:bg-red-600 disabled:hover:bg-red-500'
                 : 'text-black bg-white hover:bg-gray-100 disabled:hover:bg-white'
             }`}
           >

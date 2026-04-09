@@ -280,7 +280,7 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
         {Array.from({ length: 7 }, (_, i) => (
           <div
             key={`day-${i}`}
-            className="text-center text-gray-400 font-medium py-1 text-[9px]"
+            className="text-center text-content-muted font-medium py-1 text-[9px]"
           >
             {formatDay(i as 0 | 1 | 2 | 3 | 4 | 5 | 6, true)}
           </div>
@@ -290,7 +290,7 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
         {Array.from({ length: 24 }, (_, hour) => (
           <React.Fragment key={`hour-${hour}`}>
             {/* Hour label - show only every 4 hours */}
-            <div className="text-right text-gray-400 font-medium pr-1 text-[8px] flex items-center justify-end">
+            <div className="text-right text-content-muted font-medium pr-1 text-[8px] flex items-center justify-end">
               {hour % 4 === 0 ? formatHourRange(hour).split('–')[0] : ''}
             </div>
 
@@ -309,8 +309,8 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                   className="h-3 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:z-10 transition-all"
                   style={{
                     backgroundColor: isEmpty
-                      ? 'rgba(255, 255, 255, 0.05)'
-                      : `rgba(16, 185, 129, ${0.2 + intensity * 0.6})`, // emerald-500
+                      ? 'var(--surface-hover)'
+                      : `rgba(249, 115, 22, ${0.2 + intensity * 0.6})`, // orange-500
                     cursor: isEmpty ? 'default' : 'pointer'
                   }}
                   onClick={() => !isEmpty && handleCellClick(hour, day as 0 | 1 | 2 | 3 | 4 | 5 | 6)}
@@ -339,34 +339,34 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
             top: tooltipData.y + 20
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" style={{ width: '400px', maxWidth: '400px' }}>
+          <div className="bg-surface-secondary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border" style={{ width: '400px', maxWidth: '400px' }}>
             {matrix[tooltipData.hour][tooltipData.day] === 0 ? (
               <div className="px-5 py-4">
-                <div className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">
+                <div className="text-xs text-content-muted font-medium uppercase tracking-wider mb-2">
                   All {formatDay(tooltipData.day as 0 | 1 | 2 | 3 | 4 | 5 | 6)}s · {formatHourRange(tooltipData.hour)}
                 </div>
-                <div className="text-gray-400 text-sm">No posts in selected period</div>
+                <div className="text-content-muted text-sm">No posts in selected period</div>
               </div>
             ) : (
               <>
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                  <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
                     All {formatDay(tooltipData.day as 0 | 1 | 2 | 3 | 4 | 5 | 6)}s · {formatHourRange(tooltipData.hour)}
                   </p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-content">
                       {formatMetricValue(matrix[tooltipData.hour][tooltipData.day])}
                     </p>
                   </div>
                 </div>
                 
                 {/* Divider */}
-                <div className="border-t border-white/10 mx-5"></div>
-                
+                <div className="border-t border-border mx-5"></div>
+
                 {/* Content */}
                 <div className="px-5 py-3">
-                  <div className="text-xs text-gray-400 mb-3">
+                  <div className="text-xs text-content-muted mb-3">
                     {cellsMeta[tooltipData.hour][tooltipData.day].countVideos} {cellsMeta[tooltipData.hour][tooltipData.day].countVideos === 1 ? 'video' : 'videos'} in selected period
                   </div>
 
@@ -375,10 +375,10 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                       {cellsMeta[tooltipData.hour][tooltipData.day].videos.slice(0, 3).map((video, idx) => (
                         <div 
                           key={video.id || idx} 
-                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                          className="flex items-center gap-3 py-2.5 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors"
                         >
                           {/* Thumbnail */}
-                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-surface-tertiary">
                             {video.thumbnailUrl ? (
                               <img
                                 src={video.thumbnailUrl}
@@ -390,7 +390,7 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-content-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -400,11 +400,11 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                           
                           {/* Metadata */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                            <p className="text-sm text-content font-medium truncate leading-tight mb-1">
                               {video.title || '(No title)'}
                             </p>
                             {video.uploaderHandle && (
-                              <div className="text-xs text-gray-400">
+                              <div className="text-xs text-content-muted">
                                 <span className="truncate">{video.uploaderHandle}</span>
                               </div>
                             )}
@@ -413,16 +413,16 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                           {/* Metric Value */}
                           {video.views !== undefined && (
                             <div className="flex-shrink-0 text-right">
-                              <p className="text-sm font-bold text-white">
+                              <p className="text-sm font-bold text-content">
                                 {video.views.toLocaleString()}
                               </p>
-                              <p className="text-xs text-gray-500">views</p>
+                              <p className="text-xs text-content-muted">views</p>
                             </div>
                           )}
                         </div>
                       ))}
                       {cellsMeta[tooltipData.hour][tooltipData.day].videos.length > 3 && (
-                        <div className="text-xs text-gray-400 text-center mt-2">
+                        <div className="text-xs text-content-muted text-center mt-2">
                           +{cellsMeta[tooltipData.hour][tooltipData.day].videos.length - 3} more video{cellsMeta[tooltipData.hour][tooltipData.day].videos.length - 3 !== 1 ? 's' : ''}
                         </div>
                       )}
@@ -431,7 +431,7 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                 </div>
                 
                 {/* Footer hint */}
-                <div className="border-t border-white/10 px-5 py-2 text-[10px] text-gray-500 text-center">
+                <div className="border-t border-border px-5 py-2 text-[10px] text-content-muted text-center">
                   Click to view all videos
                 </div>
               </>

@@ -939,13 +939,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       onClick={handleClose}
     >
       <div 
-        className="bg-[#0a0a0a] rounded-xl shadow-2xl w-full max-w-full sm:max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-white/[0.06]"
+        className="bg-surface-secondary rounded-xl shadow-2xl w-full max-w-full sm:max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-border"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Minimal Header */}
-        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-border">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-            <h2 className="text-sm sm:text-lg font-semibold text-white truncate">
+            <h2 className="text-sm sm:text-lg font-semibold text-content truncate">
               {(() => {
                 // If filtering by day of week and hour, show special format
                 if (dayOfWeek !== undefined && hourRange) {
@@ -971,13 +971,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {/* Period Toggle Tabs */}
             {hasPPData && (
-              <div className="flex items-center bg-white/[0.02] rounded-lg p-0.5 border border-white/[0.04]">
+              <div className="flex items-center bg-surface-tertiary rounded-lg p-0.5 border border-border-subtle">
               <button
                   onClick={() => setShowPreviousPeriod(false)}
                   className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-medium transition-all ${
                     !showPreviousPeriod 
-                      ? 'bg-white/10 text-white' 
-                      : 'text-gray-400 hover:text-gray-300'
+                      ? 'bg-surface-active text-content' 
+                      : 'text-content-muted hover:text-content-secondary'
                   }`}
                   title={`View data for ${interval ? (() => {
                     const formatDateRange = (startDate: Date, endDate: Date) => {
@@ -1000,8 +1000,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   onClick={() => setShowPreviousPeriod(true)}
                   className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-medium transition-all ${
                     showPreviousPeriod 
-                      ? 'bg-white/10 text-white' 
-                      : 'text-gray-400 hover:text-gray-300'
+                      ? 'bg-surface-active text-content' 
+                      : 'text-content-muted hover:text-content-secondary'
                   }`}
                   title={`View data for ${ppInterval ? (() => {
                     const formatDateRange = (startDate: Date, endDate: Date) => {
@@ -1024,9 +1024,9 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             )}
             <button
               onClick={handleClose}
-              className="p-1 sm:p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-1 sm:p-1.5 hover:bg-surface-hover rounded-lg transition-colors"
             >
-              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-content-muted" />
             </button>
           </div>
         </div>
@@ -1048,13 +1048,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   return (
                     <div className="flex items-center justify-center py-16 px-4">
                       <div className="text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-                          <TrendingUp className="w-8 h-8 text-gray-600" />
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-surface-hover flex items-center justify-center">
+                          <TrendingUp className="w-8 h-8 text-content-muted" />
                         </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">
+                        <h3 className="text-lg font-semibold text-content mb-2">
                           No Data Available
                         </h3>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-content-muted">
                           No videos found for this period
                         </p>
                       </div>
@@ -1183,8 +1183,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   : '';
                 
                 return (
-                  <div className="bg-white/[0.02] rounded-lg p-2 sm:p-3 border border-white/[0.04]">
-                    <p className="text-[10px] sm:text-xs leading-relaxed text-gray-400">
+                  <div className="bg-surface-tertiary rounded-lg p-2 sm:p-3 border border-border-subtle">
+                    <p className="text-[10px] sm:text-xs leading-relaxed text-content-muted">
                       {hasPPData && percentChange !== Infinity && percentChange !== 0 && (
                         <>
                           In {periodName}, you did{' '}
@@ -1194,8 +1194,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                           {' '}{isPositive ? 'better' : 'worse'} than {ppPeriodName}.{' '}
                         </>
                       )}
-                      <span className="font-semibold text-white">{newUploadPercent.toFixed(0)}%</span> of your views came from new uploads, while{' '}
-                      <span className="font-semibold text-white">{refreshedPercent.toFixed(0)}%</span> came from refreshed videos.
+                      <span className="font-semibold text-content">{newUploadPercent.toFixed(0)}%</span> of your views came from new uploads, while{' '}
+                      <span className="font-semibold text-content">{refreshedPercent.toFixed(0)}%</span> came from refreshed videos.
                     </p>
                   </div>
                 );
@@ -1237,15 +1237,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {/* Views */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-surface-tertiary rounded-lg p-3 sm:p-4 border border-border-subtle hover:bg-surface-hover transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.views)} • Refreshed: ${formatNumber(refreshedMetrics.views)}`}
             >
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Views</span>
-                <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Views</span>
+                <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.views : cpKPIMetrics.views)}
                 </span>
                 {hasPPData && (() => {
@@ -1253,7 +1253,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.views, cpKPIMetrics.views)
                     : calculateComparison(cpKPIMetrics.views, ppKPIMetrics.views);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1261,14 +1261,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
               {/* Breakdown Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                <div className="bg-surface-tertiary border border-border rounded-lg p-2 shadow-xl min-w-[140px]">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-gray-400">New</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.views)}</span>
+                    <span className="text-content-muted">New</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(newUploadMetrics.views)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Refreshed</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.views)}</span>
+                    <span className="text-content-muted">Refreshed</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(refreshedMetrics.views)}</span>
                   </div>
                 </div>
               </div>
@@ -1276,15 +1276,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Likes */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-surface-tertiary rounded-lg p-3 sm:p-4 border border-border-subtle hover:bg-surface-hover transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.likes)} • Refreshed: ${formatNumber(refreshedMetrics.likes)}`}
             >
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Likes</span>
-                <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Likes</span>
+                <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.likes : cpKPIMetrics.likes)}
                 </span>
                 {hasPPData && (() => {
@@ -1292,7 +1292,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.likes, cpKPIMetrics.likes)
                     : calculateComparison(cpKPIMetrics.likes, ppKPIMetrics.likes);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1300,14 +1300,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
               {/* Breakdown Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                <div className="bg-surface-tertiary border border-border rounded-lg p-2 shadow-xl min-w-[140px]">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-gray-400">New</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.likes)}</span>
+                    <span className="text-content-muted">New</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(newUploadMetrics.likes)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Refreshed</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.likes)}</span>
+                    <span className="text-content-muted">Refreshed</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(refreshedMetrics.likes)}</span>
                   </div>
                 </div>
               </div>
@@ -1315,15 +1315,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Comments */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-surface-tertiary rounded-lg p-3 sm:p-4 border border-border-subtle hover:bg-surface-hover transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.comments)} • Refreshed: ${formatNumber(refreshedMetrics.comments)}`}
             >
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Comments</span>
-                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Comments</span>
+                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.comments : cpKPIMetrics.comments)}
                 </span>
                 {hasPPData && (() => {
@@ -1331,7 +1331,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.comments, cpKPIMetrics.comments)
                     : calculateComparison(cpKPIMetrics.comments, ppKPIMetrics.comments);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1339,14 +1339,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
               {/* Breakdown Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                <div className="bg-surface-tertiary border border-border rounded-lg p-2 shadow-xl min-w-[140px]">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-gray-400">New</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.comments)}</span>
+                    <span className="text-content-muted">New</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(newUploadMetrics.comments)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Refreshed</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.comments)}</span>
+                    <span className="text-content-muted">Refreshed</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(refreshedMetrics.comments)}</span>
                   </div>
                 </div>
               </div>
@@ -1354,15 +1354,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Shares */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-surface-tertiary rounded-lg p-3 sm:p-4 border border-border-subtle hover:bg-surface-hover transition-colors relative group"
               title={`New: ${formatNumber(newUploadMetrics.shares)} • Refreshed: ${formatNumber(refreshedMetrics.shares)}`}
             >
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Shares</span>
-                <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Shares</span>
+                <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.shares : cpKPIMetrics.shares)}
                 </span>
                 {hasPPData && (() => {
@@ -1370,7 +1370,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.shares, cpKPIMetrics.shares)
                     : calculateComparison(cpKPIMetrics.shares, ppKPIMetrics.shares);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1378,14 +1378,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
               {/* Breakdown Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                <div className="bg-surface-tertiary border border-border rounded-lg p-2 shadow-xl min-w-[140px]">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-gray-400">New</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.shares)}</span>
+                    <span className="text-content-muted">New</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(newUploadMetrics.shares)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Refreshed</span>
-                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.shares)}</span>
+                    <span className="text-content-muted">Refreshed</span>
+                    <span className="text-content-secondary font-medium">{formatNumber(refreshedMetrics.shares)}</span>
                   </div>
                 </div>
               </div>
@@ -1393,15 +1393,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Engagement Rate */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-surface-tertiary rounded-lg p-3 sm:p-4 border border-border-subtle hover:bg-surface-hover transition-colors relative group"
               title={`New: ${newUploadMetrics.views ? ((newUploadMetrics.likes + newUploadMetrics.comments + newUploadMetrics.shares) / newUploadMetrics.views * 100).toFixed(1) : 0}% • Refreshed: ${refreshedMetrics.views ? ((refreshedMetrics.likes + refreshedMetrics.comments + refreshedMetrics.shares) / refreshedMetrics.views * 100).toFixed(1) : 0}%`}
             >
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Engagement</span>
-                <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Engagement</span>
+                <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {(showPreviousPeriod ? ppKPIMetrics.engagementRate : cpKPIMetrics.engagementRate).toFixed(1)}%
                 </span>
                 {hasPPData && (() => {
@@ -1409,7 +1409,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.engagementRate, cpKPIMetrics.engagementRate)
                     : calculateComparison(cpKPIMetrics.engagementRate, ppKPIMetrics.engagementRate);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1417,16 +1417,16 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
               {/* Breakdown Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                <div className="bg-surface-tertiary border border-border rounded-lg p-2 shadow-xl min-w-[140px]">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-gray-400">New</span>
-                    <span className="text-gray-300 font-medium">
+                    <span className="text-content-muted">New</span>
+                    <span className="text-content-secondary font-medium">
                       {newUploadMetrics.views ? ((newUploadMetrics.likes + newUploadMetrics.comments + newUploadMetrics.shares) / newUploadMetrics.views * 100).toFixed(1) : 0}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Refreshed</span>
-                    <span className="text-gray-300 font-medium">
+                    <span className="text-content-muted">Refreshed</span>
+                    <span className="text-content-secondary font-medium">
                       {refreshedMetrics.views ? ((refreshedMetrics.likes + refreshedMetrics.comments + refreshedMetrics.shares) / refreshedMetrics.views * 100).toFixed(1) : 0}%
                     </span>
                   </div>
@@ -1436,15 +1436,15 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
             {/* Videos */}
             <div 
-              className="bg-white/[0.02] rounded-lg p-3 sm:p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              className="bg-surface-tertiary rounded-lg p-3 sm:p-4 border border-border-subtle hover:bg-surface-hover transition-colors relative group"
               title={`New: ${uploadsToUse.length} • Refreshed: ${gainersToUse.length}`}
             >
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Videos</span>
-                <Video className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Videos</span>
+                <Video className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.videos : cpKPIMetrics.videos)}
                 </span>
                 {hasPPData && (() => {
@@ -1452,7 +1452,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.videos, cpKPIMetrics.videos)
                     : calculateComparison(cpKPIMetrics.videos, ppKPIMetrics.videos);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1460,27 +1460,27 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
               {/* Breakdown Tooltip */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                <div className="bg-surface-tertiary border border-border rounded-lg p-2 shadow-xl min-w-[140px]">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-gray-400">New</span>
-                    <span className="text-gray-300 font-medium">{uploadsToUse.length}</span>
+                    <span className="text-content-muted">New</span>
+                    <span className="text-content-secondary font-medium">{uploadsToUse.length}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Refreshed</span>
-                    <span className="text-gray-300 font-medium">{gainersToUse.length}</span>
+                    <span className="text-content-muted">Refreshed</span>
+                    <span className="text-content-secondary font-medium">{gainersToUse.length}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Accounts */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div className="bg-surface-tertiary rounded-lg p-4 border border-border-subtle hover:bg-surface-hover transition-colors">
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Accounts</span>
-                <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Accounts</span>
+                <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.accounts : cpKPIMetrics.accounts)}
                 </span>
                 {hasPPData && (() => {
@@ -1488,7 +1488,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.accounts, cpKPIMetrics.accounts)
                     : calculateComparison(cpKPIMetrics.accounts, ppKPIMetrics.accounts);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -1497,13 +1497,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Link Clicks */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div className="bg-surface-tertiary rounded-lg p-4 border border-border-subtle hover:bg-surface-hover transition-colors">
               <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Clicks</span>
-                <MousePointerClick className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600" />
+                <span className="text-[10px] sm:text-xs text-content-muted font-medium">Clicks</span>
+                <MousePointerClick className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-content-muted" />
               </div>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-lg sm:text-2xl font-semibold text-white">
+                <span className="text-lg sm:text-2xl font-semibold text-content">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.clicks : cpKPIMetrics.clicks)}
                 </span>
                 {hasPPData && (() => {
@@ -1511,7 +1511,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.clicks, cpKPIMetrics.clicks)
                     : calculateComparison(cpKPIMetrics.clicks, ppKPIMetrics.clicks);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-content-muted' : 'text-content-muted'}`}>
                       {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;

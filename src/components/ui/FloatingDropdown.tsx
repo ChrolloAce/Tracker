@@ -106,7 +106,7 @@ export const FloatingDropdown: React.FC<FloatingDropdownProps> = ({
       {/* Dropdown */}
       <div
         ref={dropdownRef}
-        className="fixed z-[9996] w-56 bg-black border border-white/20 rounded-lg shadow-2xl py-1"
+        className="fixed z-[9996] w-56 bg-surface border border-border-hover rounded-lg shadow-2xl py-1"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
@@ -139,7 +139,7 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
 }) => {
   const colorClass = variant === 'danger' 
     ? 'text-red-400 hover:bg-red-500/10'
-    : 'text-gray-200 hover:bg-white/10';
+    : 'text-content hover:bg-surface-active';
 
   return (
     <button
@@ -155,6 +155,6 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
 
 // Dropdown divider component
 export const DropdownDivider: React.FC = () => (
-  <div className="my-1 border-t border-white/10" />
+  <div className="my-1 border-t border-border" />
 );
 

@@ -106,7 +106,7 @@ export const FloatingTooltip: React.FC<FloatingTooltipProps> = ({
         left: `${coords.left}px`,
       }}
     >
-      <div className="bg-black border border-white/20 rounded-lg p-3 shadow-2xl text-xs max-w-xs">
+      <div className="bg-surface border border-border-hover rounded-lg p-3 shadow-2xl text-xs max-w-xs">
         {children}
       </div>
     </div>,

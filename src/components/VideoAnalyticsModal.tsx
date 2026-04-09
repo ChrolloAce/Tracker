@@ -595,8 +595,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       onClick={onClose}
     >
       <div 
-        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4"
-        style={{ backgroundColor: '#121214' }}
+        className="rounded-xl shadow-2xl bg-surface-secondary border border-border w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -606,7 +605,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             {/* Trash - Delete Video */}
             <button
               onClick={handleDeleteVideo}
-              className="p-2 text-white/60 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-lg transition-all border border-white/5 hover:border-red-500/20"
+              className="p-2 text-content-secondary hover:text-red-400 bg-surface-hover hover:bg-red-500/10 rounded-lg transition-all border border-border-subtle hover:border-red-500/20"
               title="Delete video"
             >
               <Trash2 className="w-4 h-4" strokeWidth={1.5} />
@@ -615,7 +614,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             {/* Link - Go to Video */}
             <button
               onClick={handleGoToVideo}
-              className="p-2 text-white/60 hover:text-blue-400 bg-white/5 hover:bg-blue-500/10 rounded-lg transition-all border border-white/5 hover:border-blue-500/20"
+              className="p-2 text-content-secondary hover:text-blue-400 bg-surface-hover hover:bg-blue-500/10 rounded-lg transition-all border border-border-subtle hover:border-blue-500/20"
               title="Go to video"
             >
               <Link2 className="w-4 h-4" strokeWidth={1.5} />
@@ -625,7 +624,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             <div className="relative" ref={copyDropdownRef}>
               <button
                 onClick={() => setShowCopyDropdown(!showCopyDropdown)}
-                className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/5 hover:border-white/20"
+                className="p-2 text-content-secondary hover:text-content bg-surface-hover hover:bg-surface-active rounded-lg transition-all border border-border-subtle hover:border-border-strong"
                 title="Copy options"
               >
                 <Copy className="w-4 h-4" strokeWidth={1.5} />
@@ -633,13 +632,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
               {/* Dropdown Menu */}
               {showCopyDropdown && (
-                <div className="absolute left-0 top-full mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                <div className="absolute left-0 top-full mt-2 w-48 bg-surface-secondary border border-border rounded-lg shadow-xl overflow-hidden z-50">
                   <button
                     onClick={() => {
                       handleCopy('link');
                       setShowCopyDropdown(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2"
+                    className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
                   >
                     <span>Copy link</span>
                     {copiedItem === 'link' && <Check className="w-4 h-4 text-emerald-400" />}
@@ -649,7 +648,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       handleCopy('videoId');
                       setShowCopyDropdown(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2 border-t border-white/5"
+                    className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
                   >
                     <span>Copy video ID</span>
                     {copiedItem === 'videoId' && <Check className="w-4 h-4 text-emerald-400" />}
@@ -659,7 +658,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       handleCopy('accountLink');
                       setShowCopyDropdown(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2 border-t border-white/5"
+                    className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
                   >
                     <span>Copy account link</span>
                     {copiedItem === 'accountLink' && <Check className="w-4 h-4 text-emerald-400" />}
@@ -673,7 +672,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           <div className="flex items-center gap-3">
             <button
               onClick={handleClose}
-              className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
+              className="p-2 text-content-secondary hover:text-content bg-surface-hover hover:bg-surface-active rounded-full transition-all"
             >
               <X className="w-5 h-5" strokeWidth={1.5} />
             </button>
@@ -708,34 +707,26 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               return (
                 <div 
                   key={metric.label}
-                  className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+                  className="group relative rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-lg hover:shadow-xl hover:ring-1 hover:ring-border transition-all duration-300 overflow-hidden"
                   style={{ minHeight: '180px' }}
                 >
-                  {/* Depth Gradient Overlay */}
-                  <div 
-                    className="absolute inset-0 pointer-events-none z-0"
-                    style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-                    }}
-                  />
-                  
                   {/* Upper Solid Portion - 60% */}
-                  <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
+                  <div className="relative px-5 pt-4 pb-2" style={{ height: '60%' }}>
                     {/* Icon (top-right) */}
                     <div className="absolute top-4 right-4">
-                      <metric.icon className="w-5 h-5 text-gray-400 opacity-60" />
+                      <metric.icon className="w-5 h-5 text-content-muted opacity-60" />
                     </div>
 
                     {/* Metric Content */}
                     <div className="flex flex-col h-full justify-start pt-1">
                       {/* Label */}
-                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+                      <div className="text-xs font-medium text-content-muted tracking-wide mb-2">
                         {metric.label}
                       </div>
 
                       {/* Value */}
                       <div className="flex flex-col gap-1 -mt-1">
-                        <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                        <span className="text-3xl lg:text-4xl font-bold tracking-tight text-content">
                           {(metric as any).showNA
                             ? 'N/A'
                             : metric.isPercentage 
@@ -777,10 +768,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   {/* Bottom Graph Layer - 40% */}
                   {chartData && chartData.length > 0 && (
                     <div 
-                      className="relative w-full overflow-hidden z-10"
+                      className="relative w-full overflow-hidden"
                       style={{ 
                         height: '40%',
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+                        background: 'linear-gradient(to top, var(--color-surface-tertiary) 0%, transparent 100%)',
                         borderBottomLeftRadius: '1rem',
                         borderBottomRightRadius: '1rem'
                       }}
@@ -899,7 +890,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     height: '8px',
                     borderRadius: '50%',
                     backgroundColor: displayColor,
-                    border: '2px solid #fff',
+                    border: '2px solid var(--color-surface-secondary)',
                     transform: 'translate(-50%, -50%)',
                     pointerEvents: 'none',
                     zIndex: 100,
@@ -922,8 +913,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               {/* Creator Details & Performance Score Grid */}
               <div className="grid grid-cols-2 gap-3 min-w-0">
                 {/* Creator Details */}
-                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                <div className="rounded-xl border border-border-subtle shadow-lg p-3 min-w-0 overflow-hidden bg-surface-secondary">
+                  <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
                     Creator Details
                   </h3>
                   
@@ -934,28 +925,28 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                         <img 
                           src={video.uploaderProfilePicture} 
                           alt={video.uploader || video.uploaderHandle}
-                          className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
+                          className="w-12 h-12 rounded-full object-cover ring-2 ring-border"
                           onError={() => setImageError(true)}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-white/10">
-                          <span className="text-white font-bold text-sm">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-border">
+                          <span className="text-content font-bold text-sm">
                             {(video.uploader || video.uploaderHandle || 'U').charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
                       {/* Platform Badge */}
-                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-zinc-900 rounded-full p-0.5 ring-1 ring-zinc-900">
+                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-surface-secondary rounded-full p-0.5 ring-1 ring-border">
                         <PlatformIcon platform={video.platform} size="sm" />
                       </div>
                     </div>
                     
                     {/* Username and Followers */}
                     <div className="flex-1">
-                      <p className="text-base font-bold text-white mb-1">
+                      <p className="text-base font-bold text-content mb-1">
                         @{video.uploaderHandle}
                       </p>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-content-muted">
                         {video.followerCount ? formatNumber(video.followerCount) : 'N/A'} followers
                       </p>
                     </div>
@@ -963,8 +954,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </div>
 
                 {/* Video Performance Score */}
-                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                <div className="rounded-xl border border-border-subtle shadow-lg p-3 min-w-0 overflow-hidden bg-surface-secondary">
+                  <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
                     Performance Rank
                   </h3>
                   
@@ -972,10 +963,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     {/* Rank Display - Compact Layout */}
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-white">
+                        <span className="text-2xl font-bold text-content">
                           #{performanceScore.rank}
                         </span>
-                        <span className="text-sm text-gray-400">
+                        <span className="text-sm text-content-muted">
                           out of {performanceScore.total}
                         </span>
                       </div>
@@ -987,18 +978,18 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               {/* Caption & Hashtags Grid */}
               <div className="grid grid-cols-2 gap-3 min-w-0">
                 {/* Video Caption */}
-                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                <div className="rounded-xl border border-border-subtle shadow-lg p-3 min-w-0 overflow-hidden bg-surface-secondary">
+                  <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
                     Video Caption
                   </h3>
-                  <p className="text-base text-white leading-relaxed">
+                  <p className="text-base text-content leading-relaxed">
                     {cleanTitle}
                   </p>
                 </div>
 
                 {/* Hashtags */}
-                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                <div className="rounded-xl border border-border-subtle shadow-lg p-3 min-w-0 overflow-hidden bg-surface-secondary">
+                  <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
                     Hashtags
                   </h3>
                   {hashtags.length > 0 ? (
@@ -1006,15 +997,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       {hashtags.map((tag, index) => (
                         <span
                           key={index}
-                          className="px-3 py-1.5 rounded-lg text-sm font-medium text-white/80 border border-white/10 hover:border-white/20 transition-colors"
-                          style={{ backgroundColor: '#0a0a0b' }}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium text-content-secondary border border-border hover:border-border-strong transition-colors bg-surface-tertiary"
                         >
                           {tag}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-400">No hashtags</p>
+                    <p className="text-sm text-content-muted">No hashtags</p>
                   )}
                 </div>
               </div>
@@ -1063,7 +1053,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         
         return createPortal(
           <div 
-            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
+            className="bg-surface-tertiary backdrop-blur-xl text-content rounded-xl shadow-2xl border border-border" 
             style={{ 
               position: 'fixed',
               left: `${leftPosition}px`,
@@ -1075,18 +1065,18 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             }}
           >
             {/* Header */}
-            <div className="px-5 py-3 border-b border-white/10">
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+            <div className="px-5 py-3 border-b border-border">
+              <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
                 {tooltipData.dataPoint.date}
               </p>
             </div>
 
             {/* Value */}
             <div className="px-5 py-4">
-              <p className="text-2xl text-white font-bold">
+              <p className="text-2xl text-content font-bold">
                 {formattedValue}
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-content-muted mt-1">
                 {tooltipData.metricLabel}
               </p>
             </div>

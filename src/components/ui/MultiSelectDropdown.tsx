@@ -72,17 +72,17 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-white/90 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all min-w-[180px] backdrop-blur-sm"
+        className="flex items-center space-x-2 px-4 py-2 bg-surface-hover border border-border hover:border-border-hover rounded-lg text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-border-hover transition-all min-w-[180px] backdrop-blur-sm"
       >
         <span className="flex-1 text-left truncate">{displayText}</span>
         <div className="flex items-center space-x-1">
           {selectedIds.length > 0 && (
-            <div className="flex items-center justify-center w-5 h-5 bg-white/20 text-white text-xs font-bold rounded-full">
+            <div className="flex items-center justify-center w-5 h-5 bg-surface-active text-content text-xs font-bold rounded-full">
               {selectedIds.length}
             </div>
           )}
           <ChevronDown className={clsx(
-            "w-4 h-4 text-white/50 transition-transform",
+            "w-4 h-4 text-content-muted transition-transform",
             isOpen && "transform rotate-180"
           )} />
         </div>
@@ -90,10 +90,10 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-gradient-to-br from-[#121212] to-[#151515] border border-white/10 rounded-lg shadow-2xl z-50 max-h-96 overflow-hidden flex flex-col backdrop-blur-xl">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border rounded-lg shadow-2xl z-50 max-h-96 overflow-hidden flex flex-col backdrop-blur-xl">
           {/* Header */}
-          <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5">
-            <span className="text-sm font-semibold text-white/90">
+          <div className="p-3 border-b border-border flex items-center justify-between bg-surface-hover">
+            <span className="text-sm font-semibold text-content">
               Select Accounts
             </span>
             <div className="flex items-center space-x-2">
@@ -107,7 +107,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
               )}
               <button
                 onClick={handleSelectAll}
-                className="text-xs text-white/90 hover:text-white font-medium transition-colors"
+                className="text-xs text-content hover:text-content font-medium transition-colors"
               >
                 {selectedIds.length === options.length ? 'Deselect All' : 'Select All'}
               </button>
@@ -118,7 +118,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
           <div className="overflow-y-auto flex-1">
             {options.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-sm text-white/40">No accounts available</p>
+                <p className="text-sm text-content-muted">No accounts available</p>
               </div>
             ) : (
               <div className="py-2">
@@ -129,18 +129,18 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                       key={option.id}
                       onClick={() => handleToggleOption(option.id)}
                       className={clsx(
-                        "w-full px-4 py-2.5 flex items-center space-x-3 hover:bg-white/5 transition-colors",
-                        isSelected && "bg-white/10"
+                        "w-full px-4 py-2.5 flex items-center space-x-3 hover:bg-surface-hover transition-colors",
+                        isSelected && "bg-surface-active"
                       )}
                     >
                       {/* Checkbox */}
                       <div className={clsx(
                         "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0",
                         isSelected 
-                          ? "bg-white/90 border-white/90" 
-                          : "border-white/20"
+                          ? "bg-content border-content" 
+                          : "border-border-hover"
                       )}>
-                        {isSelected && <Check className="w-3 h-3 text-gray-900" />}
+                        {isSelected && <Check className="w-3 h-3 text-surface" />}
                       </div>
 
                       {/* Avatar */}
@@ -155,8 +155,8 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                           }}
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-white/70">
+                        <div className="w-8 h-8 rounded-full bg-surface-active flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-content-muted">
                             {option.label.charAt(0).toUpperCase()}
                           </span>
                         </div>
@@ -166,8 +166,8 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                       <span className={clsx(
                         "text-sm font-medium truncate flex-1 text-left",
                         isSelected 
-                          ? "text-white" 
-                          : "text-white/90"
+                          ? "text-content" 
+                          : "text-content"
                       )}>
                         {option.label}
                       </span>
@@ -180,8 +180,8 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
 
           {/* Footer */}
           {selectedIds.length > 0 && (
-            <div className="p-3 border-t border-white/10 bg-white/5">
-              <div className="text-xs text-white/60">
+            <div className="p-3 border-t border-border bg-surface-hover">
+              <div className="text-xs text-content-muted">
                 {selectedIds.length} of {options.length} accounts selected
               </div>
             </div>

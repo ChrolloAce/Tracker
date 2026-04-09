@@ -197,18 +197,18 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#151515] rounded-[14px] w-full max-w-[620px] shadow-2xl" style={{ padding: '24px' }}>
+      <div className="bg-surface rounded-[14px] w-full max-w-[620px] shadow-2xl" style={{ padding: '24px' }}>
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-lg font-bold text-white mb-1">Track Accounts</h2>
-            <p className="text-sm text-[#A1A1AA]">
+            <h2 className="text-lg font-bold text-content mb-1">Track Accounts</h2>
+            <p className="text-sm text-content-muted">
               Paste account URLs — one per line or a block of links.
             </p>
           </div>
           <button
             onClick={() => { onClose(); setAccounts([]); setInputValue(''); setUrlError(null); }}
-            className="text-white/80 hover:text-white transition-colors p-1"
+            className="text-content-muted hover:text-content transition-colors p-1"
           >
             <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
@@ -218,14 +218,14 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         <div
           ref={containerRef}
           onClick={() => inputRef.current?.focus()}
-          className="bg-[#1E1E20] border border-gray-700/50 rounded-xl overflow-hidden cursor-text mb-4 focus-within:ring-1 focus-within:ring-white/20 focus-within:border-white/20 transition-all"
+          className="bg-surface-secondary border border-border rounded-xl overflow-hidden cursor-text mb-4 focus-within:ring-1 focus-within:ring-border-hover focus-within:border-border-hover transition-all"
         >
           <div className="max-h-[280px] overflow-y-auto p-1">
             {accounts.map((account) => (
               <div
                 key={account.url}
                 className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg mx-0.5 my-0.5 transition-colors ${
-                  account.platform ? 'hover:bg-white/[0.04]' : 'bg-red-500/5'
+                  account.platform ? 'hover:bg-surface-hover' : 'bg-red-500/5'
                 }`}
               >
                 <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
@@ -236,15 +236,15 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   )}
                 </div>
                 <span className={`flex-1 truncate text-[13px] font-mono ${
-                  account.platform ? 'text-gray-300' : 'text-red-300'
+                  account.platform ? 'text-content-muted' : 'text-red-300'
                 }`}>
                   {account.username ? `@${account.username}` : account.url}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); removeAccount(account.url); }}
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-all"
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-surface-active transition-all"
                 >
-                  <X className="w-3 h-3 text-gray-500 hover:text-gray-300" />
+                  <X className="w-3 h-3 text-content-muted hover:text-content" />
                 </button>
               </div>
             ))}
@@ -259,7 +259,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 : "Paste more URLs..."
               }
               rows={accounts.length === 0 ? 6 : 2}
-              className="w-full px-3 py-2 bg-transparent text-white placeholder-gray-600 focus:outline-none text-[13px] font-mono leading-relaxed resize-none"
+              className="w-full px-3 py-2 bg-transparent text-content placeholder-content-muted focus:outline-none text-[13px] font-mono leading-relaxed resize-none"
             />
           </div>
         </div>
@@ -268,32 +268,32 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4">
           {/* Video count selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">Videos per account:</span>
+            <span className="text-xs text-content-muted">Videos per account:</span>
             <div className="relative" ref={presetsRef}>
               <button
                 onClick={() => setShowPresets(!showPresets)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-sm text-white font-medium hover:border-white/20 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-secondary border border-border rounded-full text-sm text-content font-medium hover:border-border-hover transition-colors"
               >
                 {videoCount}
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-content-muted" />
               </button>
               {showPresets && (
-                <div className="absolute left-0 mt-1 w-32 bg-[#1E1E20] border border-gray-700/50 rounded-lg shadow-xl z-10">
+                <div className="absolute left-0 mt-1 w-32 bg-surface-secondary border border-border rounded-lg shadow-xl z-10">
                   {[10, 25, 50, 100, 250, 500, 1000, 2000]
                     .filter((preset) => hasUnlimitedVideos || preset <= usageLimits.videosLeft)
                     .map((preset) => (
                     <button
                       key={preset}
                       onClick={() => { setVideoCount(preset); setShowPresets(false); }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 first:rounded-t-lg last:rounded-b-lg transition-colors ${
-                        videoCount === preset ? 'text-white font-medium' : 'text-gray-400'
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-surface-hover first:rounded-t-lg last:rounded-b-lg transition-colors ${
+                        videoCount === preset ? 'text-content font-medium' : 'text-content-muted'
                       }`}
                     >
                       {preset} videos
                     </button>
                   ))}
                   {!hasUnlimitedVideos && usageLimits.videosLeft < 2000 && (
-                    <div className="px-3 py-2 text-[11px] text-gray-500 border-t border-gray-700/50">
+                    <div className="px-3 py-2 text-[11px] text-content-muted border-t border-border">
                       {usageLimits.videosLeft} videos remaining on your plan
                     </div>
                   )}
@@ -305,8 +305,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           {/* YouTube video type selector — only visible when YouTube accounts are present */}
           {(platformCounts['youtube'] > 0 || validAccounts.some(a => a.platform === 'youtube') || inputValue.toLowerCase().includes('youtube')) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">YouTube type:</span>
-              <div className="flex gap-1 bg-[#1E1E20] border border-gray-700/50 rounded-full p-0.5">
+              <span className="text-xs text-content-muted">YouTube type:</span>
+              <div className="flex gap-1 bg-surface-secondary border border-border rounded-full p-0.5">
                 {([
                   { value: 'shorts', label: 'Shorts' },
                   { value: 'both', label: 'Both' },
@@ -318,7 +318,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       youtubeVideoType === opt.value
                         ? 'bg-white text-black'
-                        : 'text-gray-400 hover:text-white'
+                        : 'text-content-muted hover:text-content'
                     }`}
                   >
                     {opt.label}
@@ -333,14 +333,14 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         {accounts.length > 0 && (
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-400">
+              <span className="text-xs font-medium text-content-muted">
                 {totalCount} account{totalCount !== 1 ? 's' : ''} detected
               </span>
               <div className="flex items-center gap-2">
                 {Object.entries(platformCounts).map(([platform, count]) => (
-                  <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full">
+                  <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full">
                     <PlatformIcon platform={platform as any} size="sm" />
-                    <span className="text-[11px] text-gray-300 font-medium">{count}</span>
+                    <span className="text-[11px] text-content-muted font-medium">{count}</span>
                   </div>
                 ))}
               </div>
@@ -381,7 +381,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   </p>
                   <button
                     onClick={() => navigate('/subscription')}
-                    className="text-xs font-medium text-white bg-red-500/20 hover:bg-red-500/30 px-3 py-1.5 rounded-md transition-colors"
+                    className="text-xs font-medium text-content bg-red-500/20 hover:bg-red-500/30 px-3 py-1.5 rounded-md transition-colors"
                   >
                     Upgrade Plan →
                   </button>
@@ -407,7 +407,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   </p>
                   <button
                     onClick={() => navigate('/subscription')}
-                    className="text-xs font-medium text-white bg-yellow-500/20 hover:bg-yellow-500/30 px-3 py-1.5 rounded-md transition-colors"
+                    className="text-xs font-medium text-content bg-yellow-500/20 hover:bg-yellow-500/30 px-3 py-1.5 rounded-md transition-colors"
                   >
                     Upgrade for More →
                   </button>
@@ -420,15 +420,15 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         })()}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
-          <div className="flex items-center gap-2 text-[#9B9B9B] text-xs">
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-content-muted text-xs">
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Processing takes up to 5 minutes.</span>
           </div>
           <button
             onClick={handleSubmit}
             disabled={usageLimits.isAtAccountLimit || usageLimits.isAtVideoLimit || (validAccounts.length === 0 && !inputValue.trim())}
-            className="px-5 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+            className="px-5 py-2 text-sm font-bold text-white bg-orange-500 rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0"
           >
             {usageLimits.isAtAccountLimit || usageLimits.isAtVideoLimit
               ? 'Limit Reached'

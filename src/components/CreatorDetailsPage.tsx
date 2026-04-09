@@ -306,14 +306,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const totalPending = pendingPayouts.reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="min-h-screen h-full flex flex-col bg-[#0A0A0A]">
+    <div className="min-h-screen h-full flex flex-col bg-surface-secondary">
       {/* Header */}
       <div className="px-6 pt-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-content-muted hover:text-content transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -333,17 +333,17 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
                 </div>
               )}
               <div>
-                <h1 className="text-2xl font-bold text-white">
+                <h1 className="text-2xl font-bold text-content">
                   {creator.displayName || 'Creator'}
                 </h1>
-                <p className="text-sm text-gray-400">{creator.email}</p>
+                <p className="text-sm text-content-muted">{creator.email}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tabs and Time Period Selector */}
-        <div className="flex items-center justify-between mt-8 border-b border-gray-800">
+        <div className="flex items-center justify-between mt-8 border-b border-border">
           <div className="flex gap-6">
             {(['overview', 'accounts', 'campaigns', 'settings'] as const).map((tab) => (
             <button
@@ -351,8 +351,8 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               onClick={() => setActiveTab(tab)}
                 className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors capitalize ${
                 activeTab === tab
-                    ? 'border-white text-white'
-                    : 'border-transparent text-gray-400 hover:text-gray-300'
+                    ? 'border-content text-content'
+                    : 'border-transparent text-content-muted hover:text-content-secondary'
               }`}
             >
               {tab}
@@ -366,14 +366,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               <select
                 value={timePeriod}
                 onChange={(e) => setTimePeriod(e.target.value as any)}
-                className="pl-3 pr-10 py-2 bg-white/5 border border-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-white/90 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none cursor-pointer"
+                className="pl-3 pr-10 py-2 bg-surface-secondary border border-border hover:border-border-strong rounded-lg text-sm font-medium text-content focus:outline-none focus:ring-2 focus:ring-border-strong transition-all appearance-none cursor-pointer"
               >
-                <option value="payment_period" className="bg-[#161616]">Payment Period</option>
-                <option value="last_7" className="bg-[#161616]">Last 7 Days</option>
-                <option value="last_30" className="bg-[#161616]">Last 30 Days</option>
-                <option value="all_time" className="bg-[#161616]">All Time</option>
+                <option value="payment_period" className="bg-surface-secondary">Payment Period</option>
+                <option value="last_7" className="bg-surface-secondary">Last 7 Days</option>
+                <option value="last_30" className="bg-surface-secondary">Last 30 Days</option>
+                <option value="all_time" className="bg-surface-secondary">All Time</option>
               </select>
-              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -649,90 +649,90 @@ const OverviewTab: React.FC<{
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+        <div className="bg-surface-secondary border border-border rounded-xl p-4 hover:border-border transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
-            <LinkIcon className="w-4 h-4 text-gray-400" />
-            <span className="text-xs text-gray-400">Linked Accounts</span>
+            <LinkIcon className="w-4 h-4 text-content-muted" />
+            <span className="text-xs text-content-muted">Linked Accounts</span>
             </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-content">
             {linkedAccounts.length}
           </div>
               </div>
-        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+        <div className="bg-surface-secondary border border-border rounded-xl p-4 hover:border-border transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-gray-400" />
-            <span className="text-xs text-gray-400">Total Earned</span>
+            <DollarSign className="w-4 h-4 text-content-muted" />
+            <span className="text-xs text-content-muted">Total Earned</span>
             </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-content">
             ${calculatedTotalEarnings.toFixed(2)}
         </div>
       </div>
-        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+        <div className="bg-surface-secondary border border-border rounded-xl p-4 hover:border-border transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="w-4 h-4 text-gray-400" />
-            <span className="text-xs text-gray-400">Pending</span>
+            <AlertCircle className="w-4 h-4 text-content-muted" />
+            <span className="text-xs text-content-muted">Pending</span>
             </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-content">
             ${totalPending.toFixed(2)}
                   </div>
                   </div>
-        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+        <div className="bg-surface-secondary border border-border rounded-xl p-4 hover:border-border transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-4 h-4 text-gray-400" />
-            <span className="text-xs text-gray-400">Payouts</span>
+            <FileText className="w-4 h-4 text-content-muted" />
+            <span className="text-xs text-content-muted">Payouts</span>
                 </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-content">
             {payouts.length}
               </div>
           </div>
             </div>
 
       {/* Video Performance */}
-      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+      <div className="rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-lg overflow-hidden">
         {/* Table Header */}
-        <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
-          <h2 className="text-lg font-semibold text-white">
+        <div className="px-6 py-5 border-b border-border-subtle bg-surface-secondary">
+          <h2 className="text-lg font-semibold text-content">
             Video Breakdown & Payouts ({filteredVideos.length})
         </h2>
           </div>
         
         {filteredVideos.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No videos found</h3>
-            <p className="text-gray-400 max-w-sm mx-auto">
+            <Play className="w-16 h-16 text-content-muted mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-content mb-2">No videos found</h3>
+            <p className="text-content-muted max-w-sm mx-auto">
               Link accounts and sync videos to see performance
             </p>
       </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-zinc-900/40">
-                <tr className="border-b border-white/5">
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+              <thead className="bg-surface-secondary">
+                <tr className="border-b border-border-subtle">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Video
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Preview
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-medium text-content-muted uppercase tracking-wider">
                     Views
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-medium text-content-muted uppercase tracking-wider">
                     Likes
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-medium text-content-muted uppercase tracking-wider">
                     Comments
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-medium text-content-muted uppercase tracking-wider">
                     Payout
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-zinc-900/60 divide-y divide-white/5">
+              <tbody className="bg-surface-secondary divide-y divide-border">
                 {filteredVideos.map((video: any) => {
                   // Get account info for profile picture
                   const account = linkedAccounts.find(acc => acc.id === video.accountId);
@@ -740,7 +740,7 @@ const OverviewTab: React.FC<{
                   return (
                     <tr 
                       key={video.videoId}
-                      className="hover:bg-white/[0.02] transition-colors"
+                      className="hover:bg-surface-tertiary transition-colors"
                     >
                       {/* Video Info */}
                       <td className="px-6 py-4">
@@ -750,22 +750,22 @@ const OverviewTab: React.FC<{
                               <img
                                 src={account.profilePicture}
                                 alt={account.username}
-                                className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
+                                className="w-10 h-10 rounded-full object-cover ring-2 ring-border"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = 'none';
                                   const parent = target.parentElement;
                                   if (parent) {
                                     const fallback = document.createElement('div');
-                                    fallback.className = 'w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center ring-2 ring-white/10';
-                                    fallback.innerHTML = `<span class="text-sm font-bold text-white">${(account.username || 'U').charAt(0).toUpperCase()}</span>`;
+                                    fallback.className = 'w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center ring-2 ring-border';
+                                    fallback.innerHTML = `<span class="text-sm font-bold text-content">${(account.username || 'U').charAt(0).toUpperCase()}</span>`;
                                     parent.appendChild(fallback);
                                   }
                                 }}
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center ring-2 ring-white/10">
-                                <span className="text-sm font-bold text-white">
+                              <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center ring-2 ring-border">
+                                <span className="text-sm font-bold text-content">
                                   {(account?.username || 'U').charAt(0).toUpperCase()}
                                 </span>
                               </div>
@@ -775,10 +775,10 @@ const OverviewTab: React.FC<{
                             </div>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-white line-clamp-2">
+                            <div className="text-sm font-medium text-content line-clamp-2">
                               {video.title}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5">
+                            <div className="text-xs text-content-muted mt-0.5">
                               @{account?.username || 'Unknown'}
                             </div>
                           </div>
@@ -794,15 +794,15 @@ const OverviewTab: React.FC<{
                             className="w-20 h-14 object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-20 h-14 bg-zinc-800 rounded-lg flex items-center justify-center">
-                            <Play className="w-5 h-5 text-gray-600" />
+                          <div className="w-20 h-14 bg-surface-secondary rounded-lg flex items-center justify-center">
+                            <Play className="w-5 h-5 text-content-muted" />
                           </div>
                         )}
                       </td>
                       
                       {/* Upload Date */}
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-400">
+                        <div className="text-sm text-content-muted">
                           {formatDate(video.uploadDate)}
                         </div>
                       </td>
@@ -810,22 +810,22 @@ const OverviewTab: React.FC<{
                       {/* Views */}
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <Eye className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm font-medium text-white">{formatNumber(video.views)}</span>
+                          <Eye className="w-4 h-4 text-content-muted" />
+                          <span className="text-sm font-medium text-content">{formatNumber(video.views)}</span>
                         </div>
                       </td>
                       
                       {/* Likes */}
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <span className="text-sm font-medium text-white">{formatNumber(video.likes || 0)}</span>
+                          <span className="text-sm font-medium text-content">{formatNumber(video.likes || 0)}</span>
                         </div>
                       </td>
                       
                       {/* Comments */}
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <span className="text-sm font-medium text-white">{formatNumber(video.comments || 0)}</span>
+                          <span className="text-sm font-medium text-content">{formatNumber(video.comments || 0)}</span>
                         </div>
                       </td>
                       
@@ -835,21 +835,21 @@ const OverviewTab: React.FC<{
                         onMouseEnter={() => handleMouseEnter(video.videoId)}
                         onMouseLeave={handleMouseLeave}
                       >
-                        <div className="text-sm font-semibold text-white">
+                        <div className="text-sm font-semibold text-content">
                           ${video.earnings.toFixed(2)}
       </div>
                         
                         {/* Tooltip */}
                         {hoveredVideo === video.videoId && showTooltip && (
-                          <div className="absolute right-0 bottom-full mb-2 w-64 bg-zinc-900 border border-gray-700 rounded-lg shadow-xl p-3 z-50 pointer-events-none">
-                            <div className="text-xs font-semibold text-white mb-2">
+                          <div className="absolute right-0 bottom-full mb-2 w-64 bg-surface-secondary border border-border rounded-lg shadow-xl p-3 z-50 pointer-events-none">
+                            <div className="text-xs font-semibold text-content mb-2">
                               Calculation Breakdown
                             </div>
-                            <div className="text-xs text-gray-300 whitespace-pre-line">
+                            <div className="text-xs text-content-secondary whitespace-pre-line">
                               {video.calculation}
                             </div>
                             <div className="absolute top-full right-4 -mt-1">
-                              <div className="border-4 border-transparent border-t-gray-700" />
+                              <div className="border-4 border-transparent border-t-border" />
                             </div>
                           </div>
                         )}
@@ -864,11 +864,11 @@ const OverviewTab: React.FC<{
 
         {/* Pagination */}
         {filteredVideos.length > 0 && (
-          <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
-            <div className="text-sm text-gray-400">
+          <div className="px-6 py-4 border-t border-border-subtle flex items-center justify-between">
+            <div className="text-sm text-content-muted">
               Showing {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-content-muted">
               Pagination coming soon
             </div>
           </div>
@@ -911,12 +911,12 @@ const AccountsTab: React.FC<{
   };
   return (
     <div className="space-y-6">
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
+      <div className="bg-surface-secondary rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-            <LinkIcon className="w-5 h-5 text-gray-400" />
+          <h2 className="text-xl font-semibold text-content flex items-center gap-2">
+            <LinkIcon className="w-5 h-5 text-content-muted" />
           Linked Accounts 
-          <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
+          <span className="text-sm font-normal text-content-muted">({linkedAccounts.length})</span>
         </h2>
           <Button 
             onClick={onOpenLinkModal}
@@ -927,41 +927,41 @@ const AccountsTab: React.FC<{
           </Button>
         </div>
         {linkedAccounts.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No accounts linked yet</h3>
+          <div className="text-center py-12 text-content-muted">
+            <User className="w-16 h-16 text-content-muted mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-content mb-2">No accounts linked yet</h3>
             <p className="text-sm">Link social media accounts to start tracking their content</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-700/20 border-b border-gray-700/30">
+              <thead className="bg-surface-secondary border-b border-border/30">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Account
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Platform
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Videos
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Views
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                     Followers
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-muted uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700/30">
+              <tbody className="divide-y divide-border">
                 {linkedAccounts.map((account) => (
                   <tr
                     key={account.id}
-                    className="hover:bg-white/5 transition-colors"
+                    className="hover:bg-surface-hover transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -972,16 +972,16 @@ const AccountsTab: React.FC<{
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-                            <User className="w-5 h-5 text-gray-400" />
+                          <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center">
+                            <User className="w-5 h-5 text-content-muted" />
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="text-sm font-medium text-white truncate">
+                          <div className="text-sm font-medium text-content truncate">
                             @{account.username}
                           </div>
                           {account.displayName && (
-                            <div className="text-xs text-gray-400 truncate">
+                            <div className="text-xs text-content-muted truncate">
                               {account.displayName}
                             </div>
                           )}
@@ -991,16 +991,16 @@ const AccountsTab: React.FC<{
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <PlatformIcon platform={account.platform} size="sm" />
-                        <span className="text-sm text-gray-300 capitalize">{account.platform}</span>
+                        <span className="text-sm text-content-secondary capitalize">{account.platform}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-white font-medium">
+                    <td className="px-6 py-4 text-sm text-content font-medium">
                       {(account.totalVideos || 0).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-sm text-white font-medium">
+                    <td className="px-6 py-4 text-sm text-content font-medium">
                       {(account.totalViews || 0).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-sm text-white font-medium">
+                    <td className="px-6 py-4 text-sm text-content font-medium">
                       {(account.followerCount || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -1125,12 +1125,12 @@ const SettingsTab: React.FC<{
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-6">Creator Settings</h2>
+      <div className="bg-surface-secondary rounded-xl border border-border p-6">
+        <h2 className="text-xl font-semibold text-content mb-6">Creator Settings</h2>
         
         {/* Display Name */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-400 mb-2">
+          <label className="block text-sm font-medium text-content-muted mb-2">
             Display Name
           </label>
           {editingName ? (
@@ -1139,7 +1139,7 @@ const SettingsTab: React.FC<{
                 type="text"
                 value={tempName}
                 onChange={(e) => setTempName(e.target.value)}
-                className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="flex-1 px-4 py-2 bg-surface-secondary border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-strong"
                 autoFocus
               />
               <Button
@@ -1158,12 +1158,12 @@ const SettingsTab: React.FC<{
               </Button>
             </div>
           ) : (
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-700/20 rounded-lg border border-gray-700">
-              <span className="text-white">{profile?.displayName || creator.displayName || 'Not set'}</span>
+            <div className="flex items-center justify-between px-4 py-2 bg-surface-secondary rounded-lg border border-border">
+              <span className="text-content">{profile?.displayName || creator.displayName || 'Not set'}</span>
               <Button
                 onClick={handleEditName}
                 variant="ghost"
-                className="text-gray-400 hover:text-white"
+                className="text-content-muted hover:text-content"
               >
                 Edit
               </Button>
@@ -1173,7 +1173,7 @@ const SettingsTab: React.FC<{
 
         {/* Email */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-400 mb-2">
+          <label className="block text-sm font-medium text-content-muted mb-2">
             Email Address
           </label>
           {editingEmail ? (
@@ -1183,7 +1183,7 @@ const SettingsTab: React.FC<{
                 value={tempEmail}
                 onChange={(e) => setTempEmail(e.target.value)}
                 placeholder="creator@example.com (optional)"
-                className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="flex-1 px-4 py-2 bg-surface-secondary border border-border rounded-lg text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-strong"
                 autoFocus
               />
               <Button
@@ -1202,19 +1202,19 @@ const SettingsTab: React.FC<{
               </Button>
             </div>
           ) : (
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-700/20 rounded-lg border border-gray-700">
-              <span className="text-white">{profile?.email || creator.email || 'No email provided'}</span>
+            <div className="flex items-center justify-between px-4 py-2 bg-surface-secondary rounded-lg border border-border">
+              <span className="text-content">{profile?.email || creator.email || 'No email provided'}</span>
               <Button
                 onClick={handleEditEmail}
                 variant="ghost"
-                className="text-gray-400 hover:text-white"
+                className="text-content-muted hover:text-content"
               >
                 Edit
               </Button>
             </div>
           )}
           {(!profile?.email && !creator.email) && (
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-content-muted mt-2">
               No email set. The creator can't receive invitations or notifications.
             </p>
           )}
@@ -1242,10 +1242,10 @@ const CampaignsTab: React.FC<{
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'draft': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'draft': return 'bg-surface-secondary text-content-muted border-border';
       case 'completed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'paused': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      default: return 'bg-surface-secondary text-content-muted border-border';
     }
   };
 
@@ -1258,10 +1258,10 @@ const CampaignsTab: React.FC<{
   return (
     <div className="space-y-6">
       {campaigns.length === 0 ? (
-        <div className="bg-[#161616] rounded-xl border border-gray-800 p-12 text-center">
-          <Target className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">No Campaigns Yet</h3>
-          <p className="text-gray-400">
+        <div className="bg-surface-secondary rounded-xl border border-border p-12 text-center">
+          <Target className="w-16 h-16 text-content-muted mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-content mb-2">No Campaigns Yet</h3>
+          <p className="text-content-muted">
             This creator is not currently part of any campaigns
           </p>
         </div>
@@ -1270,7 +1270,7 @@ const CampaignsTab: React.FC<{
           {campaigns.map((campaign) => (
             <div
               key={campaign.id}
-              className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden hover:border-gray-700 transition-all duration-200"
+              className="bg-surface-secondary rounded-xl border border-border overflow-hidden hover:border-border transition-all duration-200"
             >
               {/* Campaign Cover Image */}
               {campaign.coverImage ? (
@@ -1288,7 +1288,7 @@ const CampaignsTab: React.FC<{
                 </div>
               ) : (
                 <div className="w-full h-48 bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center relative">
-                  <Target className="w-12 h-12 text-white/60" />
+                  <Target className="w-12 h-12 text-content-muted" />
                   <div className="absolute top-4 right-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
                       {campaign.status}
@@ -1299,15 +1299,15 @@ const CampaignsTab: React.FC<{
 
               {/* Campaign Info */}
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="text-xl font-semibold text-content mb-2">
                   {campaign.name}
                 </h3>
-                <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                <p className="text-content-muted text-sm mb-4 line-clamp-2">
                   {campaign.description || 'No description'}
                 </p>
 
                 {/* Campaign Dates */}
-                <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
+                <div className="flex items-center gap-2 text-xs text-content-muted mb-4">
                   <Calendar className="w-4 h-4" />
                   <span>{formatDate(campaign.startDate)}</span>
                   <span>→</span>
@@ -1316,22 +1316,22 @@ const CampaignsTab: React.FC<{
 
                 {/* Campaign Stats */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-black/30 rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Goal</div>
-                    <div className="text-sm font-semibold text-white">
+                  <div className="bg-surface-tertiary rounded-lg p-3">
+                    <div className="text-xs text-content-muted mb-1">Goal</div>
+                    <div className="text-sm font-semibold text-content">
                       {formatNumber(campaign.goalAmount)} {campaign.goalType}
                     </div>
                   </div>
-                  <div className="bg-black/30 rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Progress</div>
-                    <div className="text-sm font-semibold text-white">
+                  <div className="bg-surface-tertiary rounded-lg p-3">
+                    <div className="text-xs text-content-muted mb-1">Progress</div>
+                    <div className="text-sm font-semibold text-content">
                       {campaign.progressPercent.toFixed(0)}%
                     </div>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden mb-4">
+                <div className="w-full bg-surface-tertiary rounded-full h-2 overflow-hidden mb-4">
                   <div
                     className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
                     style={{ width: `${Math.min(campaign.progressPercent, 100)}%` }}
@@ -1340,17 +1340,17 @@ const CampaignsTab: React.FC<{
 
                 {/* Campaign Type & Compensation */}
                 <div className="flex items-center justify-between text-xs">
-                  <span className="px-2 py-1 bg-white/5 rounded text-gray-400 capitalize">
+                  <span className="px-2 py-1 bg-surface-secondary rounded text-content-muted capitalize">
                     {campaign.campaignType}
                   </span>
-                  <div className="flex items-center gap-1 text-gray-400">
+                  <div className="flex items-center gap-1 text-content-muted">
                     <DollarSign className="w-3 h-3" />
                     <span className="capitalize">{campaign.compensationType}</span>
                   </div>
                 </div>
 
                 {/* Participants Count */}
-                <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs text-content-muted">
                   <div className="flex items-center gap-1">
                     <User className="w-3 h-3" />
                     <span>{campaign.participantIds?.length || 0} participants</span>

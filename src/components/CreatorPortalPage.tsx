@@ -230,20 +230,20 @@ const CreatorPortalPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-1">Track your video performance and earnings</p>
+          <h1 className="text-2xl font-bold text-content">My Dashboard</h1>
+          <p className="text-sm text-content-muted mt-1">Track your video performance and earnings</p>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-white/10">
+      <div className="border-b border-border">
         <nav className="flex space-x-6">
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`flex items-center gap-2 px-1 py-3 border-b-2 text-sm font-medium transition-colors ${
               activeTab === 'dashboard'
-                ? 'border-white text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-content text-content'
+                : 'border-transparent text-content-muted hover:text-content-secondary'
             }`}
           >
             <TrendingUp className="w-4 h-4" />
@@ -253,14 +253,14 @@ const CreatorPortalPage: React.FC = () => {
             onClick={() => setActiveTab('accounts')}
             className={`flex items-center gap-2 px-1 py-3 border-b-2 text-sm font-medium transition-colors ${
               activeTab === 'accounts'
-                ? 'border-white text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-content text-content'
+                : 'border-transparent text-content-muted hover:text-content-secondary'
             }`}
           >
             <Link2 className="w-4 h-4" />
             Linked Accounts
             {linkedAccounts.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-white/10 rounded text-xs">{linkedAccounts.length}</span>
+              <span className="ml-1 px-1.5 py-0.5 bg-surface-active rounded text-xs">{linkedAccounts.length}</span>
             )}
           </button>
         </nav>
@@ -271,12 +271,12 @@ const CreatorPortalPage: React.FC = () => {
         <div className="space-y-4">
           {/* Header row with title + button */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-content">
               Account stats – All Time
             </h2>
         <button
               onClick={() => setShowAddAccount(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 bg-surface-active hover:bg-surface-active border border-border-strong text-content rounded-xl text-sm font-medium transition-all"
         >
               <Plus className="w-4 h-4" />
               Link Account
@@ -284,56 +284,56 @@ const CreatorPortalPage: React.FC = () => {
       </div>
 
           {linkedAccounts.length === 0 ? (
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
-              <Link2 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No linked accounts</h3>
-              <p className="text-gray-500 text-sm mb-6">
+            <div className="rounded-2xl bg-surface-secondary border border-border p-12 text-center">
+              <Link2 className="w-16 h-16 text-content-muted mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-content mb-2">No linked accounts</h3>
+              <p className="text-content-muted text-sm mb-6">
                 Link your social media accounts to track your content
               </p>
       <button
                 onClick={() => setShowAddAccount(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-sm font-medium transition-all"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-surface-active hover:bg-surface-active border border-border-strong text-content rounded-xl text-sm font-medium transition-all"
       >
                 <Plus className="w-4 h-4" />
                 Link Your First Account
       </button>
             </div>
           ) : (
-            <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+            <div className="rounded-2xl bg-surface-secondary backdrop-blur border border-border-subtle shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-max">
-                  <thead className="bg-zinc-900/40 border-b border-white/5">
+                  <thead className="bg-surface-secondary border-b border-border-subtle">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Username
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Followers
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Total Posts
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Views
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Likes
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                         Comments
                       </th>
-                      <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-right text-xs font-medium text-content-muted uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-border">
                     {linkedAccounts.map(account => {
                       const acStats = accountStats.get(account.id);
                       return (
                         <tr
                           key={account.id}
-                          className="hover:bg-white/5 transition-colors"
+                          className="hover:bg-surface-hover transition-colors"
                         >
                           {/* Username */}
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -350,53 +350,53 @@ const CreatorPortalPage: React.FC = () => {
                                     {(account.username || 'A').charAt(0).toUpperCase()}
                                   </div>
                                 )}
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-surface-secondary rounded-full p-0.5 flex items-center justify-center border border-border-strong">
                                   <PlatformIcon platform={account.platform as any} size="xs" />
                                 </div>
                               </div>
                               <div className="min-w-0">
-                                <div className="text-sm font-medium text-white flex items-center gap-1.5">
+                                <div className="text-sm font-medium text-content flex items-center gap-1.5">
                                   {account.displayName || account.username}
                                   {(account as any).isVerified && (
                                     <img src="/verified-badge.png" alt="Verified" className="w-3.5 h-3.5" />
                                   )}
                                 </div>
-                                <div className="text-xs text-white/40">@{account.username}</div>
+                                <div className="text-xs text-content-muted">@{account.username}</div>
                               </div>
     </div>
                           </td>
 
                           {/* Followers */}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-white font-medium">
+                            <span className="text-sm text-content font-medium">
                               {account.followerCount !== undefined ? formatNumber(account.followerCount) : '—'}
                             </span>
                           </td>
 
                           {/* Total Posts */}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-white font-medium">
+                            <span className="text-sm text-content font-medium">
                               {acStats?.videoCount || 0}
                             </span>
                           </td>
 
                           {/* Views */}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-white font-medium">
+                            <span className="text-sm text-content font-medium">
                               {formatNumber(acStats?.views || 0)}
                             </span>
                           </td>
 
                           {/* Likes */}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-white font-medium">
+                            <span className="text-sm text-content font-medium">
                               {formatNumber(acStats?.likes || 0)}
                             </span>
                           </td>
 
                           {/* Comments */}
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-white font-medium">
+                            <span className="text-sm text-content font-medium">
                               {formatNumber(acStats?.comments || 0)}
                             </span>
                           </td>
@@ -407,7 +407,7 @@ const CreatorPortalPage: React.FC = () => {
                               href={getPlatformUrl(account.platform, account.username)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-content-muted hover:text-content hover:bg-surface-active rounded-lg transition-colors"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                               View
@@ -429,10 +429,10 @@ const CreatorPortalPage: React.FC = () => {
         <>
       {/* Video-workflow CTA — prominent for influencer-type creators */}
       {creatorProfile?.creatorWorkflow === 'video' && (
-        <div className="bg-gradient-to-r from-white/5 to-white/[0.02] rounded-2xl border border-white/10 p-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded-2xl border border-border p-6 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white mb-1">Submit Your Videos</h3>
-            <p className="text-sm text-gray-400">Paste video URLs to track their performance here</p>
+            <h3 className="text-lg font-semibold text-content mb-1">Submit Your Videos</h3>
+            <p className="text-sm text-content-muted">Paste video URLs to track their performance here</p>
           </div>
           <button
             onClick={() => setShowSubmitVideo(true)}
@@ -447,72 +447,72 @@ const CreatorPortalPage: React.FC = () => {
       {/* Stats Cards Grid - Monotone */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Earnings */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
+        <div className="bg-surface-secondary rounded-xl border border-border p-5 hover:border-border-strong transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-            <div className="bg-white/10 rounded-lg p-2.5">
-              <DollarSign className="w-5 h-5 text-gray-300" />
+            <div className="bg-surface-active rounded-lg p-2.5">
+              <DollarSign className="w-5 h-5 text-content-secondary" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-white mb-0.5">
+            <div className="text-2xl font-bold text-content mb-0.5">
             ${(
               creatorProfile?.paymentPlan?.payments
                 ? creatorProfile.paymentPlan.payments.reduce((s: number, p: any) => s + (p.amount || 0), 0)
                 : creatorProfile?.totalEarnings || 0
             ).toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500">Total Paid</div>
+          <div className="text-xs text-content-muted">Total Paid</div>
         </div>
 
         {/* Total Views */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
+        <div className="bg-surface-secondary rounded-xl border border-border p-5 hover:border-border-strong transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-            <div className="bg-white/10 rounded-lg p-2.5">
-              <Eye className="w-5 h-5 text-gray-300" />
+            <div className="bg-surface-active rounded-lg p-2.5">
+              <Eye className="w-5 h-5 text-content-secondary" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-white mb-0.5">
+            <div className="text-2xl font-bold text-content mb-0.5">
             {formatNumber(stats.totalViews)}
           </div>
-          <div className="text-xs text-gray-500">Total Views</div>
+          <div className="text-xs text-content-muted">Total Views</div>
         </div>
 
         {/* Total Likes */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
+        <div className="bg-surface-secondary rounded-xl border border-border p-5 hover:border-border-strong transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
-            <div className="bg-white/10 rounded-lg p-2.5">
-              <Heart className="w-5 h-5 text-gray-300" />
+            <div className="bg-surface-active rounded-lg p-2.5">
+              <Heart className="w-5 h-5 text-content-secondary" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white mb-0.5">
+          <div className="text-2xl font-bold text-content mb-0.5">
             {formatNumber(stats.totalLikes)}
           </div>
-          <div className="text-xs text-gray-500">Total Likes</div>
+          <div className="text-xs text-content-muted">Total Likes</div>
         </div>
 
         {/* Total Videos */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
+        <div className="bg-surface-secondary rounded-xl border border-border p-5 hover:border-border-strong transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-            <div className="bg-white/10 rounded-lg p-2.5">
-              <Video className="w-5 h-5 text-gray-300" />
+            <div className="bg-surface-active rounded-lg p-2.5">
+              <Video className="w-5 h-5 text-content-secondary" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-white mb-0.5">
+            <div className="text-2xl font-bold text-content mb-0.5">
             {stats.totalVideos}
           </div>
-          <div className="text-xs text-gray-500">Total Videos</div>
+          <div className="text-xs text-content-muted">Total Videos</div>
         </div>
 
         {/* Linked Accounts */}
-        <div className="bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all duration-300">
+        <div className="bg-surface-secondary rounded-xl border border-border p-5 hover:border-border-strong transition-all duration-300">
             <div className="flex items-center justify-between mb-3">
-            <div className="bg-white/10 rounded-lg p-2.5">
-              <UsersIcon className="w-5 h-5 text-gray-300" />
+            <div className="bg-surface-active rounded-lg p-2.5">
+              <UsersIcon className="w-5 h-5 text-content-secondary" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-white mb-0.5">
+            <div className="text-2xl font-bold text-content mb-0.5">
               {linkedAccounts.length}
             </div>
-          <div className="text-xs text-gray-500">Linked Accounts</div>
+          <div className="text-xs text-content-muted">Linked Accounts</div>
         </div>
       </div>
 
@@ -532,14 +532,14 @@ const CreatorPortalPage: React.FC = () => {
 
       {/* Legacy Payment Info Card (fallback for creators without new plan) */}
       {!creatorProfile?.paymentPlan && creatorProfile?.paymentInfo && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+        <div className="bg-surface-secondary border border-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-gray-400" />
+            <h3 className="text-lg font-semibold text-content flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-content-muted" />
               Payment Info
             </h3>
             {creatorProfile.paymentInfo.isPaid && (
-              <span className="px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-medium text-gray-300">
+              <span className="px-3 py-1 bg-surface-active border border-border-strong rounded-full text-xs font-medium text-content-secondary">
                 Paid
               </span>
             )}
@@ -547,20 +547,20 @@ const CreatorPortalPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {creatorProfile.paymentInfo.structure && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Payment Structure</p>
-                <p className="text-sm text-gray-200">{creatorProfile.paymentInfo.structure}</p>
+                <p className="text-xs text-content-muted mb-1">Payment Structure</p>
+                <p className="text-sm text-content-secondary">{creatorProfile.paymentInfo.structure}</p>
                     </div>
                       )}
             {creatorProfile.paymentInfo.schedule && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Payment Schedule</p>
-                <p className="text-sm text-gray-200 capitalize">{creatorProfile.paymentInfo.schedule}</p>
+                <p className="text-xs text-content-muted mb-1">Payment Schedule</p>
+                <p className="text-sm text-content-secondary capitalize">{creatorProfile.paymentInfo.schedule}</p>
                     </div>
             )}
             {creatorProfile.paymentInfo.notes && (
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-500 mb-1">Notes</p>
-                <p className="text-sm text-gray-200">{creatorProfile.paymentInfo.notes}</p>
+                <p className="text-xs text-content-muted mb-1">Notes</p>
+                <p className="text-sm text-content-secondary">{creatorProfile.paymentInfo.notes}</p>
                   </div>
             )}
           </div>
@@ -570,11 +570,11 @@ const CreatorPortalPage: React.FC = () => {
       {/* Recent Videos - Monotone */}
       {videoSubmissions.length > 0 ? (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-gray-400" />
+          <h3 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-content-muted" />
             Your Videos
             {hasPendingVideos && (
-              <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-gray-400">
+              <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-secondary border border-border rounded-full text-xs text-content-muted">
                 <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
                 Updating...
               </span>
@@ -585,10 +585,10 @@ const CreatorPortalPage: React.FC = () => {
           />
         </div>
       ) : (
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-12 text-center">
-          <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No videos yet</h3>
-          <p className="text-gray-500">
+        <div className="rounded-2xl bg-surface-secondary border border-border p-12 text-center">
+          <Video className="w-16 h-16 text-content-muted mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-content mb-2">No videos yet</h3>
+          <p className="text-content-muted">
             Videos assigned to you will appear here
           </p>
         </div>
@@ -600,7 +600,7 @@ const CreatorPortalPage: React.FC = () => {
       {activeTab === 'dashboard' && (
         <button
           onClick={() => setShowSubmitVideo(true)}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
+          className="fixed bottom-8 right-8 w-14 h-14 bg-surface-active hover:bg-surface-active border border-border-strong hover:border-border-strong text-content rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 z-40 group"
           title="Submit Video"
         >
           <Video className="w-6 h-6 transition-transform group-hover:scale-110" />

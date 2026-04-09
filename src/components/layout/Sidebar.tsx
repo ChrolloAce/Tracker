@@ -29,6 +29,7 @@ import { Badge } from '../ui/Badge';
 import RefreshCountdown from '../RefreshCountdown';
 import ProjectSwitcher from '../ProjectSwitcher';
 import SupportModal from '../SupportModal';
+import { useTheme } from '../../contexts/ThemeContext';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {
@@ -68,8 +69,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMobileToggle
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations', 'openclaw-section', 'discover-section'])); // Start with sections expanded
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations', 'openclaw-section', 'discover-section']));
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const { theme } = useTheme();
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
   const location = useLocation();
@@ -306,11 +308,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={item.onClick}
           className={clsx(
             'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
-            'text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white/80'
+            'text-content-secondary hover:bg-surface-hover hover:text-content'
           )}
         >
-          <Icon 
-            className="flex-shrink-0 w-5 h-5 text-gray-400 dark:text-white/60 group-hover:text-gray-600 dark:group-hover:text-white/80 transition-colors duration-200"
+          <Icon
+            className="flex-shrink-0 w-5 h-5 text-content-muted group-hover:text-content-secondary transition-colors duration-200"
           />
           {!isCollapsed && (
             <span className="ml-3 truncate">{item.label}</span>
@@ -328,8 +330,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white border-l-2 border-black dark:border-white': isActive,
-            'text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white/80': !isActive,
+            'bg-surface-active text-content font-semibold': isActive,
+            'text-content-secondary hover:bg-surface-hover hover:text-content': !isActive,
           }
         )}
       >
@@ -337,8 +339,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={clsx(
             'flex-shrink-0 w-5 h-5 transition-colors duration-200',
             {
-              'text-black dark:text-white': isActive,
-              'text-gray-400 dark:text-white/60 group-hover:text-gray-600 dark:group-hover:text-white/80': !isActive,
+              'text-content': isActive,
+              'text-content-muted group-hover:text-content-secondary': !isActive,
             }
           )} 
         />
@@ -347,7 +349,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="ml-3 truncate">{item.label}</span>
             {item.comingSoon ? (
               <div className="ml-auto">
-                <span className="text-[10px] font-bold bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-white px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">
+                <span className="text-[10px] font-bold bg-surface-tertiary text-content px-1.5 py-0.5 rounded border border-border-subtle whitespace-nowrap">
                   {item.comingSoon}
                 </span>
               </div>
@@ -377,7 +379,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     )}
 
     <div className={clsx(
-      'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-50',
+      'fixed left-0 top-0 flex flex-col h-screen bg-surface-secondary border-r border-border transition-all duration-300 z-50',
       {
         'w-64': !isCollapsed,
         'w-16': isCollapsed,
@@ -387,31 +389,31 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-between p-4 border-b border-border">
         {!isCollapsed ? (
           <div className="flex items-center space-x-3">
-            <img 
-              src={newLogo} 
-              alt="Viewtrack Logo" 
-              className="w-10 h-10 object-contain"
+            <img
+              src={newLogo}
+              alt="Viewtrack Logo"
+              className={`w-10 h-10 object-contain ${theme === 'light' ? 'invert' : ''}`}
             />
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">Viewtrack</h1>
+              <h1 className="text-lg font-bold text-content">Viewtrack</h1>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-center w-full">
-            <img 
-              src={newLogo} 
-              alt="Viewtrack" 
-              className="w-10 h-10 object-contain"
+            <img
+              src={newLogo}
+              alt="Viewtrack"
+              className={`w-10 h-10 object-contain ${theme === 'light' ? 'invert' : ''}`}
             />
           </div>
         )}
         {/* Mobile Close Button */}
         <button
           onClick={() => onMobileToggle?.(false)}
-          className="md:hidden p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+          className="md:hidden p-1.5 text-content-muted hover:text-content-secondary hover:bg-surface-hover rounded-md transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -423,8 +425,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             onCollapsedChange?.(newCollapsed);
           }}
           className={clsx(
-            "hidden md:block p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors",
-            isCollapsed && "absolute -right-3 top-5 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
+            "hidden md:block p-1.5 text-content-muted hover:text-content-secondary hover:bg-surface-hover rounded-md transition-colors",
+            isCollapsed && "absolute -right-3 top-5 bg-surface-secondary shadow-md border border-border rounded-full"
           )}
         >
           {isCollapsed ? (
@@ -452,29 +454,25 @@ const Sidebar: React.FC<SidebarProps> = ({
           
           return (
             <div key={section.id} className="space-y-1">
-              {/* Section Header */}
-              <button
-                data-section-id={section.id}
-                onClick={() => toggleSection(section.id)}
-                className={clsx(
-                  'w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors rounded-md',
-                  'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5',
-                  {'justify-center': isCollapsed}
-                )}
-              >
-                {!isCollapsed && <span>{section.label}</span>}
-                {!isCollapsed && (
-                  isExpanded ? (
+              {/* Section Header - hidden when collapsed */}
+              {!isCollapsed && (
+                <button
+                  data-section-id={section.id}
+                  onClick={() => toggleSection(section.id)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors rounded-md text-content-muted hover:bg-surface-hover"
+                >
+                  <span>{section.label}</span>
+                  {isExpanded ? (
                     <ChevronUp className="w-4 h-4" />
                   ) : (
                     <ChevronDown className="w-4 h-4" />
-                  )
-                )}
-              </button>
+                  )}
+                </button>
+              )}
 
-              {/* Section Items */}
-              {isExpanded && (
-                <div className="space-y-1 pl-2">
+              {/* Section Items - no left padding when collapsed */}
+              {(isExpanded || isCollapsed) && (
+                <div className={clsx('space-y-1', { 'pl-2': !isCollapsed })}>
                   {section.items.map(item => (
                     <NavItemComponent key={item.id} item={item} />
                   ))}
@@ -486,7 +484,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Support & Settings - Standalone at bottom with separator */}
           <>
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
+            <div className="my-4 border-t border-border" />
           {openClawItem && userRole !== 'creator' && <NavItemComponent item={openClawItem} />}
           {userRole !== 'creator' && <NavItemComponent item={supportItem} />}
           {settingsItem && <NavItemComponent item={settingsItem} />}

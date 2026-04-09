@@ -423,7 +423,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             }]}
             />
           ) : (
-          <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
+          <div className="bg-surface-secondary rounded-xl shadow-sm border border-border overflow-hidden">
                             <AccountsHeader
                                 dateFilter={dateFilter}
                                 selectedCount={selectedAccounts.size}

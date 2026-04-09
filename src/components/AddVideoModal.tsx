@@ -213,18 +213,18 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#151515] rounded-[14px] w-full max-w-[620px] shadow-2xl" style={{ padding: '24px' }}>
+      <div className="bg-surface-secondary rounded-[14px] w-full max-w-[620px] shadow-2xl" style={{ padding: '24px' }}>
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-lg font-bold text-white mb-1">Add Videos</h2>
-            <p className="text-sm text-[#A1A1AA]">
+            <h2 className="text-lg font-bold text-content mb-1">Add Videos</h2>
+            <p className="text-sm text-content-secondary">
               Paste video URLs — one per line or a block of links.
             </p>
           </div>
           <button
             onClick={() => { onClose(); setVideos([]); setInputValue(''); setUrlError(null); }}
-            className="text-white/80 hover:text-white transition-colors p-1"
+            className="text-content-secondary hover:text-content transition-colors p-1"
           >
             <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
@@ -234,7 +234,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         <div
           ref={containerRef}
           onClick={() => inputRef.current?.focus()}
-          className="bg-[#1E1E20] border border-gray-700/50 rounded-xl overflow-hidden cursor-text mb-4 focus-within:ring-1 focus-within:ring-white/20 focus-within:border-white/20 transition-all"
+          className="bg-surface-tertiary border border-border rounded-xl overflow-hidden cursor-text mb-4 focus-within:ring-1 focus-within:ring-border-strong focus-within:border-border-strong transition-all"
         >
           <div className="max-h-[280px] overflow-y-auto p-1">
             {/* Rendered URL lines with icons */}
@@ -243,7 +243,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
                 key={video.url}
                 className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg mx-0.5 my-0.5 transition-colors ${
                   video.platform
-                    ? 'hover:bg-white/[0.04]'
+                    ? 'hover:bg-surface-hover'
                     : 'bg-red-500/5'
                 }`}
               >
@@ -255,15 +255,15 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
                   )}
                 </div>
                 <span className={`flex-1 truncate text-[13px] font-mono ${
-                  video.platform ? 'text-gray-300' : 'text-red-300'
+                  video.platform ? 'text-content-secondary' : 'text-red-300'
                 }`}>
                   {video.url}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); removeVideo(video.url); }}
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-all"
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-surface-active transition-all"
                 >
-                  <X className="w-3 h-3 text-gray-500 hover:text-gray-300" />
+                  <X className="w-3 h-3 text-content-muted hover:text-content-secondary" />
                 </button>
               </div>
             ))}
@@ -279,7 +279,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
                 : "Paste more URLs..."
               }
               rows={videos.length === 0 ? 6 : 2}
-              className="w-full px-3 py-2 bg-transparent text-white placeholder-gray-600 focus:outline-none text-[13px] font-mono leading-relaxed resize-none"
+              className="w-full px-3 py-2 bg-transparent text-content placeholder-gray-600 focus:outline-none text-[13px] font-mono leading-relaxed resize-none"
             />
           </div>
         </div>
@@ -288,14 +288,14 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         {videos.length > 0 && (
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-400">
+              <span className="text-xs font-medium text-content-muted">
                 {totalCount} video{totalCount !== 1 ? 's' : ''} detected
               </span>
               <div className="flex items-center gap-2">
                 {Object.entries(platformCounts).map(([platform, count]) => (
-                  <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full">
+                  <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full">
                     <PlatformIcon platform={platform as any} size="sm" />
-                    <span className="text-[11px] text-gray-300 font-medium">{count}</span>
+                    <span className="text-[11px] text-content-secondary font-medium">{count}</span>
                   </div>
                 ))}
               </div>
@@ -367,14 +367,14 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         {/* Creator assignment dropdown */}
         {showCreatorSelector && creators.length > 0 && (
           <div className="mb-4">
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-400 mb-2">
+            <label className="flex items-center gap-2 text-xs font-medium text-content-muted mb-2">
               <UserPlus className="w-3.5 h-3.5" />
               Assign to Creator (optional)
             </label>
             <select
               value={selectedCreatorId}
               onChange={(e) => setSelectedCreatorId(e.target.value)}
-              className="w-full px-3 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="w-full px-3 py-2 bg-surface-tertiary border border-border rounded-xl text-sm text-content focus:outline-none focus:ring-1 focus:ring-border-strong"
             >
               <option value="">No creator — add to project only</option>
               {creators.map(c => (
@@ -385,15 +385,15 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
-          <div className="flex items-center gap-2 text-[#9B9B9B] text-xs">
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-content-muted text-xs">
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Processing takes up to 5 minutes.</span>
           </div>
           <button
             onClick={handleSubmit}
             disabled={isAtVideoLimit || (validVideos.length === 0 && !inputValue.trim())}
-            className="px-5 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+            className="px-5 py-2 text-sm font-bold text-white bg-orange-500 rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0"
           >
             {isAtVideoLimit
               ? 'Limit Reached'

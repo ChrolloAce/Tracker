@@ -32,8 +32,8 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
   return (
       <div className="relative z-10 max-w-6xl w-full mx-auto">
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-white mb-2">Choose Your Plan</h2>
-          <p className="text-gray-400 text-lg">Unlock full access to ViewTrack</p>
+          <h2 className="text-4xl font-bold text-content mb-2">Choose Your Plan</h2>
+          <p className="text-content-muted text-lg">Unlock full access to ViewTrack</p>
         </div>
         
         <style>{`
@@ -54,36 +54,36 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Basic Plan */}
-          <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 hover:border-[#2282FF]/50 transition-all">
+          <div className="bg-surface-secondary border border-border rounded-2xl p-8 hover:border-[#2282FF]/50 transition-all">
             <div className="mb-6">
-              <h3 className="text-2xl font-bold text-white mb-2">Basic</h3>
+              <h3 className="text-2xl font-bold text-content mb-2">Basic</h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$24</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-4xl font-bold text-content">$24</span>
+                <span className="text-content-muted">/month</span>
               </div>
             </div>
             <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Unlimited accounts</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Up to 150 videos</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>24-hour data refresh</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Creator portals</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Contract management</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>2 team seats</span>
               </li>
@@ -95,54 +95,54 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               data-fast-goal-plan="basic"
               data-fast-goal-billing-cycle="monthly"
               data-fast-goal-price="24"
-              className="w-full px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition-colors disabled:opacity-50"
+              className="w-full px-6 py-3 bg-orange-500 text-white rounded-full font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Upgrade to Basic'}
             </button>
           </div>
 
           {/* Pro Plan */}
-          <div className="bg-[#161616] border-2 border-[#2282FF] rounded-2xl p-8 relative transform scale-105">
+          <div className="bg-surface-secondary border-2 border-[#2282FF] rounded-2xl p-8 relative transform scale-105">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#2282FF] text-white text-sm font-bold rounded-full">
               Popular
             </div>
             <div className="mb-6">
-              <h3 className="text-2xl font-bold text-white mb-2">Pro</h3>
+              <h3 className="text-2xl font-bold text-content mb-2">Pro</h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$79</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-4xl font-bold text-content">$79</span>
+                <span className="text-content-muted">/month</span>
               </div>
             </div>
             <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Unlimited accounts</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Up to 1,000 videos</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>24-hour data refresh</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Revenue tracking</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Creator campaigns</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Creator portals</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Contract management</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>5 team seats</span>
               </li>
@@ -161,40 +161,40 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
           </div>
 
           {/* Ultra Plan */}
-          <div className="bg-[#161616] border border-gray-800 rounded-2xl p-8 hover:border-[#2282FF]/50 transition-all">
+          <div className="bg-surface-secondary border border-border rounded-2xl p-8 hover:border-[#2282FF]/50 transition-all">
             <div className="mb-6">
-              <h3 className="text-2xl font-bold text-white mb-2">Ultra</h3>
+              <h3 className="text-2xl font-bold text-content mb-2">Ultra</h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$199</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-4xl font-bold text-content">$199</span>
+                <span className="text-content-muted">/month</span>
               </div>
             </div>
             <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Unlimited accounts</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Up to 5,000 videos</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>12-hour data refresh</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Revenue tracking</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Creator portals</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>Contract management</span>
               </li>
-              <li className="flex items-center gap-2 text-gray-300">
+              <li className="flex items-center gap-2 text-content-secondary">
                 <Check className="w-5 h-5 text-[#2282FF]" />
                 <span>15 team seats</span>
               </li>
@@ -206,7 +206,7 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
               data-fast-goal-plan="ultra"
               data-fast-goal-billing-cycle="monthly"
               data-fast-goal-price="199"
-              className="w-full px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition-colors disabled:opacity-50"
+              className="w-full px-6 py-3 bg-orange-500 text-white rounded-full font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Upgrade to Ultra'}
             </button>
@@ -217,7 +217,7 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
         <div className="text-center mt-8">
           <button
             onClick={() => navigate('/settings/billing')}
-            className="text-gray-400 hover:text-white transition-colors text-sm"
+            className="text-content-muted hover:text-content transition-colors text-sm"
           >
             View billing settings →
           </button>

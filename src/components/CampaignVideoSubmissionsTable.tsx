@@ -409,7 +409,7 @@ const CampaignVideoSubmissionsTable: React.FC<CampaignVideoSubmissionsTableProps
                       <button
                         onClick={() => handleUpdateStatus(submission.id, 'approved')}
                         disabled={processingId === submission.id}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50"
                       >
                         {processingId === submission.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />

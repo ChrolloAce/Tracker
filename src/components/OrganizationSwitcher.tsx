@@ -106,13 +106,13 @@ const OrganizationSwitcher: React.FC = () => {
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
         <div className={clsx(
           'flex items-center justify-between px-3 py-2 rounded-lg',
-          'bg-white/5 border border-white/10 cursor-not-allowed opacity-75'
+          'bg-surface-hover border border-border cursor-not-allowed opacity-75'
         )}>
           <div className="flex items-center space-x-2">
-            <Building2 className="w-4 h-4 text-white/50" />
-            <span className="text-sm font-medium text-white/70">Demo Organization</span>
+            <Building2 className="w-4 h-4 text-content-tertiary" />
+            <span className="text-sm font-medium text-content-secondary">Demo Organization</span>
           </div>
-          <Lock className="w-3 h-3 text-white/40" />
+          <Lock className="w-3 h-3 text-content-tertiary" />
         </div>
       </div>
     );
@@ -123,18 +123,18 @@ const OrganizationSwitcher: React.FC = () => {
     return (
       <>
         {/* Organization Button at Bottom */}
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-border">
           <button
             onClick={() => setIsOpen(!isOpen)}
             className={clsx(
               'w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all',
-              'hover:bg-white/5 bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm'
+              'hover:bg-surface-active bg-surface-hover border border-border hover:border-border-hover backdrop-blur-sm'
             )}
           >
-            <span className="text-sm font-medium text-white/90 truncate">
+            <span className="text-sm font-medium text-content truncate">
               {currentOrg.name}
             </span>
-            <ChevronDown className="w-4 h-4 text-white/50 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-content-tertiary flex-shrink-0" />
           </button>
         </div>
 
@@ -145,25 +145,25 @@ const OrganizationSwitcher: React.FC = () => {
             onClick={() => setIsOpen(false)}
           >
             <div 
-              className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 w-full max-w-md"
+              className="bg-white dark:bg-surface rounded-2xl shadow-2xl border border-gray-200 dark:border-border w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-white/10">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-black dark:bg-white rounded-xl flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-white dark:text-black" />
+                  <div className="w-10 h-10 bg-black dark:bg-surface-inverse rounded-xl flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-white dark:text-content-inverse" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Switch Organization</h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-content">Switch Organization</h2>
+                    <p className="text-xs text-gray-500 dark:text-content-tertiary mt-0.5">
                       {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+                  className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-content hover:bg-gray-100 dark:hover:bg-surface-hover rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -180,8 +180,8 @@ const OrganizationSwitcher: React.FC = () => {
                       className={clsx(
                         'w-full px-4 py-3 flex items-center gap-3 rounded-xl transition-colors text-left',
                         org.id === currentOrgId
-                          ? 'bg-gray-200 dark:bg-white/10 border border-gray-300 dark:border-white/20'
-                          : 'bg-white dark:bg-white/5 border border-transparent hover:bg-gray-100 dark:hover:bg-white/10'
+                          ? 'bg-gray-200 dark:bg-surface-active border border-gray-300 dark:border-border-hover'
+                          : 'bg-white dark:bg-surface-hover border border-transparent hover:bg-gray-100 dark:hover:bg-surface-active'
                       )}
                     >
                       {org.logoUrl ? (
@@ -191,16 +191,16 @@ const OrganizationSwitcher: React.FC = () => {
                           className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-200 dark:bg-white/10 flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-200 dark:bg-surface-active flex-shrink-0">
                           <Building2 className="w-5 h-5 text-gray-400" />
                         </div>
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-content truncate">
                           {org.name}
                         </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500 dark:text-content-tertiary">
                           {role && <span className="capitalize">{role}</span>}
                           {role && org.memberCount > 0 && <span> • </span>}
                           {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
@@ -208,7 +208,7 @@ const OrganizationSwitcher: React.FC = () => {
                       </div>
 
                       {org.id === currentOrgId && (
-                        <Check className="w-4 h-4 text-gray-900 dark:text-white flex-shrink-0" />
+                        <Check className="w-4 h-4 text-gray-900 dark:text-content flex-shrink-0" />
                       )}
                     </button>
                   );
@@ -216,13 +216,13 @@ const OrganizationSwitcher: React.FC = () => {
               </div>
 
               {/* Create New Organization Button */}
-              <div className="px-6 py-5 border-t border-gray-200 dark:border-white/10">
+              <div className="px-6 py-5 border-t border-gray-200 dark:border-border">
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     window.location.href = '/create-organization';
                   }}
-                  className="w-full px-4 py-3 bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 bg-black dark:bg-surface-inverse hover:bg-gray-800 dark:hover:bg-surface-active text-white dark:text-content-inverse font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Create New Organization
@@ -249,11 +249,11 @@ const OrganizationSwitcher: React.FC = () => {
 
   // No org found and not loading
   return (
-    <div className="p-4 border-t border-white/10">
-      <div className="flex items-center justify-between px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg">
+    <div className="p-4 border-t border-border">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-surface-hover border border-border rounded-lg">
         <div className="flex items-center space-x-2">
-          <Building2 className="w-4 h-4 text-white/50" />
-          <span className="text-sm font-medium text-white/70">No Organization</span>
+          <Building2 className="w-4 h-4 text-content-tertiary" />
+          <span className="text-sm font-medium text-content-secondary">No Organization</span>
         </div>
       </div>
     </div>

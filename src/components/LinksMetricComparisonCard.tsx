@@ -363,8 +363,8 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
         <div 
           className="backdrop-blur-xl text-white rounded-xl border shadow-2xl"
           style={{
-            backgroundColor: 'rgba(26, 26, 26, 0.95)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'var(--surface-tertiary)',
+            borderColor: 'var(--border)',
             padding: '12px 16px'
           }}
         >
@@ -423,15 +423,15 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
             </defs>
             <CartesianGrid 
               strokeDasharray="3 3" 
-              stroke="rgba(255, 255, 255, 0.05)" 
+              stroke="var(--border)" 
               vertical={false}
             />
             <XAxis 
               dataKey="date"
-              stroke="rgba(255, 255, 255, 0.15)" 
-              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              stroke="var(--content-muted)" 
+              tick={{ fill: 'var(--content-secondary)', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -454,7 +454,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)', cursor: 'pointer' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--surface-hover)', cursor: 'pointer' }} />
             <Bar
               yAxisId="left"
               dataKey="totalClicks"
@@ -479,15 +479,15 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
           <LineChart {...commonProps} onClick={handleChartClick}>
             <CartesianGrid 
               strokeDasharray="3 3" 
-              stroke="rgba(255, 255, 255, 0.05)" 
+              stroke="var(--border)" 
               vertical={false}
             />
             <XAxis 
               dataKey="date"
-              stroke="rgba(255, 255, 255, 0.15)" 
-              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              stroke="var(--content-muted)" 
+              tick={{ fill: 'var(--content-secondary)', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -510,7 +510,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255, 255, 255, 0.2)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'var(--content-muted)' }} />
             <Line
               yAxisId="left"
               type="monotone"
@@ -547,13 +547,13 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
                 <stop offset="100%" stopColor={uniqueClicksColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis 
               dataKey="date" 
-              stroke="rgba(255, 255, 255, 0.15)" 
-              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              stroke="var(--content-muted)" 
+              tick={{ fill: 'var(--content-secondary)', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -576,7 +576,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255, 255, 255, 0.2)', strokeWidth: 2 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--content-muted)', strokeWidth: 2 }} />
             <Area
               yAxisId="left"
               type="monotone"
@@ -601,17 +601,9 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
   };
 
   return (
-    <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
-
+    <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-theme transition-all duration-300 p-6 overflow-hidden">
       {/* Content Layer */}
-      <div className="relative z-10">
+      <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -630,8 +622,8 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
                 <div 
                   className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg border shadow-xl z-50"
                   style={{
-                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                    backgroundColor: 'var(--surface-tertiary)',
+                    borderColor: 'var(--border)'
                   }}
                 >
                   <p className="text-xs text-gray-300 leading-relaxed">

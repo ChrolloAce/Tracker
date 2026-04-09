@@ -333,8 +333,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   
   return createPortal(
     <div 
-      className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
-      style={{ 
+      className="bg-surface-secondary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border"
+      style={{
         position: 'fixed',
         left: `${leftPosition}px`,
         top: `${tooltipData.y + verticalOffset}px`,
@@ -347,7 +347,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       }}
     >
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 space-y-2.5 bg-[#1a1a1a]/95 sticky top-0 z-10 backdrop-blur-xl">
+      <div className="px-5 pt-4 pb-3 space-y-2.5 bg-surface-secondary/95 sticky top-0 z-10 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           {(data.id === 'revenue' || data.id === 'downloads') ? (
             <div className="flex flex-col gap-1.5 flex-1">
@@ -362,14 +362,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                     }}
                   />
                 )}
-              <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
+              <p className="text-xs text-content-muted font-medium tracking-wider">{dateStr}</p>
               </div>
-              <p className="text-2xl font-bold text-white">{displayValue}</p>
+              <p className="text-2xl font-bold text-content">{displayValue}</p>
             </div>
           ) : (
             <>
-              <p className="text-xs text-gray-400 font-medium tracking-wider">{dateStr}</p>
-              <p className="text-xl font-bold text-white">{displayValue}</p>
+              <p className="text-xs text-content-muted font-medium tracking-wider">{dateStr}</p>
+              <p className="text-xl font-bold text-content">{displayValue}</p>
             </>
           )}
         </div>
@@ -378,21 +378,21 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
           <div className="flex items-center justify-between">
             {(data.id === 'revenue' || data.id === 'downloads') ? (
               <div className="flex items-baseline gap-2 flex-1">
-                <p className="text-xs text-gray-500 font-medium tracking-wider">{ppDateStr}</p>
-                <p className="text-lg font-semibold text-gray-400">{ppComparison.displayValue}</p>
+                <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
+                <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
               </div>
             ) : (
               <>
-                <p className="text-xs text-gray-500 font-medium tracking-wider">{ppDateStr}</p>
-                <p className="text-lg font-semibold text-gray-400">{ppComparison.displayValue}</p>
+                <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
+                <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
               </>
             )}
           </div>
         )}
         
         {ppComparison && ppDateStr && ppComparison.percentChange !== Infinity && ppComparison.percentChange !== 0 && (
-          <div className="pt-2 border-t border-white/5 flex justify-center">
-            <p className="text-xs font-medium text-gray-400 text-center">
+          <div className="pt-2 border-t border-border-subtle flex justify-center">
+            <p className="text-xs font-medium text-content-muted text-center">
               <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
                 {ppComparison.isPositive ? '↑' : '↓'} {(() => {
                   const percent = Math.abs(ppComparison.percentChange);
@@ -407,21 +407,21 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         )}
       </div>
       
-      {data.id !== 'revenue' && data.id !== 'downloads' && <div className="border-t border-white/10 mx-5"></div>}
+      {data.id !== 'revenue' && data.id !== 'downloads' && <div className="border-t border-border mx-5"></div>}
       
       {/* Two-Column Layout */}
       {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
         <div className="flex">
           {hasNewUploads && (
-            <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-border' : ''}`}>
+              <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3 flex items-center gap-2">
                 <Upload className="w-3.5 h-3.5" />
                 <span>New Uploads ({totalNewUploads})</span>
-                <span className="text-white font-bold ml-auto">{formatDisplayNumber(totalMetricFromNewUploads)} {metricLabel.toLowerCase()}</span>
+                <span className="text-content font-bold ml-auto">{formatDisplayNumber(totalMetricFromNewUploads)} {metricLabel.toLowerCase()}</span>
               </h3>
               <div className="space-y-2">
                 {newUploads.map((video: VideoSubmission, idx: number) => (
-                  <div key={`new-${video.id}-${idx}`} className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors">
+                  <div key={`new-${video.id}-${idx}`} className="flex items-center gap-2 py-2 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors">
                     <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
                       {video.thumbnail ? (
                         <img 
@@ -437,23 +437,23 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white font-medium leading-tight truncate">
+                      <p className="text-xs text-content font-medium leading-tight truncate">
                         {truncateText(video.title || video.caption || '(No caption)', 10)}
                       </p>
                       <div className="flex items-center gap-1 mt-0.5">
                         <div className="w-3 h-3 flex-shrink-0">
                           <PlatformIcon platform={video.platform} size="sm" />
                         </div>
-                        <span className="text-[10px] text-gray-400 truncate">
+                        <span className="text-[10px] text-content-muted truncate">
                           {truncateText(video.uploaderHandle || video.platform, 10)}
                         </span>
                       </div>
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className="text-xs font-bold text-white">
+                      <p className="text-xs font-bold text-content">
                         {formatDisplayNumber((video as any)[metricKey] || 0)}
                       </p>
-                      <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                      <p className="text-[10px] text-content-muted">{metricLabel.toLowerCase()}</p>
                     </div>
                   </div>
                 ))}
@@ -463,15 +463,15 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
           
           {hasTopGainers && (
             <div className="flex-1 px-5 py-3">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3 flex items-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Refreshed Videos ({totalTopGainers})</span>
-                <span className="text-white font-bold ml-auto">+{formatDisplayNumber(totalMetricFromRefreshedVideos)} {metricLabel.toLowerCase()}</span>
+                <span className="text-content font-bold ml-auto">+{formatDisplayNumber(totalMetricFromRefreshedVideos)} {metricLabel.toLowerCase()}</span>
               </h3>
               {topGainers.length > 0 ? (
                 <div className="space-y-2">
                   {topGainers.map((item: any, idx: number) => (
-                    <div key={`gainer-${item.video.id}-${idx}`} className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors">
+                    <div key={`gainer-${item.video.id}-${idx}`} className="flex items-center gap-2 py-2 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors">
                       <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
                         {item.video.thumbnail ? (
                           <img 
@@ -487,23 +487,23 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white font-medium leading-tight truncate">
+                        <p className="text-xs text-content font-medium leading-tight truncate">
                           {truncateText(item.video.title || item.video.caption || '(No caption)', 10)}
                         </p>
                         <div className="flex items-center gap-1 mt-0.5">
                           <div className="w-3 h-3 flex-shrink-0">
                             <PlatformIcon platform={item.video.platform} size="sm" />
                           </div>
-                          <span className="text-[10px] text-gray-400 truncate">
+                          <span className="text-[10px] text-content-muted truncate">
                             {truncateText(item.video.uploaderHandle || item.video.platform, 10)}
                           </span>
                         </div>
                       </div>
                       <div className="flex-shrink-0 text-right">
-                        <p className="text-xs font-bold text-white">
+                        <p className="text-xs font-bold text-content">
                           +{formatDisplayNumber(item.absoluteGain)}
                         </p>
-                        <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                        <p className="text-[10px] text-content-muted">{metricLabel.toLowerCase()}</p>
                       </div>
                     </div>
                   ))}
@@ -511,7 +511,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
               ) : (
                 <div className="text-center py-4">
                   <Activity className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                  <p className="text-xs text-gray-500">No growth data</p>
+                  <p className="text-xs text-content-muted">No growth data</p>
                 </div>
               )}
             </div>
@@ -521,13 +521,13 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       
       {/* Single Column Layout for Accounts/Links/Videos */}
       {(data.id === 'accounts' || data.id === 'active-accounts' || data.id === 'link-clicks' || isPublishedVideosKPI) && sortedItems.length > 0 && (
-        <div className="px-5 py-3 border-t border-white/10">
+        <div className="px-5 py-3 border-t border-border">
           {(data.id === 'accounts' || data.id === 'active-accounts') ? (
             // Render Accounts with Profile Pictures
             sortedItems.map((account: any, idx: number) => (
               <div 
                 key={`${account.handle}-${idx}`}
-                className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                className="flex items-center gap-3 py-2.5 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors"
               >
                 {/* Profile Picture with Platform Icon */}
                 <div className="flex-shrink-0 w-12 h-12 relative">
@@ -547,18 +547,18 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                       </div>
                     )}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#1a1a1a] rounded-full flex items-center justify-center border border-white/10">
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-surface-secondary rounded-full flex items-center justify-center border border-border">
                     <PlatformIcon platform={account.platform} className="w-3 h-3" />
                   </div>
                 </div>
                 
                 {/* Account Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-content truncate">
                     {account.handle}
                   </p>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-content-muted">
                       {account.videoCount} {account.videoCount === 1 ? 'video' : 'videos'}
                     </span>
                   </div>
@@ -566,10 +566,10 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                 
                 {/* Total Views */}
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-content">
                     {formatDisplayNumber(account.totalViews)}
                   </p>
-                  <p className="text-xs text-gray-500">{metricLabel}</p>
+                  <p className="text-xs text-content-muted">{metricLabel}</p>
                 </div>
               </div>
             ))
@@ -578,7 +578,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
             sortedItems.map((link: any, idx: number) => (
               <div 
                 key={`${link.linkId}-${idx}`}
-                className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                className="flex items-center gap-3 py-2.5 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors"
               >
                 {/* Link Icon */}
                 <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -587,17 +587,17 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                 
                 {/* Link Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-content truncate">
                     {link.title || 'Untitled Link'}
                   </p>
                   <div className="flex items-center gap-2">
                     {link.accountHandle && (
-                      <span className="text-xs text-gray-400 truncate">
+                      <span className="text-xs text-content-muted truncate">
                         @{link.accountHandle}
                       </span>
                     )}
                     {link.shortCode && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-content-muted">
                         • {link.shortCode}
                       </span>
                     )}
@@ -606,10 +606,10 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                 
                 {/* Click Count */}
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-content">
                     {formatDisplayNumber(link.clicks)}
                   </p>
-                  <p className="text-xs text-gray-500">{link.clicks === 1 ? 'click' : 'clicks'}</p>
+                  <p className="text-xs text-content-muted">{link.clicks === 1 ? 'click' : 'clicks'}</p>
                 </div>
               </div>
             ))
@@ -618,7 +618,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
             sortedItems.map((video: VideoSubmission, idx: number) => (
               <div 
                 key={`${video.id}-${idx}`}
-                className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                className="flex items-center gap-3 py-2.5 hover:bg-surface-hover rounded-lg px-2 -mx-2 transition-colors"
               >
                 {/* Thumbnail */}
                 <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
@@ -637,20 +637,20 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
                 
                 {/* Video Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-content truncate">
                     {truncateText(video.title || video.caption || 'Untitled', 10)}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">
+                  <p className="text-xs text-content-muted truncate">
                     @{truncateText(video.uploaderHandle || 'Unknown', 10)}
                   </p>
                 </div>
                 
                 {/* Views */}
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-content">
                     {formatDisplayNumber(video.views || 0)}
                   </p>
-                  <p className="text-xs text-gray-500">views</p>
+                  <p className="text-xs text-content-muted">views</p>
                 </div>
               </div>
             ))

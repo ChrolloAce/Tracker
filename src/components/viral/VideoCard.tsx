@@ -27,7 +27,7 @@ const VideoCard = React.memo(function VideoCard({ video, getPlatformIcon, format
   return (
     <>
       <div
-        className="group relative bg-black rounded-2xl overflow-hidden border border-white/10 hover:border-white/25 transition-all cursor-pointer"
+        className="group relative bg-black rounded-2xl overflow-hidden border border-border hover:border-border-strong transition-all cursor-pointer"
         onClick={handleOpenPlayer}
       >
         {/* Full-bleed thumbnail */}

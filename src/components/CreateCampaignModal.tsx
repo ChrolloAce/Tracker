@@ -439,11 +439,11 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     >
       <div 
         className="relative w-full max-w-6xl rounded-2xl border border-white/10 overflow-hidden flex flex-col my-8 max-h-[90vh]"
-        style={{ backgroundColor: '#121214' }}
+        style={{ backgroundColor: 'var(--surface-secondary)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Steps - Fixed at top */}
-        <div className="border-b border-white/10 px-6 py-4 flex-shrink-0" style={{ backgroundColor: '#121214' }}>
+        <div className="border-b border-white/10 px-6 py-4 flex-shrink-0" style={{ backgroundColor: 'var(--surface-secondary)' }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-white">Create Campaign</h2>
             <button
@@ -846,7 +846,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                       <button
                         type="button"
                         onClick={handleCreateRule}
-                        className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-all"
+                        className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all text-sm"
                       >
                         Create Rule
                       </button>
@@ -1088,7 +1088,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         </div>
 
         {/* Footer Navigation - Fixed at bottom */}
-        <div className="border-t border-white/5 px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: '#121214' }}>
+        <div className="border-t border-white/5 px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'var(--surface-secondary)' }}>
           <button
             type="button"
             onClick={currentStep === 1 ? onClose : prevStep}

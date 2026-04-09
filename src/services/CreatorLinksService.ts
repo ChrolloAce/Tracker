@@ -21,6 +21,61 @@ import { CreatorLink, Creator } from '../types/firestore';
  */
 class CreatorLinksService {
   /**
+   * Add a creator profile directly (without invitation).
+   * Creates both an org member record and a project-scoped creator profile.
+   */
+  static async addCreatorProfile(
+    orgId: string,
+    projectId: string,
+    createdBy: string,
+    data: {
+      name: string;
+      email?: string;
+      phone?: string;
+      notes?: string;
+    }
+  ): Promise<string> {
+    const batch = writeBatch(db);
+    const now = Timestamp.now();
+
+    // Generate a unique ID for this "virtual" creator (no real Firebase Auth user)
+    const memberRef = doc(collection(db, 'organizations', orgId, 'members'));
+    const creatorId = memberRef.id;
+
+    // Create org member record so the creator appears in the creators list
+    batch.set(memberRef, {
+      userId: creatorId,
+      role: 'creator',
+      joinedAt: now,
+      status: 'active',
+      invitedBy: createdBy,
+      displayName: data.name,
+      ...(data.email && { email: data.email }),
+      creatorProjectIds: [projectId],
+    });
+
+    // Create project-scoped creator profile
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
+    const creatorData: Omit<Creator, 'id'> = {
+      orgId,
+      projectId,
+      displayName: data.name,
+      ...(data.email && { email: data.email }),
+      ...(data.phone && { phone: data.phone }),
+      ...(data.notes && { notes: data.notes }),
+      linkedAccountsCount: 0,
+      totalEarnings: 0,
+      payoutsEnabled: true,
+      addedWithoutInvite: true,
+      createdAt: now,
+    };
+    batch.set(creatorRef, creatorData);
+
+    await batch.commit();
+    return creatorId;
+  }
+
+  /**
    * Link a creator to one or more accounts within a project
    */
   static async linkCreatorToAccounts(
@@ -44,12 +99,27 @@ class CreatorLinksService {
       
       if (memberDoc.exists()) {
         const memberData = memberDoc.data();
+
+        // Get photoURL: try member doc first, then fall back to user account
+        let photoURL = memberData.photoURL;
+        if (!photoURL) {
+          try {
+            const userAccountRef = doc(db, 'users', creatorId);
+            const userAccountDoc = await getDoc(userAccountRef);
+            if (userAccountDoc.exists()) {
+              photoURL = userAccountDoc.data()?.photoURL;
+            }
+          } catch (err) {
+            // Ignore - photoURL is optional
+          }
+        }
+
         const creatorData: Omit<Creator, 'id'> = {
           orgId,
           projectId,
           displayName: memberData.displayName || 'Unknown',
           email: memberData.email || '',
-          ...(memberData.photoURL && { photoURL: memberData.photoURL }), // Only include if defined
+          ...(photoURL && { photoURL }), // Only include if defined
           linkedAccountsCount: accountIds.length,
           totalEarnings: 0,
           payoutsEnabled: true,
@@ -203,15 +273,30 @@ class CreatorLinksService {
   ): Promise<Creator | null> {
     const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
     const creatorDoc = await getDoc(creatorRef);
-    
+
     if (!creatorDoc.exists()) {
       return null;
     }
 
-    return {
+    const creatorData = {
       id: creatorDoc.id,
       ...creatorDoc.data(),
     } as Creator;
+
+    // If photoURL is missing, try to fetch from user account
+    if (!creatorData.photoURL) {
+      try {
+        const userAccountRef = doc(db, 'users', creatorId);
+        const userAccountDoc = await getDoc(userAccountRef);
+        if (userAccountDoc.exists() && userAccountDoc.data()?.photoURL) {
+          creatorData.photoURL = userAccountDoc.data()!.photoURL;
+        }
+      } catch {
+        // Ignore - photoURL is optional
+      }
+    }
+
+    return creatorData;
   }
 
   /**
@@ -357,14 +442,28 @@ class CreatorLinksService {
       const creator = await this.getCreatorProfile(orgId, projectId, creatorId);
       if (!creator) return null;
 
-      // Also try to get photoURL from the org member record
-      const memberRef = doc(db, 'organizations', orgId, 'members', creatorId);
-      const memberDoc = await getDoc(memberRef);
-      const memberPhoto = memberDoc.exists() ? memberDoc.data()?.photoURL : undefined;
+      // Try to get photoURL from member record, then fall back to user account
+      let photoURL = creator.photoURL;
+      if (!photoURL) {
+        const memberRef = doc(db, 'organizations', orgId, 'members', creatorId);
+        const memberDoc = await getDoc(memberRef);
+        photoURL = memberDoc.exists() ? memberDoc.data()?.photoURL : undefined;
+      }
+      if (!photoURL) {
+        try {
+          const userAccountRef = doc(db, 'users', creatorId);
+          const userAccountDoc = await getDoc(userAccountRef);
+          if (userAccountDoc.exists()) {
+            photoURL = userAccountDoc.data()?.photoURL;
+          }
+        } catch {
+          // Ignore - photoURL is optional
+        }
+      }
 
       return {
         name: creator.displayName || 'Unknown',
-        photoURL: creator.photoURL || memberPhoto || undefined,
+        photoURL: photoURL || undefined,
       };
     } catch (error) {
       console.error('Error getting creator info for account:', error);

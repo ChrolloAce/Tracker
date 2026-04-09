@@ -162,17 +162,9 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Links by Clicks */}
-      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-        {/* Depth Gradient Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-          }}
-        />
-        
+      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-theme transition-all duration-300 p-6 overflow-hidden">
         {/* Content Layer */}
-        <div className="relative z-10">
+        <div>
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
@@ -192,8 +184,8 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({
                   <div 
                     className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
                     style={{
-                      backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                      borderColor: 'rgba(255, 255, 255, 0.1)'
+                      backgroundColor: 'var(--surface-tertiary)',
+                      borderColor: 'var(--border)'
                     }}
                   >
                     <p className="text-xs text-gray-300 leading-relaxed">

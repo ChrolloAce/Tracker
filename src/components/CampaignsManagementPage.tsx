@@ -147,22 +147,22 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
       {/* Stats Overview - Hide entirely for creators */}
       {!isCreator && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: 'var(--surface-secondary)' }}>
             <div className="text-sm text-gray-400 mb-2">Active Campaigns</div>
             <div className="text-3xl font-bold text-white">{activeCampaigns.length}</div>
           </div>
 
-          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: 'var(--surface-secondary)' }}>
             <div className="text-sm text-gray-400 mb-2">Total Participants</div>
             <div className="text-3xl font-bold text-white">{totalParticipants}</div>
           </div>
 
-          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: 'var(--surface-secondary)' }}>
             <div className="text-sm text-gray-400 mb-2">Total Views</div>
             <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
           </div>
 
-          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: 'var(--surface-secondary)' }}>
             <div className="text-sm text-gray-400 mb-2">Total Paid Out</div>
             <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
           </div>
@@ -172,9 +172,9 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
       {/* Campaigns List */}
       {campaigns.length === 0 ? (
         isCreator ? (
-          <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: '#121214' }}>
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/20 mb-4">
-              <Trophy className="w-8 h-8 text-emerald-400" />
+          <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: 'var(--surface-secondary)' }}>
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-500/10 rounded-full border-2 border-orange-500/20 mb-4">
+              <Trophy className="w-8 h-8 text-orange-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2">No Campaigns Yet</h3>
             <p className="text-gray-400 mb-6 max-w-md mx-auto">
@@ -292,7 +292,7 @@ const CampaignManagementCard: React.FC<{
     <div 
       onClick={onClick}
       className="rounded-2xl border border-white/10 overflow-hidden transition-all hover:border-white/20 cursor-pointer group"
-      style={{ backgroundColor: '#0b0b0b' }}
+      style={{ backgroundColor: 'var(--surface-secondary)' }}
     >
       <div className="flex">
         {/* Left side - Thumbnail - Square 1:1 aspect ratio */}
@@ -397,7 +397,7 @@ const CampaignManagementCard: React.FC<{
             <div className="mb-4">
               <div className="relative w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                 <div 
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-orange-400 transition-all"
                   style={{ width: `${campaign.progressPercent}%` }}
                 ></div>
               </div>

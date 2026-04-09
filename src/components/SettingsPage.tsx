@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, TrendingUp, RefreshCw, CheckCircle, Building2, Shield, Palette, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
@@ -16,7 +17,7 @@ import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue' | 'api-keys';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue' | 'api-keys' | 'appearance';
 
 /**
  * BillingTabContent Component
@@ -180,34 +181,34 @@ const BillingTabContent: React.FC = () => {
   const UsageCard = ({ label, status, available }: any) => {
     if (!available) {
       return (
-        <div className="bg-black/40 border border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center">
+        <div className="bg-surface-tertiary border border-border rounded-2xl p-6 flex flex-col items-center justify-center">
           <div className="relative w-24 h-24 mb-4">
             <svg className="w-full h-full transform -rotate-90">
-              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-white/10" />
+              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-border" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl font-bold text-gray-600">—</span>
+              <span className="text-2xl font-bold text-content-muted">—</span>
             </div>
           </div>
-          <p className="text-sm font-medium text-gray-500 text-center">{label}</p>
-          <p className="text-xs text-gray-600 text-center mt-1">Not available</p>
+          <p className="text-sm font-medium text-content-muted text-center">{label}</p>
+          <p className="text-xs text-content-muted text-center mt-1">Not available</p>
         </div>
       );
     }
 
     if (!status) {
       return (
-        <div className="bg-black/40 border border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center">
+        <div className="bg-surface-tertiary border border-border rounded-2xl p-6 flex flex-col items-center justify-center">
           <div className="relative w-24 h-24 mb-4">
             <svg className="w-full h-full transform -rotate-90">
-              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-white/10" />
+              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-border" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl font-bold text-gray-400">0%</span>
+              <span className="text-2xl font-bold text-content-secondary">0%</span>
             </div>
           </div>
-          <p className="text-sm font-medium text-gray-400 text-center">{label}</p>
-          <p className="text-xs text-gray-500 text-center mt-1">0 of 0 used</p>
+          <p className="text-sm font-medium text-content-secondary text-center">{label}</p>
+          <p className="text-xs text-content-muted text-center mt-1">0 of 0 used</p>
         </div>
       );
     }
@@ -224,10 +225,10 @@ const BillingTabContent: React.FC = () => {
     };
 
     return (
-      <div className="bg-black/40 border border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center hover:bg-black/60 transition-colors">
+      <div className="bg-surface-tertiary border border-border rounded-2xl p-6 flex flex-col items-center justify-center hover:bg-surface-hover transition-colors">
         <div className="relative w-24 h-24 mb-4">
           <svg className="w-full h-full transform -rotate-90">
-            <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-white/10" />
+            <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-border" />
             <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className={getColor()} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
@@ -236,8 +237,8 @@ const BillingTabContent: React.FC = () => {
             </span>
           </div>
         </div>
-        <p className="text-sm font-medium text-gray-300 text-center">{label}</p>
-        <p className="text-xs text-gray-500 text-center mt-1">
+        <p className="text-sm font-medium text-content-secondary text-center">{label}</p>
+        <p className="text-xs text-content-muted text-center mt-1">
           {status.current} of {status.isUnlimited ? '∞' : status.limit} used
         </p>
       </div>
@@ -246,8 +247,8 @@ const BillingTabContent: React.FC = () => {
 
   const DetailRow = ({ label, value }: { label: string; value: string }) => (
     <div className="flex items-center justify-between py-2">
-      <span className="text-gray-400 font-medium">{label}</span>
-      <span className="text-white font-semibold">{value}</span>
+      <span className="text-content-secondary font-medium">{label}</span>
+      <span className="text-content font-semibold">{value}</span>
     </div>
   );
 
@@ -278,8 +279,8 @@ const BillingTabContent: React.FC = () => {
 
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your Subscription</h2>
-        <p className="text-gray-600 dark:text-gray-400">Manage your organization's subscription and billing information.</p>
+        <h2 className="text-2xl font-bold text-content mb-2">Your Subscription</h2>
+        <p className="text-content-secondary">Manage your organization's subscription and billing information.</p>
       </div>
 
       {/* Usage Summary Cards */}
@@ -291,8 +292,8 @@ const BillingTabContent: React.FC = () => {
 
       {/* Subscription Details */}
       <div>
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Subscription Details</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <h3 className="text-xl font-bold text-content mb-2">Subscription Details</h3>
+        <p className="text-content-secondary mb-4">
           Compare all plans on our{' '}
           <a href="/subscription" className="text-emerald-400 hover:text-emerald-300 underline">
             pricing page
@@ -304,7 +305,7 @@ const BillingTabContent: React.FC = () => {
           .
         </p>
 
-        <div className="bg-black/40 dark:bg-black/40 border border-white/10 rounded-xl p-6">
+        <div className="bg-surface-tertiary border border-border rounded-xl p-6">
           <div className="space-y-4">
             <DetailRow label="Active Plan" value={planDetails.displayName + ' Plan'} />
             <DetailRow label="Billing Cycle" value={subscription?.interval === 'year' ? 'Yearly' : 'Monthly'} />
@@ -314,14 +315,14 @@ const BillingTabContent: React.FC = () => {
             <DetailRow label="Next Billing Date" value={subscription?.cancelAtPeriodEnd ? `Expires: ${nextBillingDate}` : nextBillingDate} />
           </div>
 
-          <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
             <div className="flex items-center gap-3">
               {currentPlan !== 'free' && subscription?.stripeCustomerId && (
                 <>
                   <button
                     onClick={handleManageSubscription}
                     disabled={loadingPortal}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg font-medium transition-colors text-white disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] font-medium transition-all disabled:opacity-50"
                   >
                     <CreditCard className="w-4 h-4" />
                     {loadingPortal ? 'Loading...' : 'Manage Subscription'}
@@ -329,10 +330,10 @@ const BillingTabContent: React.FC = () => {
                   <button
                     onClick={handleManageSubscription}
                     disabled={loadingPortal}
-                    className={`flex items-center gap-2 px-4 py-2 border rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${
                       subscription?.cancelAtPeriodEnd
-                        ? 'text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/20'
-                        : 'text-red-400 hover:bg-red-500/10 border-red-500/20'
+                        ? 'bg-surface-secondary text-emerald-400 border border-emerald-500/20 shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
+                        : 'bg-red-500 text-white shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
                     }`}
                   >
                     {subscription?.cancelAtPeriodEnd ? (
@@ -352,7 +353,7 @@ const BillingTabContent: React.FC = () => {
             </div>
             <button
               onClick={() => navigate('/subscription')}
-              className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg font-medium transition-colors text-white"
+              className="flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] font-medium transition-all"
             >
               <TrendingUp className="w-4 h-4" />
               {currentPlan === 'free' ? 'Upgrade Plan' : 'Change Plan'}
@@ -373,10 +374,11 @@ const BillingTabContent: React.FC = () => {
  */
 const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTabProp }) => {
   const { user, currentOrgId, userRole, isAdmin } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Use initialTab from URL if provided
-    if (initialTabProp && ['profile', 'organization', 'billing', 'notifications', 'api-keys'].includes(initialTabProp)) {
+    if (initialTabProp && ['profile', 'organization', 'billing', 'notifications', 'api-keys', 'appearance'].includes(initialTabProp)) {
       return initialTabProp as TabType;
     }
     return 'profile';
@@ -558,22 +560,23 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+    <div className="min-h-screen bg-surface">
       {/* Header */}
       <div className="max-w-6xl mx-auto px-6 pt-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage your account and preferences</p>
+          <h1 className="text-3xl font-bold text-content mb-2">Settings</h1>
+          <p className="text-content-secondary">Manage your account and preferences</p>
         </div>
 
         {/* Tabs Navigation */}
-        <div className="border-b border-gray-200 dark:border-white/10">
+        <div className="border-b border-border">
           <nav className="flex space-x-8">
             {[
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'notifications', label: 'Notifications', icon: Bell },
+              { id: 'appearance', label: 'Appearance', icon: Palette },
             ]
             .filter(tab => {
               // Hide billing and API keys tabs for creators
@@ -594,9 +597,9 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   }}
                   className={`
                     flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
-                    ${isActive 
-                      ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    ${isActive
+                      ? 'border-content text-content'
+                      : 'border-transparent text-content-muted hover:text-content-secondary'
                     }
                   `}
                 >
@@ -613,21 +616,95 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {/* Billing Tab */}
           {activeTab === 'billing' && <BillingTabContent />}
 
+          {/* Appearance Tab */}
+          {activeTab === 'appearance' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-content mb-2">Appearance</h2>
+                <p className="text-content-secondary">Choose your preferred theme</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+                {/* Light Mode */}
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`relative p-6 rounded-xl border-2 transition-all text-left ${
+                    theme === 'light'
+                      ? 'border-orange-500 bg-surface-secondary shadow-lg'
+                      : 'border-border hover:border-border-strong bg-surface-secondary'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm">
+                      <Sun className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-content">Light</p>
+                      <p className="text-xs text-content-muted">Clean and bright</p>
+                    </div>
+                  </div>
+                  {/* Mini preview */}
+                  <div className="rounded-lg border border-gray-200 bg-white p-2 space-y-1.5">
+                    <div className="h-2 w-16 bg-gray-200 rounded" />
+                    <div className="h-2 w-24 bg-gray-100 rounded" />
+                    <div className="h-2 w-20 bg-gray-100 rounded" />
+                  </div>
+                  {theme === 'light' && (
+                    <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Dark Mode */}
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`relative p-6 rounded-xl border-2 transition-all text-left ${
+                    theme === 'dark'
+                      ? 'border-orange-500 bg-surface-secondary shadow-lg'
+                      : 'border-border hover:border-border-strong bg-surface-secondary'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center shadow-sm">
+                      <Moon className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-content">Dark</p>
+                      <p className="text-xs text-content-muted">Easy on the eyes</p>
+                    </div>
+                  </div>
+                  {/* Mini preview */}
+                  <div className="rounded-lg border border-gray-700 bg-gray-900 p-2 space-y-1.5">
+                    <div className="h-2 w-16 bg-gray-700 rounded" />
+                    <div className="h-2 w-24 bg-gray-800 rounded" />
+                    <div className="h-2 w-20 bg-gray-800 rounded" />
+                  </div>
+                  {theme === 'dark' && (
+                    <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <div className="space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Notifications</h2>
-                  <p className="text-gray-600 dark:text-gray-400">Configure how you receive updates and alerts</p>
+                  <h2 className="text-2xl font-bold text-content mb-2">Notifications</h2>
+                  <p className="text-content-secondary">Configure how you receive updates and alerts</p>
                 </div>
                 {(savingPreferences || saveSuccess) && (
                   <div className="flex items-center gap-2 text-sm">
                     {savingPreferences ? (
                       <>
                         <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-gray-400">Saving...</span>
+                        <span className="text-content-secondary">Saving...</span>
                       </>
                     ) : (
                       <>
@@ -646,12 +723,12 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               ) : (
                 <>
                   {/* Email Notifications */}
-                  <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                  <div className="bg-surface-tertiary rounded-xl border border-border p-6">
                     <div className="flex items-center gap-3 mb-6">
                       <Mail className="w-5 h-5 text-emerald-400" />
                       <div>
-                        <h3 className="text-lg font-semibold text-white">Email Notifications</h3>
-                        <p className="text-sm text-gray-500">Receive updates via email at {user?.email}</p>
+                        <h3 className="text-lg font-semibold text-content">Email Notifications</h3>
+                        <p className="text-sm text-content-muted">Receive updates via email at {user?.email}</p>
                       </div>
                     </div>
 
@@ -661,16 +738,16 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                         return (
                           <div 
                             key={key} 
-                            className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+                            className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-surface-hover transition-colors border-b border-border last:border-0"
                           >
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-white text-sm">{info.label}</p>
-                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-white/5 text-gray-500">
+                                <p className="font-medium text-content text-sm">{info.label}</p>
+                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-surface-hover text-content-muted">
                                   {info.category}
                                 </span>
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-content-muted mt-1">
                                 {info.description}
                               </p>
                             </div>
@@ -678,7 +755,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                               onClick={() => toggleEmailNotification(key as keyof typeof notificationPreferences.email)}
                               className={`
                                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4
-                                ${isEnabled ? 'bg-emerald-600' : 'bg-gray-700'}
+                                ${isEnabled ? 'bg-emerald-600' : 'bg-surface-active'}
                               `}
                             >
                               <span
@@ -695,12 +772,12 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   </div>
 
                   {/* In-App Notifications */}
-                  <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                  <div className="bg-surface-tertiary rounded-xl border border-border p-6">
                     <div className="flex items-center gap-3 mb-6">
                       <Bell className="w-5 h-5 text-emerald-400" />
                       <div>
-                        <h3 className="text-lg font-semibold text-white">In-App Notifications</h3>
-                        <p className="text-sm text-gray-500">Notifications within the application</p>
+                        <h3 className="text-lg font-semibold text-content">In-App Notifications</h3>
+                        <p className="text-sm text-content-muted">Notifications within the application</p>
                       </div>
                     </div>
 
@@ -710,16 +787,16 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                         return (
                           <div 
                             key={key} 
-                            className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+                            className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-surface-hover transition-colors border-b border-border last:border-0"
                           >
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-white text-sm">{info.label}</p>
-                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-white/5 text-gray-500">
+                                <p className="font-medium text-content text-sm">{info.label}</p>
+                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-surface-hover text-content-muted">
                                   {info.category}
                                 </span>
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-content-muted mt-1">
                                 {info.description}
                               </p>
                             </div>
@@ -727,7 +804,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                               onClick={() => toggleInAppNotification(key as keyof typeof notificationPreferences.inApp)}
                               className={`
                                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4
-                                ${isEnabled ? 'bg-emerald-600' : 'bg-gray-700'}
+                                ${isEnabled ? 'bg-emerald-600' : 'bg-surface-active'}
                               `}
                             >
                               <span
@@ -744,12 +821,12 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   </div>
 
                   {/* Notification Email Settings */}
-                  <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Delivery Settings</h3>
-                    
+                  <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                    <h3 className="text-lg font-semibold text-content mb-4">Delivery Settings</h3>
+
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-content-secondary mb-2">
                           Notification Email (Optional)
                         </label>
                         <input
@@ -760,9 +837,9 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                             delivery: { ...prev.delivery, emailAddress: e.target.value }
                           }))}
                           placeholder={user?.email || 'Use account email'}
-                          className="w-full px-4 py-3 bg-zinc-800 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-content-muted mt-1">
                           Leave empty to use your account email ({user?.email})
                         </p>
                       </div>
@@ -777,44 +854,44 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {activeTab === 'organization' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Organization</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage your organization settings and switch between organizations.</p>
+                <h2 className="text-2xl font-bold text-content mb-2">Organization</h2>
+                <p className="text-content-secondary">Manage your organization settings and switch between organizations.</p>
               </div>
 
               {/* Organization Switcher */}
-              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Current Organization</h3>
+              <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                <h3 className="text-lg font-semibold text-content mb-4">Current Organization</h3>
                 <OrganizationSwitcher />
               </div>
 
               {/* Organization Info */}
               {currentOrganization && (
-                <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Organization Details</h3>
-                
+                <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                  <h3 className="text-lg font-semibold text-content mb-4">Organization Details</h3>
+
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-content-secondary mb-2">
                         Organization Name
                       </label>
                       <input
                         type="text"
                         value={currentOrganization.name}
                         disabled
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
-                        <p className="font-medium text-gray-900 dark:text-white mt-1">
+                        <p className="text-sm text-content-muted">Created</p>
+                        <p className="font-medium text-content mt-1">
                           {currentOrganization.createdAt?.toDate().toLocaleDateString()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Your Role</p>
-                        <p className="font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                        <p className="text-sm text-content-muted">Your Role</p>
+                        <p className="font-medium text-content mt-1 capitalize">
                           {isOwner ? 'Owner' : 'Member'}
                         </p>
                       </div>
@@ -825,22 +902,22 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
 
               {/* Danger Zone - Delete Organization */}
               {isOwner && currentOrganization && (
-                <div className="bg-black/40 rounded-xl border border-red-500/30 p-6">
+                <div className="bg-surface-tertiary rounded-xl border border-red-500/30 p-6">
                   <div className="flex items-start gap-3 mb-4">
-                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <h3 className="text-lg font-semibold text-red-400">Danger Zone</h3>
+                      <p className="text-sm text-content-secondary mt-1">
                         Permanently delete "{currentOrganization.name}" and all its data
                       </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      <p className="text-xs text-red-400 mt-2">
                         This action cannot be undone. All projects, videos, and analytics will be lost.
                       </p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setIsDeleteModalOpen(true)}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2"
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] font-medium transition-all inline-flex items-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete Organization
@@ -855,7 +932,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
             <div className="space-y-6">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h2>
+                  <h2 className="text-2xl font-bold text-content">Profile</h2>
                   {isAdmin && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border border-amber-500/30">
                       <Shield className="w-3.5 h-3.5" />
@@ -863,7 +940,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                     </span>
                   )}
                 </div>
-                <p className="text-gray-600 dark:text-gray-400">Manage your personal information and account settings.</p>
+                <p className="text-content-secondary">Manage your personal information and account settings.</p>
               </div>
 
               {/* Admin Bypass Toggle - Only visible to admins */}
@@ -891,7 +968,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                       }}
                       className={`
                         relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0
-                        ${adminBypassEnabled ? 'bg-amber-500' : 'bg-white/20'}
+                        ${adminBypassEnabled ? 'bg-amber-500' : 'bg-surface-active'}
                       `}
                     >
                       <span
@@ -906,8 +983,8 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               )}
 
             {/* Profile Photo */}
-              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-white mb-6">Profile Photo</h3>
+              <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                <h3 className="text-lg font-semibold text-content mb-6">Profile Photo</h3>
                 
             <div className="flex items-center gap-6">
               <div className="relative">
@@ -915,18 +992,18 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   <ProxiedImage 
                     src={user.photoURL} 
                     alt={user.displayName || 'User'} 
-                    className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-800"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-border"
                     fallback={
-                      <div className="w-20 h-20 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">
-                        <span className="text-2xl font-bold text-white dark:text-gray-900">
+                      <div className="w-20 h-20 bg-surface-active rounded-full flex items-center justify-center border-4 border-border">
+                        <span className="text-2xl font-bold text-content">
                           {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                         </span>
                       </div>
                     }
                   />
                 ) : (
-                      <div className="w-20 h-20 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">
-                        <span className="text-2xl font-bold text-white dark:text-gray-900">
+                      <div className="w-20 h-20 bg-surface-active rounded-full flex items-center justify-center border-4 border-border">
+                        <span className="text-2xl font-bold text-content">
                       {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
@@ -937,12 +1014,12 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                      className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      className="px-4 py-2 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                       <Camera className="w-4 h-4" />
                       {uploading ? 'Uploading...' : 'Upload Photo'}
                 </button>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    <p className="mt-2 text-xs text-content-muted">
                       JPG, PNG or GIF. Max size 5MB.
                     </p>
                 <input
@@ -957,12 +1034,12 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               </div>
 
               {/* Personal Information */}
-              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-white mb-6">Personal Information</h3>
+              <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                <h3 className="text-lg font-semibold text-content mb-6">Personal Information</h3>
 
                 <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-content-secondary mb-2">
                 Display Name
               </label>
               <input
@@ -970,21 +1047,21 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Enter your name"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
+                      className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content focus:ring-2 focus:ring-content focus:border-transparent"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-content-secondary mb-2">
                 Email Address
               </label>
               <input
                 type="email"
                 value={user?.email || ''}
                 disabled
-                      className="w-full px-4 py-3 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content-muted cursor-not-allowed"
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-xs text-content-muted">
                 Email cannot be changed
               </p>
             </div>
@@ -993,18 +1070,18 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
         
               {/* Auto-save indicator */}
               {saving && (
-                <div className="flex items-center justify-end gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-end gap-2 text-sm text-content-muted">
                   <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
         </div>
               )}
 
               {/* App Version */}
-              <div className="text-center pt-6 border-t border-gray-200 dark:border-white/10">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-center pt-6 border-t border-border">
+            <p className="text-sm text-content-secondary">
               VideoAnalytics Dashboard v1.0.0
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-content-muted mt-1">
               © 2025 All rights reserved
             </p>
           </div>

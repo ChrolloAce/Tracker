@@ -405,7 +405,7 @@ function CompetitionEditor({ competition, onSave, onCancel }: CompetitionEditorP
         <button
           type="button"
           onClick={handleSave}
-          className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all"
+          className="flex-1 px-4 py-2 bg-orange-500 text-white text-sm rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
         >
           Save Competition
         </button>

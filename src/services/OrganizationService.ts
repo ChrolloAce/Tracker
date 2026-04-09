@@ -454,6 +454,16 @@ class OrganizationService {
   }
 
   /**
+   * Update a member's assigned projects
+   * Empty array means access to all projects (backwards compatible)
+   */
+  static async updateMemberProjects(orgId: string, memberId: string, projectIds: string[]): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', memberId);
+    await updateDoc(memberRef, { assignedProjects: projectIds });
+    console.log(`✅ Updated assigned projects for member ${memberId}: ${projectIds.length} projects`);
+  }
+
+  /**
    * Check if user is owner or admin
    */
   static async isOrgAdmin(orgId: string, userId: string): Promise<boolean> {

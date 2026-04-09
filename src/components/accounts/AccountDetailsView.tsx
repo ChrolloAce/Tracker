@@ -53,29 +53,29 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
     return (
       <div className="space-y-6 animate-pulse">
         {/* Profile Card Skeleton */}
-        <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
+        <div className="bg-surface-secondary rounded-xl shadow-sm border border-border p-8">
           <div className="flex items-center space-x-6">
-            <div className="w-24 h-24 bg-zinc-800 rounded-2xl"></div>
+            <div className="w-24 h-24 bg-surface-hover rounded-2xl"></div>
             <div className="flex-1 space-y-3">
-              <div className="h-8 bg-zinc-800 rounded w-1/3"></div>
-              <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+              <div className="h-8 bg-surface-hover rounded w-1/3"></div>
+              <div className="h-4 bg-surface-hover rounded w-1/2"></div>
             </div>
           </div>
         </div>
         {/* KPI Cards Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
-              <div className="h-4 bg-zinc-800 rounded w-1/2 mb-4"></div>
-              <div className="h-8 bg-zinc-800 rounded w-full"></div>
+            <div key={i} className="bg-surface-secondary rounded-xl shadow-sm border border-border p-6">
+              <div className="h-4 bg-surface-hover rounded w-1/2 mb-4"></div>
+              <div className="h-8 bg-surface-hover rounded w-full"></div>
             </div>
           ))}
         </div>
         {/* Videos Table Skeleton */}
-        <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
+        <div className="bg-surface-secondary rounded-xl shadow-sm border border-border p-6">
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-zinc-800 rounded"></div>
+              <div key={i} className="h-16 bg-surface-hover rounded"></div>
             ))}
           </div>
         </div>
@@ -137,23 +137,23 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Account Profile Card */}
-      <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
+      <div className="bg-surface-secondary rounded-xl shadow-sm border border-border p-8">
         <div className="flex items-center space-x-6">
           <div className="relative">
             {selectedAccount.profilePicture ? (
               <ProxiedImage
                 src={selectedAccount.profilePicture}
                 alt={`@${selectedAccount.username}`}
-                className="w-24 h-24 rounded-2xl object-cover border-4 border-gray-100"
+                className="w-24 h-24 rounded-2xl object-cover border-4 border-border"
                 fallback={
-                  <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
-                    <Users className="w-12 h-12 text-gray-500" />
+                  <div className="w-24 h-24 bg-gradient-to-br from-surface-tertiary to-surface-inset rounded-2xl flex items-center justify-center border-4 border-border">
+                    <Users className="w-12 h-12 text-content-muted" />
                   </div>
                 }
               />
             ) : (
-              <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
-                <Users className="w-12 h-12 text-gray-500" />
+              <div className="w-24 h-24 bg-gradient-to-br from-surface-tertiary to-surface-inset rounded-2xl flex items-center justify-center border-4 border-border">
+                <Users className="w-12 h-12 text-content-muted" />
               </div>
             )}
             <div className="absolute -bottom-2 -right-2">
@@ -162,7 +162,7 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-content">
                 {selectedAccount.displayName || `@${selectedAccount.username}`}
               </h2>
               {(() => {
@@ -170,7 +170,7 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
                 return creatorName ? (
                   <button
                     onClick={onAttachCreator}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-xs font-medium rounded-lg transition-colors border border-white/20"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-surface-active hover:bg-surface-active text-content text-xs font-medium rounded-lg transition-colors border border-border-hover"
                   >
                     <Users className="w-3 h-3" />
                     {creatorName}
@@ -178,7 +178,7 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
                 ) : (
                   <button
                     onClick={onAttachCreator}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-xs font-medium rounded-lg transition-colors border border-white/20"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-surface-active hover:bg-surface-active text-content text-xs font-medium rounded-lg transition-colors border border-border-hover"
                   >
                     <Plus className="w-3 h-3" />
                     Attach to Creator
@@ -186,9 +186,9 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
                 );
               })()}
             </div>
-            <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center space-x-6 text-sm text-content-muted">
               <div className="flex items-center space-x-2">
-                <span className="text-gray-500 dark:text-gray-500">@{selectedAccount.username}</span>
+                <span className="text-content-muted">@{selectedAccount.username}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4" />
@@ -229,12 +229,12 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
             onVideoClick={onVideoClick}
           />
         ) : (
-          <div className="bg-zinc-900/60 rounded-xl border border-white/10 p-12 text-center">
-             <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-               <RefreshCw className="w-8 h-8 text-gray-500" />
+          <div className="bg-surface-secondary rounded-xl border border-border p-12 text-center">
+             <div className="w-16 h-16 bg-surface-hover rounded-2xl flex items-center justify-center mx-auto mb-4">
+               <RefreshCw className="w-8 h-8 text-content-muted" />
              </div>
-             <h3 className="text-white font-medium text-lg mb-2">No videos found</h3>
-             <p className="text-gray-400 mb-6 max-w-md mx-auto">
+             <h3 className="text-content font-medium text-lg mb-2">No videos found</h3>
+             <p className="text-content-muted mb-6 max-w-md mx-auto">
                {allAccountVideos.length > 0 
                  ? "There are videos, but they don't match your current date filter or rules."
                  : "Sync this account to discover and track videos."}
@@ -242,7 +242,7 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
              <button
                 onClick={() => onSyncAccount(selectedAccount.id)}
                 disabled={isSyncing === selectedAccount.id}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-white text-black rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 font-medium"
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-surface-secondary text-content rounded-full hover:bg-surface-hover transition-colors disabled:opacity-50 font-medium border border-border"
               >
                 <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
                 <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>

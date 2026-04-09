@@ -24,7 +24,7 @@ export const ColumnHeader: React.FC<{
   return (
     <>
       <th 
-        className={`px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider ${sortable ? 'cursor-pointer hover:bg-zinc-800/40 transition-colors' : ''} ${sticky ? 'sticky left-0 bg-zinc-900/60 backdrop-blur z-20' : ''}`}
+        className={`px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-content-muted uppercase tracking-wider ${sortable ? 'cursor-pointer hover:bg-surface-hover transition-colors' : ''} ${sticky ? 'sticky left-0 bg-surface-secondary backdrop-blur z-20' : ''}`}
         onClick={sortable ? onSort : undefined}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -32,7 +32,7 @@ export const ColumnHeader: React.FC<{
         <div className="flex items-center gap-2">
           <span>{label}</span>
           {sortable && currentSortBy === sortKey && (
-            <span className="text-white">
+            <span className="text-content">
               {sortOrder === 'asc' ? '↑' : '↓'}
             </span>
           )}
@@ -52,13 +52,13 @@ export const ColumnHeader: React.FC<{
           }}
         >
           <div 
-            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
+            className="bg-surface backdrop-blur-xl text-content rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border p-3"
             style={{
               maxWidth: '320px',
               width: 'max-content'
             }}
           >
-            <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
+            <div className="text-xs text-content-muted leading-relaxed whitespace-normal">
               {tooltip}
             </div>
           </div>

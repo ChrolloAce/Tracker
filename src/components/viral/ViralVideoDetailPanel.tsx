@@ -193,28 +193,28 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
       onClick={onClose}
     >
       <div
-        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden"
-        style={{ backgroundColor: '#121214' }}
+        className="rounded-xl shadow-2xl border border-border w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden"
+        style={{ backgroundColor: 'var(--surface-secondary)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
           <div className="flex items-center gap-3 min-w-0">
             {/* Platform badge */}
             <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-white text-xs font-medium"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-content text-xs font-medium"
               style={{ backgroundColor: `${getPlatformColor(video.platform)}20`, border: `1px solid ${getPlatformColor(video.platform)}40` }}
             >
               <span style={{ color: getPlatformColor(video.platform) }}>{getPlatformName(video.platform)}</span>
             </div>
-            <span className="text-sm font-semibold text-white truncate">@{video.uploaderHandle}</span>
+            <span className="text-sm font-semibold text-content truncate">@{video.uploaderHandle}</span>
           </div>
 
           <div className="flex items-center gap-2">
             {/* Copy link */}
             <button
               onClick={handleCopyLink}
-              className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/5 hover:border-white/20"
+              className="p-2 text-content-secondary hover:text-content bg-surface-hover hover:bg-surface-active rounded-lg transition-all border border-border-subtle hover:border-border-strong"
               title="Copy link"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -226,7 +226,7 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
                 href={video.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-white/60 hover:text-blue-400 bg-white/5 hover:bg-blue-500/10 rounded-lg transition-all border border-white/5 hover:border-blue-500/20"
+                className="p-2 text-content-secondary hover:text-blue-400 bg-surface-hover hover:bg-blue-500/10 rounded-lg transition-all border border-border-subtle hover:border-blue-500/20"
                 title={`Open on ${getPlatformName(video.platform)}`}
               >
                 <ExternalLink className="w-4 h-4" />
@@ -242,7 +242,7 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
                   className={`p-2 rounded-l-lg transition-all border border-r-0 ${
                     isSaved
                       ? 'text-blue-400 bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20'
-                      : 'text-white/60 hover:text-blue-400 bg-white/5 hover:bg-blue-500/10 border-white/5 hover:border-blue-500/20'
+                      : 'text-content-secondary hover:text-blue-400 bg-surface-hover hover:bg-blue-500/10 border-border-subtle hover:border-blue-500/20'
                   }`}
                   title={isSaved ? 'Remove bookmark' : 'Bookmark'}
                 >
@@ -253,7 +253,7 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
                   className={`p-2 rounded-r-lg transition-all border ${
                     isSaved
                       ? 'text-blue-400 bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20'
-                      : 'text-white/60 hover:text-blue-400 bg-white/5 hover:bg-blue-500/10 border-white/5 hover:border-blue-500/20'
+                      : 'text-content-secondary hover:text-blue-400 bg-surface-hover hover:bg-blue-500/10 border-border-subtle hover:border-blue-500/20'
                   }`}
                   title="Save to folder"
                 >
@@ -263,10 +263,10 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
 
               {/* Folder picker dropdown */}
               {showFolderPicker && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-surface-secondary border border-border rounded-xl shadow-2xl z-[70] overflow-hidden">
                   <button
                     onClick={() => handleSaveToFolder('default')}
-                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors"
+                    className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors"
                   >
                     Unsorted
                   </button>
@@ -274,12 +274,12 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
                     <button
                       key={f.id}
                       onClick={() => handleSaveToFolder(f.id)}
-                      className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors border-t border-white/5"
+                      className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors border-t border-border-subtle"
                     >
                       {f.name}
                     </button>
                   ))}
-                  <div className="border-t border-white/10">
+                  <div className="border-t border-border">
                     <button
                       onClick={async () => {
                         const name = prompt('Folder name:');
@@ -287,7 +287,7 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
                         const id = await SavedViralService.createFolder(currentOrgId, name);
                         await handleSaveToFolder(id);
                       }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"
+                      className="w-full px-4 py-2.5 text-left text-sm text-content-muted hover:text-content hover:bg-surface-hover transition-colors flex items-center gap-2"
                     >
                       <FolderPlus className="w-3.5 h-3.5" />
                       New Folder
@@ -300,7 +300,7 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
             {/* Close */}
             <button
               onClick={onClose}
-              className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
+              className="p-2 text-content-secondary hover:text-content bg-surface-hover hover:bg-surface-active rounded-full transition-all"
             >
               <X className="w-5 h-5" />
             </button>
@@ -310,9 +310,9 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
         {/* Main Content - 2 Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-0">
           {/* Left: Video Embed / Thumbnail */}
-          <div className="p-4 border-r border-white/5">
-            <div className="relative rounded-xl border border-white/5 shadow-lg p-3 overflow-hidden" style={{ backgroundColor: '#0A0A0B' }}>
-              <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-white/10">
+          <div className="p-4 border-r border-border-subtle">
+            <div className="relative rounded-xl border border-border-subtle shadow-lg p-3 overflow-hidden" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
+              <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-border">
                 {embedUrl ? (
                   <iframe
                     src={embedUrl}
@@ -349,9 +349,9 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
               <div className="flex items-center justify-between mt-3 px-1">
                 <div className="flex items-center gap-1.5">
                   <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-xs text-white/70">Virality</span>
+                  <span className="text-xs text-content-secondary">Virality</span>
                 </div>
-                <span className="text-xs font-semibold text-white">{viralityFactor.toFixed(1)}%</span>
+                <span className="text-xs font-semibold text-content">{viralityFactor.toFixed(1)}%</span>
               </div>
             </div>
 
@@ -361,7 +361,7 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
                 href={video.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-sm text-white/70 hover:text-white font-medium border border-white/5 hover:border-white/10"
+                className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 bg-surface-hover hover:bg-surface-active rounded-xl transition-all text-sm text-content-secondary hover:text-content font-medium border border-border-subtle hover:border-border"
               >
                 <ExternalLink className="w-4 h-4" />
                 View on {getPlatformName(video.platform)}
@@ -381,16 +381,16 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
             </div>
 
             {/* Creator Details */}
-            <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-              <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Creator Details</h3>
+            <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+              <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-3">Creator Details</h3>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-5 h-5 text-white/50" />
+                <div className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5 text-content-muted" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">@{video.uploaderHandle}</p>
+                  <p className="text-sm font-semibold text-content truncate">@{video.uploaderHandle}</p>
                   {video.followerCount > 0 && (
-                    <p className="text-xs text-gray-500">{formatNumber(video.followerCount)} followers</p>
+                    <p className="text-xs text-content-muted">{formatNumber(video.followerCount)} followers</p>
                   )}
                 </div>
               </div>
@@ -398,9 +398,9 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
 
             {/* Video Caption */}
             {(cleanDescription || video.title) && (
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Video Caption</h3>
-                <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+              <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-3">Video Caption</h3>
+                <p className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap">
                   {cleanDescription || video.title}
                 </p>
               </div>
@@ -408,11 +408,11 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
 
             {/* Hashtags */}
             {hashtags.length > 0 && (
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Hashtags</h3>
+              <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-3">Hashtags</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {hashtags.map((tag) => (
-                    <span key={tag} className="px-2.5 py-1 bg-white/5 rounded-lg text-xs text-white/60 font-medium">
+                    <span key={tag} className="px-2.5 py-1 bg-surface-hover rounded-lg text-xs text-content-secondary font-medium">
                       {tag}
                     </span>
                   ))}
@@ -424,52 +424,52 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
             <div className="grid grid-cols-2 gap-3">
               {/* Category */}
               {video.category && (
-                <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                  <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Category</h3>
+                <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                  <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2">Category</h3>
                   <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-white/40" />
-                    <span className="text-sm text-white/80">{video.category}</span>
+                    <Tag className="w-4 h-4 text-content-muted" />
+                    <span className="text-sm text-content-secondary">{video.category}</span>
                   </div>
                 </div>
               )}
 
               {/* Posted Date */}
               {video.uploadDate && (
-                <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                  <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Posted</h3>
+                <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                  <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2">Posted</h3>
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-white/40" />
-                    <span className="text-sm text-white/80">{formatDate(video.uploadDate)}</span>
+                    <Calendar className="w-4 h-4 text-content-muted" />
+                    <span className="text-sm text-content-secondary">{formatDate(video.uploadDate)}</span>
                   </div>
                 </div>
               )}
 
               {/* Content Type */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Content Type</h3>
+              <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2">Content Type</h3>
                 <div className="flex items-center gap-2">
-                  <Play className="w-4 h-4 text-white/40" />
-                  <span className="text-sm text-white/80 capitalize">{video.contentType || 'Video'}</span>
+                  <Play className="w-4 h-4 text-content-muted" />
+                  <span className="text-sm text-content-secondary capitalize">{video.contentType || 'Video'}</span>
                 </div>
               </div>
 
               {/* Engagement Rate */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Engagement Rate</h3>
+              <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2">Engagement Rate</h3>
                 <div className="flex items-center gap-2">
                   <Flame className="w-4 h-4 text-orange-400/60" />
-                  <span className="text-sm text-white/80">{viralityFactor.toFixed(2)}%</span>
+                  <span className="text-sm text-content-secondary">{viralityFactor.toFixed(2)}%</span>
                 </div>
               </div>
             </div>
 
             {/* Tags */}
             {video.tags && video.tags.length > 0 && (
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-                <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Tags</h3>
+              <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+                <h3 className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-3">Tags</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {video.tags.map((tag) => (
-                    <span key={tag} className="px-2.5 py-1 bg-white/5 rounded-lg text-xs text-white/60">
+                    <span key={tag} className="px-2.5 py-1 bg-surface-hover rounded-lg text-xs text-content-secondary">
                       {tag}
                     </span>
                   ))}
@@ -488,8 +488,8 @@ const ViralVideoDetailPanel: React.FC<ViralVideoDetailPanelProps> = ({ video, on
       {/* Toast notification */}
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-          <div className="px-4 py-2.5 bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl">
-            <span className="text-sm font-medium text-white">{toast}</span>
+          <div className="px-4 py-2.5 bg-surface-hover backdrop-blur-xl border border-border-strong rounded-xl shadow-2xl">
+            <span className="text-sm font-medium text-content">{toast}</span>
           </div>
         </div>
       )}
@@ -505,10 +505,10 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
   value,
   color,
 }) => (
-  <div className="rounded-xl bg-white/[0.03] border border-white/5 p-3 flex flex-col items-center gap-1.5">
+  <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-3 flex flex-col items-center gap-1.5">
     <div style={{ color: `${color}80` }}>{icon}</div>
-    <span className="text-lg font-bold text-white">{value}</span>
-    <span className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</span>
+    <span className="text-lg font-bold text-content">{value}</span>
+    <span className="text-[10px] text-content-muted uppercase tracking-wider">{label}</span>
   </div>
 );
 

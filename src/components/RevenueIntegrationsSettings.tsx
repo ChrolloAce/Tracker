@@ -190,7 +190,7 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
           >
             <Plus className="w-4 h-4" />
             Add Integration
@@ -208,7 +208,7 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
           </p>
           <button
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
           >
             <Plus className="w-4 h-4" />
             Add Your First Integration
@@ -876,7 +876,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               (provider === 'revenuecat' && !appId) ||
               (provider === 'apple' && (!appId || !keyId || !issuerId))
             }
-            className="px-6 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save Integration'}
           </button>

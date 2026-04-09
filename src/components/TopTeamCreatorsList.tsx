@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Creator, CreatorLink } from '../types/firestore';
 import { VideoSubmission } from '../types';
@@ -53,7 +53,24 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
         const accountsSnapshot = await getDocs(accountsRef);
         const accountsData = accountsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         
-        setCreators(creatorsData);
+        // Enrich creators missing photoURL by looking up their user account
+        const enrichedCreators = await Promise.all(
+          creatorsData.map(async (creator) => {
+            if (creator.photoURL) return creator;
+            try {
+              const userAccountRef = doc(db, 'users', creator.id);
+              const userAccountDoc = await getDoc(userAccountRef);
+              if (userAccountDoc.exists() && userAccountDoc.data()?.photoURL) {
+                return { ...creator, photoURL: userAccountDoc.data()!.photoURL };
+              }
+            } catch {
+              // Ignore - photoURL is optional
+            }
+            return creator;
+          })
+        );
+
+        setCreators(enrichedCreators);
         setCreatorLinks(linksData);
         setAccounts(accountsData);
       } catch (error) {
@@ -236,7 +253,7 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
 
   if (loading) {
     return (
-      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-6">
+      <div className="relative rounded-2xl bg-surface-secondary backdrop-blur border border-border shadow-theme p-6">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
         </div>
@@ -245,40 +262,29 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
   }
 
   return (
-    <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
+    <div className="relative rounded-2xl bg-surface-secondary backdrop-blur border border-border shadow-theme transition-all duration-300 p-6 overflow-hidden">
 
       {/* Content Layer */}
       <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-white">Top Creators</h2>
+            <h2 className="text-lg font-semibold text-content">Top Creators</h2>
             <div className="relative">
               <button
                 onMouseEnter={() => setShowInfo(true)}
                 onMouseLeave={() => setShowInfo(false)}
-                className="text-gray-500 hover:text-gray-400 transition-colors"
+                className="text-content-muted hover:text-content-secondary transition-colors"
               >
                 <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
               </button>
-              
+
               {/* Info Tooltip */}
               {showInfo && (
-                <div 
-                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
-                  style={{
-                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                    borderColor: 'rgba(255, 255, 255, 0.1)'
-                  }}
+                <div
+                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border border-border shadow-xl z-50 bg-surface-tertiary"
                 >
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-xs text-content-muted leading-relaxed">
                     Rankings of your team members based on the combined performance of all their assigned accounts. Perfect for tracking creator productivity.
                   </p>
                 </div>
@@ -291,13 +297,13 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
               <select
                 value={topCount}
                 onChange={(e) => setTopCount(Number(e.target.value))}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+                className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border hover:bg-surface-active focus:outline-none focus:ring-1 focus:ring-border-strong transition-all cursor-pointer"
               >
-                <option value={3} className="bg-gray-900">3</option>
-                <option value={5} className="bg-gray-900">5</option>
-                <option value={10} className="bg-gray-900">10</option>
+                <option value={3} className="bg-surface-secondary">3</option>
+                <option value={5} className="bg-surface-secondary">5</option>
+                <option value={10} className="bg-surface-secondary">10</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
             </div>
 
             {/* Metric Selector */}
@@ -305,23 +311,23 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
               <select
                 value={selectedMetric}
                 onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
+                className="appearance-none bg-surface-hover text-content rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-border hover:bg-surface-active focus:outline-none focus:ring-1 focus:ring-border-strong transition-all cursor-pointer"
               >
-                <option value="views" className="bg-gray-900">Views</option>
-                <option value="likes" className="bg-gray-900">Likes</option>
-                <option value="comments" className="bg-gray-900">Comments</option>
-                <option value="shares" className="bg-gray-900">Shares</option>
-                <option value="engagement" className="bg-gray-900">Engagement</option>
-                <option value="videos" className="bg-gray-900">Videos Posted</option>
+                <option value="views" className="bg-surface-secondary">Views</option>
+                <option value="likes" className="bg-surface-secondary">Likes</option>
+                <option value="comments" className="bg-surface-secondary">Comments</option>
+                <option value="shares" className="bg-surface-secondary">Shares</option>
+                <option value="engagement" className="bg-surface-secondary">Engagement</option>
+                <option value="videos" className="bg-surface-secondary">Videos Posted</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
             </div>
           </div>
         </div>
 
         {/* Race Bars */}
         {sortedCreators.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
+          <div className="text-center py-8 text-content-muted">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>No team creators found</p>
             <p className="text-xs mt-1">Add creators in the Creators tab</p>
@@ -335,7 +341,7 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
               return (
                 <div 
                   key={stats.creator.id} 
-                  className="group relative cursor-pointer"
+                  className={`group relative cursor-pointer py-2 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
                   style={{
                     animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                   }}
@@ -352,14 +358,16 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                     }
                     const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                     if (barElement) {
-                      barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                      barElement.style.background = 'linear-gradient(to right, #f97316, #ea580c)';
+                      barElement.style.opacity = '0.85';
                     }
                   }}
                   onMouseLeave={(e) => {
                     setHoveredCreator(null);
                     const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                     if (barElement) {
-                      barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
+                      barElement.style.background = 'linear-gradient(to right, #f97316, #ea580c)';
+                      barElement.style.opacity = '1';
                     }
                   }}
                 >
@@ -367,7 +375,7 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                   <div className="relative h-10 flex items-center">
                     {/* Profile Icon (Spearhead) */}
                     <div className="absolute left-0 z-10 flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-gray-700/50 backdrop-blur-sm relative flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-surface-hover backdrop-blur-sm relative flex items-center justify-center">
                         {stats.creator.photoURL && !imageErrors.has(stats.creator.id) ? (
                           <img 
                             src={stats.creator.photoURL} 
@@ -378,7 +386,7 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                          <div className="w-full h-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-content-inverse font-bold text-sm">
                             {(stats.creator.displayName || stats.creator.email || 'C').charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -393,14 +401,14 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                           style={{
                             width: `${percentage}%`,
                             minWidth: '8%',
-                            background: 'linear-gradient(to right, #52525B, #3F3F46)'
+                            background: 'linear-gradient(to right, #f97316, #ea580c)'
                           }}
                         >
                         </div>
                       </div>
                       {/* Metric Value - Always on Right */}
                       <div className="ml-4 min-w-[100px] text-right">
-                        <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                        <span className="text-lg font-semibold text-content tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                           {formatNumber(value, selectedMetric)}
                         </span>
                       </div>
@@ -423,46 +431,46 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
             transform: 'translate(-50%, -100%)'
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[300px]">
+          <div className="bg-surface-tertiary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] border border-border w-[300px]">
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+              <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
                 {hoveredCreator.creator.creator.displayName}
               </p>
               <div className="flex items-baseline gap-3">
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-content">
                   {formatNumber(getDisplayValue(hoveredCreator.creator), selectedMetric)}
                 </p>
               </div>
             </div>
-            
+
             {/* Divider */}
-            <div className="border-t border-white/10 mx-5"></div>
-            
+            <div className="border-t border-border mx-5"></div>
+
             {/* Stats */}
             <div className="px-5 py-3">
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Videos</span>
-                  <span className="text-white font-medium">{hoveredCreator.creator.videoCount}</span>
+                  <span className="text-content-muted">Videos</span>
+                  <span className="text-content font-medium">{hoveredCreator.creator.videoCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Linked Accounts</span>
-                  <span className="text-white font-medium">{hoveredCreator.creator.linkedAccounts.size}</span>
+                  <span className="text-content-muted">Linked Accounts</span>
+                  <span className="text-content font-medium">{hoveredCreator.creator.linkedAccounts.size}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total Views</span>
-                  <span className="text-white font-medium">{formatNumber(hoveredCreator.creator.totalViews, 'views')}</span>
+                  <span className="text-content-muted">Total Views</span>
+                  <span className="text-content font-medium">{formatNumber(hoveredCreator.creator.totalViews, 'views')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Avg Engagement</span>
-                  <span className="text-white font-medium">{hoveredCreator.creator.avgEngagement.toFixed(1)}%</span>
+                  <span className="text-content-muted">Avg Engagement</span>
+                  <span className="text-content font-medium">{hoveredCreator.creator.avgEngagement.toFixed(1)}%</span>
                 </div>
               </div>
 
               {/* Click to View */}
-              <div className="mt-3 pt-3 border-t border-white/10">
-                <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+              <div className="mt-3 pt-3 border-t border-border">
+                <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-content-muted hover:text-content transition-colors">
                   <span>Click to view creator</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>

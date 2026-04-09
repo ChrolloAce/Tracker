@@ -47,7 +47,7 @@ export const DeleteOrgConfirmModal: React.FC<{
         <button
           onClick={onConfirm}
           disabled={confirmText !== 'DELETE' || loading}
-          className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Delete Forever'}
         </button>

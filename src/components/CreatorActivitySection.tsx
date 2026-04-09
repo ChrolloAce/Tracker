@@ -214,11 +214,11 @@ export default function CreatorActivitySection({
     return (
       <div className="space-y-6">
         {[1, 2].map(i => (
-          <div key={i} className="bg-zinc-900/60 rounded-2xl border border-white/10 p-6 animate-pulse">
-            <div className="h-6 bg-white/5 rounded w-1/4 mb-6" />
+          <div key={i} className="bg-surface-secondary rounded-2xl border border-border p-6 animate-pulse">
+            <div className="h-6 bg-surface-hover rounded w-1/4 mb-6" />
             <div className="space-y-4">
               {[1, 2, 3].map(j => (
-                <div key={j} className="h-14 bg-white/5 rounded" />
+                <div key={j} className="h-14 bg-surface-hover rounded" />
               ))}
             </div>
           </div>
@@ -229,10 +229,10 @@ export default function CreatorActivitySection({
 
   if (rows.length === 0) {
     return (
-      <div className="bg-zinc-900/60 rounded-2xl border border-white/10 p-12 text-center">
-        <TrendingUp className="w-12 h-12 text-white/20 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-white mb-2">No creators found</h3>
-        <p className="text-white/60 text-sm">Add creators in the Creators tab to see activity here.</p>
+      <div className="bg-surface-secondary rounded-2xl border border-border p-12 text-center">
+        <TrendingUp className="w-12 h-12 text-content-muted mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-content mb-2">No creators found</h3>
+        <p className="text-content-secondary text-sm">Add creators in the Creators tab to see activity here.</p>
       </div>
     );
   }
@@ -243,13 +243,13 @@ export default function CreatorActivitySection({
     <div className="space-y-6">
       {/* View Toggle */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 bg-zinc-900/60 rounded-xl p-1 border border-white/10">
+        <div className="flex items-center space-x-2 bg-surface-secondary rounded-xl p-1 border border-border">
           <button
             onClick={() => setActiveView('activity')}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
               activeView === 'activity'
-                ? 'bg-white/10 text-white'
-                : 'text-white/50 hover:text-white/80'
+                ? 'bg-surface-active text-content'
+                : 'text-content-muted hover:text-content'
             }`}
           >
             Creator Activity
@@ -258,14 +258,14 @@ export default function CreatorActivitySection({
             onClick={() => setActiveView('performance')}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
               activeView === 'performance'
-                ? 'bg-white/10 text-white'
-                : 'text-white/50 hover:text-white/80'
+                ? 'bg-surface-active text-content'
+                : 'text-content-muted hover:text-content'
             }`}
           >
             Creator Performance
           </button>
         </div>
-        <span className="text-sm text-white/40">{rows.length} creator{rows.length !== 1 ? 's' : ''}</span>
+        <span className="text-sm text-content-muted">{rows.length} creator{rows.length !== 1 ? 's' : ''}</span>
       </div>
 
       {activeView === 'activity' ? (

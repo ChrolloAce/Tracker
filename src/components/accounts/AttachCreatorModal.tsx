@@ -65,19 +65,19 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-300 dark:border-gray-700">
+      <div className="bg-surface rounded-2xl p-8 w-full max-w-md shadow-2xl border border-border">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gray-200 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 bg-surface-hover rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Users className="w-8 h-8 text-content" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Attach to Creator</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl font-bold text-content mb-2">Attach to Creator</h2>
+          <p className="text-content-muted">
             Link @{selectedAccount.username} to a creator profile
           </p>
         </div>
 
         <div className="space-y-4">
-          <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+          <div className="bg-surface-secondary rounded-lg p-4 border border-border">
             <div className="flex items-center gap-3">
               {selectedAccount.profilePicture ? (
                 <img 
@@ -86,13 +86,13 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
                   className="w-12 h-12 rounded-full"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-full bg-surface-active border border-border-hover flex items-center justify-center">
+                  <Users className="w-6 h-6 text-content" />
                 </div>
               )}
               <div className="flex-1">
-                <div className="font-semibold text-white">@{selectedAccount.username}</div>
-                <div className="text-sm text-gray-400 capitalize">{selectedAccount.platform}</div>
+                <div className="font-semibold text-content">@{selectedAccount.username}</div>
+                <div className="text-sm text-content-muted capitalize">{selectedAccount.platform}</div>
               </div>
             </div>
           </div>
@@ -100,13 +100,13 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
           {creators.length > 0 ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-content-muted mb-2">
                   Select Creator
                 </label>
                 <select
                   value={selectedCreatorId}
                   onChange={(e) => setSelectedCreatorId(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="">Choose a creator...</option>
                   {creators.map((creator) => (
@@ -115,7 +115,7 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
                     </option>
                   ))}
                 </select>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-content-muted">
                   Link this account to a creator for better organization and tracking
                 </p>
               </div>
@@ -126,14 +126,14 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
                     onClose();
                     setSelectedCreatorId('');
                   }}
-                  className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-3 bg-surface-secondary hover:bg-surface-hover text-content rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAttach}
                   disabled={!selectedCreatorId || isSubmitting}
-                  className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/15 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/20"
+                  className="flex-1 px-4 py-3 bg-surface-active hover:bg-surface-active text-content rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-border-hover"
                 >
                   {isSubmitting ? 'Attaching...' : 'Attach Account'}
                 </button>
@@ -141,15 +141,15 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
             </>
           ) : (
             <>
-              <div className="bg-zinc-800/30 rounded-lg p-6 border border-zinc-700/50 text-center">
-                <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Users className="w-6 h-6 text-gray-900 dark:text-white" />
+              <div className="bg-surface-secondary rounded-lg p-6 border border-border text-center">
+                <div className="w-12 h-12 bg-surface-hover rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-6 h-6 text-content" />
                 </div>
-                <h3 className="text-white font-medium mb-2">No Creators Found</h3>
-                <p className="text-sm text-gray-400 mb-4">
+                <h3 className="text-content font-medium mb-2">No Creators Found</h3>
+                <p className="text-sm text-content-muted mb-4">
                   You need to create a creator profile first before linking accounts
                 </p>
-                <div className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60 border border-white/20">
+                <div className="inline-flex items-center gap-2 px-3 py-2 bg-surface-active rounded-lg text-sm text-content-muted border border-border-hover">
                   <AlertCircle className="w-4 h-4" />
                   Go to <span className="font-semibold">Creators</span> tab to create one
                 </div>
@@ -158,7 +158,7 @@ export const AttachCreatorModal: React.FC<AttachCreatorModalProps> = ({
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-3 bg-surface-secondary hover:bg-surface-hover text-content rounded-lg font-medium transition-colors"
                 >
                   Close
                 </button>

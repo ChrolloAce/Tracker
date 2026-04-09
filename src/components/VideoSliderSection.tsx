@@ -95,10 +95,10 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
 
   if (sortedVideos.length === 0) {
     return (
-      <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/10 p-8 text-center">
-        <Play className="w-12 h-12 text-white/20 mx-auto mb-3" />
-        <h3 className="text-base font-semibold text-white mb-1">No videos match your filters</h3>
-        <p className="text-white/60 text-sm">Try adjusting the date range or filters to see your top videos.</p>
+      <div className="bg-surface-secondary backdrop-blur rounded-2xl border border-border p-8 text-center">
+        <Play className="w-12 h-12 text-content-muted mx-auto mb-3" />
+        <h3 className="text-base font-semibold text-content mb-1">No videos match your filters</h3>
+        <p className="text-content-secondary text-sm">Try adjusting the date range or filters to see your top videos.</p>
       </div>
     );
   }
@@ -116,13 +116,13 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
             e.stopPropagation();
             toggleBlur();
           }}
-          className="absolute top-3 right-3 z-30 p-2 bg-black/60 hover:bg-black/80 rounded-lg transition-all duration-200 border border-white/10"
+          className="absolute top-3 right-3 z-30 p-2 bg-black/60 hover:bg-black/80 rounded-lg transition-all duration-200 border border-border"
           title={isBlurred ? 'Show videos' : 'Blur videos'}
         >
           {isBlurred ? (
-            <EyeOff className="w-5 h-5 text-gray-400 hover:text-white" />
+            <EyeOff className="w-5 h-5 text-content-muted hover:text-content" />
           ) : (
-            <Eye className="w-5 h-5 text-gray-400 hover:text-white" />
+            <Eye className="w-5 h-5 text-content-muted hover:text-content" />
           )}
         </button>
       )}
@@ -131,7 +131,7 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
       {canScrollLeft && (
         <button
           onClick={() => scroll('left')}
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/80 hover:bg-black border border-white/20 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xl"
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/80 hover:bg-black border border-border-strong rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xl"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -141,7 +141,7 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
       {canScrollRight && (
         <button
           onClick={() => scroll('right')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/80 hover:bg-black border border-white/20 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xl"
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/80 hover:bg-black border border-border-strong rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xl"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -193,7 +193,7 @@ const VideoCard: React.FC<{
     >
       {/* Video Container - 9:16 Aspect Ratio */}
       <div 
-        className="relative rounded-2xl overflow-hidden bg-zinc-800 border border-white/10 hover:border-white/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+        className="relative rounded-2xl overflow-hidden bg-surface-tertiary border border-border hover:border-border-strong transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
         style={{ aspectRatio: '9/16' }}
       >
         {/* Thumbnail */}
@@ -209,8 +209,8 @@ const VideoCard: React.FC<{
             onLoad={() => console.log('✅ Loaded thumbnail for:', video.title?.substring(0, 30))}
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center">
-            <Play className="w-12 h-12 text-white/30" />
+          <div className="absolute inset-0 bg-gradient-to-br from-surface-tertiary to-surface-secondary flex items-center justify-center">
+            <Play className="w-12 h-12 text-content-muted" />
           </div>
         )}
 
@@ -273,7 +273,7 @@ const VideoCard: React.FC<{
           </div>
 
           {/* Caption/Description */}
-          <p className="text-white/80 text-xs line-clamp-2 leading-relaxed">
+          <p className="text-white/80 text-xs line-clamp-2 leading-relaxed drop-shadow-lg">
             {video.caption || video.title || 'No caption'}
           </p>
         </div>

@@ -13,7 +13,7 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
   return (
     <div
       className={clsx(
-        'animate-pulse bg-gray-200 dark:bg-gray-800',
+        'animate-pulse bg-surface-hover',
         variant === 'circle' && 'rounded-full',
         variant === 'text' && 'rounded h-4',
         variant === 'rectangle' && 'rounded-lg',
@@ -26,7 +26,7 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
 // Skeleton for KPI Card
 export const KPICardSkeleton: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+    <div className="bg-surface rounded-xl shadow-sm border border-border p-6">
       <div className="flex items-center justify-between mb-4">
         <LoadingSkeleton className="w-32 h-5" variant="text" />
         <LoadingSkeleton className="w-10 h-10" variant="circle" />
@@ -40,7 +40,7 @@ export const KPICardSkeleton: React.FC = () => {
 // Skeleton for Video Table Row
 export const VideoRowSkeleton: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-3">
+    <div className="bg-surface border border-border rounded-xl p-4 mb-3">
       <div className="flex items-center space-x-4">
         <LoadingSkeleton className="w-20 h-20 flex-shrink-0" />
         <div className="flex-1 space-y-3">
@@ -61,7 +61,7 @@ export const VideoRowSkeleton: React.FC = () => {
 // Skeleton for Account Card
 export const AccountCardSkeleton: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+    <div className="bg-surface rounded-xl border border-border p-4">
       <div className="flex items-center space-x-3 mb-4">
         <LoadingSkeleton className="w-12 h-12" variant="circle" />
         <div className="flex-1 space-y-2">
@@ -86,7 +86,7 @@ export const AccountCardSkeleton: React.FC = () => {
 // Skeleton for Link Card
 export const LinkCardSkeleton: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+    <div className="bg-surface rounded-xl border border-border p-4">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 space-y-2">
           <LoadingSkeleton className="w-48 h-5" variant="text" />
@@ -106,7 +106,7 @@ export const LinkCardSkeleton: React.FC = () => {
 // Skeleton for Creator Card (for Creators page)
 export const CreatorCardSkeleton: React.FC = () => {
   return (
-    <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+    <div className="bg-surface-secondary backdrop-blur-sm rounded-xl border border-border p-6">
       <div className="flex items-center space-x-3 mb-4">
         <LoadingSkeleton className="w-10 h-10" variant="circle" />
         <div className="flex-1 space-y-2">
@@ -135,7 +135,7 @@ export const CreatorCardSkeleton: React.FC = () => {
 // Skeleton for Team Member Row (for Team page)
 export const TeamMemberRowSkeleton: React.FC = () => {
   return (
-    <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-4 mb-3">
+    <div className="bg-surface-secondary rounded-xl border border-border p-4 mb-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 flex-1">
           <LoadingSkeleton className="w-10 h-10" variant="circle" />
@@ -214,7 +214,7 @@ export const PageLoadingSkeleton: React.FC<{ type?: 'dashboard' | 'accounts' | '
       <div className="space-y-6 animate-fade-in">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+          <div className="bg-surface-secondary backdrop-blur-sm rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-4">
               <LoadingSkeleton className="w-10 h-10" variant="circle" />
               <LoadingSkeleton className="w-20 h-8" />
@@ -222,14 +222,14 @@ export const PageLoadingSkeleton: React.FC<{ type?: 'dashboard' | 'accounts' | '
             <LoadingSkeleton className="w-16 h-8 mb-2" />
             <LoadingSkeleton className="w-24 h-4" variant="text" />
           </div>
-          <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+          <div className="bg-surface-secondary backdrop-blur-sm rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-4">
               <LoadingSkeleton className="w-10 h-10" variant="circle" />
             </div>
             <LoadingSkeleton className="w-16 h-8 mb-2" />
             <LoadingSkeleton className="w-24 h-4" variant="text" />
           </div>
-          <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+          <div className="bg-surface-secondary backdrop-blur-sm rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-4">
               <LoadingSkeleton className="w-10 h-10" variant="circle" />
             </div>
@@ -239,8 +239,8 @@ export const PageLoadingSkeleton: React.FC<{ type?: 'dashboard' | 'accounts' | '
         </div>
 
         {/* Creators Table */}
-        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/5">
+        <div className="rounded-2xl bg-surface-secondary backdrop-blur border border-border overflow-hidden">
+          <div className="px-6 py-5 border-b border-border">
             <LoadingSkeleton className="w-48 h-6 mb-2" variant="text" />
             <LoadingSkeleton className="w-64 h-4" variant="text" />
           </div>
@@ -268,8 +268,8 @@ export const PageLoadingSkeleton: React.FC<{ type?: 'dashboard' | 'accounts' | '
         </div>
 
         {/* Team Members Table */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-700">
+        <div className="bg-surface-secondary rounded-lg border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
             <LoadingSkeleton className="w-48 h-6" variant="text" />
           </div>
           <div className="p-4 space-y-3">

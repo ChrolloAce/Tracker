@@ -111,15 +111,14 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3">
       <div 
-        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col"
-        style={{ backgroundColor: '#121214' }}
+        className="rounded-xl shadow-2xl border border-border w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col bg-surface-secondary"
       >
         {/* Header */}
-        <div className="p-6 border-b border-white/10 flex-shrink-0">
+        <div className="p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-white">Link Analytics</h2>
-              <p className="text-sm text-gray-400 mt-1">{link.title}</p>
+              <h2 className="text-2xl font-bold text-content">Link Analytics</h2>
+              <p className="text-sm text-content-muted mt-1">{link.title}</p>
             </div>
             <div className="flex items-center gap-3">
               {/* Timeframe Selector */}
@@ -150,7 +149,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   setGranularity(newGranularity);
                 }}
                 disabled={loading}
-                className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/20"
+                className="px-3 py-2 text-sm bg-surface-tertiary hover:bg-surface-active text-content border border-border hover:border-border-strong rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-border-strong"
               >
                 <option value="today">Today</option>
                 <option value="last7days">Last 7 Days</option>
@@ -163,7 +162,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                 value={granularity}
                 onChange={(e) => setGranularity(e.target.value as GranularityType)}
                 disabled={loading || (timeframe !== 'today' && timeframe !== 'last7days' && granularity === 'hourly')}
-                className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/20"
+                className="px-3 py-2 text-sm bg-surface-tertiary hover:bg-surface-active text-content border border-border hover:border-border-strong rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-border-strong"
               >
                 <option value="hourly" disabled={timeframe !== 'today' && timeframe !== 'last7days'}>Hourly</option>
                 <option value="daily">Daily</option>
@@ -171,30 +170,30 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 hover:bg-surface-active rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-content-muted" />
               </button>
             </div>
           </div>
 
           {/* Link Details - Moved to Top */}
-          <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
+          <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
+                <h3 className="text-sm font-medium text-content-secondary mb-3">Link Details</h3>
                 <div className="space-y-2">
                   <div className="flex items-start space-x-2">
-                    <span className="text-sm text-zinc-400 min-w-[100px]">Tracking Link:</span>
-                    <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-zinc-300">
+                    <span className="text-sm text-content-muted min-w-[100px]">Tracking Link:</span>
+                    <code className="text-sm font-mono bg-surface-hover px-2 py-0.5 rounded text-content-secondary">
                       {TrackedLinksService.getTrackingUrl(link.shortCode)}
                     </code>
                   </div>
                   <div className="flex items-start space-x-2">
-                    <span className="text-sm text-zinc-400 min-w-[100px]">Destination:</span>
+                    <span className="text-sm text-content-muted min-w-[100px]">Destination:</span>
                 <a 
                   href={link.originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-zinc-300 hover:text-white hover:underline break-all"
+                  className="text-sm text-content-secondary hover:text-content hover:underline break-all"
               >
                   {link.originalUrl}
                 </a>
@@ -207,35 +206,35 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-emerald-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-border border-t-emerald-500"></div>
             </div>
           ) : !analytics ? (
-            <div className="text-center py-12 text-zinc-400">
+            <div className="text-center py-12 text-content-muted">
               No analytics data available
             </div>
           ) : (
                 <div className="space-y-6">
                   {/* Stats Overview */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
-                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Total Clicks</p>
-                      <p className="text-3xl font-bold text-white">{analytics.clicks}</p>
+                    <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-border transition-all">
+                      <p className="text-xs font-medium text-content-muted tracking-wide mb-2">Total Clicks</p>
+                      <p className="text-3xl font-bold text-content">{analytics.clicks}</p>
                     </div>
-                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
-                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Unique Clicks</p>
-                      <p className="text-3xl font-bold text-white">{analytics.uniqueClicks}</p>
+                    <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-border transition-all">
+                      <p className="text-xs font-medium text-content-muted tracking-wide mb-2">Unique Clicks</p>
+                      <p className="text-3xl font-bold text-content">{analytics.uniqueClicks}</p>
                     </div>
-                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
-                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Avg Daily</p>
-                      <p className="text-3xl font-bold text-white">
+                    <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-border transition-all">
+                      <p className="text-xs font-medium text-content-muted tracking-wide mb-2">Avg Daily</p>
+                      <p className="text-3xl font-bold text-content">
                         {Math.round(analytics.clicks / period)}
                       </p>
                     </div>
                   </div>
 
                   {/* Click Trend Chart */}
-                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-4">Click Trend</h3>
+                  <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
+                    <h3 className="text-sm font-medium text-content-secondary mb-4">Click Trend</h3>
                     <div className="h-48">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={analytics.clicksByDay}>
@@ -256,11 +255,11 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
                                 return (
-                                  <div className="bg-white dark:bg-gray-800 p-2 border border-white/10 rounded-lg shadow-lg">
-                                    <p className="text-sm font-medium text-white">
+                                  <div className="bg-surface-secondary p-2 border border-border rounded-lg shadow-lg">
+                                    <p className="text-sm font-medium text-content">
                                       {payload[0].value} clicks
                                     </p>
-                                    <p className="text-xs text-zinc-400">
+                                    <p className="text-xs text-content-muted">
                                       {new Date(payload[0].payload.date).toLocaleDateString()}
                                     </p>
                                   </div>
@@ -284,16 +283,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Device Breakdown */}
                     {deviceData.length > 0 && (
-                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                        <h3 className="text-sm font-medium text-zinc-300 mb-4">Devices</h3>
+                      <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
+                        <h3 className="text-sm font-medium text-content-secondary mb-4">Devices</h3>
                         <div className="space-y-3">
                           {deviceData.map((device) => (
                             <div key={device.name} className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <device.icon className="w-4 h-4 text-zinc-400" />
-                                <span className="text-sm text-zinc-300">{device.name}</span>
+                                <device.icon className="w-4 h-4 text-content-muted" />
+                                <span className="text-sm text-content-secondary">{device.name}</span>
                               </div>
-                              <span className="text-sm font-medium text-white">
+                              <span className="text-sm font-medium text-content">
                                 {device.value}
                               </span>
                             </div>
@@ -304,16 +303,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* Top Countries */}
                     {topCountries.length > 0 && (
-                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                        <h3 className="text-sm font-medium text-zinc-300 mb-4">Top Countries</h3>
+                      <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
+                        <h3 className="text-sm font-medium text-content-secondary mb-4">Top Countries</h3>
                         <div className="space-y-3">
                           {topCountries.map(([country, clicks]) => (
                             <div key={country} className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <Globe className="w-4 h-4 text-zinc-400" />
-                                <span className="text-sm text-zinc-300">{country}</span>
+                                <Globe className="w-4 h-4 text-content-muted" />
+                                <span className="text-sm text-content-secondary">{country}</span>
                               </div>
-                              <span className="text-sm font-medium text-white">
+                              <span className="text-sm font-medium text-content">
                                 {clicks}
                               </span>
                             </div>
@@ -324,18 +323,18 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* Top Referrers */}
                     {topReferrers.length > 0 && (
-                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                        <h3 className="text-sm font-medium text-zinc-300 mb-4">Top Referrers</h3>
+                      <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
+                        <h3 className="text-sm font-medium text-content-secondary mb-4">Top Referrers</h3>
                         <div className="space-y-3">
                           {topReferrers.map(([referrer, clicks]) => (
                             <div key={referrer} className="flex items-center justify-between">
                               <div className="flex items-center space-x-2 min-w-0">
-                                <ExternalLink className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                                <span className="text-sm text-zinc-300 truncate">
+                                <ExternalLink className="w-4 h-4 text-content-muted flex-shrink-0" />
+                                <span className="text-sm text-content-secondary truncate">
                                   {referrer}
                                 </span>
                               </div>
-                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">
+                              <span className="text-sm font-medium text-content flex-shrink-0 ml-2">
                                 {clicks}
                               </span>
                             </div>
@@ -350,16 +349,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Platforms */}
                     {platformBreakdown.length > 0 && (
-                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                      <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
                         <div className="flex items-center gap-2 mb-4">
-                          <Network className="w-4 h-4 text-zinc-400" />
-                          <h3 className="text-sm font-medium text-zinc-300">Top Platforms</h3>
+                          <Network className="w-4 h-4 text-content-muted" />
+                          <h3 className="text-sm font-medium text-content-secondary">Top Platforms</h3>
                         </div>
                         <div className="space-y-3">
                           {platformBreakdown.map(([platform, count]) => (
                             <div key={platform} className="flex items-center justify-between">
-                              <span className="text-sm text-zinc-300">{platform}</span>
-                              <span className="text-sm font-medium text-white">{count}</span>
+                              <span className="text-sm text-content-secondary">{platform}</span>
+                              <span className="text-sm font-medium text-content">{count}</span>
                             </div>
                           ))}
                         </div>
@@ -368,16 +367,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* ISPs */}
                     {ispBreakdown.length > 0 && (
-                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                      <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
                         <div className="flex items-center gap-2 mb-4">
-                          <Network className="w-4 h-4 text-zinc-400" />
-                          <h3 className="text-sm font-medium text-zinc-300">Top ISPs</h3>
+                          <Network className="w-4 h-4 text-content-muted" />
+                          <h3 className="text-sm font-medium text-content-secondary">Top ISPs</h3>
                         </div>
                         <div className="space-y-3">
                           {ispBreakdown.map(([isp, count]) => (
                             <div key={isp} className="flex items-center justify-between">
-                              <span className="text-sm text-zinc-300 truncate">{isp}</span>
-                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">{count}</span>
+                              <span className="text-sm text-content-secondary truncate">{isp}</span>
+                              <span className="text-sm font-medium text-content flex-shrink-0 ml-2">{count}</span>
                             </div>
                           ))}
                         </div>
@@ -386,16 +385,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* UTM Campaigns */}
                     {utmCampaigns.length > 0 && (
-                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                      <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
                         <div className="flex items-center gap-2 mb-4">
-                          <Tag className="w-4 h-4 text-zinc-400" />
-                          <h3 className="text-sm font-medium text-zinc-300">UTM Campaigns</h3>
+                          <Tag className="w-4 h-4 text-content-muted" />
+                          <h3 className="text-sm font-medium text-content-secondary">UTM Campaigns</h3>
                         </div>
                         <div className="space-y-3">
                           {utmCampaigns.map(([campaign, count]) => (
                             <div key={campaign} className="flex items-center justify-between">
-                              <span className="text-sm text-zinc-300 truncate">{campaign}</span>
-                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">{count}</span>
+                              <span className="text-sm text-content-secondary truncate">{campaign}</span>
+                              <span className="text-sm font-medium text-content flex-shrink-0 ml-2">{count}</span>
                             </div>
                           ))}
                         </div>
@@ -405,29 +404,29 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                 </div>
 
                 {/* Link Clicks List */}
-                <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                  <h3 className="text-sm font-medium text-zinc-300 mb-4">Recent Clicks</h3>
+                <div className="rounded-2xl bg-surface-tertiary backdrop-blur border border-border-subtle shadow-lg p-5">
+                  <h3 className="text-sm font-medium text-content-secondary mb-4">Recent Clicks</h3>
                   {rawClicks.length === 0 ? (
-                    <p className="text-sm text-zinc-400 text-center py-8">No clicks recorded yet</p>
+                    <p className="text-sm text-content-muted text-center py-8">No clicks recorded yet</p>
                   ) : (
                     <>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/10">
-                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Time</th>
-                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Country</th>
-                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Device</th>
-                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Browser</th>
-                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Referrer</th>
+                            <tr className="border-b border-border">
+                              <th className="text-left py-3 px-2 font-medium text-content-secondary">Time</th>
+                              <th className="text-left py-3 px-2 font-medium text-content-secondary">Country</th>
+                              <th className="text-left py-3 px-2 font-medium text-content-secondary">Device</th>
+                              <th className="text-left py-3 px-2 font-medium text-content-secondary">Browser</th>
+                              <th className="text-left py-3 px-2 font-medium text-content-secondary">Referrer</th>
                           </tr>
                         </thead>
                         <tbody>
                             {rawClicks
                               .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                               .map((click, index) => (
-                                <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                  <td className="py-3 px-2 text-zinc-400">
+                                <tr key={index} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
+                                  <td className="py-3 px-2 text-content-muted">
                                     {new Date(click.timestamp).toLocaleString('en-US', {
                                       month: 'short',
                                       day: 'numeric',
@@ -435,16 +434,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                                       minute: '2-digit'
                                     })}
                               </td>
-                                  <td className="py-3 px-2 text-zinc-400">
+                                  <td className="py-3 px-2 text-content-muted">
                                 {click.country || '-'}
                               </td>
-                                  <td className="py-3 px-2 text-zinc-400 capitalize">
+                                  <td className="py-3 px-2 text-content-muted capitalize">
                                     {click.deviceType || '-'}
                                   </td>
-                                  <td className="py-3 px-2 text-zinc-400">
+                                  <td className="py-3 px-2 text-content-muted">
                                     {click.browser || '-'}
                               </td>
-                                  <td className="py-3 px-2 text-zinc-400 truncate max-w-[200px]">
+                                  <td className="py-3 px-2 text-content-muted truncate max-w-[200px]">
                                 {click.referrerDomain || click.referrer || 'Direct'}
                               </td>
                             </tr>

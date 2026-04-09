@@ -187,6 +187,7 @@ export interface OrgMember {
   permissions?: any; // Custom permissions (TeamMemberPermissions from permissions.ts)
   lastActiveProjectId?: string; // Last active project
   creatorProjectIds?: string[]; // Projects where user is a creator (for project filtering)
+  assignedProjects?: string[]; // Projects this member has access to (empty/undefined = all projects). Only applies to 'member' role.
 }
 
 /**
@@ -535,7 +536,10 @@ export interface Creator {
   projectId: string; // NEW: Project-scoped
   displayName: string;
   email?: string; // Optional - can be added later
+  phone?: string; // Optional phone number
+  notes?: string; // Optional notes about the creator
   photoURL?: string;
+  addedWithoutInvite?: boolean; // True if added directly without portal invitation
   linkedAccountsCount: number;
   totalEarnings: number;
   payoutsEnabled: boolean;

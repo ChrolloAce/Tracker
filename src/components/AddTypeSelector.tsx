@@ -20,15 +20,15 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
           onClick={() => {
             onSelectType('video');
           }}
-          className="p-8 rounded-lg border border-white/10 bg-zinc-900/40 hover:bg-white/5 hover:border-white/20 transition-all group"
+          className="p-8 rounded-lg border border-border bg-surface-tertiary hover:bg-surface-hover hover:border-border-strong transition-all group"
         >
           <div className="flex flex-col items-center gap-4 text-center">
-            <div className="p-4 rounded-lg bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white transition-all">
+            <div className="p-4 rounded-lg bg-surface-active text-content-muted group-hover:bg-orange-500/10 group-hover:text-orange-500 transition-all">
               <Video className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Track Video</h3>
-              <p className="text-sm text-white/50 mb-4">
+              <h3 className="text-lg font-semibold text-content mb-2">Track Video</h3>
+              <p className="text-sm text-content-muted mb-4">
                 Add individual videos from TikTok, Instagram, YouTube, or Twitter
               </p>
               <div className="flex items-center justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -45,15 +45,15 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
           onClick={() => {
             onSelectType('account');
           }}
-          className="p-8 rounded-lg border border-white/10 bg-zinc-900/40 hover:bg-white/5 hover:border-white/20 transition-all group"
+          className="p-8 rounded-lg border border-border bg-surface-tertiary hover:bg-surface-hover hover:border-border-strong transition-all group"
         >
           <div className="flex flex-col items-center gap-4 text-center">
-            <div className="p-4 rounded-lg bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white transition-all">
+            <div className="p-4 rounded-lg bg-surface-active text-content-muted group-hover:bg-orange-500/10 group-hover:text-orange-500 transition-all">
               <UserPlus className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Track Account</h3>
-              <p className="text-sm text-white/50 mb-4">
+              <h3 className="text-lg font-semibold text-content mb-2">Track Account</h3>
+              <p className="text-sm text-content-muted mb-4">
                 Track all videos from a social media account automatically
               </p>
               <div className="flex items-center justify-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -69,4 +69,3 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
     </Modal>
   );
 }
-

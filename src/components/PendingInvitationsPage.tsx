@@ -21,7 +21,7 @@ const PendingInvitationsPage: React.FC = () => {
     setLoading(true);
     try {
       const invites = await TeamInvitationService.getOrgInvitations(currentOrgId);
-      setInvitations(invites);
+      setInvitations(invites.filter(inv => inv.role !== 'creator'));
     } catch (error) {
       console.error('Failed to load invitations:', error);
     } finally {
@@ -99,13 +99,13 @@ const PendingInvitationsPage: React.FC = () => {
 
   if (invitations.length === 0) {
     return (
-      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+      <div className="bg-surface-secondary rounded-xl border border-border overflow-hidden">
         <div className="flex flex-col items-center justify-center py-16 px-6">
-          <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
-            <Mail className="w-8 h-8 text-white/40" />
+          <div className="w-16 h-16 bg-surface-active rounded-full flex items-center justify-center mb-4">
+            <Mail className="w-8 h-8 text-content-muted" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">No Pending Invitations</h3>
-          <p className="text-white/60 text-center max-w-md">
+          <h3 className="text-lg font-semibold text-content mb-2">No Pending Invitations</h3>
+          <p className="text-content-muted text-center max-w-md">
             You haven't sent any team invitations yet. Invite team members to collaborate!
           </p>
         </div>
@@ -114,47 +114,47 @@ const PendingInvitationsPage: React.FC = () => {
   }
 
   return (
-    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+    <div className="bg-surface-secondary rounded-xl border border-border overflow-hidden">
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-white/5 border-b border-white/10">
+          <thead className="bg-surface-secondary border-b border-border">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                 Role
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                 Sent
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-content-muted uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-content-muted uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-border">
         {invitations.map((invitation) => {
           const expiresInDays = getExpiresInDays(invitation.expiresAt);
           const isExpiringSoon = expiresInDays <= 2;
 
           return (
-                <tr key={invitation.id} className="hover:bg-white/5 transition-colors">
+                <tr key={invitation.id} className="hover:bg-surface-hover transition-colors">
                   {/* Email */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
-                        <Mail className="w-5 h-5 text-white/60" />
+                      <div className="w-10 h-10 rounded-full bg-surface-active border border-border-strong flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-5 h-5 text-content-muted" />
                     </div>
                     <div>
-                        <div className="text-sm font-medium text-white">
+                        <div className="text-sm font-medium text-content">
                           {invitation.email}
                         </div>
-                        <div className="text-xs text-white/50">
+                        <div className="text-xs text-content-muted">
                           Pending acceptance
                         </div>
                       </div>
@@ -163,14 +163,14 @@ const PendingInvitationsPage: React.FC = () => {
 
                   {/* Role */}
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-active text-content border border-border-strong">
                     {invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
                     </span>
                   </td>
 
                   {/* Sent Date */}
                   <td className="px-6 py-4">
-                    <div className="text-sm text-white/70">
+                    <div className="text-sm text-content-secondary">
                       {formatDate(invitation.createdAt)}
                     </div>
                   </td>
@@ -185,7 +185,7 @@ const PendingInvitationsPage: React.FC = () => {
                         </span>
                 </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-white/50">
+                      <div className="flex items-center gap-1.5 text-content-muted">
                         <Clock className="w-4 h-4" />
                         <span className="text-xs">
                           {expiresInDays} days left
@@ -200,7 +200,7 @@ const PendingInvitationsPage: React.FC = () => {
                       <button
                         onClick={() => handleResend(invitation)}
                     disabled={actionLoading === invitation.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-content bg-surface-active border border-border-strong rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
                   >
                         <Send className="w-3.5 h-3.5" />
                         {actionLoading === invitation.id ? 'Sending...' : 'Resend'}
@@ -223,12 +223,12 @@ const PendingInvitationsPage: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="bg-white/5 border-t border-white/10 px-6 py-3 flex items-center justify-between">
-        <div className="text-sm text-white/60">
+      <div className="bg-surface-secondary border-t border-border px-6 py-3 flex items-center justify-between">
+        <div className="text-sm text-content-muted">
           {invitations.length} {invitations.length === 1 ? 'invitation' : 'invitations'}
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-white/60">Page 1 of 1</span>
+          <span className="text-sm text-content-muted">Page 1 of 1</span>
         </div>
       </div>
     </div>

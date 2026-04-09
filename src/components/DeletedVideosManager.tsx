@@ -341,7 +341,7 @@ const DeletedVideosManager: React.FC = () => {
                   <button
                     onClick={() => handleUnblacklist(video)}
                     disabled={restoring === video.id || deleting === video.id}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Restore video and add it back to your tracked videos"
                   >
                     {restoring === video.id ? (
@@ -361,7 +361,7 @@ const DeletedVideosManager: React.FC = () => {
                   <button
                     onClick={() => handleDeletePermanently(video)}
                     disabled={restoring === video.id || deleting === video.id}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Permanently remove from blacklist"
                   >
                     {deleting === video.id ? (

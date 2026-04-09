@@ -111,15 +111,15 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
     <div 
       onClick={handleClick}
       className={`relative overflow-hidden bg-zinc-900/60 backdrop-blur rounded-2xl border transition-all duration-300 cursor-pointer group ${
-        isActive 
-          ? 'border-emerald-500/30 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10' 
+        isActive
+          ? 'border-orange-500/30 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10'
           : 'border-white/10 hover:border-white/20'
       } ${className}`}
     >
       {/* Gradient Background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${
-        isActive 
-          ? 'from-emerald-500/10 via-transparent to-transparent' 
+        isActive
+          ? 'from-orange-500/10 via-transparent to-transparent'
           : 'from-white/5 via-transparent to-transparent'
       }`} />
 
@@ -130,8 +130,8 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {isActive ? (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="flex items-center gap-1.5 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs font-semibold rounded-full border border-orange-500/30">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
                   Active
                 </span>
               ) : (
@@ -146,7 +146,7 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
                 </span>
               )}
             </div>
-            <h3 className="text-lg font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
+            <h3 className="text-lg font-bold text-white truncate group-hover:text-orange-400 transition-colors">
               {campaign.name}
             </h3>
             <p className="text-sm text-gray-400 line-clamp-1 mt-0.5">{campaign.description}</p>
@@ -174,7 +174,7 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
           {/* Animated Progress Bar */}
           <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
             <div 
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-emerald-500 to-emerald-400"
+              className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-orange-500 to-orange-400"
               style={{ width: `${animatedProgress}%` }}
             >
               {/* Shimmer Effect */}
@@ -183,7 +183,7 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
           </div>
           
           <div className="flex items-center justify-between mt-2">
-            <span className="text-xs text-emerald-400 font-medium">
+            <span className="text-xs text-orange-400 font-medium">
               {campaign.progressPercent.toFixed(1)}% complete
             </span>
             {campaign.totalVideos > 0 && (
@@ -211,9 +211,9 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
             </div>
             <div className="text-white font-bold">{formatNumber(campaign.totalViews)}</div>
           </div>
-          <div className="bg-emerald-500/10 rounded-lg p-3 text-center border border-emerald-500/20">
-            <div className="text-xs text-emerald-400/70 mb-1">Paid Out</div>
-            <div className="text-emerald-400 font-bold">${campaign.totalEarnings.toFixed(0)}</div>
+          <div className="bg-orange-500/10 rounded-lg p-3 text-center border border-orange-500/20">
+            <div className="text-xs text-orange-400/70 mb-1">Paid Out</div>
+            <div className="text-orange-400 font-bold">${campaign.totalEarnings.toFixed(0)}</div>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
                     key={entry.creatorId}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg flex-1 ${
                       isMe 
-                        ? 'bg-emerald-500/10 border border-emerald-500/30' 
+                        ? 'bg-orange-500/10 border border-orange-500/30' 
                         : 'bg-white/5'
                     }`}
                   >
@@ -283,10 +283,10 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
         {/* My Performance (if participating) */}
         {myParticipant && !topPerformers.find(p => p.creatorId === user?.uid) && (
           <div className="mt-4 pt-4 border-t border-white/5">
-            <div className="flex items-center justify-between p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+            <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <Trophy className="w-4 h-4 text-emerald-400" />
+                <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
+                  <Trophy className="w-4 h-4 text-orange-400" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Your Rank</p>
@@ -295,7 +295,7 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Earnings</p>
-                <p className="text-lg font-bold text-emerald-400">${myParticipant.totalEarnings.toFixed(0)}</p>
+                <p className="text-lg font-bold text-orange-400">${myParticipant.totalEarnings.toFixed(0)}</p>
               </div>
             </div>
           </div>
