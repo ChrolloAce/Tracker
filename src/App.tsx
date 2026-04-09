@@ -112,10 +112,10 @@ function LoadingSkeleton() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+    <div className="min-h-screen bg-surface flex items-center justify-center">
       <div className="text-center">
-        <div className="w-8 h-8 border-[3px] border-white/10 border-t-orange-500 rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-neutral-500 mt-4">Loading...</p>
+        <div className="w-8 h-8 border-[3px] border-border border-t-orange-500 rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-content-muted mt-4">Loading...</p>
       </div>
     </div>
   );

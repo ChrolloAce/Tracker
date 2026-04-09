@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Link as LinkIcon, ChevronDown, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { TrackedAccount } from '../types/firestore';
+import CreatorLinksService from '../services/CreatorLinksService';
+import { TrackedAccount, Creator } from '../types/firestore';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface CreateLinkModalProps {
@@ -18,7 +20,10 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
   const [linkedAccountId, setLinkedAccountId] = useState<string>('');
+  const [linkedCreatorId, setLinkedCreatorId] = useState<string>('');
+  const [linkToType, setLinkToType] = useState<'account' | 'creator'>('account');
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([]);
   const [error, setError] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -48,6 +53,9 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
       FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
         .then(setAccounts)
         .catch(err => console.error('Failed to load accounts:', err));
+      CreatorLinksService.getAllCreators(currentOrgId, currentProjectId)
+        .then(setCreators)
+        .catch(err => console.error('Failed to load creators:', err));
     }
   }, [isOpen, currentOrgId, currentProjectId]);
 
@@ -107,8 +115,8 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-surface-secondary rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
@@ -158,11 +166,81 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
             />
           </div>
 
-          {/* Linked Account - Custom Dropdown with Profile Pictures */}
+          {/* Link to Account or Creator */}
           <div>
             <label className="block text-sm font-medium text-content-secondary mb-2">
-              Link to Account (optional)
+              Assign to (optional)
             </label>
+            {/* Toggle */}
+            <div className="flex gap-1 mb-3 p-1 bg-surface-tertiary rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => { setLinkToType('account'); setLinkedCreatorId(''); }}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${linkToType === 'account' ? 'bg-content text-content-inverse shadow-sm' : 'text-content-muted hover:text-content'}`}
+              >
+                Account
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLinkToType('creator'); setLinkedAccountId(''); }}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${linkToType === 'creator' ? 'bg-content text-content-inverse shadow-sm' : 'text-content-muted hover:text-content'}`}
+              >
+                Creator
+              </button>
+            </div>
+            {linkToType === 'creator' ? (
+              /* Creator Dropdown */
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full flex items-center justify-between px-4 py-2 border border-border rounded-lg bg-surface-secondary text-content hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  {linkedCreatorId ? (() => {
+                    const c = creators.find(cr => cr.id === linkedCreatorId);
+                    return c ? (
+                      <div className="flex items-center gap-3">
+                        {c.photoURL ? (
+                          <img src={c.photoURL} alt="" className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                            <span className="text-xs font-bold text-white">{c.displayName?.charAt(0).toUpperCase()}</span>
+                          </div>
+                        )}
+                        <span className="text-sm">{c.displayName}</span>
+                      </div>
+                    ) : <span className="text-content-muted">None</span>;
+                  })() : (
+                    <span className="text-content-muted">Select a creator</span>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-content-muted transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-surface-secondary border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <button type="button" onClick={() => { setLinkedCreatorId(''); setIsDropdownOpen(false); }} className="w-full flex items-center justify-between px-4 py-2 hover:bg-surface-hover transition-colors">
+                      <span className="text-content-muted">None</span>
+                      {!linkedCreatorId && <Check className="w-4 h-4 text-content" />}
+                    </button>
+                    {creators.map(c => (
+                      <button key={c.id} type="button" onClick={() => { setLinkedCreatorId(c.id); setIsDropdownOpen(false); }} className="w-full flex items-center justify-between px-4 py-2 hover:bg-surface-hover transition-colors">
+                        <div className="flex items-center gap-3">
+                          {c.photoURL ? (
+                            <img src={c.photoURL} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                              <span className="text-xs font-bold text-white">{c.displayName?.charAt(0).toUpperCase()}</span>
+                            </div>
+                          )}
+                          <span className="text-sm text-content">{c.displayName}</span>
+                        </div>
+                        {linkedCreatorId === c.id && <Check className="w-4 h-4 text-content" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+            /* Account Dropdown */
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
@@ -250,8 +328,9 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
                 </div>
               )}
             </div>
+            )}
             <p className="mt-1 text-xs text-content-muted">
-              Attribute link clicks to a tracked account
+              {linkToType === 'creator' ? 'Attribute link clicks to a creator' : 'Attribute link clicks to a tracked account'}
             </p>
           </div>
 
@@ -280,7 +359,8 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

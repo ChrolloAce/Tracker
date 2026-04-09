@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Link as LinkIcon, Check, AlertCircle, Search, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount } from '../types/firestore';
@@ -173,7 +174,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-surface-secondary rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-border">
         {/* Header */}
@@ -307,7 +308,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                       <button
                         onClick={handleRequestLink}
                         disabled={requestingLink}
-                        className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-3 bg-orange-500 text-white font-semibold rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {requestingLink ? (
                           <>
@@ -406,7 +407,7 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
                       <button
                         onClick={handleSubmitNewAccountRequest}
                         disabled={!newAccountUrl.trim() || submittingRequest}
-                        className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 bg-orange-500 text-white font-semibold rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {submittingRequest ? (
                           <>
@@ -428,7 +429,8 @@ const CreatorAccountLinkingModal: React.FC<CreatorAccountLinkingModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
