@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -117,7 +118,7 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-surface-secondary rounded-2xl border border-border w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -254,7 +255,8 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

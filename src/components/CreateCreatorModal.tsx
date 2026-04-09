@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -201,7 +202,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-surface-secondary rounded-2xl border border-border w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -536,7 +537,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
