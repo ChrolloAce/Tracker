@@ -35,15 +35,25 @@ function initializeFirebase() {
 
 /**
  * Cron Orchestrator - Hierarchical Dispatcher
- * Runs at 17:00 UTC (Noon EST) — ONCE per day
- * 
+ * Runs 4x per day at 05:00, 11:00, 17:00, 23:00 UTC
+ *
  * SCHEDULE (EST Timezone):
- * - ALL plans: Refresh at Noon EST (1x per day)
- * - Manual refresh available via Super Admin at any time
- * 
+ * - 6 AM EST (11:00 UTC): ALL plans refresh (Free*, Basic, Pro, Ultra, Enterprise)
+ * - 12 PM EST (17:00 UTC): Enterprise only (6h interval)
+ * - 6 PM EST (23:00 UTC): Ultra + Enterprise (12h / 6h interval)
+ * - 12 AM EST (05:00 UTC): Enterprise only (6h interval)
+ *
+ * *Free refreshes every 48h (every other 6 AM run)
+ *
+ * Tier-based filtering happens in process-project.ts via REFRESH_HOURS.
+ * The orchestrator dispatches ALL orgs every run; process-project skips
+ * accounts whose lastRefreshed is within their plan's refresh interval.
+ *
+ * Manual refresh available via Super Admin at any time.
+ *
  * ARCHITECTURE:
  * Orchestrator → Organization Jobs → Project Jobs → Account Jobs
- * 
+ *
  * Each level dispatches the next level via fire-and-forget HTTP calls.
  * Completes in ~5-10 seconds regardless of org count.
  */
@@ -134,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isManualTrigger) {
       console.log(`⚡ Manual trigger detected - processing ALL organizations immediately\n`);
     } else {
-      console.log(`⏰ Scheduled cron (once daily at 17:00 UTC / Noon EST) - processing ALL organizations\n`);
+      console.log(`⏰ Scheduled cron (4x daily: 05/11/17/23 UTC) - processing ALL organizations\n`);
     }
 
     const baseUrl = getBaseUrl();
@@ -161,7 +171,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         const planTier = subscriptionDoc.data()?.planTier || 'free';
         
-        // All orgs processed on every run (once daily at noon EST)
+        // All orgs processed on every run (4x daily)
+        // process-project.ts filters accounts by tier refresh interval
         // Manual triggers always process all orgs
         
         console.log(`✅ Dispatch ${orgId} (${planTier})`);

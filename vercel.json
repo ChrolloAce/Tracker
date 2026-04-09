@@ -112,7 +112,7 @@
   "crons": [
     {
       "path": "/api/cron-orchestrator",
-      "schedule": "0 17 * * *"
+      "schedule": "0 5,11,17,23 * * *"
     },
     {
       "path": "/api/queue-worker",
