@@ -417,6 +417,7 @@ export interface TrackedLink {
   
   // Link details
   shortCode: string; // For /l/{shortCode}
+  subdomain?: string; // Branded subdomain (e.g. "prayerlock" → prayerlock.viewtrack.app/shortCode)
   originalUrl: string;
   title: string;
   description?: string;

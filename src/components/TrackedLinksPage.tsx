@@ -236,7 +236,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         return {
           title: link.title || link.shortCode,
           clicks: linkClicksData.length,
-          shortCode: link.shortCode
+          shortCode: link.shortCode,
+          subdomain: link.subdomain
         };
       })
       .filter(link => link.clicks > 0) // Only show links with actual clicks
@@ -609,11 +610,17 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       return flagMap[countryName] || '🌍';
     }
 
+    const getBrandedUrl = (link: TrackedLink): string => {
+      if (link.subdomain) {
+        return `https://${link.subdomain}.viewtrack.app/${link.shortCode}`;
+      }
+      return `${window.location.origin}/l/${link.shortCode}`;
+    };
+
     const handleCopyLink = (link: TrackedLink) => {
-      const fullUrl = `${window.location.origin}/l/${link.shortCode}`;
+      const fullUrl = getBrandedUrl(link);
       navigator.clipboard.writeText(fullUrl);
-      console.log('📋 Copied link to clipboard:', fullUrl);
-      // You can add a toast notification here if needed
+      console.log('Copied link to clipboard:', fullUrl);
     };
 
     const handleDeleteLink = async () => {
@@ -746,7 +753,9 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-surface-hover transition-colors first:pt-0">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-content truncate">{link.title}</div>
-                      <div className="text-xs text-content-muted">/{link.shortCode}</div>
+                      <div className="text-xs text-content-muted font-mono">
+                        {link.subdomain ? `${link.subdomain}.viewtrack.app/${link.shortCode}` : `/${link.shortCode}`}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-content">{link.clicks}</span>
@@ -1124,8 +1133,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                 <tbody className="divide-y divide-border">
                   {links.map((link) => {
                     const clicks = linkClicks.filter(click => click.linkId === link.id).length;
-                    const shortUrl = `${window.location.origin}/l/${link.shortCode}`;
-                  
+                    const shortUrl = getBrandedUrl(link);
+
                   return (
                       <tr key={link.id} className="hover:bg-surface-hover transition-colors">
                         <td className="px-6 py-4">
@@ -1145,7 +1154,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                               className="text-sm text-blue-400 hover:text-blue-300 font-mono underline decoration-dotted flex items-center gap-1"
                               title="Open link in new tab"
                               >
-                          /{link.shortCode}
+                          {link.subdomain ? (
+                            <>{link.subdomain}.viewtrack.app/{link.shortCode}</>
+                          ) : (
+                            <>/{link.shortCode}</>
+                          )}
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                         <button
@@ -1216,7 +1229,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             setEditingLink(null);
           }}
           editingLink={editingLink}
-            onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
+            onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string, subdomain?: string) => {
               if (!orgId || !projId || !user) {
                 console.error('Cannot create link: missing required data', { orgId, projId, hasUser: !!user });
                 alert('Missing required data to create link. Please try logging in again.');
@@ -1233,7 +1246,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     orgId,
                     projId,
                     editingLink.id,
-                    { originalUrl, title, description, tags }
+                    { originalUrl, title, description, tags, subdomain: subdomain || undefined }
                   );
                   console.log('✅ Link updated successfully');
                 } else {
@@ -1254,6 +1267,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       description,
                       tags,
                       linkedAccountId,
+                      subdomain,
                       isActive: true
                     }
                   );
@@ -1287,7 +1301,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               setShowDeleteModal(false);
               setSelectedLink(null);
             }}
-            onConfirm={handleDeleteLink}
+            onDeleted={handleDeleteLink}
             link={selectedLink}
           />
         )}

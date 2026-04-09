@@ -10,7 +10,7 @@ import { PlatformIcon } from './ui/PlatformIcon';
 interface CreateLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => void;
+  onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string, subdomain?: string) => void;
   editingLink?: any | null;
   preselectedAccountId?: string; // Account ID to pre-select and lock
 }
@@ -19,6 +19,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
   const { currentOrgId, currentProjectId } = useAuth();
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
+  const [subdomain, setSubdomain] = useState('');
   const [linkedAccountId, setLinkedAccountId] = useState<string>('');
   const [linkedCreatorId, setLinkedCreatorId] = useState<string>('');
   const [linkToType, setLinkToType] = useState<'account' | 'creator'>('account');
@@ -33,16 +34,19 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
     if (editingLink) {
       setOriginalUrl(editingLink.originalUrl || '');
       setTitle(editingLink.title || '');
+      setSubdomain(editingLink.subdomain || '');
       setLinkedAccountId(editingLink.linkedAccountId || '');
     } else if (preselectedAccountId) {
       // Set preselected account when creating from account detail view
       setLinkedAccountId(preselectedAccountId);
       setOriginalUrl('');
       setTitle('');
+      setSubdomain('');
     } else {
       // Reset fields when creating new link
       setOriginalUrl('');
       setTitle('');
+      setSubdomain('');
       setLinkedAccountId('');
     }
   }, [editingLink, preselectedAccountId]);
@@ -96,17 +100,22 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
       return;
     }
 
+    // Sanitize subdomain: lowercase, alphanumeric + hyphens only
+    const cleanSubdomain = subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+
     onCreate(
       formattedUrl,
       title.trim(),
       undefined, // description removed
       undefined, // tags removed
-      linkedAccountId || undefined
+      linkedAccountId || undefined,
+      cleanSubdomain || undefined
     );
 
     // Reset form
     setOriginalUrl('');
     setTitle('');
+    setSubdomain('');
     setLinkedAccountId('');
     setIsDropdownOpen(false);
   };
@@ -133,6 +142,29 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Branded Subdomain (optional) */}
+          <div>
+            <label className="block text-sm font-medium text-content-secondary mb-2">
+              Brand Name <span className="text-content-muted font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={subdomain}
+              onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="yourbrand"
+              className="w-full px-4 py-2 border border-border rounded-lg bg-surface-secondary text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            {subdomain.trim() ? (
+              <p className="mt-1.5 text-xs text-orange-400 font-mono">
+                {subdomain.trim().toLowerCase()}.viewtrack.app/<span className="text-content-muted">shortcode</span>
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-content-muted">
+                Creates a branded link like <span className="font-mono">yourbrand.viewtrack.app/abc123</span>
+              </p>
+            )}
+          </div>
+
           {/* Original URL */}
           <div>
             <label className="block text-sm font-medium text-content-secondary mb-2">

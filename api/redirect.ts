@@ -8,10 +8,21 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  const { shortCode } = req.query;
+  const { shortCode, subdomain: querySubdomain } = req.query;
 
   if (!shortCode || typeof shortCode !== 'string') {
     return res.status(400).json({ error: 'Invalid short code' });
+  }
+
+  // Extract subdomain from Host header or query param
+  // e.g. "prayerlock.viewtrack.app" → "prayerlock"
+  let subdomain: string | undefined = typeof querySubdomain === 'string' ? querySubdomain : undefined;
+  if (!subdomain) {
+    const host = (req.headers['x-forwarded-host'] || req.headers.host || '') as string;
+    const match = host.match(/^([a-z0-9-]+)\.viewtrack\.app$/i);
+    if (match && match[1] !== 'www') {
+      subdomain = match[1].toLowerCase();
+    }
   }
 
   try {
@@ -100,6 +111,21 @@ export default async function handler(
 
     if (!destinationUrl) {
       return res.status(404).json({ error: 'Destination URL not found' });
+    }
+
+    // If the link has a subdomain configured, verify it matches the request
+    // This prevents accessing branded links via the wrong subdomain
+    if (subdomain && linkData?.subdomain && subdomain !== linkData.subdomain) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Link Not Found</title>
+          <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}.container{text-align:center;padding:2rem}h1{font-size:2rem;margin-bottom:1rem}p{color:#6b7280;margin-bottom:2rem}</style>
+          </head>
+          <body><div class="container"><h1>Link Not Found</h1><p>This link doesn't exist on this domain.</p></div></body>
+        </html>
+      `);
     }
 
     // Check for social media preview bots

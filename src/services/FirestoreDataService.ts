@@ -190,19 +190,26 @@ class FirestoreDataService {
     
     // Create public link lookup (for redirects) - includes URL, org, project for instant redirect
     const publicLinkRef = doc(db, 'publicLinks', linkData.shortCode);
-    const publicLinkData = { 
-      orgId, 
+    const publicLinkData: Record<string, any> = {
+      orgId,
       projectId,
-      linkId: linkRef.id, 
+      linkId: linkRef.id,
       url: cleanLinkData.originalUrl,
       createdAt: Timestamp.now()
     };
+    // Store subdomain on public link so redirect handler can verify
+    if (cleanLinkData.subdomain) {
+      publicLinkData.subdomain = cleanLinkData.subdomain;
+    }
     batch.set(publicLinkRef, publicLinkData);
     
     await batch.commit();
     console.log(`✅ Created link ${linkData.shortCode} in project ${projectId}`);
     console.log(`📍 Public link data:`, publicLinkData);
-    console.log(`🔗 Short URL: ${window.location.origin}/l/${linkData.shortCode}`);
+    const displayUrl = cleanLinkData.subdomain
+      ? `https://${cleanLinkData.subdomain}.viewtrack.app/${linkData.shortCode}`
+      : `${window.location.origin}/l/${linkData.shortCode}`;
+    console.log(`🔗 Short URL: ${displayUrl}`);
     return linkRef.id;
   }
 
