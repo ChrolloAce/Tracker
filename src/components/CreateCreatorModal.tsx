@@ -207,7 +207,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-surface-inverse rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-content rounded-xl flex items-center justify-center">
               <UserPlus className="w-5 h-5 text-content-inverse" />
             </div>
             <h2 className="text-xl font-semibold text-content">Add Creator</h2>
@@ -229,7 +229,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
               className={clsx(
                 'py-2.5 px-4 rounded-lg text-sm font-semibold transition-all',
                 mode === 'add'
-                  ? 'bg-surface-inverse text-content-inverse shadow-sm'
+                  ? 'bg-content text-content-inverse shadow-sm'
                   : 'text-content-muted hover:text-content'
               )}
             >
@@ -241,7 +241,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
               className={clsx(
                 'py-2.5 px-4 rounded-lg text-sm font-semibold transition-all',
                 mode === 'invite'
-                  ? 'bg-surface-inverse text-content-inverse shadow-sm'
+                  ? 'bg-content text-content-inverse shadow-sm'
                   : 'text-content-muted hover:text-content'
               )}
             >
@@ -460,7 +460,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                           <div className={clsx(
                             'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0',
                             selectedAccountIds.includes(account.id)
-                              ? 'bg-surface-inverse border-content'
+                              ? 'bg-content border-content'
                               : 'border-border-strong'
                           )}>
                             {selectedAccountIds.includes(account.id) && (

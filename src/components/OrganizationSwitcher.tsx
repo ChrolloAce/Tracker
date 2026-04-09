@@ -151,7 +151,7 @@ const OrganizationSwitcher: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-black dark:bg-surface-inverse rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-black dark:bg-content rounded-xl flex items-center justify-center">
                     <Building2 className="w-5 h-5 text-white dark:text-content-inverse" />
                   </div>
                   <div>
@@ -222,7 +222,7 @@ const OrganizationSwitcher: React.FC = () => {
                     setIsOpen(false);
                     window.location.href = '/create-organization';
                   }}
-                  className="w-full px-4 py-3 bg-black dark:bg-surface-inverse hover:bg-gray-800 dark:hover:bg-surface-active text-white dark:text-content-inverse font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 bg-black dark:bg-content hover:bg-gray-800 dark:hover:bg-surface-active text-white dark:text-content-inverse font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Create New Organization

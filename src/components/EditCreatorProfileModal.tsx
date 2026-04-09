@@ -123,7 +123,7 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-surface-inverse rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-content rounded-xl flex items-center justify-center">
               <UserIcon className="w-5 h-5 text-content-inverse" />
             </div>
             <h2 className="text-xl font-semibold text-content">Edit Creator Profile</h2>
@@ -238,7 +238,7 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
             type="submit"
             onClick={handleSubmit}
             disabled={saving || loading || !name.trim()}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed bg-surface-inverse hover:bg-surface-inverse/90 text-content-inverse disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed bg-content hover:bg-content/90 text-content-inverse disabled:opacity-50"
           >
             {saving ? (
               <>

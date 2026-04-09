@@ -519,7 +519,7 @@ const TeamMembersTable: React.FC = () => {
                     <div
                       className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
                         selectedProjectIds.includes(project.id)
-                          ? 'bg-surface-inverse border-surface-inverse'
+                          ? 'bg-content border-content'
                           : 'border-border-strong bg-transparent'
                       }`}
                     >
