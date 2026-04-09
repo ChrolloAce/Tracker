@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
+import OrganizationService from '../services/OrganizationService';
 import { X, Save, User as UserIcon, Mail, Phone, FileText, AlertCircle } from 'lucide-react';
 
 interface EditCreatorProfileModalProps {
@@ -94,6 +95,7 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
       setSaving(true);
       setError(null);
 
+      // Update creator profile in project creators subcollection
       await CreatorLinksService.updateCreatorProfile(
         currentOrgId,
         currentProjectId,
@@ -105,6 +107,16 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
           notes: notes.trim() || undefined,
         }
       );
+
+      // Also update the org member document so the table shows the new data
+      try {
+        await OrganizationService.updateMember(currentOrgId, creator.userId, {
+          displayName: name.trim(),
+          email: email.trim() || undefined,
+        });
+      } catch {
+        // Member doc may not exist for creators added without invite — that's fine
+      }
 
       onSuccess();
       handleClose();

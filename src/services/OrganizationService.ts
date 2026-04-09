@@ -457,6 +457,11 @@ class OrganizationService {
    * Update a member's assigned projects
    * Empty array means access to all projects (backwards compatible)
    */
+  static async updateMember(orgId: string, memberId: string, updates: Record<string, any>): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', memberId);
+    await updateDoc(memberRef, updates);
+  }
+
   static async updateMemberProjects(orgId: string, memberId: string, projectIds: string[]): Promise<void> {
     const memberRef = doc(db, 'organizations', orgId, 'members', memberId);
     await updateDoc(memberRef, { assignedProjects: projectIds });
