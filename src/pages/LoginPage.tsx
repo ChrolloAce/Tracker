@@ -74,8 +74,8 @@ const LoginPage: React.FC = () => {
 
   if (processingInvite) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-border border-t-orange-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -89,7 +89,7 @@ const LoginPage: React.FC = () => {
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12">
         <div className="max-w-md w-full mx-auto">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-snug">
-            Log in to <span className="text-[#007BFF]">ViewTrack</span>
+            Log in to <span className="text-orange-500">ViewTrack</span>
           </h1>
           <p className="text-gray-500 text-sm mb-10">Sign in to access your dashboard</p>
 
@@ -100,8 +100,8 @@ const LoginPage: React.FC = () => {
           )}
 
           {inviteId && !error && (
-            <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-xl text-center">
-              <p className="text-sm text-blue-600">You've been invited! Sign in to join.</p>
+            <div className="mb-6 p-3 bg-orange-50 border border-orange-200 rounded-xl text-center">
+              <p className="text-sm text-orange-600">You've been invited! Sign in to join.</p>
             </div>
           )}
 
@@ -126,7 +126,7 @@ const LoginPage: React.FC = () => {
           </button>
 
           <p className="text-gray-400 text-xs mt-8">
-            Don't have an account? <a href="/create-organization" className="text-[#007BFF] hover:underline">Create workspace</a>
+            Don't have an account? <a href="/create-organization" className="text-orange-500 hover:underline">Create workspace</a>
           </p>
         </div>
       </div>
@@ -166,8 +166,8 @@ const LoginPage: React.FC = () => {
 
       {/* Auth processing overlay */}
       {(isProcessingAuth || signingIn) && (
-        <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center">
-          <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+        <div className="fixed inset-0 z-[9999] bg-surface/90 backdrop-blur-sm flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-border border-t-orange-500 rounded-full animate-spin" />
         </div>
       )}
     </div>

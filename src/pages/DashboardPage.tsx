@@ -5,7 +5,7 @@ import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
   Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2,
-  Users, Clock, TrendingUp, BarChart3, X, Pencil, Check, ExternalLink
+  Users, Clock, TrendingUp, BarChart3, X, Pencil, Check, ExternalLink, RotateCcw
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
@@ -598,24 +598,30 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['kpi-cards', 'revenue-chart', 'video-slider', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
+    const defaultOrder = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'];
     const saved = localStorage.getItem('dashboardSectionOrder');
-    
+
     if (saved) {
       const parsedOrder = JSON.parse(saved);
-      // Merge old order with new sections that might be missing
-      const merged = [...parsedOrder];
+      // Deduplicate: keep first occurrence of each section, remove 'top-platforms' (it's a subsection, not a main section)
+      const seen = new Set<string>();
+      const deduped = (parsedOrder as string[]).filter((id: string) => {
+        if (id === 'top-platforms' || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      // Merge with new sections that might be missing
       defaultOrder.forEach(sectionId => {
-        if (!merged.includes(sectionId)) {
-          merged.push(sectionId);
+        if (!deduped.includes(sectionId)) {
+          deduped.push(sectionId);
         }
       });
-      console.log('🔧 Merged section order:', { old: parsedOrder, new: merged });
-      // Save the merged order back to localStorage
-      localStorage.setItem('dashboardSectionOrder', JSON.stringify(merged));
-      return merged;
+      console.log('🔧 Merged section order:', { old: parsedOrder, new: deduped });
+      // Save the cleaned order back to localStorage
+      localStorage.setItem('dashboardSectionOrder', JSON.stringify(deduped));
+      return deduped;
     }
-    
+
     return defaultOrder;
   });
 
@@ -692,7 +698,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       'posting-activity': false,
       'tracked-accounts': false,
       'videos-table': true,
-      'video-slider': false
+      'video-slider': true
     };
     
     const saved = localStorage.getItem('dashboardSectionVisibility');
@@ -1131,13 +1137,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             setKpiCardOrder(prefs.kpiCardOrder);
           }
           setKpiCardVisibility(prefs.kpiCardVisibility);
-          setDashboardSectionOrder(prefs.dashboardSectionOrder);
+
+          // Deduplicate section order from Firebase (removes stale 'top-platforms' entries and duplicates)
+          const dedupedOrder = prefs.dashboardSectionOrder.filter((id: string, idx: number, arr: string[]) =>
+            id !== 'top-platforms' && arr.indexOf(id) === idx
+          );
+          setDashboardSectionOrder(dedupedOrder);
           setDashboardSectionVisibility(prefs.dashboardSectionVisibility);
-          
+
           // Sync to localStorage as backup
           localStorage.setItem('kpiCardOrder', JSON.stringify(prefs.kpiCardOrder));
           localStorage.setItem('kpiCardVisibility', JSON.stringify(prefs.kpiCardVisibility));
-          localStorage.setItem('dashboardSectionOrder', JSON.stringify(prefs.dashboardSectionOrder));
+          localStorage.setItem('dashboardSectionOrder', JSON.stringify(dedupedOrder));
           localStorage.setItem('dashboardSectionVisibility', JSON.stringify(prefs.dashboardSectionVisibility));
         }
       } catch (error) {
@@ -2388,9 +2399,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     if (!user || !currentOrgId) return;
     
     // Check if it's a section, a KPI card, or a Top Performers subsection
-    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
+    const allSections = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'tracked-accounts', 'videos-table'];
     const topPerformersSubsections = ['top-videos', 'top-accounts', 'top-gainers', 'top-creators', 'posting-times', 'top-platforms', 'comparison'];
-    
+
     if (allSections.includes(cardId)) {
       // It's a main section
       setDashboardSectionVisibility(prev => {
@@ -2429,7 +2440,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
-    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table', 'video-slider'];
+    const allSections = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'tracked-accounts', 'videos-table'];
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionOrder(prev => {
@@ -2600,6 +2611,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const sections = [
       { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
       { id: 'video-slider', label: 'Video Slider', description: 'Full-height video carousel sorted by views', icon: Video, category: 'sections' as const },
+      { id: 'revenue-chart', label: 'Revenue', description: 'Revenue analytics chart', icon: DollarSign, category: 'sections' as const },
       { id: 'top-performers', label: 'Top Performers', description: 'Top videos, accounts, creators, posting times, platforms & comparison', icon: Activity, category: 'sections' as const },
       { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
       { id: 'tracked-accounts', label: 'Tracked Accounts', description: 'Full accounts dashboard', icon: AtSign, category: 'sections' as const },
@@ -2675,17 +2687,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {/* Paywall Overlay - Triggered on specific actions */}
       {showPaywall && (
         <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="fixed inset-0 bg-black/35 backdrop-blur-2xl" />
+          <div className="fixed inset-0 bg-surface/90 backdrop-blur-xl" />
           <div className="relative z-10 min-h-full flex flex-col items-center justify-start py-8 sm:py-12 px-4">
             {/* Close button */}
             <button
               onClick={() => setShowPaywall(false)}
-              className="fixed top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 bg-surface-active hover:bg-surface-active rounded-full flex items-center justify-center text-content-muted hover:text-content transition-colors z-30"
+              className="fixed top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 bg-surface-secondary hover:bg-surface-hover border border-border rounded-full flex items-center justify-center text-content-muted hover:text-content transition-colors z-30 shadow-sm"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             {paywallContext && (
-              <p className="text-sm mb-6 capitalize">Upgrade <span className="text-[#007BFF] font-semibold">{paywallContext}</span></p>
+              <p className="text-sm mb-6 text-content-secondary capitalize">Upgrade <span className="text-orange-500 font-semibold">{paywallContext}</span></p>
             )}
             <div className="w-full max-w-6xl">
               <PaywallOverlay isActive={true} />
@@ -3061,6 +3073,36 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                      Add Item
                    </button>
                    
+                   <button
+                     onClick={() => {
+                       const defaultOrder = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'];
+                       const defaultVisibility: Record<string, boolean> = {
+                         'kpi-cards': true,
+                         'revenue-chart': true,
+                         'top-performers': true,
+                         'posting-activity': false,
+                         'tracked-accounts': false,
+                         'videos-table': true,
+                         'video-slider': true
+                       };
+                       setDashboardSectionOrder(defaultOrder);
+                       setDashboardSectionVisibility(defaultVisibility);
+                       localStorage.setItem('dashboardSectionOrder', JSON.stringify(defaultOrder));
+                       localStorage.setItem('dashboardSectionVisibility', JSON.stringify(defaultVisibility));
+                       if (user && currentOrgId) {
+                         DashboardPreferencesService.saveUserPreferences(currentOrgId, user.uid, {
+                           dashboardSectionOrder: defaultOrder,
+                           dashboardSectionVisibility: defaultVisibility
+                         });
+                       }
+                     }}
+                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]"
+                     title="Reset dashboard layout to defaults"
+                   >
+                     <RotateCcw className="w-4 h-4" />
+                     Reset to Default
+                   </button>
+
                    <button
                      onClick={() => setIsEditingLayout(false)}
                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-surface-secondary text-content border border-border shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]"

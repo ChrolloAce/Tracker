@@ -34,7 +34,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
   const getUpgradedPlans = () => {
     const plans = [];
-    
+
     // Show Pro and Ultra plans
     const pro = SUBSCRIPTION_PLANS.pro;
     const ultra = SUBSCRIPTION_PLANS.ultra;
@@ -89,26 +89,26 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-white/10 overflow-hidden">
+      <div className="bg-surface rounded-2xl max-w-2xl w-full shadow-2xl border border-border overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-b border-white/10 p-6">
+        <div className="bg-orange-500/10 border-b border-border p-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Upgrade to Add More</h2>
-                  <p className="text-sm text-gray-400">You've reached your limit</p>
+                  <h2 className="text-2xl font-bold text-content">Upgrade to Add More</h2>
+                  <p className="text-sm text-content-muted">You've reached your limit</p>
                 </div>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-2 hover:bg-surface-hover rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-gray-400" />
+              <X className="w-5 h-5 text-content-muted" />
             </button>
           </div>
         </div>
@@ -123,9 +123,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
               </div>
               <div>
                 <p className="text-sm font-semibold text-red-400">Limit Reached</p>
-                <p className="text-xs text-gray-400">
-                  You're using <span className="font-bold text-white">{currentUsage}</span> out of{' '}
-                  <span className="font-bold text-white">{currentLimit}</span> {resourceName}
+                <p className="text-xs text-content-muted">
+                  You're using <span className="font-bold text-content">{currentUsage}</span> out of{' '}
+                  <span className="font-bold text-content">{currentLimit}</span> {resourceName}
                 </p>
               </div>
             </div>
@@ -133,48 +133,48 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
           {/* Upgrade Options */}
           <div className="space-y-3 mb-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Available Upgrades</h3>
+            <h3 className="text-lg font-semibold text-content mb-4">Available Upgrades</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {plans.map((plan) => (
                 <div
                   key={plan.name}
-                  className={`relative bg-white/3 border ${
-                    plan.recommended ? 'border-emerald-500/50 ring-2 ring-emerald-500/20' : 'border-white/10'
-                  } rounded-xl p-5 hover:bg-white/5 transition-colors`}
+                  className={`relative bg-surface-secondary border ${
+                    plan.recommended ? 'border-orange-500/50 ring-2 ring-orange-500/20' : 'border-border'
+                  } rounded-xl p-5 hover:bg-surface-hover transition-colors`}
                 >
                   {plan.recommended && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-blue-500 text-white text-xs font-bold rounded-full">
+                      <span className="px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">
                         RECOMMENDED
                       </span>
                     </div>
                   )}
-                  
+
                   <div className="text-center mb-4">
-                    <h4 className="text-xl font-bold text-white mb-1">{plan.name}</h4>
+                    <h4 className="text-xl font-bold text-content mb-1">{plan.name}</h4>
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-3xl font-bold text-white">${plan.price}</span>
-                      <span className="text-sm text-gray-400">/month</span>
+                      <span className="text-3xl font-bold text-content">${plan.price}</span>
+                      <span className="text-sm text-content-muted">/month</span>
                     </div>
                   </div>
 
                   <div className="space-y-3 mb-4">
                     <div className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <span className="text-gray-300">
-                        <span className="font-bold text-white">
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-content-secondary">
+                        <span className="font-bold text-content">
                           {plan.limit === -1 ? 'Unlimited' : plan.limit.toLocaleString()}
                         </span>{' '}
                         {resourceName}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <span className="text-gray-300">All features included</span>
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-content-secondary">All features included</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <span className="text-gray-300">Priority support</span>
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-content-secondary">Priority support</span>
                     </div>
                   </div>
                 </div>
@@ -186,7 +186,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-colors"
+              className="flex-1 px-6 py-3 bg-surface-secondary hover:bg-surface-hover text-content rounded-xl font-medium transition-colors border border-border"
             >
               Not Now
             </button>
@@ -196,7 +196,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
               data-fast-goal-resource-type={resourceType}
               data-fast-goal-current-limit={currentLimit.toString()}
               data-fast-goal-current-usage={currentUsage.toString()}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/20"
+              className="flex-1 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all"
             >
               View Plans →
             </button>
@@ -208,4 +208,3 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 };
 
 export default UpgradeModal;
-

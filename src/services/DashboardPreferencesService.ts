@@ -141,12 +141,13 @@ class DashboardPreferencesService {
         downloads: false,
         'link-clicks': true
       },
-      dashboardSectionOrder: ['kpi-cards', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'],
+      dashboardSectionOrder: ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'],
       dashboardSectionVisibility: {
         'kpi-cards': true,
+        'revenue-chart': true,
+        'video-slider': true,
         'posting-activity': true,
         'top-performers': true,
-        'top-platforms': true,
         'videos-table': true,
         'tracked-accounts': true
       },

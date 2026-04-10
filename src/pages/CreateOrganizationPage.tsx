@@ -79,7 +79,7 @@ const CreateOrganizationPage: React.FC = () => {
           {/* Step 1: Workspace info */}
           {step === 1 && (
             <>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-snug">Join the first <span className="text-[#007BFF]">agentic social media analytics tool</span> to 10x your content and manage your creators.</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-snug">Track any account across all socials in <span className="text-orange-500">one synced dashboard</span> without logging in.</h1>
               <p className="text-gray-500 text-sm mb-10">Create your workspace to get started</p>
 
               {/* Workspace name with logo upload */}
@@ -88,12 +88,12 @@ const CreateOrganizationPage: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="relative w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden border-2 border-dashed border-gray-300 hover:border-[#007BFF] transition-colors flex items-center justify-center bg-gray-50 group"
+                    className="relative w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden border-2 border-dashed border-gray-300 hover:border-orange-500 transition-colors flex items-center justify-center bg-gray-50 group"
                   >
                     {logoPreview ? (
                       <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
-                      <Camera className="w-4 h-4 text-gray-400 group-hover:text-[#007BFF] transition-colors" />
+                      <Camera className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
                     )}
                     <input
                       ref={fileInputRef}
@@ -108,7 +108,7 @@ const CreateOrganizationPage: React.FC = () => {
                     value={orgName}
                     onChange={(e) => { setOrgName(e.target.value); setError(''); }}
                     placeholder="e.g. My Agency, Brand Name"
-                    className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-[#007BFF] focus:ring-1 focus:ring-[#007BFF]/20 transition-all"
+                    className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 transition-all"
                     autoFocus
                   />
                 </div>
@@ -122,7 +122,7 @@ const CreateOrganizationPage: React.FC = () => {
                   value={yourName}
                   onChange={(e) => { setYourName(e.target.value); setError(''); }}
                   placeholder="e.g. John Smith"
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-[#007BFF] focus:ring-1 focus:ring-[#007BFF]/20 transition-all"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 transition-all"
                 />
               </div>
 
@@ -130,15 +130,14 @@ const CreateOrganizationPage: React.FC = () => {
 
               <button
                 onClick={handleContinue}
-                className="group w-full py-3.5 text-white font-semibold rounded-xl transition-all hover:brightness-110 text-sm flex items-center justify-center gap-2"
-                style={{ background: 'linear-gradient(135deg, #007BFF, #2583FF)' }}
+                className="group w-full py-3.5 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all text-sm flex items-center justify-center gap-2"
               >
                 Continue
                 <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
               </button>
 
               <p className="text-center text-gray-400 text-xs mt-6">
-                Already have an account? <a href="/login" className="text-[#007BFF] hover:underline">Sign in</a>
+                Already have an account? <a href="/login" className="text-orange-500 hover:underline">Sign in</a>
               </p>
             </>
           )}
@@ -158,7 +157,7 @@ const CreateOrganizationPage: React.FC = () => {
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo" className="w-11 h-11 rounded-xl object-cover" />
                 ) : (
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#007BFF] to-[#2563EB] flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center text-white font-bold text-lg">
                     {orgName.charAt(0).toUpperCase()}
                   </div>
                 )}

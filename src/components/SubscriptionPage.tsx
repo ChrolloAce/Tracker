@@ -21,17 +21,17 @@ const SubscriptionPage: React.FC = () => {
     if (!currentOrgId) return;
     try {
       console.log('🔍 Loading subscription info for org:', currentOrgId);
-      
+
       // Check if subscription exists
       const existingSubscription = await SubscriptionService.getSubscription(currentOrgId);
-      
+
       // If no subscription exists, create default one (free trial)
       if (!existingSubscription) {
         console.log('📝 No subscription found. Creating default free trial...');
         await SubscriptionService.createDefaultSubscription(currentOrgId);
         console.log('✅ Default subscription created');
       }
-      
+
       const tier = await SubscriptionService.getPlanTier(currentOrgId);
       console.log('✅ Subscription loaded:', { tier });
       setCurrentPlan(tier);
@@ -42,7 +42,7 @@ const SubscriptionPage: React.FC = () => {
 
   const handleSelectPlan = async (planTier: PlanTier) => {
     if (!currentOrgId) return;
-    
+
     if (planTier === 'enterprise') {
       window.location.href = 'mailto:support@viewtrack.com?subject=Enterprise Plan Inquiry';
       return;
@@ -72,14 +72,14 @@ const SubscriptionPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+    <div className="min-h-screen bg-surface">
       {/* Header Navigation */}
-      <div className="sticky top-0 z-50 bg-gray-50/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/10">
+      <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-content-muted hover:text-content transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back to Dashboard</span>
@@ -93,21 +93,21 @@ const SubscriptionPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
+            <h1 className="text-4xl font-bold text-content mb-3">
               Simple, transparent pricing
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
+            <p className="text-lg text-content-muted mb-6 max-w-2xl mx-auto">
               Choose the perfect plan to track your content and grow your reach
             </p>
 
           {/* Billing Toggle */}
-            <div className="inline-flex items-center bg-white dark:bg-[#161616] rounded-full p-1.5 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="inline-flex items-center bg-surface-secondary rounded-full p-1.5 border border-border shadow-sm">
             <button
               onClick={() => setBillingCycle('monthly')}
                 className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
                 billingCycle === 'monthly'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-content-muted'
               }`}
             >
                 Monthly
@@ -116,8 +116,8 @@ const SubscriptionPage: React.FC = () => {
               onClick={() => setBillingCycle('yearly')}
                 className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                 billingCycle === 'yearly'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-content-muted'
                 }`}
               >
                 Yearly
@@ -141,16 +141,16 @@ const SubscriptionPage: React.FC = () => {
             return (
               <div
                 key={plan.id}
-                className={`relative flex flex-col w-full bg-white dark:bg-[#161616] rounded-xl p-6 border transition-all ${
+                className={`relative flex flex-col w-full bg-surface-secondary rounded-xl p-6 border transition-all ${
                   isRecommended
-                    ? 'border-blue-500 shadow-xl'
-                    : 'border-gray-200 dark:border-gray-800'
+                    ? 'border-orange-500 shadow-xl'
+                    : 'border-border'
                 }`}
               >
                 {/* Recommended Badge */}
                 {isRecommended && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                    <span className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
                       Most Popular
                     </span>
                   </div>
@@ -166,11 +166,11 @@ const SubscriptionPage: React.FC = () => {
                 )}
 
                 {/* Plan Title */}
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                <h3 className="text-xl font-bold text-content mb-4">
                   {plan.displayName}
                 </h3>
 
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-xs text-content-muted mb-4">
                   {plan.description}
                 </p>
 
@@ -178,20 +178,20 @@ const SubscriptionPage: React.FC = () => {
                 <div className="mb-5">
                   {plan.id === 'free' ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                      <span className="text-4xl font-bold text-content">
                         Free
                       </span>
                     </div>
                   ) : (
                     <>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                        <span className="text-4xl font-bold text-content">
                           ${price}
                         </span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">/mo</span>
+                        <span className="text-sm text-content-muted">/mo</span>
                       </div>
                       {billingCycle === 'yearly' && (
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        <p className="text-xs text-green-500 mt-1">
                           ${(price * 12).toFixed(0)}/year
                         </p>
                       )}
@@ -207,12 +207,12 @@ const SubscriptionPage: React.FC = () => {
                   data-fast-goal-plan={plan.id}
                   data-fast-goal-billing-cycle={billingCycle}
                   data-fast-goal-price={price}
-                  className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all mb-5 ${
+                  className={`w-full py-2.5 px-4 rounded-xl font-semibold text-sm transition-all mb-5 ${
                     isCurrentPlan
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+                      ? 'bg-surface-hover text-content-muted cursor-not-allowed'
                       : isRecommended
-                      ? 'bg-white text-gray-900 hover:bg-gray-100 border border-gray-300'
-                      : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                      ? 'bg-orange-500 text-white shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]'
+                      : 'bg-surface-hover text-content hover:bg-surface-active border border-border'
                   }`}
                 >
                   {isCurrentPlan
@@ -232,55 +232,55 @@ const SubscriptionPage: React.FC = () => {
                 {/* Features */}
                 <div className="flex-1 space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary">
                       <strong>{plan.features.teamSeats}</strong> team {plan.features.teamSeats === 1 ? 'seat' : 'seats'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary">
                       <strong>{plan.features.maxAccounts === -1 ? 'Unlimited' : plan.features.maxAccounts}</strong> accounts
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary">
                       <strong>{plan.features.maxVideos.toLocaleString()}</strong> videos
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary">
                       <strong>{plan.features.dataRefreshHours}h</strong> refresh
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary">
                       <strong>{plan.features.mcpCallsPerMonth.toLocaleString()}</strong> API calls
                     </span>
                   </div>
                   {plan.features.refreshOnDemand && (
                     <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-xs text-content-secondary">
                         On-demand refresh
                       </span>
                     </div>
                   )}
                   {plan.features.apiAccess && (
                     <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-xs text-content-secondary">
                         API access
                       </span>
                     </div>
                   )}
                   {plan.features.prioritySupport && (
                     <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-xs text-content-secondary">
                         Priority support
                       </span>
                 </div>
@@ -288,27 +288,27 @@ const SubscriptionPage: React.FC = () => {
 
                   {/* New Features with Coming Soon Badge */}
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center flex-wrap gap-1">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary flex items-center flex-wrap gap-1">
                       Creator portals
-                      <span className="text-[10px] font-bold text-gray-900 bg-gray-100 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">Coming Dec 5 2025</span>
+                      <span className="text-[10px] font-bold text-content bg-surface-hover px-1.5 py-0.5 rounded border border-border whitespace-nowrap">Coming Dec 5 2025</span>
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center flex-wrap gap-1">
+                    <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-content-secondary flex items-center flex-wrap gap-1">
                       Contract management
-                      <span className="text-[10px] font-bold text-gray-900 bg-gray-100 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">Coming Dec 5 2025</span>
+                      <span className="text-[10px] font-bold text-content bg-surface-hover px-1.5 py-0.5 rounded border border-border whitespace-nowrap">Coming Dec 5 2025</span>
                     </span>
                   </div>
 
                   {(plan.id === 'pro' || plan.id === 'ultra' || plan.id === 'enterprise') && (
                     <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center flex-wrap gap-1">
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-xs text-content-secondary flex items-center flex-wrap gap-1">
                         Creator campaigns
-                        <span className="text-[10px] font-bold text-gray-900 bg-gray-100 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/20 whitespace-nowrap">Coming Dec 5 2025</span>
+                        <span className="text-[10px] font-bold text-content bg-surface-hover px-1.5 py-0.5 rounded border border-border whitespace-nowrap">Coming Dec 5 2025</span>
                       </span>
                     </div>
                   )}

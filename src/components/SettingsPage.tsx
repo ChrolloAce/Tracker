@@ -100,7 +100,7 @@ const BillingTabContent: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
         </div>
       </div>
     );
@@ -218,10 +218,10 @@ const BillingTabContent: React.FC = () => {
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
     
     const getColor = () => {
-      if (status.isUnlimited) return 'text-emerald-400';
+      if (status.isUnlimited) return 'text-orange-500';
       if (status.isOverLimit) return 'text-red-400';
       if (status.isNearLimit) return 'text-yellow-400';
-      return 'text-emerald-400';
+      return 'text-orange-500';
     };
 
     return (
@@ -256,21 +256,21 @@ const BillingTabContent: React.FC = () => {
     <div className="space-y-6">
       {/* Success Message */}
       {showSuccessMessage && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-          <div className="flex items-center justify-center w-10 h-10 bg-emerald-500/20 rounded-full flex-shrink-0">
-            <TrendingUp className="w-5 h-5 text-emerald-400" />
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 flex items-start gap-3">
+          <div className="flex items-center justify-center w-10 h-10 bg-orange-500/20 rounded-full flex-shrink-0">
+            <TrendingUp className="w-5 h-5 text-orange-500" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-emerald-300 mb-1">
+            <h3 className="text-lg font-semibold text-orange-400 mb-1">
               Subscription Updated Successfully!
             </h3>
-            <p className="text-sm text-emerald-300/80">
+            <p className="text-sm text-orange-400/80">
               Your subscription has been upgraded. Your new plan features and limits are now active. Refresh the page if you don't see updates.
             </p>
           </div>
           <button
             onClick={() => setShowSuccessMessage(false)}
-            className="text-emerald-400 hover:text-emerald-300 p-1"
+            className="text-orange-500 hover:text-orange-400 p-1"
           >
             <X className="w-5 h-5" />
           </button>
@@ -295,11 +295,11 @@ const BillingTabContent: React.FC = () => {
         <h3 className="text-xl font-bold text-content mb-2">Subscription Details</h3>
         <p className="text-content-secondary mb-4">
           Compare all plans on our{' '}
-          <a href="/subscription" className="text-emerald-400 hover:text-emerald-300 underline">
+          <a href="/subscription" className="text-orange-500 hover:text-orange-400 underline">
             pricing page
           </a>
           . If you have specific needs,{' '}
-          <a href="mailto:support@viewtrack.app" className="text-emerald-400 hover:text-emerald-300 underline">
+          <a href="mailto:support@viewtrack.app" className="text-orange-500 hover:text-orange-400 underline">
             talk to us
           </a>
           .
@@ -332,7 +332,7 @@ const BillingTabContent: React.FC = () => {
                     disabled={loadingPortal}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${
                       subscription?.cancelAtPeriodEnd
-                        ? 'bg-surface-secondary text-emerald-400 border border-emerald-500/20 shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
+                        ? 'bg-surface-secondary text-orange-500 border border-orange-500/20 shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
                         : 'bg-red-500 text-white shadow-[0_2px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
                     }`}
                   >
@@ -667,7 +667,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center shadow-sm">
-                      <Moon className="w-5 h-5 text-blue-400" />
+                      <Moon className="w-5 h-5 text-content-muted" />
                     </div>
                     <div>
                       <p className="font-semibold text-content">Dark</p>
@@ -703,13 +703,13 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   <div className="flex items-center gap-2 text-sm">
                     {savingPreferences ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                         <span className="text-content-secondary">Saving...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        <span className="text-emerald-400">Saved!</span>
+                        <CheckCircle className="w-4 h-4 text-orange-500" />
+                        <span className="text-orange-500">Saved!</span>
                       </>
                     )}
                   </div>
@@ -718,14 +718,14 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
 
               {loadingPreferences ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
                 </div>
               ) : (
                 <>
                   {/* Email Notifications */}
                   <div className="bg-surface-tertiary rounded-xl border border-border p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <Mail className="w-5 h-5 text-emerald-400" />
+                      <Mail className="w-5 h-5 text-orange-500" />
                       <div>
                         <h3 className="text-lg font-semibold text-content">Email Notifications</h3>
                         <p className="text-sm text-content-muted">Receive updates via email at {user?.email}</p>
@@ -755,7 +755,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                               onClick={() => toggleEmailNotification(key as keyof typeof notificationPreferences.email)}
                               className={`
                                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4
-                                ${isEnabled ? 'bg-emerald-600' : 'bg-surface-active'}
+                                ${isEnabled ? 'bg-orange-500' : 'bg-surface-active'}
                               `}
                             >
                               <span
@@ -774,7 +774,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   {/* In-App Notifications */}
                   <div className="bg-surface-tertiary rounded-xl border border-border p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <Bell className="w-5 h-5 text-emerald-400" />
+                      <Bell className="w-5 h-5 text-orange-500" />
                       <div>
                         <h3 className="text-lg font-semibold text-content">In-App Notifications</h3>
                         <p className="text-sm text-content-muted">Notifications within the application</p>
@@ -804,7 +804,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                               onClick={() => toggleInAppNotification(key as keyof typeof notificationPreferences.inApp)}
                               className={`
                                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4
-                                ${isEnabled ? 'bg-emerald-600' : 'bg-surface-active'}
+                                ${isEnabled ? 'bg-orange-500' : 'bg-surface-active'}
                               `}
                             >
                               <span
@@ -837,7 +837,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                             delivery: { ...prev.delivery, emailAddress: e.target.value }
                           }))}
                           placeholder={user?.email || 'Use account email'}
-                          className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-lg text-content focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         />
                         <p className="text-xs text-content-muted mt-1">
                           Leave empty to use your account email ({user?.email})
@@ -1071,7 +1071,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               {/* Auto-save indicator */}
               {saving && (
                 <div className="flex items-center justify-end gap-2 text-sm text-content-muted">
-                  <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
         </div>
               )}

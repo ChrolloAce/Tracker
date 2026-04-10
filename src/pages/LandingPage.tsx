@@ -869,7 +869,7 @@ const LandingPage: React.FC = () => {
                 </svg>
                 {/* Center: ViewTrack */}
                 <div className="w-14 h-14 rounded-2xl bg-orange-500 shadow-lg flex items-center justify-center shrink-0">
-                  <img src="/Viewtrack Logo Black.png" className="w-8 h-8 invert brightness-200" alt="ViewTrack" />
+                  <img src="/vtlogo.png" className="w-8 h-8" alt="ViewTrack" />
                 </div>
               </div>
               <div className="p-5">

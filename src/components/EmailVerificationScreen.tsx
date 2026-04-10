@@ -138,8 +138,8 @@ const EmailVerificationScreen: React.FC = () => {
         </div>
 
         {/* Icon */}
-        <div className="w-16 h-16 bg-[#2282FF]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Mail className="w-8 h-8 text-[#2282FF]" />
+        <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Mail className="w-8 h-8 text-orange-500" />
         </div>
 
         {/* Title */}
@@ -171,7 +171,7 @@ const EmailVerificationScreen: React.FC = () => {
             onKeyPress={(e) => e.key === 'Enter' && code.length === 6 && handleVerify()}
             placeholder="000000"
             maxLength={6}
-            className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border-0 border-b-2 border-gray-300 focus:border-[#2282FF] focus:outline-none transition-colors bg-transparent"
+            className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border-0 border-b-2 border-gray-300 focus:border-orange-500 focus:outline-none transition-colors bg-transparent"
             autoFocus
           />
         </div>
@@ -196,7 +196,7 @@ const EmailVerificationScreen: React.FC = () => {
           <button
             onClick={handleVerify}
             disabled={verifying || code.length !== 6}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#2282FF] hover:bg-[#1b6dd9] text-white rounded-full transition-colors font-semibold shadow-lg shadow-[#2282FF]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span>{verifying ? 'Verifying...' : 'Verify Email'}</span>
             {!verifying && <ArrowRight className="w-4 h-4" />}
@@ -206,7 +206,7 @@ const EmailVerificationScreen: React.FC = () => {
           <button
             onClick={sendVerificationCode}
             disabled={resending}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-full transition-colors font-medium disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all font-medium disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} />
             <span>

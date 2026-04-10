@@ -48,8 +48,8 @@ const DemoPage: React.FC = () => {
     },
     {
       target: '[data-spotlight="kpi-cards"]',
-      title: 'Real-Time Performance',
-      description: 'Instantly see <strong>total views</strong>, <strong>engagement rate</strong>, <strong>top performers</strong>, and <strong>growth trends</strong> updating live across every platform.',
+      title: 'Performance Overview',
+      description: 'See <strong>total views</strong>, <strong>engagement rate</strong>, <strong>top performers</strong>, and <strong>growth trends</strong> across every platform at a glance.',
       position: 'top' as const,
       padding: 8,
       onEnter: () => switchTab('dashboard'),

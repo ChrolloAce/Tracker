@@ -95,8 +95,8 @@ const OnboardingOrchestrator: React.FC = () => {
 
   // Just show spinning circle - no error messages, no text
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-      <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-16 h-16 border-4 border-border border-t-orange-500 rounded-full animate-spin" />
     </div>
   );
 };

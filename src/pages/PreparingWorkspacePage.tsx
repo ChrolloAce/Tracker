@@ -94,7 +94,7 @@ const PreparingWorkspacePage: React.FC = () => {
             {/* Outer rotating ring */}
             <div className="animate-spin rounded-full h-20 w-20 border-4 border-gray-200"></div>
             {/* Inner rotating arc */}
-            <div className="absolute top-0 left-0 animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-[#2282FF]"></div>
+            <div className="absolute top-0 left-0 animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-orange-500"></div>
           </div>
         </div>
 

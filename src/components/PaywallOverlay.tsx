@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
@@ -8,223 +8,154 @@ interface PaywallOverlayProps {
   isActive: boolean;
 }
 
+const PLANS = [
+  {
+    name: 'Starter',
+    monthly: 24,
+    yearly: 19,
+    desc: 'Perfect for small teams and individual creators getting started.',
+    features: ['Unlimited tracked accounts', 'Up to 150 videos', '24-hour data refresh', 'Creator portals', 'Contract management', '2 team seats'],
+    planId: 'basic' as const,
+    highlighted: false,
+  },
+  {
+    name: 'Pro',
+    monthly: 79,
+    yearly: 65,
+    desc: 'For growing brands scaling their creator campaigns.',
+    features: ['Unlimited tracked accounts', 'Up to 1,000 videos', '24-hour data refresh', 'Revenue tracking', 'Creator campaigns', 'Creator portals', 'Contract management', '5 team seats'],
+    planId: 'pro' as const,
+    highlighted: true,
+  },
+  {
+    name: 'Ultra',
+    monthly: 199,
+    yearly: 165,
+    desc: 'For agencies and large teams with high-volume needs.',
+    features: ['Unlimited tracked accounts', 'Up to 5,000 videos', '12-hour data refresh', 'Revenue tracking', 'Creator campaigns', '15 team seats', 'API access', 'Custom integrations'],
+    planId: 'ultra' as const,
+    highlighted: false,
+  },
+];
+
 const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
   const { currentOrgId } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
+  const [billingYearly, setBillingYearly] = useState(false);
 
   if (!isActive) return null;
 
   const handleUpgrade = async (plan: 'basic' | 'pro' | 'ultra') => {
     if (!currentOrgId) return;
-    
-    setLoading(true);
+    setLoading(plan);
     try {
-      await StripeService.createCheckoutSession(currentOrgId, plan, 'monthly');
-      // Redirect happens automatically inside the service
+      await StripeService.createCheckoutSession(currentOrgId, plan, billingYearly ? 'yearly' : 'monthly');
     } catch (error) {
       console.error('Failed to create checkout session:', error);
-      alert('Failed to start checkout. Please try again.');
-      setLoading(false);
+      setLoading(null);
     }
   };
 
   return (
-      <div className="relative z-10 max-w-6xl w-full mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-content mb-2">Choose Your Plan</h2>
-          <p className="text-content-muted text-lg">Unlock full access to ViewTrack</p>
-        </div>
-        
-        <style>{`
-          @keyframes pulse-subtle {
-            0%, 100% {
-              opacity: 0.7;
-              box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.05);
-            }
-            50% {
-              opacity: 1;
-              box-shadow: 0 0 20px 0 rgba(255, 255, 255, 0.1);
-            }
-          }
-          .animate-pulse-subtle {
-            animation: pulse-subtle 3s ease-in-out infinite;
-          }
-        `}</style>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Basic Plan */}
-          <div className="bg-surface-secondary border border-border rounded-2xl p-8 hover:border-[#2282FF]/50 transition-all">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-content mb-2">Basic</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-content">$24</span>
-                <span className="text-content-muted">/month</span>
-              </div>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Unlimited accounts</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Up to 150 videos</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>24-hour data refresh</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Creator portals</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Contract management</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>2 team seats</span>
-              </li>
-            </ul>
-            <button
-              onClick={() => handleUpgrade('basic')}
-              disabled={loading}
-              data-fast-goal="paywall_pricing_basic_monthly"
-              data-fast-goal-plan="basic"
-              data-fast-goal-billing-cycle="monthly"
-              data-fast-goal-price="24"
-              className="w-full px-6 py-3 bg-orange-500 text-white rounded-full font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Upgrade to Basic'}
-            </button>
-          </div>
-
-          {/* Pro Plan */}
-          <div className="bg-surface-secondary border-2 border-[#2282FF] rounded-2xl p-8 relative transform scale-105">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#2282FF] text-white text-sm font-bold rounded-full">
-              Popular
-            </div>
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-content mb-2">Pro</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-content">$79</span>
-                <span className="text-content-muted">/month</span>
-              </div>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Unlimited accounts</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Up to 1,000 videos</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>24-hour data refresh</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Revenue tracking</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Creator campaigns</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Creator portals</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Contract management</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>5 team seats</span>
-              </li>
-            </ul>
-            <button
-              onClick={() => handleUpgrade('pro')}
-              disabled={loading}
-              data-fast-goal="paywall_pricing_pro_monthly"
-              data-fast-goal-plan="pro"
-              data-fast-goal-billing-cycle="monthly"
-              data-fast-goal-price="79"
-              className="w-full px-6 py-3 bg-[#2282FF] hover:bg-[#1b6dd9] text-white font-semibold rounded-full transition-colors disabled:opacity-50 shadow-lg shadow-[#2282FF]/20"
-            >
-              {loading ? 'Loading...' : 'Upgrade to Pro'}
-            </button>
-          </div>
-
-          {/* Ultra Plan */}
-          <div className="bg-surface-secondary border border-border rounded-2xl p-8 hover:border-[#2282FF]/50 transition-all">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-content mb-2">Ultra</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-content">$199</span>
-                <span className="text-content-muted">/month</span>
-              </div>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Unlimited accounts</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Up to 5,000 videos</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>12-hour data refresh</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Revenue tracking</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Creator portals</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>Contract management</span>
-              </li>
-              <li className="flex items-center gap-2 text-content-secondary">
-                <Check className="w-5 h-5 text-[#2282FF]" />
-                <span>15 team seats</span>
-              </li>
-            </ul>
-            <button
-              onClick={() => handleUpgrade('ultra')}
-              disabled={loading}
-              data-fast-goal="paywall_pricing_ultra_monthly"
-              data-fast-goal-plan="ultra"
-              data-fast-goal-billing-cycle="monthly"
-              data-fast-goal-price="199"
-              className="w-full px-6 py-3 bg-orange-500 text-white rounded-full font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Upgrade to Ultra'}
-            </button>
-          </div>
-        </div>
-
-        {/* Settings Link */}
-        <div className="text-center mt-8">
-          <button
-            onClick={() => navigate('/settings/billing')}
-            className="text-content-muted hover:text-content transition-colors text-sm"
-          >
-            View billing settings →
-          </button>
-        </div>
+    <div className="relative z-10 max-w-6xl w-full mx-auto py-8">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl md:text-4xl font-bold text-content mb-2 uppercase tracking-tight">Simple and transparent pricing</h2>
+        <p className="text-content-muted text-base">Unlock full access to ViewTrack</p>
       </div>
+
+      {/* Billing toggle */}
+      <div className="flex items-center justify-center gap-3 mb-10">
+        <span className={`text-sm font-medium ${!billingYearly ? 'text-content' : 'text-content-muted'}`}>Monthly</span>
+        <button
+          onClick={() => setBillingYearly(!billingYearly)}
+          className={`relative w-12 h-7 rounded-full transition-colors ${billingYearly ? 'bg-orange-500' : 'bg-gray-300'}`}
+        >
+          <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${billingYearly ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+        <span className={`text-sm font-medium ${billingYearly ? 'text-content' : 'text-content-muted'}`}>Yearly</span>
+        <span className={`text-xs font-bold px-2 py-1 rounded-full transition-opacity ${billingYearly ? 'text-orange-500 bg-orange-50 opacity-100' : 'opacity-0'}`}>20% OFF</span>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6 items-start">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.name}
+            className={`rounded-2xl overflow-hidden flex flex-col relative ${
+              plan.highlighted
+                ? 'bg-orange-500 text-white shadow-xl'
+                : 'border border-border bg-surface-secondary'
+            }`}
+          >
+            {plan.highlighted && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-neutral-900 text-white text-[10px] font-semibold uppercase tracking-wider rounded-b-xl z-10">
+                Most Popular
+              </div>
+            )}
+
+            {/* Top area */}
+            <div className={`px-8 pt-10 pb-6 ${plan.highlighted ? '' : 'bg-gradient-to-br from-surface-tertiary to-surface-secondary'}`}>
+              <h3 className={`text-lg font-semibold mb-3 ${plan.highlighted ? 'text-white' : 'text-content'}`}>{plan.name}</h3>
+              <p className={`text-xs mb-1 ${plan.highlighted ? 'text-orange-200' : 'text-content-muted'}`}>Starts at</p>
+              <div className="flex items-baseline gap-1.5 mb-3">
+                <span className={`text-5xl font-bold ${plan.highlighted ? 'text-white' : 'text-content'}`}>
+                  ${billingYearly ? plan.yearly : plan.monthly}
+                </span>
+                <span className={`text-sm ${plan.highlighted ? 'text-orange-200' : 'text-content-muted'}`}>/month</span>
+              </div>
+              <p className={`text-sm leading-relaxed ${plan.highlighted ? 'text-orange-100' : 'text-content-muted'}`}>{plan.desc}</p>
+              <p className={`text-xs mt-2 ${plan.highlighted ? 'text-orange-200' : 'text-content-muted'}`}>
+                {billingYearly ? `Billed annually at $${(billingYearly ? plan.yearly : plan.monthly) * 12}` : 'Billed monthly'}
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="px-8 py-5">
+              <button
+                onClick={() => handleUpgrade(plan.planId)}
+                disabled={loading !== null}
+                className={`w-full py-3.5 font-semibold rounded-xl text-sm transition-all disabled:opacity-50 ${
+                  plan.highlighted
+                    ? 'bg-white text-orange-600 shadow-[0_4px_0_0_#e5e5e5] hover:shadow-[0_2px_0_0_#e5e5e5] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]'
+                    : 'bg-orange-500 text-white shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]'
+                }`}
+              >
+                {loading === plan.planId ? 'Loading...' : 'Get Started'}
+                {loading !== plan.planId && <ArrowRight className="w-4 h-4 inline ml-1" />}
+              </button>
+            </div>
+
+            {/* Features */}
+            <div className="px-8 pb-8">
+              <div className={`border-t pt-5 mb-4 ${plan.highlighted ? 'border-orange-400/30' : 'border-border'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-4 ${plan.highlighted ? 'text-orange-200' : 'text-content-muted'}`}>
+                  What's included
+                </p>
+              </div>
+              <ul className="space-y-3">
+                {plan.features.map((feature, i) => (
+                  <li key={i} className={`flex items-center gap-2.5 text-sm ${plan.highlighted ? 'text-white' : 'text-content-secondary'}`}>
+                    <Check className={`w-4 h-4 flex-shrink-0 ${plan.highlighted ? 'text-white' : 'text-orange-500'}`} />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Settings Link */}
+      <div className="text-center mt-8">
+        <button
+          onClick={() => navigate('/settings/billing')}
+          className="text-content-muted hover:text-content transition-colors text-sm"
+        >
+          View billing settings →
+        </button>
+      </div>
+    </div>
   );
 };
 
 export default PaywallOverlay;
-

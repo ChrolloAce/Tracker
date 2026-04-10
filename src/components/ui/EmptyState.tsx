@@ -84,10 +84,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                   key={index}
                   onClick={action.onClick}
                   className={`
-                    flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl
-                    ${action.primary 
-                      ? 'bg-surface-active hover:bg-surface-active text-content border border-border-hover hover:border-border-hover'
-                      : 'bg-surface-hover hover:bg-surface-active text-content-muted hover:text-content border border-border hover:border-border-hover'
+                    flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all
+                    ${action.primary
+                      ? 'bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
+                      : 'bg-surface-secondary text-content border border-border shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
                     }
                   `}
                 >

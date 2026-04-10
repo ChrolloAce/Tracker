@@ -1,8 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-
-// Lazy load Lottie component and animation data
-const LottieComponent = lazy(() => import('lottie-react'));
 
 export interface SpotlightStep {
   target: string; // CSS selector, or 'center' for centered modal
@@ -34,12 +31,6 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [isAnimating, setIsAnimating] = useState(true);
   const scrollLockRef = useRef(false);
-
-  // Lazy load animation data
-  const [robotAnimation, setRobotAnimation] = useState<any>(null);
-  useEffect(() => {
-    import('./robot.json').then(module => setRobotAnimation(module.default));
-  }, []);
 
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
@@ -264,8 +255,8 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
             width: targetRect.width + padding * 2,
             height: targetRect.height + padding * 2,
             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            border: '1.5px solid rgba(255, 255, 255, 0.15)',
-            boxShadow: '0 0 20px rgba(0, 123, 255, 0.15)',
+            border: '1.5px solid var(--border)',
+            boxShadow: '0 0 20px rgba(249, 115, 22, 0.2)',
           }}
         />
       )}
@@ -294,25 +285,13 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
           }}
         >
           <div className="relative">
-            {/* Robot peeking behind card — top left */}
-            <div className="absolute -top-6 -left-5 w-14 h-14 pointer-events-none hidden sm:block" style={{ zIndex: 0 }}>
-              {robotAnimation && (
-                <Suspense fallback={<div className="w-full h-full" />}>
-                  <LottieComponent animationData={robotAnimation} loop />
-                </Suspense>
-              )}
-            </div>
             <div
               data-spotlight-tooltip
-              className="rounded-2xl shadow-2xl"
+              className="rounded-2xl shadow-2xl bg-surface-secondary border border-border"
               style={{
                 position: 'relative',
                 zIndex: 1,
               padding: isCentered ? 24 : 16,
-              background: isCentered
-                ? 'linear-gradient(135deg, #0D0D0D 0%, #141414 100%)'
-                : '#111111',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
             }}
           >
             {/* Step indicator dots */}
@@ -325,25 +304,25 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
                     height: 4,
                     width: i === currentStep ? 24 : 12,
                     background: i === currentStep
-                      ? 'linear-gradient(90deg, #007BFF, #2583FF)'
+                      ? '#f97316'
                       : i < currentStep
-                      ? 'rgba(0, 123, 255, 0.35)'
-                      : 'rgba(255, 255, 255, 0.06)',
+                      ? 'rgba(249, 115, 22, 0.35)'
+                      : 'var(--border-subtle)',
                   }}
                 />
               ))}
-              <span className="ml-auto text-[11px] text-white/25 font-medium tabular-nums">
+              <span className="ml-auto text-[11px] text-content-muted font-medium tabular-nums">
                 {currentStep + 1}/{steps.length}
               </span>
             </div>
 
             {/* Content */}
-            <h3 className="text-white font-semibold tracking-tight mb-1.5 text-sm sm:text-[15px]">
+            <h3 className="text-content font-semibold tracking-tight mb-1.5 text-sm sm:text-[15px]">
               {step.title}
             </h3>
             {step.description && (
               <p
-                className="text-white/60 leading-relaxed mb-4 sm:mb-5 text-xs sm:text-[13px] [&>strong]:text-white [&>strong]:font-medium"
+                className="text-content-secondary leading-relaxed mb-4 sm:mb-5 text-xs sm:text-[13px] [&>strong]:text-content [&>strong]:font-medium"
                 dangerouslySetInnerHTML={{ __html: step.description }}
               />
             )}
@@ -354,7 +333,7 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
                 {currentStep > 0 && (
                   <button
                     onClick={handleBack}
-                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-[13px] text-white/35 hover:text-white/60 transition-colors rounded-lg hover:bg-white/5"
+                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-[13px] text-content-muted hover:text-content-secondary transition-colors rounded-lg hover:bg-surface-hover"
                   >
                     Back
                   </button>
@@ -362,11 +341,7 @@ const SpotlightOnboarding: React.FC<SpotlightOnboardingProps> = ({
               </div>
               <button
                 onClick={handleNext}
-                className="group text-white font-semibold rounded-lg transition-all duration-200 hover:brightness-110 flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 text-xs sm:text-[13px]"
-                style={{
-                  background: 'linear-gradient(135deg, #007BFF 0%, #2583FF 100%)',
-                  boxShadow: '0 2px 12px rgba(0, 123, 255, 0.25)',
-                }}
+                className="group text-white font-semibold rounded-lg transition-all duration-200 flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 text-xs sm:text-[13px] bg-orange-500 shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]"
               >
                 {step.ctaLabel || (isLastStep ? 'Get Started' : 'Next')}
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>

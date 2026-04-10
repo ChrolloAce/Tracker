@@ -221,24 +221,24 @@ const UserOnboarding: React.FC = () => {
       <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
         
         {/* Left Column - Black Panel */}
-        <div className="bg-black p-12 flex flex-col justify-between">
+        <div className="bg-surface-secondary p-12 flex flex-col justify-between">
           {/* Logo & Branding */}
           <div>
-            <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mb-12 brightness-0 invert" />
+            <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mb-12" />
             
-            <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
+            <h1 className="text-4xl font-bold text-content mb-4 leading-tight">
               A few clicks away from setting up your workspace.
             </h1>
-            <p className="text-gray-400 text-lg">
+            <p className="text-content-secondary text-lg">
               Answer a few quick questions to personalize your experience.
             </p>
           </div>
 
           {/* Minimal Illustration */}
           <div className="relative">
-            <div className="w-32 h-32 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl flex items-center justify-center shadow-xl border border-gray-700">
-              <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
-                <div className="w-8 h-8 bg-white rounded-full"></div>
+            <div className="w-32 h-32 bg-orange-50 rounded-2xl flex items-center justify-center shadow-xl border border-orange-200">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-orange-500 rounded-full"></div>
               </div>
             </div>
             {/* Progress indicator */}
@@ -249,12 +249,12 @@ const UserOnboarding: React.FC = () => {
                     key={i}
                     className={clsx(
                       'h-1 flex-1 rounded-full transition-all duration-300',
-                      i + 1 <= step ? 'bg-white' : 'bg-gray-700'
+                      i + 1 <= step ? 'bg-orange-500' : 'bg-gray-300'
                     )}
                   />
                 ))}
               </div>
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="text-content-secondary text-sm mt-2">
                 Step {step} of {totalSteps}
               </p>
             </div>
@@ -299,7 +299,7 @@ const UserOnboarding: React.FC = () => {
                   value={data.userName}
                   onChange={(e) => setData({ ...data, userName: e.target.value })}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/20 text-gray-900 placeholder-gray-400 bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-gray-900 placeholder-gray-400 bg-white"
                   autoFocus
                 />
               </div>
@@ -319,13 +319,13 @@ const UserOnboarding: React.FC = () => {
                       className={clsx(
                         'w-full flex items-center gap-4 p-4 border-2 rounded-xl transition-all text-left',
                         data.businessType === option.id
-                          ? 'border-black bg-black/5'
+                          ? 'border-orange-500 bg-orange-50'
                           : 'border-gray-200 hover:border-gray-300'
                       )}
                     >
                       <div className={clsx(
                         'w-12 h-12 rounded-lg flex items-center justify-center',
-                        data.businessType === option.id ? 'bg-black' : 'bg-gray-100'
+                        data.businessType === option.id ? 'bg-orange-500' : 'bg-gray-100'
                       )}>
                         <option.icon className={clsx(
                           'w-6 h-6',
@@ -353,7 +353,7 @@ const UserOnboarding: React.FC = () => {
                   value={data.companyWebsite}
                   onChange={(e) => setData({ ...data, companyWebsite: e.target.value })}
                   placeholder="https://yourwebsite.com"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/20 text-gray-900 placeholder-gray-400 bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-gray-900 placeholder-gray-400 bg-white"
                 />
 
                 <button
@@ -378,7 +378,7 @@ const UserOnboarding: React.FC = () => {
                     onChange={(e) => setCurrentEmail(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addTeamEmail()}
                     placeholder="email@example.com"
-                    className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/20 text-gray-900 placeholder-gray-400 bg-white"
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-gray-900 placeholder-gray-400 bg-white"
                   />
                   <button
                     onClick={addTeamEmail}
@@ -455,11 +455,11 @@ const UserOnboarding: React.FC = () => {
                     onChange={(e) => setCurrentSocialUrl(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addSocialAccount()}
                     placeholder={`Paste your ${currentPlatform} link`}
-                    className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/20 text-gray-900 placeholder-gray-400 bg-white"
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-gray-900 placeholder-gray-400 bg-white"
                   />
                   <button
                     onClick={addSocialAccount}
-                    className="px-4 py-3 bg-black hover:bg-gray-800 text-white rounded-lg transition-colors"
+                    className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -506,7 +506,7 @@ const UserOnboarding: React.FC = () => {
               <button
                 onClick={handleNext}
                 disabled={loading}
-                className="w-full bg-black hover:bg-gray-800 text-white py-3.5 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-orange-500 text-white py-3.5 rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -516,7 +516,7 @@ const UserOnboarding: React.FC = () => {
               <button
                 onClick={handleFinish}
                 disabled={loading || data.socialAccounts.length === 0}
-                className="w-full bg-black hover:bg-gray-800 text-white py-3.5 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-orange-500 text-white py-3.5 rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Setting up...' : 'Finish Setup'}
               </button>

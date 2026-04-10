@@ -36,7 +36,7 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-white/[0.02] to-transparent backdrop-blur-xl rounded-2xl border border-border"></div>
         
         {/* Subtle glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl opacity-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-orange-500/3 rounded-2xl opacity-50"></div>
         
         {/* Content */}
         <div className="relative max-w-xl mx-auto text-center px-8 py-12">
@@ -60,9 +60,9 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
                 <button
                   onMouseEnter={() => setShowTooltip(true)}
                   onMouseLeave={() => setShowTooltip(false)}
-                  className="w-5 h-5 rounded-full bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center transition-colors"
+                  className="w-5 h-5 rounded-full bg-orange-500/20 hover:bg-orange-500/30 flex items-center justify-center transition-colors"
                 >
-                  <Info className="w-3.5 h-3.5 text-blue-400" />
+                  <Info className="w-3.5 h-3.5 text-orange-500" />
                 </button>
                 
                 {showTooltip && (
@@ -94,13 +94,12 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
                     onClick={action.onClick}
                     disabled={action.disabled}
                     className={`
-                      flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-all
-                      ${action.disabled 
-                        ? 'bg-surface-secondary text-content-muted border border-border cursor-not-allowed opacity-60' 
-                        : `transform hover:scale-105 active:scale-95 ${action.primary 
-                        ? 'bg-surface-active hover:bg-surface-active text-content border border-border-hover hover:border-border-hover'
-                        : 'bg-surface-hover hover:bg-surface-active text-content-muted hover:text-content border border-border hover:border-border-hover'
-                        }`
+                      flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all
+                      ${action.disabled
+                        ? 'bg-surface-secondary text-content-muted border border-border cursor-not-allowed opacity-60'
+                        : action.primary
+                        ? 'bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
+                        : 'bg-surface-secondary text-content border border-border shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]'
                       }
                     `}
                   >
