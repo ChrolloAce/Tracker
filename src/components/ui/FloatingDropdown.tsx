@@ -100,13 +100,16 @@ export const FloatingDropdown: React.FC<FloatingDropdownProps> = ({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-[9995]"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
       />
 
       {/* Dropdown */}
       <div
         ref={dropdownRef}
-        className="fixed z-[9996] w-56 bg-surface border border-border-hover rounded-lg shadow-2xl py-1"
+        className="fixed z-[9996] w-56 bg-surface border border-border-hover rounded-lg shadow-2xl py-1 overflow-hidden"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
