@@ -615,18 +615,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       console.log('Copied link to clipboard:', fullUrl);
     };
 
-    const handleDeleteLink = async () => {
-      if (!selectedLink || !orgId || !projId) return;
-      try {
-        await FirestoreDataService.deleteLink(orgId, projId, selectedLink.id);
-        setShowDeleteModal(false);
-        setSelectedLink(null);
-        await loadData();
-      } catch (error) {
-        console.error('Failed to delete link:', error);
-      }
-    };
-
     const handleEditLink = (link: TrackedLink) => {
       setEditingLink(link);
       setShowCreateModal(true);
@@ -1292,7 +1280,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               setShowDeleteModal(false);
               setSelectedLink(null);
             }}
-            onDeleted={handleDeleteLink}
+            onDeleted={loadData}
             link={selectedLink}
           />
         )}

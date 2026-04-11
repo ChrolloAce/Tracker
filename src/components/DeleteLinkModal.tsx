@@ -8,27 +8,52 @@ interface DeleteLinkModalProps {
   isOpen: boolean;
   link: any;
   onClose: () => void;
-  onDeleted: () => void;
+  onDeleted: () => void | Promise<void>;
 }
 
 const DeleteLinkModal: React.FC<DeleteLinkModalProps> = ({ isOpen, link, onClose, onDeleted }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen || !link) return null;
 
   const handleConfirm = async () => {
-    if (!currentOrgId || !currentProjectId) return;
+    if (!currentOrgId || !currentProjectId) {
+      setError('Missing organization or project context. Try refreshing the page.');
+      return;
+    }
+
     setIsDeleting(true);
+    setError(null);
+
+    // Step 1: delete. If this fails, show the error and keep the modal open
+    // so the user can see what went wrong and retry.
     try {
       await FirestoreDataService.deleteLink(currentOrgId, currentProjectId, link.id);
-      onDeleted();
-      onClose();
-    } catch (error) {
-      console.error('Failed to delete link:', error);
-    } finally {
+    } catch (err) {
+      console.error('Failed to delete link:', err);
+      const raw = (err as Error)?.message || 'Failed to delete link';
+      const isPermissionError = /permission|insufficient|PERMISSION_DENIED/i.test(raw);
+      setError(
+        isPermissionError
+          ? "You don't have permission to delete this link. Ask an org admin, or have them change your role."
+          : raw
+      );
       setIsDeleting(false);
+      return;
     }
+
+    // Step 2: delete succeeded — refresh parent list, then close.
+    // If the refresh fails we don't want to show it as a delete error
+    // (the delete actually worked), so we swallow it with a console.warn.
+    try {
+      await onDeleted();
+    } catch (refreshErr) {
+      console.warn('Post-delete refresh failed (delete itself succeeded):', refreshErr);
+    }
+
+    onClose();
   };
 
   return createPortal(
@@ -61,6 +86,13 @@ const DeleteLinkModal: React.FC<DeleteLinkModalProps> = ({ isOpen, link, onClose
             This will permanently delete all click data ({link.totalClicks || 0} clicks)
           </p>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mx-6 mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
