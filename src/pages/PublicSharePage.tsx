@@ -588,13 +588,16 @@ export default function PublicSharePage() {
         </div>
       </main>
 
-      {/* Video Analytics Modal */}
+      {/* Video Analytics Modal — showAiAnalysis={false} hides the Gemini
+          AI Analysis card since it's an internal/paid feature and this is a
+          read-only public share view. */}
       {selectedVideo && (
         <VideoAnalyticsModal
           video={selectedVideo}
           isOpen={true}
           onClose={() => setSelectedVideo(null)}
           updateUrlOnOpen={false}
+          showAiAnalysis={false}
         />
       )}
     </div>

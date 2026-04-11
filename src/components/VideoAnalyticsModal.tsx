@@ -27,6 +27,13 @@ interface VideoAnalyticsModalProps {
   orgId?: string | null; // Organization ID for deleting tracked videos
   projectId?: string | null; // Project ID for deleting tracked videos
   updateUrlOnOpen?: boolean; // If true, update URL when modal opens
+  /**
+   * When false, hides the Gemini AI Analysis card entirely.
+   * Used by the public share page so read-only viewers don't see an
+   * internal/paid feature. Defaults to true so the authenticated dashboard
+   * keeps its current behaviour.
+   */
+  showAiAnalysis?: boolean;
 }
 
 interface ChartDataPoint {
@@ -41,7 +48,7 @@ interface ChartDataPoint {
   snapshotIndex: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true, showAiAnalysis = true }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Tooltip state for smooth custom tooltips
@@ -799,6 +806,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             <VideoHistoricalMetricsChart data={chartData} cumulativeTotals={cumulativeTotals} />
 
             {/* ── Gemini Video Analysis ─────────────────────────── */}
+            {/* Hidden on the public share page (showAiAnalysis={false}) so
+                read-only viewers don't see this internal/paid feature. */}
+            {showAiAnalysis && (
             <div className="rounded-xl border border-border-subtle shadow-lg bg-surface-secondary p-4 min-w-0 overflow-hidden">
               <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                 <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider">
@@ -996,6 +1006,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </div>
               )}
             </div>
+            )}
 
             {/* OLD 6 Metric Charts in 3-Column Grid - HIDDEN */}
             <div className="grid grid-cols-3 gap-4 min-w-0" style={{ display: 'none' }}>
