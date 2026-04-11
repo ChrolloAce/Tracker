@@ -370,6 +370,37 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   transcriptProcessingStartedAt?: Timestamp;
   transcriptError?: string;
   transcriptRetryCount?: number;
+
+  // Gemini video analysis (populated on-demand via /api/analyze-video)
+  geminiAnalysis?: GeminiVideoAnalysis | null;
+  geminiAnalysisStatus?: 'idle' | 'processing' | 'completed' | 'failed';
+  geminiAnalysisError?: string | null;
+  geminiAnalysisRequestedAt?: Timestamp;
+  geminiAnalysisCompletedAt?: Timestamp;
+  geminiAnalysisRequestedBy?: string; // userId
+}
+
+/**
+ * Gemini-generated video analysis result.
+ * Produced by POST /api/analyze-video using gemini-3-flash-preview,
+ * which ingests the video natively (currently YouTube only).
+ */
+export interface GeminiVideoAnalysis {
+  transcript: string;              // Full transcript text
+  transcriptSegments?: GeminiTranscriptSegment[]; // Timestamped segments
+  summary: string;                 // 2-4 sentence plain-English summary
+  hook: string;                    // The opening hook — what grabs attention in the first few seconds
+  topics: string[];                // Key topics / themes covered
+  tone: string;                    // Tone/style (e.g. "energetic, conversational, educational")
+  pacing: string;                  // One sentence on pacing/edit style
+  whatWorked: string[];            // Things that contribute to the video working
+  suggestions: string[];           // Actionable suggestions to improve future videos
+  modelVersion: string;            // Which Gemini model generated this
+}
+
+export interface GeminiTranscriptSegment {
+  timestamp: string; // MM:SS format, as returned by Gemini
+  text: string;
 }
 
 /**
@@ -417,7 +448,6 @@ export interface TrackedLink {
   
   // Link details
   shortCode: string; // For /l/{shortCode}
-  subdomain?: string; // Branded subdomain (e.g. "prayerlock" → prayerlock.viewtrack.app/shortCode)
   originalUrl: string;
   title: string;
   description?: string;

@@ -658,10 +658,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
   const showBoth = type === 'both';
 
   return (
-    <div className={showBoth ? "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" : ""}>
+    <div className={showBoth ? "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" : "h-full"}>
       {/* Top Videos */}
       {showVideos && (
-      <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-6">
+      <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-6 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -842,7 +842,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
 
       {/* Top Accounts */}
       {showAccounts && (
-      <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-6">
+      <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-6 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">

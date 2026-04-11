@@ -146,30 +146,30 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-[#0A0A0A] rounded-2xl shadow-2xl border border-white/10 w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface rounded-2xl shadow-2xl border border-border w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold text-white">Assign to Creator</h2>
-            <p className="text-sm text-white/50 mt-0.5">
+            <h2 className="text-lg font-bold text-content">Assign to Creator</h2>
+            <p className="text-sm text-content-muted mt-0.5">
               Linking {selectionLabel}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-white/40" />
+          <button onClick={onClose} className="p-2 hover:bg-surface-hover rounded-lg transition-colors">
+            <X className="w-5 h-5 text-content-muted" />
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-6 py-3 border-b border-white/5">
+        <div className="px-6 py-3 border-b border-border">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
             <input
               type="text"
               placeholder="Search team members..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="w-full pl-10 pr-4 py-2.5 bg-surface-secondary border border-border rounded-lg text-content text-sm placeholder:text-content-muted focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/40"
             />
           </div>
         </div>
@@ -178,7 +178,7 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
         <div className="flex-1 overflow-y-auto px-6 py-3 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
             </div>
           ) : error && !saving ? (
             <div className="text-center py-12">
@@ -186,8 +186,8 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
             </div>
           ) : sortedMembers.length === 0 ? (
             <div className="text-center py-12">
-              <Users className="w-10 h-10 text-white/20 mx-auto mb-3" />
-              <p className="text-white/40 text-sm">
+              <Users className="w-10 h-10 text-content-muted mx-auto mb-3" />
+              <p className="text-content-muted text-sm">
                 {searchQuery ? 'No members match your search' : 'No team members found — invite one first'}
               </p>
             </div>
@@ -199,8 +199,8 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
                   onClick={() => setSelectedCreatorId(member.userId)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
                     selectedCreatorId === member.userId
-                      ? 'bg-white/10 border border-white/20'
-                      : 'bg-white/[0.02] border border-transparent hover:border-white/10'
+                      ? 'bg-orange-500/10 border border-orange-500/40'
+                      : 'bg-surface-secondary border border-border hover:bg-surface-hover'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -210,32 +210,32 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
                         alt={member.displayName || 'Member'}
                         className="w-9 h-9 rounded-full object-cover"
                         fallback={
-                          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-white/60">
+                          <div className="w-9 h-9 rounded-full bg-surface-active flex items-center justify-center">
+                            <span className="text-sm font-medium text-content">
                               {(member.displayName || member.email || 'M').charAt(0).toUpperCase()}
                             </span>
                           </div>
                         }
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-white/60">
+                      <div className="w-9 h-9 rounded-full bg-surface-active flex items-center justify-center">
+                        <span className="text-sm font-medium text-content">
                           {(member.displayName || member.email || 'M').charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
                     <div className="text-left">
-                      <div className="text-sm font-medium text-white flex items-center gap-2">
+                      <div className="text-sm font-medium text-content flex items-center gap-2">
                         {member.displayName || 'Unnamed'}
                         {member.role === 'creator' && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full font-medium">Creator</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded-full font-medium">Creator</span>
                         )}
                       </div>
-                      <div className="text-xs text-white/40">{member.email}</div>
+                      <div className="text-xs text-content-muted">{member.email}</div>
                     </div>
                   </div>
                   {selectedCreatorId === member.userId && (
-                    <CheckCircle className="w-5 h-5 text-white" />
+                    <CheckCircle className="w-5 h-5 text-orange-500" />
                   )}
                 </button>
               ))}
@@ -251,22 +251,22 @@ const BulkAssignCreatorModal: React.FC<BulkAssignCreatorModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm font-medium text-content-muted hover:text-content transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleAssign}
             disabled={saving || !selectedCreatorId}
-            className="px-5 py-2 bg-white text-black text-sm font-bold rounded-full hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2.5 bg-orange-500 text-white text-sm font-semibold rounded-full shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 flex items-center gap-2"
           >
             {saving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black" />
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                 Assigning...
               </>
             ) : (

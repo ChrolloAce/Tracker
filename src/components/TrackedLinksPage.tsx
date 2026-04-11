@@ -236,8 +236,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         return {
           title: link.title || link.shortCode,
           clicks: linkClicksData.length,
-          shortCode: link.shortCode,
-          subdomain: link.subdomain
+          shortCode: link.shortCode
         };
       })
       .filter(link => link.clicks > 0) // Only show links with actual clicks
@@ -610,15 +609,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       return flagMap[countryName] || '🌍';
     }
 
-    const getBrandedUrl = (link: TrackedLink): string => {
-      if (link.subdomain) {
-        return `https://${link.subdomain}.viewtrack.app/${link.shortCode}`;
-      }
-      return `${window.location.origin}/l/${link.shortCode}`;
-    };
-
     const handleCopyLink = (link: TrackedLink) => {
-      const fullUrl = getBrandedUrl(link);
+      const fullUrl = `${window.location.origin}/l/${link.shortCode}`;
       navigator.clipboard.writeText(fullUrl);
       console.log('Copied link to clipboard:', fullUrl);
     };
@@ -753,9 +745,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-surface-hover transition-colors first:pt-0">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-content truncate">{link.title}</div>
-                      <div className="text-xs text-content-muted font-mono">
-                        {link.subdomain ? `${link.subdomain}.viewtrack.app/${link.shortCode}` : `/${link.shortCode}`}
-                      </div>
+                      <div className="text-xs text-content-muted font-mono">/{link.shortCode}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-content">{link.clicks}</span>
@@ -1133,7 +1123,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                 <tbody className="divide-y divide-border">
                   {links.map((link) => {
                     const clicks = linkClicks.filter(click => click.linkId === link.id).length;
-                    const shortUrl = getBrandedUrl(link);
+                    const shortUrl = `${window.location.origin}/l/${link.shortCode}`;
 
                   return (
                       <tr key={link.id} className="hover:bg-surface-hover transition-colors">
@@ -1154,11 +1144,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                               className="text-sm text-blue-400 hover:text-blue-300 font-mono underline decoration-dotted flex items-center gap-1"
                               title="Open link in new tab"
                               >
-                          {link.subdomain ? (
-                            <>{link.subdomain}.viewtrack.app/{link.shortCode}</>
-                          ) : (
-                            <>/{link.shortCode}</>
-                          )}
+                          /{link.shortCode}
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                         <button
@@ -1229,15 +1215,15 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             setEditingLink(null);
           }}
           editingLink={editingLink}
-            onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string, subdomain?: string) => {
+            onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
               if (!orgId || !projId || !user) {
                 console.error('Cannot create link: missing required data', { orgId, projId, hasUser: !!user });
                 alert('Missing required data to create link. Please try logging in again.');
                 return;
               }
-              
+
               console.log('💾 Saving link...', { originalUrl, title, orgId, projId, userId: user.uid });
-              
+
               try {
                 if (editingLink) {
                   // Update existing link
@@ -1246,16 +1232,22 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     orgId,
                     projId,
                     editingLink.id,
-                    { originalUrl, title, description, tags, subdomain: subdomain || undefined }
+                    { originalUrl, title, description, tags }
                   );
                   console.log('✅ Link updated successfully');
                 } else {
                   // Create new link
                   console.log('➕ Creating new link...');
-                  
-                  // Generate unique short code
-                  const shortCode = Math.random().toString(36).substring(2, 8);
-                  
+
+                  // Generate a 6-char shortcode from [a-z0-9]. Replaces the legacy
+                  // Math.random().toString(36).substring(2, 8) which could return shorter
+                  // strings at numeric boundaries.
+                  const shortCodeChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                  const shortCode = Array.from(
+                    { length: 6 },
+                    () => shortCodeChars[Math.floor(Math.random() * shortCodeChars.length)]
+                  ).join('');
+
                   const linkId = await FirestoreDataService.createLink(
                     orgId,
                     projId,
@@ -1267,7 +1259,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       description,
                       tags,
                       linkedAccountId,
-                      subdomain,
                       isActive: true
                     }
                   );

@@ -188,28 +188,28 @@ class FirestoreDataService {
       updatedAt: Timestamp.now()
     });
     
-    // Create public link lookup (for redirects) - includes URL, org, project for instant redirect
+    // Create public link lookup (for redirects) - includes URL, org, project for instant redirect.
+    // The redirect handler (api/redirect.ts) reads from this doc on every click, so it must
+    // contain everything needed to (a) issue the 302, (b) render OG meta tags for social
+    // preview bots, and (c) write a self-contained click record. Missing fields here cause
+    // every click record to have linkTitle: 'Untitled Link' / shortCode: '' and every social
+    // media preview to say "Shared Link" instead of the real title.
     const publicLinkRef = doc(db, 'publicLinks', linkData.shortCode);
     const publicLinkData: Record<string, any> = {
       orgId,
       projectId,
       linkId: linkRef.id,
       url: cleanLinkData.originalUrl,
+      title: cleanLinkData.title,
+      shortCode: linkData.shortCode,
       createdAt: Timestamp.now()
     };
-    // Store subdomain on public link so redirect handler can verify
-    if (cleanLinkData.subdomain) {
-      publicLinkData.subdomain = cleanLinkData.subdomain;
-    }
     batch.set(publicLinkRef, publicLinkData);
-    
+
     await batch.commit();
     console.log(`✅ Created link ${linkData.shortCode} in project ${projectId}`);
     console.log(`📍 Public link data:`, publicLinkData);
-    const displayUrl = cleanLinkData.subdomain
-      ? `https://${cleanLinkData.subdomain}.viewtrack.app/${linkData.shortCode}`
-      : `${window.location.origin}/l/${linkData.shortCode}`;
-    console.log(`🔗 Short URL: ${displayUrl}`);
+    console.log(`🔗 Short URL: ${window.location.origin}/l/${linkData.shortCode}`);
     return linkRef.id;
   }
 

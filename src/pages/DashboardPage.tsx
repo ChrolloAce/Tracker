@@ -8,6 +8,7 @@ import {
   Users, Clock, TrendingUp, BarChart3, X, Pencil, Check, ExternalLink, RotateCcw
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
+import ShareProjectModal from '../components/ShareProjectModal';
 import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
@@ -425,6 +426,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [bulkAddToast, setBulkAddToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isShareProjectModalOpen, setIsShareProjectModalOpen] = useState(false);
   const [manualGranularity, setManualGranularity] = useState<'day' | 'week' | 'month' | 'year' | null>(null);
   
   // Auto-calculate granularity based on date filter (updates in same render!)
@@ -2930,6 +2932,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                   </button>
                   
+                  {/* Share Project Button - brutalist primary (Hidden in demo/view-as mode) */}
+                  {!isOverrideMode && currentOrgId && currentProjectId && (
+                    <button
+                      onClick={() => setIsShareProjectModalOpen(true)}
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px]"
+                      title="Share this project publicly"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span className="hidden md:inline">Share</span>
+                    </button>
+                  )}
+
                   {/* Edit Layout Button - Icon Only (Hidden in demo/view-as mode and on mobile) */}
                   {!isOverrideMode && (
                   <button
@@ -4750,6 +4764,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           type={bulkAddToast.type}
           duration={bulkAddToast.type === 'error' ? 6000 : 4000}
           onClose={() => setBulkAddToast(null)}
+        />
+      )}
+
+      {/* Share Project Modal */}
+      {currentOrgId && currentProjectId && (
+        <ShareProjectModal
+          isOpen={isShareProjectModalOpen}
+          onClose={() => setIsShareProjectModalOpen(false)}
+          orgId={currentOrgId}
+          projectId={currentProjectId}
+          onToast={(message, type) => setBulkAddToast({ message, type })}
         />
       )}
     </div>

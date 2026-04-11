@@ -9,7 +9,12 @@ export default defineConfig({
     watch: {
       ignored: ['**/api/**'], // Ignore Vercel serverless functions
     },
-    allowedHosts: ['viewtrack.covenantstudios.dev'],
+    allowedHosts: [
+      'viewtrack.covenantstudios.dev',
+      '.ngrok-free.app',   // free-tier ngrok subdomains
+      '.ngrok.io',         // paid ngrok subdomains
+      '.trycloudflare.com', // Cloudflare Tunnel quick tunnels
+    ],
     proxy: {
       '/api': {
         target: process.env.VITE_API_TARGET || 'http://localhost:3001',

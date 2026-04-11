@@ -63,10 +63,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .collection('organizations').doc(orgId)
       .collection('projects').doc(projectId);
 
-    // Fetch accounts and videos in parallel
-    const [accountsSnapshot, videosSnapshot] = await Promise.all([
+    // Fetch accounts, videos, creators and creator-links in parallel
+    const [accountsSnapshot, videosSnapshot, creatorsSnapshot, creatorLinksSnapshot] = await Promise.all([
       projectRef.collection('trackedAccounts').get(),
       projectRef.collection('videos').get(),
+      projectRef.collection('creators').get(),
+      projectRef.collection('creatorLinks').get(),
     ]);
 
     // Process accounts
@@ -83,6 +85,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         totalViews: d.totalViews || 0,
         totalLikes: d.totalLikes || 0,
         totalComments: d.totalComments || 0,
+      };
+    });
+
+    // Process creators (public-facing subset: id, name, photo).
+    // Creators often have an empty photoURL because it's populated lazily from
+    // their Firebase user profile. Enrich any missing photoURL by reading
+    // /users/{creatorId} — same pattern the authenticated dashboard uses.
+    const rawCreators = creatorsSnapshot.docs.map(doc => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        displayName: d.displayName || 'Unknown',
+        photoURL: d.photoURL || '',
+      };
+    });
+
+    const creators = await Promise.all(
+      rawCreators.map(async (creator) => {
+        if (creator.photoURL) return creator;
+        try {
+          const userDoc = await db.collection('users').doc(creator.id).get();
+          if (userDoc.exists) {
+            const userPhoto = userDoc.data()?.photoURL;
+            if (userPhoto) return { ...creator, photoURL: userPhoto };
+          }
+        } catch {
+          // photoURL is optional; fall through and let the UI render the initial
+        }
+        return creator;
+      })
+    );
+
+    // Process creator → account links
+    const creatorLinks = creatorLinksSnapshot.docs.map(doc => {
+      const d = doc.data();
+      return {
+        creatorId: d.creatorId || '',
+        accountId: d.accountId || '',
       };
     });
 
@@ -162,6 +202,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         platformBreakdown,
         accounts,
         videos,
+        creators,
+        creatorLinks,
         generatedAt: new Date().toISOString(),
       },
     });

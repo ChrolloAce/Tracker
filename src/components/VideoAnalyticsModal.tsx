@@ -2,9 +2,11 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Bookmark, Trash2, Link2, Copy, Check } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
+import { Button } from './ui/Button';
 import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
 import { VideoDeleteModal } from './video-modal/VideoDeleteModal';
 import { VideoSidebar } from './video-modal/VideoSidebar';
@@ -12,6 +14,9 @@ import { VideoSnapshotsHistory } from './video-modal/VideoSnapshotsHistory';
 import { formatNumber } from '../utils/formatters';
 import FirestoreDataService from '../services/FirestoreDataService';
 import FirebaseService from '../services/FirebaseService';
+import AuthenticatedApiService from '../services/AuthenticatedApiService';
+import { db } from '../services/firebase';
+import type { GeminiVideoAnalysis } from '../types/firestore';
 
 interface VideoAnalyticsModalProps {
   video: VideoSubmission | null;
@@ -53,6 +58,77 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   } | null>(null);
 
   const [imageError, setImageError] = useState(false);
+
+  // ── Gemini video analysis state ─────────────────────────
+  const [analysis, setAnalysis] = useState<GeminiVideoAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false);
+
+  // Is this video analyzable by Gemini? All platforms supported now.
+  const canAnalyze = Boolean(video);
+
+  // When the modal opens for a video, load any previously-generated analysis
+  // directly from Firestore so it persists across page loads.
+  useEffect(() => {
+    setAnalysis(null);
+    setAnalysisError(null);
+    setTranscriptExpanded(false);
+
+    if (!isOpen || !video || !orgId || !projectId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const ref = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', video.id);
+        const snap = await getDoc(ref);
+        if (cancelled) return;
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          if (data?.geminiAnalysis) {
+            setAnalysis(data.geminiAnalysis as GeminiVideoAnalysis);
+          }
+          if (data?.geminiAnalysisStatus === 'failed' && data?.geminiAnalysisError) {
+            setAnalysisError(data.geminiAnalysisError);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ [VideoAnalyticsModal] Failed to load existing Gemini analysis:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, video?.id, orgId, projectId]);
+
+  const handleAnalyzeVideo = async () => {
+    if (!video || !orgId || !projectId) {
+      setAnalysisError('Missing video or workspace context.');
+      return;
+    }
+    if (!canAnalyze) {
+      setAnalysisError('No video selected.');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    try {
+      const response = await AuthenticatedApiService.analyzeVideo(video.id, orgId, projectId);
+      if (response?.analysis) {
+        setAnalysis(response.analysis as GeminiVideoAnalysis);
+      } else {
+        throw new Error('Analysis endpoint returned no result.');
+      }
+    } catch (err: any) {
+      console.error('❌ [VideoAnalyticsModal] Gemini analysis failed:', err);
+      setAnalysisError(err?.message || 'Analysis failed. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Update URL when modal opens (if enabled)
   useEffect(() => {
@@ -555,6 +631,29 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
   };
 
+  const handleCopyTranscript = async () => {
+    if (!analysis) return;
+
+    // Prefer the plain transcript field (already without timestamps). Fall
+    // back to joining segment texts if transcript is empty — that way we
+    // still copy plain text with no MM:SS markers even if Gemini only
+    // populated the segmented form.
+    const text =
+      analysis.transcript && analysis.transcript.trim().length > 0
+        ? analysis.transcript.trim()
+        : (analysis.transcriptSegments || []).map(s => s.text).join(' ').trim();
+
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedItem('transcript');
+      setTimeout(() => setCopiedItem(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy transcript:', err);
+    }
+  };
+
   const handleCopy = async (type: 'link' | 'videoId' | 'accountLink') => {
     let textToCopy = '';
     
@@ -594,12 +693,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3"
       onClick={onClose}
     >
-      <div 
-        className="rounded-xl shadow-2xl bg-surface-secondary border border-border w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4"
+      <div
+        className="rounded-xl shadow-2xl bg-surface-secondary border border-border w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4 lg:overflow-hidden lg:flex lg:flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center justify-between gap-3 mb-4 lg:flex-shrink-0">
           {/* Left: Quick Actions */}
           <div className="flex items-center gap-2">
             {/* Trash - Delete Video */}
@@ -679,10 +778,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
         </div>
 
-        {/* Main Content - 2 Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 overflow-hidden">
-          {/* Left: Video Embed (Scrollable) */}
-          <div className="overflow-hidden">
+        {/* Main Content - 2 Column Layout. On lg+, this fills the remaining
+            flex height and the two columns manage their own scroll (right
+            column scrolls, left sidebar stays pinned). On mobile, the whole
+            modal card scrolls as one — single-column stack. */}
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 overflow-hidden lg:flex-1 lg:min-h-0">
+          {/* Left: Video sidebar — sticky on lg+ (parent doesn't scroll) */}
+          <div className="overflow-hidden lg:overflow-y-auto lg:overflow-x-hidden">
             <VideoSidebar
               video={video}
               twitterMedia={twitterMedia}
@@ -691,10 +793,209 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             />
           </div>
 
-          {/* Right: SCROLLABLE Content */}
-          <div className="space-y-4 min-w-0 overflow-hidden">
+          {/* Right: Scrollable content (chart, AI analysis, creator cards…) */}
+          <div className="space-y-4 min-w-0 overflow-hidden lg:overflow-y-auto lg:overflow-x-hidden lg:pr-2">
             {/* Historical Metrics Chart - Replace KPI Cards */}
             <VideoHistoricalMetricsChart data={chartData} cumulativeTotals={cumulativeTotals} />
+
+            {/* ── Gemini Video Analysis ─────────────────────────── */}
+            <div className="rounded-xl border border-border-subtle shadow-lg bg-surface-secondary p-4 min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider">
+                  AI Analysis
+                </h3>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAnalyzeVideo}
+                  disabled={!canAnalyze || isAnalyzing}
+                  title={
+                    analysis
+                      ? 'Re-run the Gemini analysis'
+                      : 'Transcribe and analyze this video with Gemini'
+                  }
+                >
+                  {isAnalyzing ? 'Analyzing…' : analysis ? 'Re-analyze' : 'Transcribe & analyze video'}
+                </Button>
+              </div>
+
+              {/* Helper text when nothing has run yet */}
+              {!analysis && !isAnalyzing && !analysisError && (
+                <p className="text-sm text-content-muted">
+                  Use Gemini to transcribe this video and get a breakdown of the hook, tone,
+                  pacing, what&apos;s working, and suggestions for future videos. This only runs
+                  when you click the button.
+                </p>
+              )}
+
+              {/* Loading state */}
+              {isAnalyzing && (
+                <p className="text-sm text-content-muted py-4">
+                  Gemini is watching the video. This usually takes 20-60 seconds depending on length…
+                </p>
+              )}
+
+              {/* Error state */}
+              {analysisError && !isAnalyzing && (
+                <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3 mt-1">
+                  <strong className="font-semibold">Analysis failed:</strong> {analysisError}
+                </div>
+              )}
+
+              {/* Results */}
+              {analysis && !isAnalyzing && (
+                <div className="space-y-4 mt-2">
+                  {/* Summary */}
+                  {analysis.summary && (
+                    <div>
+                      <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-1">
+                        Summary
+                      </div>
+                      <p className="text-sm text-content leading-relaxed">{analysis.summary}</p>
+                    </div>
+                  )}
+
+                  {/* Hook */}
+                  {analysis.hook && (
+                    <div>
+                      <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-1">
+                        Hook
+                      </div>
+                      <p className="text-sm text-content leading-relaxed">{analysis.hook}</p>
+                    </div>
+                  )}
+
+                  {/* Tone + Pacing */}
+                  {(analysis.tone || analysis.pacing) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {analysis.tone && (
+                        <div className="rounded-lg border border-border-subtle bg-surface-tertiary p-3">
+                          <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-1">
+                            Tone
+                          </div>
+                          <p className="text-sm text-content">{analysis.tone}</p>
+                        </div>
+                      )}
+                      {analysis.pacing && (
+                        <div className="rounded-lg border border-border-subtle bg-surface-tertiary p-3">
+                          <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-1">
+                            Pacing
+                          </div>
+                          <p className="text-sm text-content">{analysis.pacing}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Topics */}
+                  {analysis.topics && analysis.topics.length > 0 && (
+                    <div>
+                      <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2">
+                        Topics
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.topics.map((topic, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 rounded-lg text-xs font-medium text-content-secondary border border-border bg-surface-tertiary"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* What worked + Suggestions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {analysis.whatWorked && analysis.whatWorked.length > 0 && (
+                      <div className="rounded-lg border border-border-subtle bg-surface-tertiary p-3">
+                        <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+                          What&apos;s working
+                        </div>
+                        <ul className="space-y-1.5">
+                          {analysis.whatWorked.map((item, idx) => (
+                            <li key={idx} className="text-sm text-content flex gap-2">
+                              <span className="text-emerald-400 mt-0.5">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {analysis.suggestions && analysis.suggestions.length > 0 && (
+                      <div className="rounded-lg border border-border-subtle bg-surface-tertiary p-3">
+                        <div className="text-[11px] font-semibold text-orange-400 uppercase tracking-wider mb-2">
+                          Suggestions
+                        </div>
+                        <ul className="space-y-1.5">
+                          {analysis.suggestions.map((item, idx) => (
+                            <li key={idx} className="text-sm text-content flex gap-2">
+                              <span className="text-orange-400 mt-0.5">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript (collapsible) */}
+                  {analysis.transcript && (
+                    <div className="rounded-lg border border-border-subtle bg-surface-tertiary overflow-hidden">
+                      <div className="w-full px-3 py-2.5 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-content-muted uppercase tracking-wider">
+                            Transcript
+                          </span>
+                          {analysis.transcriptSegments && analysis.transcriptSegments.length > 0 && (
+                            <span className="text-[11px] text-content-muted">
+                              ({analysis.transcriptSegments.length} segments)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={handleCopyTranscript}
+                            className="text-[11px] font-medium text-content-muted uppercase tracking-wider hover:text-content transition-colors"
+                          >
+                            {copiedItem === 'transcript' ? 'Copied' : 'Copy'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTranscriptExpanded(prev => !prev)}
+                            className="text-[11px] font-medium text-content-muted uppercase tracking-wider hover:text-content transition-colors"
+                          >
+                            {transcriptExpanded ? 'Hide' : 'Show'}
+                          </button>
+                        </div>
+                      </div>
+                      {transcriptExpanded && (
+                        <div className="px-3 pb-3 pt-1 max-h-80 overflow-y-auto text-sm text-content leading-relaxed">
+                          {analysis.transcriptSegments && analysis.transcriptSegments.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {analysis.transcriptSegments.map((seg, idx) => (
+                                <div key={idx} className="flex gap-3">
+                                  <span className="text-xs text-content-muted font-mono pt-0.5 flex-shrink-0">
+                                    {seg.timestamp}
+                                  </span>
+                                  <span>{seg.text}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-wrap">{analysis.transcript}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              )}
+            </div>
 
             {/* OLD 6 Metric Charts in 3-Column Grid - HIDDEN */}
             <div className="grid grid-cols-3 gap-4 min-w-0" style={{ display: 'none' }}>

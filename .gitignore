@@ -49,3 +49,6 @@ tmp/
 temp/
 .vercel
 .env*.local
+
+# yt-dlp binary (fetched by scripts/install-yt-dlp.mjs at install time)
+api/_bin/

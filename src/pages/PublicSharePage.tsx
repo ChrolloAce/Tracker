@@ -5,9 +5,15 @@ import KPICards from '../components/KPICards';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import TopPerformersSection from '../components/TopPerformersSection';
+import {
+  RankingCreator,
+  RankingCreatorLink,
+  RankingAccount,
+} from '../components/TopCreatorsRanking';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
-import { DateFilterType } from '../components/DateRangeFilter';
+import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
+import DateFilterService from '../services/DateFilterService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission } from '../types';
@@ -73,6 +79,8 @@ interface ShareData {
   };
   accounts: ApiAccount[];
   videos: ApiVideo[];
+  creators?: RankingCreator[];
+  creatorLinks?: RankingCreatorLink[];
   generatedAt: string;
 }
 
@@ -129,13 +137,13 @@ function KPICardsSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-5 animate-pulse">
+        <div key={i} className="bg-surface-secondary rounded-2xl border border-border-subtle p-4 md:p-5 animate-pulse">
           <div className="flex items-center justify-between mb-3">
-            <div className="h-4 w-20 bg-white/5 rounded" />
-            <div className="h-5 w-5 bg-white/5 rounded" />
+            <div className="h-4 w-20 bg-surface-hover rounded" />
+            <div className="h-5 w-5 bg-surface-hover rounded" />
           </div>
-          <div className="h-8 w-24 bg-white/5 rounded mb-2" />
-          <div className="h-3 w-16 bg-white/5 rounded" />
+          <div className="h-8 w-24 bg-surface-hover rounded mb-2" />
+          <div className="h-3 w-16 bg-surface-hover rounded" />
         </div>
       ))}
     </div>
@@ -144,10 +152,10 @@ function KPICardsSkeleton() {
 
 function ChartSkeleton() {
   return (
-    <div className="h-80 bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 animate-pulse">
+    <div className="h-80 bg-surface-secondary rounded-2xl border border-border-subtle animate-pulse">
       <div className="p-6">
-        <div className="h-5 w-40 bg-white/5 rounded mb-2" />
-        <div className="h-3 w-64 bg-white/5 rounded mb-6" />
+        <div className="h-5 w-40 bg-surface-hover rounded mb-2" />
+        <div className="h-3 w-64 bg-surface-hover rounded mb-6" />
       </div>
     </div>
   );
@@ -155,14 +163,14 @@ function ChartSkeleton() {
 
 function VideoSliderSkeleton() {
   return (
-    <div className="bg-zinc-900/60 backdrop-blur rounded-2xl border border-white/5 p-4 md:p-6 animate-pulse">
-      <div className="h-5 w-32 bg-white/5 rounded mb-4" />
+    <div className="bg-surface-secondary rounded-2xl border border-border-subtle p-4 md:p-6 animate-pulse">
+      <div className="h-5 w-32 bg-surface-hover rounded mb-4" />
       <div className="flex space-x-4 overflow-hidden">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex-shrink-0 w-40 md:w-48">
-            <div className="aspect-[9/16] bg-white/5 rounded-xl mb-2" />
-            <div className="h-3 w-full bg-white/5 rounded mb-1" />
-            <div className="h-3 w-2/3 bg-white/5 rounded" />
+            <div className="aspect-[9/16] bg-surface-hover rounded-xl mb-2" />
+            <div className="h-3 w-full bg-surface-hover rounded mb-1" />
+            <div className="h-3 w-2/3 bg-surface-hover rounded" />
           </div>
         ))}
       </div>
@@ -177,12 +185,19 @@ export default function PublicSharePage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoSubmission | null>(null);
 
-  // Filter state - date is hardcoded to 'all' (all-time)
-  const dateFilter: DateFilterType = 'all';
-  const customDateRange: DateRange | undefined = undefined;
+  // Filter state — matches the main dashboard: dateFilter, customDateRange,
+  // manualGranularity (null = auto), platform and account filters
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
+  const [manualGranularity, setManualGranularity] = useState<'day' | 'week' | 'month' | 'year' | null>(null);
   const [platformFilter, setPlatformFilter] = useState<('instagram' | 'tiktok' | 'youtube' | 'twitter')[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
+
+  const handleDateFilterChange = (filter: DateFilterType, range?: DateRange) => {
+    setDateFilter(filter);
+    setCustomDateRange(range);
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -211,21 +226,76 @@ export default function PublicSharePage() {
     return data.accounts.map(toTrackedAccount);
   }, [data]);
 
-  // Smart granularity for all-time: based on actual data spread
+  // Lightweight projections for the creators ranking (avoids threading the
+  // full Firestore-shape TrackedAccount through to a data-driven component)
+  const rankingAccounts: RankingAccount[] = useMemo(() => {
+    if (!data) return [];
+    return data.accounts.map(a => ({
+      id: a.id,
+      username: a.username,
+      platform: a.platform,
+    }));
+  }, [data]);
+
+  const rankingCreators: RankingCreator[] = useMemo(() => data?.creators ?? [], [data]);
+  const rankingCreatorLinks: RankingCreatorLink[] = useMemo(
+    () => data?.creatorLinks ?? [],
+    [data]
+  );
+
+  // Granularity: manual override wins, otherwise auto-calculate based on the
+  // selected date filter. Same logic the main dashboard uses.
   const granularity = useMemo<'day' | 'week' | 'month' | 'year'>(() => {
-    if (allSubmissions.length > 0) {
-      const dates = allSubmissions
-        .map(v => (v.uploadDate || v.dateSubmitted)?.getTime?.() || 0)
-        .filter(d => d > 0);
-      if (dates.length > 0) {
-        const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24);
-        if (span <= 14) return 'day';
-        if (span <= 60) return 'week';
-        return 'month';
+    if (manualGranularity) return manualGranularity;
+
+    let autoGranularity: 'day' | 'week' | 'month' | 'year' = 'day';
+
+    switch (dateFilter) {
+      case 'today':
+      case 'yesterday':
+      case 'last7days':
+      case 'last14days':
+        autoGranularity = 'day';
+        break;
+      case 'last30days':
+      case 'mtd':
+        autoGranularity = 'week';
+        break;
+      case 'last90days':
+      case 'ytd':
+      case 'lastmonth':
+        autoGranularity = 'month';
+        break;
+      case 'all': {
+        // Smart granularity for "All Time": check actual data spread
+        if (allSubmissions.length > 0) {
+          const dates = allSubmissions
+            .map(v => (v.uploadDate || v.dateSubmitted)?.getTime?.() || 0)
+            .filter(d => d > 0);
+          if (dates.length > 0) {
+            const span = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24);
+            if (span <= 14) autoGranularity = 'day';
+            else if (span <= 60) autoGranularity = 'week';
+            else autoGranularity = 'month';
+          }
+        }
+        break;
       }
+      case 'custom':
+        if (customDateRange) {
+          const daysDiff = Math.ceil(
+            (customDateRange.endDate.getTime() - customDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysDiff <= 14) autoGranularity = 'day';
+          else if (daysDiff <= 60) autoGranularity = 'week';
+          else if (daysDiff <= 365) autoGranularity = 'month';
+          else autoGranularity = 'year';
+        }
+        break;
     }
-    return 'month';
-  }, [allSubmissions]);
+
+    return autoGranularity;
+  }, [dateFilter, customDateRange, manualGranularity, allSubmissions]);
 
   // Step 1: Apply platform + account filters (no date filter yet)
   // These are used for KPI card totals (always all-time)
@@ -254,18 +324,32 @@ export default function PublicSharePage() {
     return filtered;
   }, [allSubmissions, platformFilter, selectedAccountIds, accounts]);
 
-  // With 'all' date filter, filtered = unfiltered
-  const filteredSubmissions = submissionsWithoutDateFilter;
+  // Apply the date filter on top of the platform/account-filtered set.
+  // The public API doesn't return snapshots, so strictMode has no effect here —
+  // the filter effectively uses the upload date, which is the expected behavior
+  // for a read-only share view.
+  const filteredSubmissions = useMemo(() => {
+    return DateFilterService.filterVideosByDateRange(
+      submissionsWithoutDateFilter,
+      dateFilter,
+      customDateRange,
+      true
+    );
+  }, [submissionsWithoutDateFilter, dateFilter, customDateRange]);
 
-  // Default subsection visibility for TopPerformersSection
+  // Default subsection visibility for TopPerformersSection.
+  // `comparison` is off (old metrics chart replaced), `top-creators-ranking`
+  // is on so the new creators card slots into the 2-column masonry grid
+  // alongside Top Videos / Top Accounts / Top Platforms.
   const topPerformersVisibility = useMemo(() => ({
     'top-videos': true,
     'top-accounts': true,
     'top-gainers': false,
     'top-creators': false,
+    'top-creators-ranking': true,
     'posting-times': false,
     'top-platforms': true,
-    'comparison': true,
+    'comparison': false,
   }), []);
 
   // Account options for the multi-select dropdown
@@ -285,10 +369,10 @@ export default function PublicSharePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] text-white">
-        <header className="border-b border-white/5 bg-zinc-900/40 backdrop-blur sticky top-0 z-10">
+      <div className="min-h-screen bg-surface text-content">
+        <header className="border-b border-border-subtle bg-surface-secondary sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4">
-            <div className="h-7 w-48 bg-white/5 rounded animate-pulse" />
+            <div className="h-7 w-48 bg-surface-hover rounded animate-pulse" />
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8 space-y-6">
@@ -303,10 +387,10 @@ export default function PublicSharePage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center">
-          <p className="text-xl text-white mb-2">Link not found</p>
-          <p className="text-zinc-400">{error || 'This share link is invalid or has expired.'}</p>
+          <p className="text-xl text-content mb-2">Link not found</p>
+          <p className="text-content-muted">{error || 'This share link is invalid or has expired.'}</p>
         </div>
       </div>
     );
@@ -315,14 +399,14 @@ export default function PublicSharePage() {
   const { project } = data;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <div className="min-h-screen bg-surface text-content">
       {/* Header - matches dashboard header with filters */}
-      <header className="fixed top-0 left-0 right-0 bg-zinc-900/60 backdrop-blur border-b border-white/5 z-30">
+      <header className="fixed top-0 left-0 right-0 bg-surface-secondary border-b border-border z-30">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-16 md:h-[72px] flex items-center justify-between">
           {/* Project name */}
           <div className="flex items-center gap-3 flex-shrink-0">
             {project.icon && <span className="text-2xl">{project.icon}</span>}
-            <h1 className="text-lg md:text-xl font-bold text-white truncate">{project.name}</h1>
+            <h1 className="text-lg md:text-xl font-bold text-content truncate">{project.name}</h1>
           </div>
 
           {/* Filters */}
@@ -342,7 +426,7 @@ export default function PublicSharePage() {
               <button
                 onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                 onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
+                className="flex items-center gap-2 pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer min-w-[140px]"
               >
                 {platformFilter.length === 0 ? (
                   <span>All Platforms</span>
@@ -354,14 +438,14 @@ export default function PublicSharePage() {
                 ) : (
                   <span>{platformFilter.length} Platforms</span>
                 )}
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted" />
               </button>
 
               {platformDropdownOpen && (
-                <div className="absolute top-full right-0 mt-1 w-56 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                <div className="absolute top-full right-0 mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
                   <button
                     onClick={(e) => { e.stopPropagation(); setPlatformFilter([]); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-white/60 hover:text-white/90 hover:bg-white/5 transition-colors border-b border-white/5"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
                   >
                     <span>Clear All</span>
                   </button>
@@ -381,12 +465,12 @@ export default function PublicSharePage() {
                             isSelected ? prev.filter(x => x !== p.value) : [...prev, p.value]
                           );
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/90 hover:bg-white/5 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-content hover:bg-surface-hover transition-colors"
                       >
                         <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'bg-white border-white' : 'border-white/30'
+                          isSelected ? 'bg-content border-content' : 'border-border-strong'
                         }`}>
-                          {isSelected && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
+                          {isSelected && <Check className="w-3 h-3 text-content-inverse" strokeWidth={3} />}
                         </div>
                         <PlatformIcon platform={p.value} size="sm" />
                         <span>{p.label}</span>
@@ -397,12 +481,36 @@ export default function PublicSharePage() {
               )}
             </div>
 
+            {/* Granularity Selector — matches main dashboard exactly */}
+            <div className="relative hidden md:block">
+              <select
+                value={granularity}
+                onChange={(e) => setManualGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                className="appearance-none pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer"
+              >
+                <option value="day" className="bg-surface-tertiary">Daily</option>
+                <option value="week" className="bg-surface-tertiary">Weekly</option>
+                <option value="month" className="bg-surface-secondary">Monthly</option>
+                <option value="year" className="bg-surface-secondary">Yearly</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted pointer-events-none" />
+            </div>
+
+            {/* Date Range Filter — reused component from the main dashboard */}
+            <div className="hidden sm:block">
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
+            </div>
+
             {/* Powered by */}
             <a
               href="https://viewtrack.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors hidden md:block"
+              className="text-xs text-content-muted hover:text-content transition-colors hidden md:block"
             >
               ViewTrack
             </a>
@@ -441,7 +549,10 @@ export default function PublicSharePage() {
               customDateRange={customDateRange}
             />
 
-            {/* Top Performers Section - uses date-filtered submissions */}
+            {/* Top Performers Section - uses date-filtered submissions.
+                `layout="grid"` renders a uniform 2x2 grid with fixed 480px
+                rows so every card is exactly the same size (share page only —
+                the main dashboard keeps its masonry layout). */}
             <TopPerformersSection
               submissions={filteredSubmissions}
               onVideoClick={handleVideoClick}
@@ -449,6 +560,10 @@ export default function PublicSharePage() {
               granularity={granularity}
               dateFilter={dateFilter}
               customRange={customDateRange}
+              rankingCreators={rankingCreators}
+              rankingCreatorLinks={rankingCreatorLinks}
+              rankingAccounts={rankingAccounts}
+              layout="grid"
             />
 
             {/* Videos Table */}
@@ -460,12 +575,12 @@ export default function PublicSharePage() {
           </div>
 
           {/* Footer */}
-          <footer className="text-center text-xs text-zinc-600 pt-12 pb-6">
+          <footer className="text-center text-xs text-content-muted pt-12 pb-6">
             <a
               href="https://viewtrack.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="text-content-muted hover:text-content transition-colors"
             >
               Powered by ViewTrack
             </a>

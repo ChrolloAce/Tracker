@@ -7,6 +7,11 @@ import HeatmapByHour from './HeatmapByHour';
 import TopTeamCreatorsList from './TopTeamCreatorsList';
 import TopPlatformsRaceChart from './TopPlatformsRaceChart';
 import ComparisonGraph from './ComparisonGraph';
+import TopCreatorsRanking, {
+  RankingAccount,
+  RankingCreator,
+  RankingCreatorLink,
+} from './TopCreatorsRanking';
 import { DateFilterType } from './DateRangeFilter';
 
 interface TopPerformersSectionProps {
@@ -25,9 +30,32 @@ interface TopPerformersSectionProps {
   dateRange?: { startDate: Date; endDate: Date }; // Date range from filter
   dateFilter?: DateFilterType; // Date filter type
   customRange?: { startDate: Date; endDate: Date }; // Custom date range
+  /**
+   * Optional props for the data-driven `top-creators-ranking` subsection.
+   * When provided (and the subsection is visible), renders TopCreatorsRanking
+   * inside the masonry grid. Used by the public share page.
+   */
+  rankingCreators?: RankingCreator[];
+  rankingCreatorLinks?: RankingCreatorLink[];
+  rankingAccounts?: RankingAccount[];
+  /**
+   * Layout mode. `masonry` (default) packs cards with varying heights via
+   * react-masonry-css — the main dashboard's current behavior. `grid` renders
+   * a uniform 2-column CSS grid with fixed row height, so every card is the
+   * same size. Used by the public share page.
+   */
+  layout?: 'masonry' | 'grid';
 }
 
-type SubSectionId = 'top-videos' | 'top-accounts' | 'top-gainers' | 'posting-times' | 'top-creators' | 'top-platforms' | 'comparison';
+type SubSectionId =
+  | 'top-videos'
+  | 'top-accounts'
+  | 'top-gainers'
+  | 'posting-times'
+  | 'top-creators'
+  | 'top-creators-ranking'
+  | 'top-platforms'
+  | 'comparison';
 
 const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
   submissions,
@@ -40,8 +68,13 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
   granularity = 'week',
   dateRange,
   dateFilter = 'all',
-  customRange
+  customRange,
+  rankingCreators,
+  rankingCreatorLinks,
+  rankingAccounts,
+  layout = 'masonry'
 }) => {
+  const isGridLayout = layout === 'grid';
   console.log('🎯 TopPerformersSection rendering', { 
     subsectionVisibility,
     isEditMode,
@@ -50,7 +83,7 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
   
   // Load subsection order from localStorage
   const [subsectionOrder, setSubsectionOrder] = useState<SubSectionId[]>(() => {
-    const defaultOrder: SubSectionId[] = ['top-videos', 'top-accounts', 'top-gainers', 'posting-times', 'top-creators', 'top-platforms', 'comparison'];
+    const defaultOrder: SubSectionId[] = ['top-videos', 'top-accounts', 'top-gainers', 'posting-times', 'top-creators', 'top-creators-ranking', 'top-platforms', 'comparison'];
     const saved = localStorage.getItem('topPerformersSubsectionOrder');
     
     if (saved) {
@@ -165,19 +198,21 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
     }
   }), [isEditMode, draggedSection, subsectionOrder]);
 
-  // Get drag classes for visual feedback
+  // Get drag classes for visual feedback. When in uniform-grid mode every
+  // wrapper gets `h-full` so cards stretch to their 480px grid row height.
   const getDragClasses = useCallback((id: SubSectionId, baseClasses: string) => {
     const isDragging = draggedSection === id;
     const isDragOver = dragOverSection === id;
-    
+
     return `
       ${baseClasses}
+      ${isGridLayout ? 'h-full' : ''}
       ${isEditMode ? 'cursor-move' : ''}
       ${isDragging ? 'opacity-50 scale-95' : ''}
       ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50 scale-105' : ''}
       transition-all duration-300
     `;
-  }, [draggedSection, dragOverSection, isEditMode]);
+  }, [draggedSection, dragOverSection, isEditMode, isGridLayout]);
 
   // Render a subsection
   const renderSubsection = (id: SubSectionId) => {
@@ -283,7 +318,7 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
       
       case 'top-creators':
         return (
-          <div 
+          <div
             {...dragHandlers}
             className={getDragClasses(id, "group relative")}
           >
@@ -293,16 +328,40 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
             />
           </div>
         );
-      
+
+      case 'top-creators-ranking':
+        // Data-driven creators ranking (public share page). Falls through to
+        // nothing on the main dashboard because the ranking props are absent.
+        if (!rankingCreators || !rankingCreatorLinks || !rankingAccounts) {
+          return null;
+        }
+        return (
+          <div
+            {...dragHandlers}
+            className={getDragClasses(id, "group relative")}
+          >
+            <TopCreatorsRanking
+              videos={submissions}
+              accounts={rankingAccounts}
+              creators={rankingCreators}
+              creatorLinks={rankingCreatorLinks}
+            />
+          </div>
+        );
+
       case 'top-platforms':
         return (
-          <div 
+          <div
             {...dragHandlers}
-            className={getDragClasses(id, "rounded-2xl bg-surface-secondary border border-border shadow-theme p-6")}
+            className={getDragClasses(
+              id,
+              `rounded-2xl bg-surface-secondary border border-border shadow-theme p-6 ${
+                isGridLayout ? 'flex flex-col' : ''
+              }`
+            )}
           >
-            
             {/* Content */}
-            <div className="relative z-10">
+            <div className={`relative z-10 ${isGridLayout ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
               <TopPlatformsRaceChart
                 submissions={submissions}
                 dateFilter={dateFilter}
@@ -355,17 +414,29 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
 
   return (
     <>
-      <Masonry
-        breakpointCols={breakpointColumns}
-        className="masonry-grid"
-        columnClassName="masonry-grid-column"
-      >
-        {visibleSubsections.map((subsectionId) => (
-          <div key={subsectionId} className="masonry-item">
-            {renderSubsection(subsectionId)}
-          </div>
-        ))}
-      </Masonry>
+      {isGridLayout ? (
+        // Uniform 2-column grid with fixed 480px rows — every card is the
+        // same size (share page).
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 [grid-auto-rows:480px]">
+          {visibleSubsections.map((subsectionId) => (
+            <div key={subsectionId} className="h-full min-h-0">
+              {renderSubsection(subsectionId)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Masonry
+          breakpointCols={breakpointColumns}
+          className="masonry-grid"
+          columnClassName="masonry-grid-column"
+        >
+          {visibleSubsections.map((subsectionId) => (
+            <div key={subsectionId} className="masonry-item">
+              {renderSubsection(subsectionId)}
+            </div>
+          ))}
+        </Masonry>
+      )}
 
       {/* Trash Drop Zone - Only visible when dragging a subsection */}
       {isEditMode && draggedSection && onToggleSubsection && (() => {

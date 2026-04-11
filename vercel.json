@@ -39,6 +39,10 @@
     "api/transcribe-video.ts": {
       "maxDuration": 120
     },
+    "api/analyze-video.ts": {
+      "maxDuration": 180,
+      "includeFiles": "api/_bin/**"
+    },
     "api/cron-orchestrator.ts": {
       "maxDuration": 60
     },
@@ -118,16 +122,6 @@
     {
       "src": "/l/([^/]+)",
       "dest": "/api/redirect?shortCode=$1"
-    },
-    {
-      "src": "/([a-zA-Z0-9]{4,8})$",
-      "has": [
-        {
-          "type": "host",
-          "value": "(?<subdomain>[a-z0-9-]+)\\.viewtrack\\.app"
-        }
-      ],
-      "dest": "/api/redirect?shortCode=$1&subdomain=$subdomain"
     },
     { "handle": "filesystem" },
     {

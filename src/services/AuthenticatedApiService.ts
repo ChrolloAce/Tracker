@@ -122,6 +122,19 @@ class AuthenticatedApiService {
       projectId,
     });
   }
+
+  /**
+   * Analyze a video with Gemini (authenticated, long-running).
+   * Currently YouTube-only — backend returns UNSUPPORTED_PLATFORM for other platforms.
+   * Runs synchronously: the response contains the full analysis.
+   */
+  async analyzeVideo(videoDocId: string, orgId: string, projectId: string) {
+    return this.post('/api/analyze-video', {
+      videoDocId,
+      orgId,
+      projectId,
+    });
+  }
 }
 
 // Export singleton instance
