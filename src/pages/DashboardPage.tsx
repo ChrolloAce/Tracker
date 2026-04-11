@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
-  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2,
+  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, Link as LinkIcon, Edit2,
   Users, Clock, TrendingUp, BarChart3, X, Pencil, Check, ExternalLink, RotateCcw
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
@@ -27,7 +27,6 @@ import HeatmapByHour from '../components/HeatmapByHour';
 import TopTeamCreatorsList from '../components/TopTeamCreatorsList';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import ComparisonGraph from '../components/ComparisonGraph';
-import RevenueComparisonGraph from '../components/RevenueComparisonGraph';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
@@ -38,11 +37,9 @@ import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import TeamManagementPage from '../components/TeamManagementPage';
-// Coming Soon: RevenueManagementPage (Dec 20)
 import SelectCreatorModal from '../components/SelectCreatorModal';
 import BulkAssignCreatorModal from '../components/BulkAssignCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
-import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
@@ -70,9 +67,7 @@ let _videoMaterialAnimation: any = null;
 import FirestoreDataService from '../services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
-import RevenueDataService from '../services/RevenueDataService';
 import UsageTrackingService from '../services/UsageTrackingService';
-import { RevenueMetrics, RevenueIntegration, RevenueTransaction } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemoContext } from './DemoPage';
@@ -376,9 +371,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Total counts (unfiltered) - for empty state check
   const [totalAccountsInOrg, setTotalAccountsInOrg] = useState(0);
   const [totalVideosInOrg, setTotalVideosInOrg] = useState(0);
-  const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
-  const [revenueIntegrations, setRevenueIntegrations] = useState<RevenueIntegration[]>([]);
-  const [revenueTransactions, setRevenueTransactions] = useState<RevenueTransaction[]>([]);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [showCreateRuleForm, setShowCreateRuleForm] = useState(false);
   const [ruleName, setRuleName] = useState('');
@@ -389,7 +381,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
-  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const [bulkAssignCreatorState, setBulkAssignCreatorState] = useState<{ isOpen: boolean; videoIds: string[]; accountIds: string[]; label: string }>({ isOpen: false, videoIds: [], accountIds: [], label: '' });
   const [usageLimits, setUsageLimits] = useState<{
@@ -582,7 +573,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     if (saved) {
       return JSON.parse(saved);
     }
-    // Default: all cards visible (revenue & downloads hidden for now)
+    // Default: all cards visible
     return {
       views: true,
       likes: true,
@@ -591,14 +582,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       videos: true,
       accounts: true,
       engagementRate: true,
-      revenue: false, // Hidden - will reactivate later
-      downloads: false, // Hidden - will reactivate later
       'link-clicks': true
     };
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'];
+    const defaultOrder = ['video-slider', 'kpi-cards', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'];
     const saved = localStorage.getItem('dashboardSectionOrder');
 
     if (saved) {
@@ -693,7 +682,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
     const defaults = {
       'kpi-cards': true,
-      'revenue-chart': true,
       'top-performers': true,
       'posting-activity': false,
       'tracked-accounts': false,
@@ -766,7 +754,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     return {
       'kpi-cards': 'KPI Cards',
-      'revenue-chart': 'Revenue',
       'top-performers': 'Top Performers',
       'videos-table': 'Videos Table'
     };
@@ -1358,17 +1345,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId, 5000)
           .then(r => { console.log('✅ Clicks loaded:', r.length); return r; }),
 
-        // 6. Revenue Integrations
-        RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId)
-          .then(r => { console.log('✅ Integrations loaded:', r.length); return r; }),
-
-        // 7. User Preferences (skip in demo mode - no user)
+        // 6. User Preferences (skip in demo mode - no user)
         user?.uid
           ? getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid))
           : Promise.resolve(null)
       ]);
 
-      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.race([dataPromise, timeoutPromise]) as any;
+      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, userPrefsDoc] = await Promise.race([dataPromise, timeoutPromise]) as any;
 
       // Bail out if the effect was re-triggered (e.g. user switched projects)
       if (cancelled) return;
@@ -1457,26 +1440,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // Set links and clicks (already loaded in parallel!)
       setLinks(allLinks);
       setLinkClicks(allClicks);
-      
-      // Process revenue integrations
-      const enabledIntegrations = allIntegrations.filter((i: any) => i.enabled);
-      setRevenueIntegrations(enabledIntegrations);
-      
-      // Load revenue metrics and transactions if integrations exist
-      if (enabledIntegrations.length > 0) {
-        const [metrics, transactions] = await Promise.all([
-          RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId),
-          RevenueDataService.getTransactions(
-            currentOrgId,
-            currentProjectId,
-            new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
-            new Date()
-          ),
-        ]);
-        setRevenueMetrics(metrics);
-        setRevenueTransactions(transactions);
-      }
-      
+
       setRulesLoadedFromFirebase(true);
       setDataLoadedFromFirebase(true);
       setLoadingDashboard(false);
@@ -1521,69 +1485,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
     return () => { cancelled = true; };
   }, [user, currentOrgId, currentProjectId, userRole, viewAsContext.isViewAsMode, viewAsContext.viewAsData]); // Reload when project changes, role is loaded, or view-as data changes!
-
-  // Auto-sync revenue data when date filters change
-  useEffect(() => {
-    if (!user || !currentOrgId || !currentProjectId) return;
-    if (userRole === 'creator') return; // 🎯 Creators don't see revenue metrics
-    if (revenueIntegrations.length === 0) return;
-
-    const syncRevenue = async () => {
-      try {
-        // Calculate date range based on current filter
-        const range = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
-        const startDate = range.startDate;
-        const endDate = range.endDate;
-
-        console.log(`🔄 Syncing revenue data for ${dateFilter}:`, { startDate, endDate });
-
-        // Check which integrations need API syncing vs webhook-only
-        const needsApiSync = revenueIntegrations.some(i => 
-          i.provider === 'revenuecat' || i.provider === 'apple'
-        );
-
-        if (needsApiSync) {
-          // Sync API-based integrations (RevenueCat, Apple)
-          await RevenueDataService.syncAllIntegrations(
-            currentOrgId,
-            currentProjectId,
-            startDate,
-            endDate
-          );
-        }
-
-        // Check if we have Apple integration (uses summary data, not transactions)
-        const hasAppleIntegration = revenueIntegrations.some(i => i.provider === 'apple' && i.enabled);
-        
-        if (hasAppleIntegration) {
-          // For Apple, just fetch the summary metrics (don't calculate from transactions)
-          const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
-          setRevenueMetrics(metrics);
-          
-          // Get Apple integration to check Bundle ID filter
-          const appleIntegration = revenueIntegrations.find(i => i.provider === 'apple' && i.enabled);
-          const bundleIdFilter = appleIntegration?.credentials?.appId;
-          
-          console.log('✅ Apple revenue metrics loaded:', metrics);
-          console.log('🎯 Bundle ID Filter:', bundleIdFilter || '⚠️ NOT SET - importing ALL apps in vendor account');
-        } else {
-          // For other providers (RevenueCat, etc.), recalculate from transactions
-        const metrics = await RevenueDataService.calculateMetricsFromTransactions(
-          currentOrgId,
-          currentProjectId,
-          startDate,
-          endDate
-        );
-        setRevenueMetrics(metrics);
-        console.log('✅ Revenue data synced and metrics calculated');
-        }
-      } catch (error) {
-        console.error('❌ Failed to sync revenue for date range:', error);
-      }
-    };
-
-    syncRevenue();
-  }, [user, currentOrgId, currentProjectId, dateFilter, customDateRange, revenueIntegrations]);
 
   // Smart sync monitoring - Auto-refresh when accounts finish syncing
   useEffect(() => {
@@ -2399,7 +2300,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     if (!user || !currentOrgId) return;
     
     // Check if it's a section, a KPI card, or a Top Performers subsection
-    const allSections = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'tracked-accounts', 'videos-table'];
+    const allSections = ['video-slider', 'kpi-cards', 'posting-activity', 'top-performers', 'tracked-accounts', 'videos-table'];
     const topPerformersSubsections = ['top-videos', 'top-accounts', 'top-gainers', 'top-creators', 'posting-times', 'top-platforms', 'comparison'];
 
     if (allSections.includes(cardId)) {
@@ -2440,7 +2341,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
-    const allSections = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'tracked-accounts', 'videos-table'];
+    const allSections = ['video-slider', 'kpi-cards', 'posting-activity', 'top-performers', 'tracked-accounts', 'videos-table'];
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionOrder(prev => {
@@ -2462,8 +2363,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // It's a KPI card
       setKpiCardOrder(prev => {
         const currentOrder = prev.length > 0 ? prev : [
-          'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
-          'engagementRate', /* 'revenue', 'downloads', */ 'link-clicks' // Revenue & Downloads hidden
+          'views', 'likes', 'comments', 'shares', 'videos', 'accounts',
+          'engagementRate', 'link-clicks'
         ];
         
         const currentIndex = currentOrder.indexOf(cardId);
@@ -2563,24 +2464,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         accent: 'emerald' as const,
         delta: engagementRate > 0 ? { value: 3.4, isPositive: false } : undefined // Example negative trend
       },
-      revenue: {
-        value: revenueMetrics ? `$${(revenueMetrics.totalRevenue / 100).toFixed(0)}` : '$0',
-        sparklineData: revenueMetrics && revenueMetrics.totalRevenue > 0 
-          ? generateMiniSparkline(revenueMetrics.totalRevenue / 100) 
-          : generateMiniSparkline(0, true), // Force show graph even if 0
-        accent: 'emerald' as const,
-        delta: revenueMetrics && revenueMetrics.totalRevenue > 0 ? { value: 18.5, isPositive: true } : undefined
-      },
-      downloads: {
-        value: revenueMetrics?.activeSubscriptions?.toString() || '0',
-        sparklineData: revenueMetrics && revenueMetrics.activeSubscriptions && revenueMetrics.activeSubscriptions > 0
-          ? generateMiniSparkline(revenueMetrics.activeSubscriptions)
-          : generateMiniSparkline(0, true), // Force show graph even if 0
-        accent: 'blue' as const,
-        delta: revenueMetrics && revenueMetrics.activeSubscriptions && revenueMetrics.activeSubscriptions > 0 
-          ? { value: 22.3, isPositive: true } 
-          : undefined
-      },
       'link-clicks': {
         value: totalLinkClicks.toString(),
         sparklineData: totalLinkClicks > 0 ? generateMiniSparkline(totalLinkClicks) : generateMiniSparkline(0, true),
@@ -2588,7 +2471,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         delta: totalLinkClicks > 0 ? { value: 14.8, isPositive: true } : undefined
       }
     };
-  }, [filteredSubmissions, filteredLinkClicks, revenueMetrics]);
+  }, [filteredSubmissions, filteredLinkClicks]);
 
   // Define Top Performers subsection options
   const topPerformersSubsectionOptions = useMemo(() => [
@@ -2611,7 +2494,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const sections = [
       { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
       { id: 'video-slider', label: 'Video Slider', description: 'Full-height video carousel sorted by views', icon: Video, category: 'sections' as const },
-      { id: 'revenue-chart', label: 'Revenue', description: 'Revenue analytics chart', icon: DollarSign, category: 'sections' as const },
       { id: 'top-performers', label: 'Top Performers', description: 'Top videos, accounts, creators, posting times, platforms & comparison', icon: Activity, category: 'sections' as const },
       { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
       { id: 'tracked-accounts', label: 'Tracked Accounts', description: 'Full accounts dashboard', icon: AtSign, category: 'sections' as const },
@@ -2627,8 +2509,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       { id: 'videos', label: 'Published Videos', description: 'Total videos published', icon: Video, category: 'kpi' as const },
       { id: 'accounts', label: 'Active Accounts', description: 'Number of tracked accounts', icon: AtSign, category: 'kpi' as const },
       { id: 'engagementRate', label: 'Engagement Rate', description: 'Average engagement percentage', icon: Activity, category: 'kpi' as const },
-      { id: 'revenue', label: 'Revenue', description: 'Total revenue from app stores', icon: DollarSign, category: 'kpi' as const },
-      { id: 'downloads', label: 'Downloads', description: 'App downloads/subscriptions', icon: Download, category: 'kpi' as const },
       { id: 'link-clicks', label: 'Link Clicks', description: 'Tracked link clicks', icon: LinkIcon, category: 'kpi' as const },
     ];
     
@@ -2648,8 +2528,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     
     // Sort KPI cards
     const currentCardOrder = kpiCardOrder.length > 0 ? kpiCardOrder : [
-      'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
-      'engagementRate', 'revenue', 'downloads', 'link-clicks'
+      'views', 'likes', 'comments', 'shares', 'videos', 'accounts',
+      'engagementRate', 'link-clicks'
     ];
     
     const sortedCards = kpiCards
@@ -3075,10 +2955,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                    
                    <button
                      onClick={() => {
-                       const defaultOrder = ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'];
+                       const defaultOrder = ['video-slider', 'kpi-cards', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'];
                        const defaultVisibility: Record<string, boolean> = {
                          'kpi-cards': true,
-                         'revenue-chart': true,
                          'top-performers': true,
                          'posting-activity': false,
                          'tracked-accounts': false,
@@ -3525,8 +3404,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           return <ChartSkeleton height="h-80" />;
                         case 'videos-table':
                           return <VideoTableSkeleton />;
-                        case 'revenue-chart':
-                          return <ChartSkeleton height="h-96" />;
                         default:
                           // tracked-accounts and other sections show the generic skeleton
                           return <DashboardSkeleton height="h-96" />;
@@ -3548,9 +3425,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             timePeriod="days"
                             granularity={granularity}
                             onVideoClick={handleVideoClick}
-                            onOpenRevenueSettings={() => setIsRevenueModalOpen(true)}
-                            revenueMetrics={revenueMetrics}
-                            revenueIntegrations={revenueIntegrations}
                             isEditMode={isEditingLayout}
                             cardOrder={kpiCardOrder}
                             cardVisibility={kpiCardVisibility}
@@ -3619,19 +3493,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             customDateRange={customDateRange}
                           />
                         );
-                      case 'revenue-chart':
-                        {
-                          if (revenueIntegrations.length === 0) return null;
-                          const revDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
-                          return (
-                            <RevenueComparisonGraph
-                              transactions={revenueTransactions}
-                              submissions={filteredSubmissions}
-                              granularity={granularity}
-                              dateRange={revDateRange}
-                            />
-                          );
-                        }
                       case 'tracked-accounts':
                         return (
                           <AccountsPage 
@@ -3920,16 +3781,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Team Members Tab */}
           {activeTab === 'team' && <TeamManagementPage onRequiresPaidPlan={requiresPaidPlan} />}
 
-          {/* Revenue Tab */}
-          {activeTab === 'revenue' && (
-            <ComingSoonLocked 
-              title="Revenue" 
-              description="Track your revenue from app stores, monitor subscription metrics, and analyze your earnings across all platforms. Coming soon."
-            />
-          )}
-
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension', 'viral', 'saved', 'openclaw'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'invitations', 'extension', 'viral', 'saved', 'openclaw'].includes(activeTab) && (
             <div className="bg-surface-secondary rounded-xl shadow-sm border border-border p-12 text-center">
               <div className="w-16 h-16 bg-surface-tertiary rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
@@ -4082,7 +3935,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             if (sectionId === 'video-slider') return <VideoSliderSkeleton />;
             if (sectionId === 'top-performers') return <ChartSkeleton height="h-96" />;
             if (sectionId === 'posting-activity') return <ChartSkeleton height="h-80" />;
-            if (sectionId === 'revenue-chart') return <ChartSkeleton height="h-96" />;
             if (sectionId === 'videos-table') return <VideoTableSkeleton />;
             return <DashboardSkeleton height="h-96" />;
           }
@@ -4091,7 +3943,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           switch (sectionId) {
             case 'kpi-cards':
               return (
-                <KPICards 
+                <KPICards
                   submissions={filteredSubmissions}
                   allSubmissions={submissionsWithoutDateFilter}
                   linkClicks={filteredLinkClicks}
@@ -4102,9 +3954,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   timePeriod="days"
                   granularity={granularity}
                   onVideoClick={handleVideoClick}
-                  onOpenRevenueSettings={() => setIsRevenueModalOpen(true)}
-                  revenueMetrics={revenueMetrics}
-                  revenueIntegrations={revenueIntegrations}
                   isEditMode={false}
                   cardOrder={kpiCardOrder}
                   cardVisibility={kpiCardVisibility}
@@ -4314,20 +4163,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onVideoClick={handleVideoClick}
                 />
               );
-
-            case 'revenue-chart':
-              {
-                if (revenueIntegrations.length === 0) return <div className="text-content-muted text-sm">Connect a revenue integration to see this chart</div>;
-                const revPreviewDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
-                return (
-                  <RevenueComparisonGraph
-                    transactions={revenueTransactions}
-                    submissions={filteredSubmissions}
-                    granularity={granularity}
-                    dateRange={revPreviewDateRange}
-                  />
-                );
-              }
 
             default:
               return <div className="text-content-muted text-sm">Preview not available</div>;
@@ -4660,16 +4495,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               'Add'}
           </span>
         </button>
-      )}
-
-      {/* Revenue Integrations Modal */}
-      {currentOrgId && currentProjectId && (
-        <RevenueIntegrationsModal
-          isOpen={isRevenueModalOpen}
-          onClose={() => setIsRevenueModalOpen(false)}
-          organizationId={currentOrgId}
-          projectId={currentProjectId}
-        />
       )}
 
       {/* Sign Out Confirmation Modal */}

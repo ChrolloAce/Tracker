@@ -2,7 +2,6 @@ import React from 'react';
 import { VideoSubmission } from '../../types';
 import { LinkClick } from '../../services/LinkClicksService';
 import { TrackedLink, TrackedAccount } from '../../types/firestore';
-import { RevenueMetrics, RevenueIntegration } from '../../types/revenue';
 import { DateFilterType } from '../DateRangeFilter';
 import { TimePeriodType } from '../TimePeriodSelector';
 import { IntervalType, TimeInterval } from '../../services/DataAggregationService';
@@ -19,9 +18,6 @@ export interface KPICardsProps {
   granularity?: 'day' | 'week' | 'month' | 'year';
   onCreateLink?: () => void;
   onVideoClick?: (video: VideoSubmission) => void;
-  onOpenRevenueSettings?: () => void;
-  revenueMetrics?: RevenueMetrics | null;
-  revenueIntegrations?: RevenueIntegration[];
   isEditMode?: boolean;
   cardOrder?: string[];
   cardVisibility?: Record<string, boolean>;
@@ -32,8 +28,6 @@ export interface KPICardsProps {
 export interface KPICardData {
   id: string;
   label: string;
-  appIcon?: string; // For revenue/downloads cards - app icon URL
-  appName?: string; // For revenue/downloads cards - app name
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';

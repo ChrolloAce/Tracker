@@ -207,20 +207,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'creators') return can.accessTab('creators');
           if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
-          if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
           return true;
         });
       });
     }
 
-    // In demo mode, filter out extension, integrations, team, and revenue
+    // In demo mode, filter out extension, integrations, and team
     if (isDemoMode) {
       sections.forEach(section => {
-        section.items = section.items.filter(item => 
-          item.id !== 'extension' && 
-          item.id !== 'integrations' && 
-          item.id !== 'team' && 
-          item.id !== 'revenue'
+        section.items = section.items.filter(item =>
+          item.id !== 'extension' &&
+          item.id !== 'integrations' &&
+          item.id !== 'team'
         );
       });
     }
@@ -229,9 +227,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     // Dashboard shows their portal with videos, earnings, and submission
     if (userRole === 'creator') {
       sections.forEach(section => {
-        section.items = section.items.filter(item => 
-          item.id !== 'team' && 
-          item.id !== 'revenue' && 
+        section.items = section.items.filter(item =>
+          item.id !== 'team' &&
           item.id !== 'accounts' &&
           item.id !== 'videos' &&
           item.id !== 'analytics' &&

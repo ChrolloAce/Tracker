@@ -101,12 +101,10 @@ const KPICard = React.memo(function KPICard({
     };
   }, [tooltipData, onIntervalHover]);
 
-  const formatDeltaNumber = useCallback((num: number, isRevenue: boolean = false): string => {
+  const formatDeltaNumber = useCallback((num: number): string => {
     const absNum = Math.abs(num);
     if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
     if (absNum >= 1000) return `${(absNum / 1000).toFixed(1)}K`;
-    // For revenue, format to 2 decimal places; for counts, use whole number
-    if (isRevenue) return `$${absNum.toFixed(2)}`;
     return Math.round(absNum).toString();
   }, []);
 
@@ -283,16 +281,6 @@ const KPICard = React.memo(function KPICard({
         <div className="flex flex-col h-full justify-start pt-1">
           {/* Label - Smaller */}
           <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-content-muted tracking-wide mb-1.5 sm:mb-2">
-            {data.appIcon && (
-              <img 
-                src={data.appIcon} 
-                alt={data.appName || data.label}
-                className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
             <span>{data.label}</span>
           </div>
 
@@ -309,9 +297,9 @@ const KPICard = React.memo(function KPICard({
                 data.delta.isPositive ? 'text-green-400' : 'text-red-400'
               }`} style={{ letterSpacing: '-0.02em' }}>
                 <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
-            {data.delta.isPercentage 
+            {data.delta.isPercentage
                   ? `${Math.abs(data.delta.absoluteValue).toFixed(1)}%`
-              : formatDeltaNumber(data.delta.absoluteValue, data.id === 'revenue')}
+              : formatDeltaNumber(data.delta.absoluteValue)}
           </span>
             )}
         </div>

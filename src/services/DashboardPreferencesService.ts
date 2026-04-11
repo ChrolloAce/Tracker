@@ -137,14 +137,11 @@ class DashboardPreferencesService {
         videos: true,
         accounts: true,
         engagementRate: true,
-        revenue: false,
-        downloads: false,
         'link-clicks': true
       },
-      dashboardSectionOrder: ['video-slider', 'kpi-cards', 'revenue-chart', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'],
+      dashboardSectionOrder: ['video-slider', 'kpi-cards', 'posting-activity', 'top-performers', 'videos-table', 'tracked-accounts'],
       dashboardSectionVisibility: {
         'kpi-cards': true,
-        'revenue-chart': true,
         'video-slider': true,
         'posting-activity': true,
         'top-performers': true,

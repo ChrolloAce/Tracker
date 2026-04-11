@@ -166,14 +166,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   let ppValue = point.ppValue;
   
   // Format functions
-  // For revenue metrics, use point.date if available (direct date from data)
-  // For other metrics, use interval (aggregated time range)
   let dateStr = '';
-  if (point.date && (data.id === 'revenue' || data.id === 'downloads')) {
-    // Revenue/Downloads have specific dates in sparkline data
-    const dateObj = new Date(point.date);
-    dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } else if (interval) {
+  if (interval) {
     dateStr = DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType);
   }
   
@@ -196,19 +190,13 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     ppDateStr = DataAggregationService.formatIntervalLabelFull(ppStartDate, interval.intervalType);
   }
   
-  const isRevenueMetric = data.id === 'revenue';
-  const isDownloadsMetric = data.id === 'downloads';
-  
   const formatDisplayNumber = (num: number | undefined | null): string => {
     if (num === undefined || num === null || isNaN(num)) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    if (isRevenueMetric) return `$${num.toFixed(2)}`; // Add $ here for revenue
-    if (isDownloadsMetric) return num.toLocaleString();
     return num.toLocaleString();
   };
-  
-  // Don't add $ again since formatDisplayNumber already includes it for revenue
+
   const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
   const ppDisplayValue = typeof ppValue === 'number' ? formatDisplayNumber(ppValue) : null;
   
@@ -228,7 +216,7 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     }
     
     const isPositive = diff >= 0;
-    const formattedDiff = isRevenueMetric ? `$${Math.abs(diff).toFixed(2)}` : Math.abs(diff).toLocaleString();
+    const formattedDiff = Math.abs(diff).toLocaleString();
     return { diff, percentChange, isPositive, displayValue: ppDisplayValue, formattedDiff };
   })() : null;
   
@@ -349,44 +337,14 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
       {/* Header */}
       <div className="px-5 pt-4 pb-3 space-y-2.5 bg-surface-secondary/95 sticky top-0 z-10 backdrop-blur-xl">
         <div className="flex items-center justify-between">
-          {(data.id === 'revenue' || data.id === 'downloads') ? (
-            <div className="flex flex-col gap-1.5 flex-1">
-              <div className="flex items-center gap-1.5">
-                {data.appIcon && (
-                  <img 
-                    src={data.appIcon} 
-                    alt={data.appName || data.label}
-                    className="w-4 h-4 rounded object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                )}
-              <p className="text-xs text-content-muted font-medium tracking-wider">{dateStr}</p>
-              </div>
-              <p className="text-2xl font-bold text-content">{displayValue}</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs text-content-muted font-medium tracking-wider">{dateStr}</p>
-              <p className="text-xl font-bold text-content">{displayValue}</p>
-            </>
-          )}
+          <p className="text-xs text-content-muted font-medium tracking-wider">{dateStr}</p>
+          <p className="text-xl font-bold text-content">{displayValue}</p>
         </div>
-        
+
         {ppComparison && ppComparison.displayValue && ppDateStr && (
           <div className="flex items-center justify-between">
-            {(data.id === 'revenue' || data.id === 'downloads') ? (
-              <div className="flex items-baseline gap-2 flex-1">
-                <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
-                <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
-                <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
-              </>
-            )}
+            <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
+            <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
           </div>
         )}
         
@@ -407,10 +365,10 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
         )}
       </div>
       
-      {data.id !== 'revenue' && data.id !== 'downloads' && <div className="border-t border-border mx-5"></div>}
-      
+      <div className="border-t border-border mx-5"></div>
+
       {/* Two-Column Layout */}
-      {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
+      {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && (
         <div className="flex">
           {hasNewUploads && (
             <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-border' : ''}`}>

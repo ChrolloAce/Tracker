@@ -242,11 +242,6 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
               checked={permissions.analytics.linkClicks}
               onChange={() => togglePermission('analytics', 'linkClicks')}
             />
-            <PermissionToggle
-              label="Revenue 💰"
-              checked={permissions.analytics.revenue}
-              onChange={() => togglePermission('analytics', 'revenue')}
-            />
           </PermissionSection>
 
           {/* Tab Visibility */}

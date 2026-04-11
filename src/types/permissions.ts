@@ -12,7 +12,6 @@ export interface AnalyticsPermissions {
   shares: boolean;
   engagement: boolean;
   linkClicks: boolean;
-  revenue: boolean;
 }
 
 export interface TabsPermissions {
@@ -99,7 +98,6 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       shares: true,
       engagement: true,
       linkClicks: true,
-      revenue: true,
     },
     tabs: {
       dashboard: true,
@@ -161,7 +159,6 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       shares: true,
       engagement: true,
       linkClicks: true,
-      revenue: true,
     },
     tabs: {
       dashboard: true,
@@ -223,7 +220,6 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       shares: true,
       engagement: true,
       linkClicks: true,
-      revenue: false, // Members don't see revenue by default
     },
     tabs: {
       dashboard: true,
@@ -285,7 +281,6 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       shares: true,
       engagement: true,
       linkClicks: false,
-      revenue: true, // Can see their own revenue/earnings
     },
     tabs: {
       dashboard: true, // Creators see their own dashboard (CreatorPortalPage)
@@ -364,7 +359,6 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         shares: true,
         engagement: true,
         linkClicks: false,
-        revenue: false,
       },
       tabs: {
         dashboard: true,
@@ -431,7 +425,6 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         shares: true,
         engagement: true,
         linkClicks: true,
-        revenue: true,
       },
       tabs: {
         dashboard: true,
@@ -498,7 +491,6 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         shares: true,
         engagement: true,
         linkClicks: true,
-        revenue: true,
       },
       tabs: {
         dashboard: true,

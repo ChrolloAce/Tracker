@@ -6,7 +6,6 @@ import { TrackedLink, TrackedAccount } from '../types/firestore';
 import { TimePeriodType } from './TimePeriodSelector';
 import DayVideosModal from './DayVideosModal';
 import DayClicksModal from './DayClicksModal';
-import DayTransactionsModal from './DayTransactionsModal';
 import LinkAnalyticsModalEnhanced from './LinkAnalyticsModalEnhanced';
 import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import DataAggregationService, { TimeInterval } from '../services/DataAggregationService';
@@ -29,9 +28,6 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
   granularity = 'day',
   onCreateLink,
   onVideoClick,
-  onOpenRevenueSettings,
-  revenueMetrics,
-  revenueIntegrations = [],
   isEditMode = false,
   cardOrder = [],
   cardVisibility = {},
@@ -49,11 +45,7 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
   const [dayModalMetric, setDayModalMetric] = useState<string>('');
   const [hoveredInterval, setHoveredInterval] = useState<TimeInterval | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval | null>(null);
-  
-  // Transactions Modal state
-  const [isTransactionsModalOpen, setIsTransactionsModalOpen] = useState(false);
-  const [transactionsMetricType, setTransactionsMetricType] = useState<'revenue' | 'downloads'>('revenue');
-  
+
   // Link analytics modal state
   const [isLinkAnalyticsModalOpen, setIsLinkAnalyticsModalOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
@@ -96,60 +88,6 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
     // If it's link clicks and there are no links, trigger create link callback
     if (metricId === 'link-clicks' && linkClicks.length === 0 && onCreateLink) {
       onCreateLink();
-      return;
-    }
-    
-    // If it's revenue or downloads, handle specially
-    if (metricId === 'revenue' || metricId === 'downloads') {
-      // If there's actual data with revenue, show the transactions modal
-      if (revenueMetrics && revenueMetrics.totalRevenue > 0) {
-      setTransactionsMetricType(metricId as 'revenue' | 'downloads');
-      
-      // Set the interval data for the modal
-      if (hoveredInterval) {
-        setSelectedInterval(hoveredInterval);
-        
-        // Calculate PP interval if date filter is active
-        if (dateFilter !== 'all') {
-          let daysBack = 1;
-          if (dateFilter === 'last7days') daysBack = 7;
-          else if (dateFilter === 'last14days') daysBack = 14;
-          else if (dateFilter === 'last30days') daysBack = 30;
-          else if (dateFilter === 'last90days') daysBack = 90;
-          else if (customRange) {
-            const rangeLength = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
-            daysBack = rangeLength;
-          }
-          
-          const intervalLength = hoveredInterval.endDate.getTime() - hoveredInterval.startDate.getTime();
-          const ppEndDate = new Date(hoveredInterval.endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
-          const ppStartDate = new Date(ppEndDate.getTime() - intervalLength);
-          
-          setSelectedPPInterval({
-            startDate: ppStartDate,
-            endDate: ppEndDate,
-            timestamp: ppStartDate.getTime(),
-            intervalType: hoveredInterval.intervalType,
-            label: DataAggregationService.formatIntervalLabel(ppStartDate, hoveredInterval.intervalType)
-          });
-        } else {
-          setSelectedPPInterval(null);
-        }
-      } else {
-        // Use the full current period
-        setSelectedInterval(null);
-        setSelectedPPInterval(null);
-      }
-      
-      setSelectedDate(hoveredInterval ? new Date(hoveredInterval.startDate) : new Date());
-      setIsTransactionsModalOpen(true);
-      return;
-      }
-
-      // No data yet — open the revenue settings modal
-      if (onOpenRevenueSettings) {
-        onOpenRevenueSettings();
-      }
       return;
     }
 
@@ -349,7 +287,7 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       setDayModalMetric(metricLabel);
       setIsDayModalOpen(true);
     }
-  }, [submissions, allSubmissions, linkClicks, hoveredInterval, dateFilter, customRange, revenueIntegrations, revenueMetrics, navigate, onCreateLink, isEditMode]);
+  }, [submissions, allSubmissions, linkClicks, hoveredInterval, dateFilter, customRange, navigate, onCreateLink, isEditMode]);
 
   // Use extracted card generation logic
   const kpiData = useMemo(() => {
@@ -361,15 +299,11 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       dateFilter,
       customRange,
       granularity,
-      revenueMetrics,
-      revenueIntegrations,
-      onOpenRevenueSettings
     });
-    
+
     // Return the generated cards
     return result.cards;
-  }, [submissions, allSubmissions, linkClicks, links, dateFilter, customRange, granularity, revenueMetrics, revenueIntegrations]);
-  // Note: onOpenRevenueSettings removed from deps - it's just a callback, doesn't affect calculated data
+  }, [submissions, allSubmissions, linkClicks, links, dateFilter, customRange, granularity]);
 
   // Memoize sorted and filtered cards to prevent recalculation
   const sortedCards = useMemo(() => {
@@ -579,21 +513,6 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
         />
       )}
 
-      {/* Day Transactions Modal for Revenue & Downloads */}
-      {selectedDate && (
-        <DayTransactionsModal
-          isOpen={isTransactionsModalOpen}
-          onClose={() => setIsTransactionsModalOpen(false)}
-          date={selectedDate}
-          revenueMetrics={revenueMetrics || null}
-          metricType={transactionsMetricType}
-          interval={selectedInterval}
-          ppInterval={selectedPPInterval}
-          dateFilter={dateFilter}
-          customRange={customRange}
-        />
-      )}
-
       {/* Day Clicks Modal for Link Analytics */}
       {isDayClicksModalOpen && selectedDayClicksDate && (
         <DayClicksModal
@@ -645,9 +564,7 @@ const arePropsEqual = (prevProps: KPICardsProps, nextProps: KPICardsProps) => {
     prevProps.isEditMode === nextProps.isEditMode &&
     JSON.stringify(prevProps.customRange) === JSON.stringify(nextProps.customRange) &&
     JSON.stringify(prevProps.cardOrder) === JSON.stringify(nextProps.cardOrder) &&
-    JSON.stringify(prevProps.cardVisibility) === JSON.stringify(nextProps.cardVisibility) &&
-    prevProps.revenueMetrics === nextProps.revenueMetrics &&
-    prevProps.revenueIntegrations === nextProps.revenueIntegrations
+    JSON.stringify(prevProps.cardVisibility) === JSON.stringify(nextProps.cardVisibility)
   );
 };
 

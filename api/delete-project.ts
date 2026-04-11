@@ -270,9 +270,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'linkClicks',
       'userPreferences',
       'deletedVideos',
-      'revenueIntegrations',
-      'revenueTransactions',
-      'revenueMetrics',
       'creatorLinks',
       'payoutStructures'
     ];

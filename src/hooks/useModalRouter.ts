@@ -114,7 +114,6 @@ export const ModalKeys = {
   DAY_VIDEOS: 'day-videos',
   LINK_CREATOR: 'link-creator',
   RULE: 'rule',
-  REVENUE: 'revenue',
   SIGN_OUT: 'sign-out',
   UPGRADE: 'upgrade',
 } as const;

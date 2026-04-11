@@ -1,8 +1,7 @@
-import { Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, LinkIcon } from 'lucide-react';
+import { Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, LinkIcon } from 'lucide-react';
 import { VideoSubmission } from '../../types';
 import { LinkClick } from '../../services/LinkClicksService';
 import { TrackedLink } from '../../types/firestore';
-import { RevenueMetrics, RevenueIntegration } from '../../types/revenue';
 import { DateFilterType } from '../DateRangeFilter';
 import { KPICardData } from './kpiTypes';
 import { formatNumber } from './kpiHelpers';
@@ -17,9 +16,6 @@ export interface GenerateKPICardDataParams {
   dateFilter: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
   granularity: 'day' | 'week' | 'month' | 'year';
-  revenueMetrics?: RevenueMetrics | null;
-  revenueIntegrations?: RevenueIntegration[];
-  onOpenRevenueSettings?: () => void;
 }
 
 /**
@@ -39,9 +35,6 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     dateFilter,
     customRange,
     granularity,
-    revenueMetrics,
-    revenueIntegrations,
-    onOpenRevenueSettings
   } = params;
 
   const startTime = performance.now();
@@ -754,98 +747,6 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
       isIncreasing: clicksGrowthAbsolute >= 0
     }
   ];
-
-  // Add revenue cards if available
-  if (revenueMetrics && revenueMetrics.dailyMetrics) {
-    // Extract app metadata from Apple integration
-    const appleIntegration = revenueIntegrations?.find(i => i.provider === 'apple' && i.enabled);
-    const appIcon = appleIntegration?.settings?.appIcon;
-    const appName = appleIntegration?.settings?.appName;
-
-    // Filter daily metrics by date range
-    const filteredDailyMetrics = revenueMetrics.dailyMetrics.filter(day => {
-      const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
-      if (!dateRangeStart) return true; // Include all if no start date
-      return dayDate >= dateRangeStart && dayDate <= dateRangeEnd;
-    });
-    
-    // Calculate totals from FILTERED data
-    const filteredTotalRevenue = filteredDailyMetrics.reduce((sum, day) => sum + (day.revenue || 0), 0);
-    const filteredTotalDownloads = filteredDailyMetrics.reduce((sum, day) => sum + (day.downloads || 0), 0);
-    
-    // Generate sparkline data for revenue (with dates for tooltip)
-    const revenueSparkline = filteredDailyMetrics
-      .sort((a, b) => {
-        const dateA = (a.date as any)?.toDate ? (a.date as any).toDate() : new Date(a.date);
-        const dateB = (b.date as any)?.toDate ? (b.date as any).toDate() : new Date(b.date);
-        return dateA.getTime() - dateB.getTime();
-      })
-      .map(day => {
-        const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
-        return {
-          value: day.revenue / 100, // Convert cents to dollars
-          ppValue: 0, // PP not implemented for revenue yet
-          date: dayDate.toISOString().split('T')[0], // YYYY-MM-DD format for tooltip
-          timestamp: dayDate.getTime()
-        };
-      });
-    
-    // Generate sparkline data for downloads (with dates for tooltip)
-    const downloadsSparkline = filteredDailyMetrics
-      .sort((a, b) => {
-        const dateA = (a.date as any)?.toDate ? (a.date as any).toDate() : new Date(a.date);
-        const dateB = (b.date as any)?.toDate ? (b.date as any).toDate() : new Date(b.date);
-        return dateA.getTime() - dateB.getTime();
-      })
-      .map(day => {
-        const dayDate = (day.date as any)?.toDate ? (day.date as any).toDate() : new Date(day.date);
-        return {
-          value: day.downloads,
-          ppValue: 0, // PP not implemented for revenue yet
-          date: dayDate.toISOString().split('T')[0], // YYYY-MM-DD format for tooltip
-          timestamp: dayDate.getTime()
-        };
-      });
-    
-    cards.push(
-      {
-        id: 'revenue',
-        label: 'Revenue',
-        value: formatNumber(filteredTotalRevenue / 100, true), // formatNumber already adds $ for revenue
-        icon: DollarSign,
-        accent: 'emerald',
-        sparklineData: revenueSparkline,
-        intervalType: granularity,
-        isEmpty: filteredTotalRevenue === 0,
-        appIcon,
-        appName
-      },
-      {
-        id: 'downloads',
-        label: 'Downloads',
-        value: formatNumber(filteredTotalDownloads),
-        icon: Download,
-        accent: 'blue',
-        sparklineData: downloadsSparkline,
-        intervalType: granularity,
-        isEmpty: filteredTotalDownloads === 0,
-        appIcon,
-        appName
-      }
-    );
-  } else if (onOpenRevenueSettings) {
-    cards.push({
-      id: 'revenue',
-      label: 'Revenue',
-      value: '—',
-      icon: DollarSign,
-      accent: 'emerald',
-      sparklineData: [],
-      isEmpty: true,
-      ctaText: 'Connect Revenue',
-      onClick: onOpenRevenueSettings
-    } as any);
-  }
 
   const endTime = performance.now();
   console.log(`✅ KPI Data calculation completed in ${(endTime - startTime).toFixed(2)}ms`);

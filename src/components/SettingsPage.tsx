@@ -17,7 +17,7 @@ import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'revenue' | 'api-keys' | 'appearance';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'api-keys' | 'appearance';
 
 /**
  * BillingTabContent Component

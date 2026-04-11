@@ -235,9 +235,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
                   </div>
                   <div className={`mt-1.5 text-right ${item.isVisible ? 'text-emerald-400' : 'text-white/30'}`}>
                     <div className="text-lg font-bold">
-                      {item.id === 'revenue' ? '$2.4K' : 
-                       item.id === 'downloads' ? '156' :
-                       item.id === 'views' ? '1.2M' :
+                      {item.id === 'views' ? '1.2M' :
                        item.id === 'likes' ? '84.5K' :
                        item.id === 'comments' ? '12.3K' :
                        item.id === 'shares' ? '8.9K' :

@@ -36,9 +36,6 @@
     "api/cron-cleanup-invalid.ts": {
       "maxDuration": 180
     },
-    "api/sync-apple-revenue.ts": {
-      "maxDuration": 120
-    },
     "api/transcribe-video.ts": {
       "maxDuration": 120
     },
@@ -54,9 +51,6 @@
     "api/cron-check-orphaned-sessions.ts": {
       "maxDuration": 60
     },
-    "api/revenue-sync.ts": {
-      "maxDuration": 60
-    },
     "api/sync-usage-counts.ts": {
       "maxDuration": 60
     },
@@ -65,9 +59,6 @@
     },
     "api/queue-worker.ts": {
       "maxDuration": 60
-    },
-    "api/revenuecat-webhook.ts": {
-      "maxDuration": 30
     },
     "api/stripe-webhook.ts": {
       "maxDuration": 30

@@ -27,7 +27,6 @@ const CampaignsPage = lazy(() => import('./pages/CampaignsPage'));
 // const ExtensionPage = lazy(() => import('./pages/ExtensionPage'));
 const SettingsPageWrapper = lazy(() => import('./pages/SettingsPageWrapper'));
 // const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
-// const RevenuePage = lazy(() => import('./pages/RevenuePage'));
 const TeamMembersPage = lazy(() => import('./pages/TeamMembersPage'));
 // LinkRedirect removed - Vercel server-side redirect in vercel.json + api/redirect.ts handles /l/:shortId
 const ContractSigningPage = lazy(() => import('./pages/ContractSigningPage'));
@@ -553,7 +552,6 @@ function App() {
 
       {/* Hidden for MVP — redirect to dashboard */}
       <Route path="/integrations" element={<Navigate to="/" replace />} />
-      <Route path="/revenue" element={<Navigate to="/" replace />} />
 
       <Route 
         path="/team" 

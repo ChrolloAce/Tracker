@@ -214,10 +214,6 @@ export const AccountDetailsView: React.FC<AccountDetailsViewProps> = ({
           timePeriod="days"
           onCreateLink={onCreateLink}
           onVideoClick={onVideoClick}
-          cardVisibility={{
-            revenue: false,
-            downloads: false
-          }}
         />
       </div>
 
