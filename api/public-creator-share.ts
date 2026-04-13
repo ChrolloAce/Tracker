@@ -77,7 +77,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const project = projectDoc.data()!;
-    const pendingJobs: number = pendingJobsSnap.size || 0;
+    // Only count recent pending jobs (under 10 min old). Older stuck jobs
+    // are dead (e.g. Apify budget ran out) and shouldn't keep shimmers spinning.
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const pendingJobs: number = pendingJobsSnap.docs
+      ? pendingJobsSnap.docs.filter((d: any) => {
+          const created = d.data?.()?.createdAt?.toDate?.();
+          return created && created > tenMinAgo;
+        }).length
+      : 0;
 
     // If the creator profile doesn't exist in this project, fall back to the
     // org member doc. This happens when a portal was created by an admin on
@@ -235,7 +243,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const videos = Array.from(videoMap.values());
+    // Filter out dead/failed videos: no thumbnail, no views, and older than
+    // 10 minutes. These are Apify runs that failed (e.g. budget ran out) and
+    // will never resolve — showing them as permanent shimmer cards is bad UX.
+    const TEN_MINUTES_AGO = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const videos = Array.from(videoMap.values()).filter(v => {
+      // Keep videos that have useful data
+      if (v.thumbnail || v.views > 0 || v.likes > 0) return true;
+      // Keep recent videos (still processing — under 10 min old)
+      if (v.dateSubmitted && v.dateSubmitted > TEN_MINUTES_AGO) return true;
+      // Drop the rest — they're dead
+      return false;
+    });
     videos.sort((a, b) => b.views - a.views);
 
     const totalViews = videos.reduce((s, v) => s + v.views, 0);
