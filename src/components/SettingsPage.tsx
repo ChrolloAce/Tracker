@@ -5,7 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../services/firebase';
+import { storage, db } from '../services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import AuthenticatedApiService from '../services/AuthenticatedApiService';
 import OrganizationService from '../services/OrganizationService';
 import AdminService from '../services/AdminService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
@@ -400,9 +402,29 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const [saveSuccess, setSaveSuccess] = useState(false);
   
   // Admin bypass toggle
-  const [adminBypassEnabled, setAdminBypassEnabled] = useState(() => 
+  const [adminBypassEnabled, setAdminBypassEnabled] = useState(() =>
     user ? AdminService.isBypassEnabled(user.uid) : true
   );
+
+  // Superwall integration
+  const [superwallApiKey, setSuperwallApiKey] = useState('');
+  const [superwallAppId, setSuperwallAppId] = useState('');
+  const [superwallAppLabel, setSuperwallAppLabel] = useState('');
+  const [superwallProjects, setSuperwallProjects] = useState<any[]>([]);
+  const [loadingSuperwallProjects, setLoadingSuperwallProjects] = useState(false);
+  const [superwallProjectsError, setSuperwallProjectsError] = useState('');
+  const [savingSuperwall, setSavingSuperwall] = useState(false);
+  const [superwallSaved, setSuperwallSaved] = useState(false);
+
+  // RevenueCat integration
+  const [rcApiKey, setRcApiKey] = useState('');
+  const [rcProjectId, setRcProjectId] = useState('');
+  const [rcProjectLabel, setRcProjectLabel] = useState('');
+  const [rcProjects, setRcProjects] = useState<any[]>([]);
+  const [loadingRcProjects, setLoadingRcProjects] = useState(false);
+  const [rcProjectsError, setRcProjectsError] = useState('');
+  const [savingRc, setSavingRc] = useState(false);
+  const [rcSaved, setRcSaved] = useState(false);
 
   // Load current organization and members
   useEffect(() => {
@@ -468,6 +490,176 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
 
     return () => clearTimeout(timeoutId);
   }, [notificationPreferences, user, currentOrgId, loadingPreferences]);
+
+  // Load integration settings (Superwall + RevenueCat)
+  useEffect(() => {
+    if (!currentOrgId) return;
+    (async () => {
+      try {
+        const settingsRef = doc(db, 'organizations', currentOrgId, 'settings', 'general');
+        const snap = await getDoc(settingsRef);
+        const data = snap.data();
+        const sw = data?.integrations?.superwall;
+        if (sw) {
+          setSuperwallApiKey(sw.apiKey || '');
+          setSuperwallAppId(sw.applicationId || '');
+          setSuperwallAppLabel(sw.applicationLabel || '');
+        }
+        const rc = data?.integrations?.revenuecat;
+        if (rc) {
+          setRcApiKey(rc.apiKey || '');
+          setRcProjectId(rc.projectId || '');
+          setRcProjectLabel(rc.projectLabel || '');
+        }
+      } catch (err) {
+        console.error('Failed to load integration settings:', err);
+      }
+    })();
+  }, [currentOrgId]);
+
+  // Fetch Superwall projects using the entered API key
+  const handleFetchSuperwallProjects = async () => {
+    if (!superwallApiKey.trim()) return;
+    setLoadingSuperwallProjects(true);
+    setSuperwallProjectsError('');
+    setSuperwallProjects([]);
+    try {
+      const res = await AuthenticatedApiService.post('/api/superwall-projects', {
+        apiKey: superwallApiKey.trim(),
+      });
+      const projects = res.data || [];
+      if (projects.length === 0) {
+        setSuperwallProjectsError('No projects found for this API key.');
+      } else {
+        setSuperwallProjects(projects);
+      }
+    } catch (err: any) {
+      setSuperwallProjectsError(err.message?.includes('Invalid API key')
+        ? 'Invalid API key. Please check and try again.'
+        : err.message || 'Failed to fetch projects');
+    } finally {
+      setLoadingSuperwallProjects(false);
+    }
+  };
+
+  // Save Superwall integration settings (called when user picks an app)
+  const handleSelectSuperwallApp = async (appId: string, appLabel: string) => {
+    if (!currentOrgId) return;
+    setSuperwallAppId(appId);
+    setSuperwallAppLabel(appLabel);
+    setSavingSuperwall(true);
+    try {
+      const settingsRef = doc(db, 'organizations', currentOrgId, 'settings', 'general');
+      await setDoc(settingsRef, {
+        integrations: {
+          superwall: {
+            apiKey: superwallApiKey.trim(),
+            applicationId: appId,
+            applicationLabel: appLabel,
+          },
+        },
+      }, { merge: true });
+      setSuperwallSaved(true);
+      setSuperwallProjects([]);
+      setTimeout(() => setSuperwallSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save Superwall settings:', err);
+    } finally {
+      setSavingSuperwall(false);
+    }
+  };
+
+  // Disconnect Superwall
+  const handleDisconnectSuperwall = async () => {
+    if (!currentOrgId) return;
+    setSavingSuperwall(true);
+    try {
+      const settingsRef = doc(db, 'organizations', currentOrgId, 'settings', 'general');
+      await setDoc(settingsRef, {
+        integrations: { superwall: {} },
+      }, { merge: true });
+      setSuperwallApiKey('');
+      setSuperwallAppId('');
+      setSuperwallAppLabel('');
+      setSuperwallProjects([]);
+    } catch (err) {
+      console.error('Failed to disconnect Superwall:', err);
+    } finally {
+      setSavingSuperwall(false);
+    }
+  };
+
+  // Fetch RevenueCat projects using the entered API key
+  const handleFetchRcProjects = async () => {
+    if (!rcApiKey.trim()) return;
+    setLoadingRcProjects(true);
+    setRcProjectsError('');
+    setRcProjects([]);
+    try {
+      const res = await AuthenticatedApiService.post('/api/revenuecat-projects', {
+        apiKey: rcApiKey.trim(),
+      });
+      const projects = res.items || [];
+      if (projects.length === 0) {
+        setRcProjectsError('No projects found for this API key.');
+      } else {
+        setRcProjects(projects);
+      }
+    } catch (err: any) {
+      setRcProjectsError(err.message?.includes('Invalid API key')
+        ? 'Invalid API key. Please check and try again.'
+        : err.message || 'Failed to fetch projects');
+    } finally {
+      setLoadingRcProjects(false);
+    }
+  };
+
+  // Save RevenueCat settings (called when user picks a project)
+  const handleSelectRcProject = async (projectId: string, projectLabel: string) => {
+    if (!currentOrgId) return;
+    setRcProjectId(projectId);
+    setRcProjectLabel(projectLabel);
+    setSavingRc(true);
+    try {
+      const settingsRef = doc(db, 'organizations', currentOrgId, 'settings', 'general');
+      await setDoc(settingsRef, {
+        integrations: {
+          revenuecat: {
+            apiKey: rcApiKey.trim(),
+            projectId,
+            projectLabel,
+          },
+        },
+      }, { merge: true });
+      setRcSaved(true);
+      setRcProjects([]);
+      setTimeout(() => setRcSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save RevenueCat settings:', err);
+    } finally {
+      setSavingRc(false);
+    }
+  };
+
+  // Disconnect RevenueCat
+  const handleDisconnectRc = async () => {
+    if (!currentOrgId) return;
+    setSavingRc(true);
+    try {
+      const settingsRef = doc(db, 'organizations', currentOrgId, 'settings', 'general');
+      await setDoc(settingsRef, {
+        integrations: { revenuecat: {} },
+      }, { merge: true });
+      setRcApiKey('');
+      setRcProjectId('');
+      setRcProjectLabel('');
+      setRcProjects([]);
+    } catch (err) {
+      console.error('Failed to disconnect RevenueCat:', err);
+    } finally {
+      setSavingRc(false);
+    }
+  };
 
   // Helper to update email notification preference
   const toggleEmailNotification = (key: keyof typeof notificationPreferences.email) => {
@@ -899,6 +1091,248 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   </div>
                 </div>
               )}
+
+              {/* Superwall Integration */}
+              <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-lg font-semibold text-content">Superwall Integration</h3>
+                  {superwallSaved && (
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Connected
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-content-muted mb-5">
+                  Connect your Superwall account to see revenue data on the Revenue tab.
+                </p>
+
+                {/* Connected state */}
+                {superwallAppId && superwallAppLabel && !superwallProjects.length ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-content">{superwallAppLabel}</p>
+                        <p className="text-xs text-content-muted">Connected and ready</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDisconnectSuperwall}
+                      disabled={savingSuperwall}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Step 1: Enter API Key */}
+                    <div>
+                      <label className="block text-sm font-medium text-content-secondary mb-1.5">
+                        API Key
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={superwallApiKey}
+                          onChange={e => {
+                            setSuperwallApiKey(e.target.value);
+                            setSuperwallProjects([]);
+                            setSuperwallProjectsError('');
+                          }}
+                          placeholder="sw_..."
+                          className="flex-1 px-4 py-2.5 bg-surface-secondary border border-border rounded-lg text-content text-sm placeholder:text-content-muted focus:outline-none focus:border-content-muted transition-colors"
+                        />
+                        <button
+                          onClick={handleFetchSuperwallProjects}
+                          disabled={!superwallApiKey.trim() || loadingSuperwallProjects}
+                          className="px-4 py-2.5 bg-content text-content-inverse rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {loadingSuperwallProjects ? (
+                            <span className="flex items-center gap-2">
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              Loading...
+                            </span>
+                          ) : 'Fetch Apps'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-content-muted mt-1">
+                        Found in your Superwall dashboard under Settings &gt; API Keys. Needs charts:read scope.
+                      </p>
+                    </div>
+
+                    {/* Error */}
+                    {superwallProjectsError && (
+                      <p className="text-sm text-red-400">{superwallProjectsError}</p>
+                    )}
+
+                    {/* Step 2: Pick an app */}
+                    {superwallProjects.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-content-secondary mb-2">
+                          Select your app
+                        </label>
+                        <div className="space-y-2">
+                          {superwallProjects.map((project: any) => (
+                            <div key={project.id}>
+                              <p className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+                                {project.name}
+                              </p>
+                              <div className="space-y-1.5">
+                                {(project.applications || []).map((app: any) => {
+                                  const isSelected = superwallAppId === app.id;
+                                  const platformLabel = app.platform === 'ios' ? 'iOS'
+                                    : app.platform === 'android' ? 'Android'
+                                    : app.platform === 'web' ? 'Web'
+                                    : app.platform;
+                                  const label = `${project.name} — ${app.name} (${platformLabel})`;
+                                  return (
+                                    <button
+                                      key={app.id}
+                                      onClick={() => handleSelectSuperwallApp(app.id, label)}
+                                      disabled={savingSuperwall}
+                                      className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                        isSelected
+                                          ? 'border-emerald-500/40 bg-emerald-500/10'
+                                          : 'border-border hover:border-border-strong hover:bg-surface-hover'
+                                      }`}
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-content truncate">{app.name}</p>
+                                        <p className="text-xs text-content-muted">{platformLabel}{app.bundle_id ? ` · ${app.bundle_id}` : ''}</p>
+                                      </div>
+                                      {isSelected ? (
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                      ) : (
+                                        <span className="text-xs text-content-muted flex-shrink-0">Select</span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* RevenueCat Integration */}
+              <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-lg font-semibold text-content">RevenueCat Integration</h3>
+                  {rcSaved && (
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Connected
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-content-muted mb-5">
+                  Connect your RevenueCat account to see revenue data on the Revenue tab.
+                </p>
+
+                {/* Connected state */}
+                {rcProjectId && rcProjectLabel && !rcProjects.length ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-content">{rcProjectLabel}</p>
+                        <p className="text-xs text-content-muted">Connected and ready</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDisconnectRc}
+                      disabled={savingRc}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Step 1: Enter API Key */}
+                    <div>
+                      <label className="block text-sm font-medium text-content-secondary mb-1.5">
+                        Secret API Key
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={rcApiKey}
+                          onChange={e => {
+                            setRcApiKey(e.target.value);
+                            setRcProjects([]);
+                            setRcProjectsError('');
+                          }}
+                          placeholder="sk_..."
+                          className="flex-1 px-4 py-2.5 bg-surface-secondary border border-border rounded-lg text-content text-sm placeholder:text-content-muted focus:outline-none focus:border-content-muted transition-colors"
+                        />
+                        <button
+                          onClick={handleFetchRcProjects}
+                          disabled={!rcApiKey.trim() || loadingRcProjects}
+                          className="px-4 py-2.5 bg-content text-content-inverse rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {loadingRcProjects ? (
+                            <span className="flex items-center gap-2">
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              Loading...
+                            </span>
+                          ) : 'Fetch Projects'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-content-muted mt-1">
+                        Found in your RevenueCat dashboard under Project Settings &gt; API Keys. Use a secret key (sk_).
+                      </p>
+                    </div>
+
+                    {/* Error */}
+                    {rcProjectsError && (
+                      <p className="text-sm text-red-400">{rcProjectsError}</p>
+                    )}
+
+                    {/* Step 2: Pick a project */}
+                    {rcProjects.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-content-secondary mb-2">
+                          Select your project
+                        </label>
+                        <div className="space-y-1.5">
+                          {rcProjects.map((project: any) => {
+                            const isSelected = rcProjectId === project.id;
+                            return (
+                              <button
+                                key={project.id}
+                                onClick={() => handleSelectRcProject(project.id, project.name)}
+                                disabled={savingRc}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                  isSelected
+                                    ? 'border-emerald-500/40 bg-emerald-500/10'
+                                    : 'border-border hover:border-border-strong hover:bg-surface-hover'
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-content truncate">{project.name}</p>
+                                  <p className="text-xs text-content-muted">{project.id}</p>
+                                </div>
+                                {isSelected ? (
+                                  <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <span className="text-xs text-content-muted flex-shrink-0">Select</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Danger Zone - Delete Organization */}
               {isOwner && currentOrganization && (

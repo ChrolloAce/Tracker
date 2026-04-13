@@ -17,7 +17,8 @@ import {
   Shield,
   Flame,
   Bookmark,
-  Key
+  Key,
+  DollarSign
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -162,6 +163,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Link,
         href: `${baseHref}/links`,
           },
+      {
+        id: 'revenue',
+        label: 'Revenue',
+        icon: DollarSign,
+        href: `${baseHref}/revenue`,
+          },
         ]
       },
       {
@@ -234,6 +241,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           item.id !== 'analytics' &&
           item.id !== 'extension' &&
           item.id !== 'creators' &&
+          item.id !== 'revenue' &&
           item.id !== 'viral' && // Hide Discover/Viral Content for creators
           item.id !== 'saved' // Hide Saved for creators
         );

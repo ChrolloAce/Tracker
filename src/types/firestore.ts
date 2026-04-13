@@ -541,6 +541,7 @@ export interface OrganizationSettings {
     slack?: { webhookUrl: string };
     discord?: { webhookUrl: string };
     superwall?: { apiKey: string; applicationId: string; applicationLabel?: string };
+    revenuecat?: { apiKey: string; projectId: string; projectLabel?: string };
   };
 }
 

@@ -47,6 +47,7 @@ const ApiManagementPage = lazy(() => import('./pages/ApiManagementPage'));
 const ViralPage = lazy(() => import('./pages/ViralPage'));
 // SavedViralPage is rendered inside DashboardPage via initialTab="saved"
 const OpenClawPage = lazy(() => import('./pages/OpenClawPage'));
+const RevenuePage = lazy(() => import('./pages/RevenuePage'));
 const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
 const SharedFolderPage = lazy(() => import('./pages/SharedFolderPage'));
 const CreatorShareView = lazy(() => import('./pages/CreatorShareView'));
@@ -470,6 +471,19 @@ function App() {
             <LinksPage />
           )
         } 
+      />
+
+      <Route
+        path="/revenue"
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/" replace />
+          ) : (
+            <RevenuePage />
+          )
+        }
       />
 
       <Route
