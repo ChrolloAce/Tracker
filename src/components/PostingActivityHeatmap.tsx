@@ -286,11 +286,12 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           <div className="h-3 sm:h-4 leading-none">S</div>
         </div>
 
-        {/* Heatmap grid - Full width responsive */}
-        <div className="flex-1 min-w-0">
-          <div className="grid gap-[2px] sm:gap-[3px] w-full" style={{ 
-            gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-            gridAutoFlow: 'column'
+        {/* Heatmap grid - scrolls horizontally on mobile with usable cell sizes */}
+        <div className="flex-1">
+          <div className="grid gap-[2px] sm:gap-[3px]" style={{
+            gridTemplateColumns: `repeat(${weeks.length}, minmax(10px, 1fr))`,
+            gridAutoFlow: 'column',
+            minWidth: `${weeks.length * 12}px`
           }}>
             {weeks.map((week, weekIndex) => (
               <div key={weekIndex} className="flex flex-col gap-[2px] sm:gap-[3px]">

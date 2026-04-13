@@ -586,7 +586,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         <th 
           className={clsx(
             'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-content-muted uppercase tracking-wider',
-            sticky && 'sticky left-0 z-20',
+            sticky && 'sm:sticky sm:left-0 sm:z-20',
             className
           )}
           style={sticky ? { backgroundColor: 'var(--surface-secondary)' } : undefined}
@@ -880,12 +880,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="relative overflow-x-auto -mx-3 sm:-mx-0">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-max">
           <thead className="bg-surface-secondary border-b border-border">
             <tr>
               {/* Select All Checkbox */}
-              <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sticky left-0 z-20 bg-surface-secondary">
+              <th className="w-10 px-2 sm:px-4 py-3 sm:py-4 text-left sm:sticky sm:left-0 sm:z-20 bg-surface-secondary">
                 <div className="flex items-center justify-center" title={`Select all ${filteredAndSortedSubmissions.length} videos`}>
                   <input
                     type="checkbox"
@@ -1015,7 +1015,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   Last Refresh
                 </ColumnHeader>
               )}
-              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sticky right-0 z-10" style={{ backgroundColor: 'var(--surface-secondary)' }}></th>
+              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sm:sticky sm:right-0 sm:z-10" style={{ backgroundColor: 'var(--surface-secondary)' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -1048,7 +1048,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 >
                   {/* Checkbox Column */}
                   <td 
-                    className="w-10 px-2 sm:px-4 py-3 sm:py-4 sticky left-0 z-20 group-hover:bg-surface-hover"
+                    className="w-10 px-2 sm:px-4 py-3 sm:py-4 sm:sticky sm:left-0 sm:z-20 group-hover:bg-surface-hover"
                     style={{ backgroundColor: isLoading ? 'var(--surface-hover)' : 'var(--surface-secondary)' }}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1061,7 +1061,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     />
                   </td>
                   {visibleColumns.video && (
-                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-10 z-10 group-hover:bg-surface-hover" style={{ backgroundColor: isLoading ? 'var(--surface-hover)' : 'var(--surface-secondary)' }}>
+                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sm:sticky sm:left-10 sm:z-10 group-hover:bg-surface-hover" style={{ backgroundColor: isLoading ? 'var(--surface-hover)' : 'var(--surface-secondary)' }}>
                       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                         <div className="relative flex-shrink-0">
                           {isLoading ? (
@@ -1371,7 +1371,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       )}
                     </td>
                   )}
-                  <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-surface-hover" style={{ backgroundColor: 'var(--surface-secondary)' }}>
+                  <td className="px-6 py-5 sm:sticky sm:right-0 sm:z-10 group-hover:bg-surface-hover" style={{ backgroundColor: 'var(--surface-secondary)' }}>
                     <div className="relative">
                       <DropdownMenu
                         submission={submission}
