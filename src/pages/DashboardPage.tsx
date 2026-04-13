@@ -45,7 +45,7 @@ import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
-import CreatorPortalPage from '../components/CreatorPortalPage';
+// CreatorPortalPage removed — legacy portal replaced by share link portals at /c/:token
 import ViralContentPage from '../components/ViralContentPage';
 import SavedViralPage from './SavedViralPage';
 import ApiManagementPage from './ApiManagementPage';
@@ -1206,6 +1206,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           dateSubmitted: video.dateAdded ? new Date(video.dateAdded) : new Date(),
           uploadDate: video.uploadDate ? new Date(video.uploadDate) : new Date(),
           lastRefreshed: video.lastRefreshed ? new Date(video.lastRefreshed) : undefined,
+          isStale: video.isStale || false,
           snapshots: (video.snapshots || []).map((s: any) => ({
             ...s,
             timestamp: s.timestamp ? new Date(s.timestamp) : new Date()
@@ -1413,6 +1414,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
           uploadDate: video.uploadDate?.toDate?.() || new Date(),
           lastRefreshed: video.lastRefreshed?.toDate?.(),
+          isStale: video.isStale || false,
           snapshots: snapshots
         };
       });
@@ -1912,7 +1914,33 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     setTimeout(() => window.location.reload(), 8000);
   }, [currentOrgId, currentProjectId]);
 
-  // Trigger scheduled refresh asynchronously (fire and forget)
+  // Toggle stale (freeze/unfreeze) on a single video
+  const handleToggleStale = useCallback(async (video: VideoSubmission) => {
+    if (!currentOrgId || !currentProjectId) return;
+    const newStale = !video.isStale;
+    try {
+      await FirestoreDataService.setVideoStale(currentOrgId, currentProjectId, video.id, newStale);
+      setSubmissions(prev => prev.map(v => v.id === video.id ? { ...v, isStale: newStale } : v));
+      setBulkAddToast({ message: newStale ? 'Video frozen — it won\'t auto-refresh.' : 'Video unfrozen — it will auto-refresh again.', type: 'success' });
+    } catch (error) {
+      console.error('Failed to toggle stale:', error);
+      setBulkAddToast({ message: 'Failed to update video.', type: 'error' });
+    }
+  }, [currentOrgId, currentProjectId]);
+
+  // Bulk toggle stale on multiple videos
+  const handleBulkToggleStale = useCallback(async (videos: VideoSubmission[], isStale: boolean) => {
+    if (!currentOrgId || !currentProjectId) return;
+    const ids = videos.map(v => v.id);
+    try {
+      await FirestoreDataService.setVideosStale(currentOrgId, currentProjectId, ids, isStale);
+      setSubmissions(prev => prev.map(v => ids.includes(v.id) ? { ...v, isStale } : v));
+      setBulkAddToast({ message: isStale ? `${ids.length} video${ids.length !== 1 ? 's' : ''} frozen.` : `${ids.length} video${ids.length !== 1 ? 's' : ''} unfrozen.`, type: 'success' });
+    } catch (error) {
+      console.error('Failed to bulk toggle stale:', error);
+      setBulkAddToast({ message: 'Failed to update videos.', type: 'error' });
+    }
+  }, [currentOrgId, currentProjectId]);
 
   // Helper function to get human-readable date filter label
   const getDateFilterLabel = useCallback((filter: DateFilterType): string => {
@@ -1946,7 +1974,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => { ... }
 
 
-  const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[], assignedCreatorId?: string) => {
+  const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[], assignedCreatorId?: string, isStale?: boolean) => {
     if (requiresPaidPlan('to start tracking videos')) return;
     if (!user || !currentOrgId || !currentProjectId) {
       throw new Error('User not authenticated or no organization selected');
@@ -2044,6 +2072,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           syncRequestedAt: Timestamp.now(),
           syncRetryCount: 0,
           ...(assignedCreatorId && { assignedCreatorId }),
+          ...(isStale && { isStale: true }),
         });
 
         AuthenticatedApiService.processVideo(videoId, currentOrgId, currentProjectId, batchId, assignedCreatorId).catch((err: any) => {
@@ -3312,10 +3341,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
           {activeTab === 'dashboard' && (
             <>
-              {/* Creator Portal - Show for creator role */}
-              {userRole === 'creator' ? (
-                <CreatorPortalPage />
-              ) : (
             <div>
               {/* Empty State - Show ONLY when absolutely NO accounts AND NO videos exist in org (not just filtered) */}
               {!loadingDashboard && totalAccountsInOrg === 0 && totalVideosInOrg === 0 && (
@@ -3558,6 +3583,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onAssignCreator={(videoIds, accountIds, label) => setBulkAssignCreatorState({ isOpen: true, videoIds, accountIds, label })}
                             onRefreshVideo={isSuperAdmin ? handleRefreshVideo : undefined}
                             onBulkRefresh={isSuperAdmin ? handleBulkRefreshVideos : undefined}
+                            onToggleStale={handleToggleStale}
+                            onBulkToggleStale={handleBulkToggleStale}
                             isSuperAdmin={isSuperAdmin}
                             headerTitle={getVideoTableHeader(dateFilter)}
                             trendPeriodDays={getTrendPeriodDays(dateFilter)}
@@ -3626,7 +3653,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
           )}
             </div>
-              )}
             </>
           )}
 
@@ -3728,6 +3754,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 onAssignCreator={(videoIds, accountIds, label) => setBulkAssignCreatorState({ isOpen: true, videoIds, accountIds, label })}
                 onRefreshVideo={isSuperAdmin ? handleRefreshVideo : undefined}
                 onBulkRefresh={isSuperAdmin ? handleBulkRefreshVideos : undefined}
+                onToggleStale={handleToggleStale}
+                onBulkToggleStale={handleBulkToggleStale}
                 isSuperAdmin={isSuperAdmin}
                 headerTitle={getVideoTableHeader(dateFilter)}
                 trendPeriodDays={getTrendPeriodDays(dateFilter)}

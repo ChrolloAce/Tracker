@@ -171,7 +171,7 @@ class ProjectService {
   static async updateProject(
     orgId: string,
     projectId: string,
-    updates: Partial<Pick<Project, 'name' | 'description' | 'color' | 'icon' | 'imageUrl'>>
+    updates: Partial<Pick<Project, 'name' | 'description' | 'color' | 'icon' | 'imageUrl' | 'isStale'>>
   ): Promise<void> {
     const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
     

@@ -38,6 +38,7 @@ export interface TrackedAccount {
   lastSyncError?: string;
   hasError?: boolean;
   syncRetryCount?: number;
+  isStale?: boolean; // If true, cron skips refreshing this account entirely
 }
 
 export interface AccountVideo {

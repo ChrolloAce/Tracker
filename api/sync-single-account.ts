@@ -29,18 +29,21 @@ const { db } = initializeFirebase();
 const REFRESH_BATCH_CAP = 50; // Max videos per Apify refresh call
 
 function partitionVideosByAge(
-  videoDocs: Array<{ videoId: string; uploadDate?: any; snapshotCount?: number }>,
+  videoDocs: Array<{ videoId: string; uploadDate?: any; snapshotCount?: number; isStale?: boolean }>,
   isManualRefresh: boolean
 ): string[] {
+  // Always exclude stale (frozen) videos — they should never burn API tokens
+  const nonStale = videoDocs.filter(v => v.isStale !== true);
+
   if (isManualRefresh) {
-    return videoDocs.map(v => v.videoId);
+    return nonStale.map(v => v.videoId);
   }
 
   const now = Date.now();
   const DAY_MS = 24 * 60 * 60 * 1000;
   const today = new Date();
 
-  const filtered = videoDocs.filter(v => {
+  const filtered = nonStale.filter(v => {
     // Always include videos that don't have enough snapshots for charts to render
     // Charts require >= 2 non-initial snapshots to display a trend
     if (v.snapshotCount === undefined || v.snapshotCount < 2) return true;
@@ -322,11 +325,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'tiktok')
-          .select('videoId', 'uploadDate', 'refreshSnapshotCount')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
           .filter(v => v.videoId);
 
         // Full set for discovery deduplication
@@ -476,11 +479,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'youtube')
-          .select('videoId', 'uploadDate', 'refreshSnapshotCount')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
           .filter(v => v.videoId);
 
         const existingVideoIds = new Set(allExistingVideos.map(v => v.videoId));
@@ -651,11 +654,11 @@ export default async function handler(
         .collection('videos')
         .where('trackedAccountId', '==', accountId)
         .where('platform', '==', 'twitter')
-        .select('videoId', 'uploadDate', 'refreshSnapshotCount')
+        .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
         .get();
 
       const allExistingTweets = existingTweetsSnapshot.docs
-        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
+        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
         .filter(v => v.videoId);
 
       const existingTweetIds = new Set(allExistingTweets.map(v => v.videoId));
@@ -772,11 +775,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'instagram')
-          .select('videoId', 'uploadDate', 'refreshSnapshotCount')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0 }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
           .filter(v => v.videoId);
 
         // Full set for discovery deduplication

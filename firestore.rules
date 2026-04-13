@@ -712,6 +712,18 @@ service cloud.firestore {
       allow delete: if isSignedIn();
     }
 
+    // ==================== CREATOR SHARE LINKS ====================
+    // Per-creator, token-gated, single-creator dashboard share links.
+    // The doc ID (token) is the credential — anyone with it can read.
+    // Enumeration (list) is blocked to keep tokens unguessable.
+    // All writes go through the Admin SDK (/api/create-creator-share and
+    // /api/submit-creator-share-video) so client writes are denied here.
+    match /creatorShareLinks/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
     // ==================== VIRAL CONTENT LIBRARY ====================
     
     // Curated viral content — any signed-in user can browse,

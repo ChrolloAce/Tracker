@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { 
-  RefreshCw, AlertCircle, Trash2, X, MoreVertical, 
-  ExternalLink, Copy, User, Users, BarChart3 
+import {
+  RefreshCw, AlertCircle, Trash2, X, MoreVertical,
+  ExternalLink, Copy, User, Users, BarChart3, Snowflake
 } from 'lucide-react';
 import { ProxiedImage } from '../ProxiedImage';
 import { clsx } from 'clsx';
@@ -40,6 +40,7 @@ interface AccountsTableProps {
   onDismissError: (account: TrackedAccount) => void;
   onRemoveAccount: (id: string) => void;
   onToggleType: (account: TrackedAccount) => void;
+  onToggleStale?: (account: TrackedAccount) => void;
   onNavigate: (url: string) => void;
   onImageError: (id: string) => void;
   /** Assign a single account to a creator (opens modal) */
@@ -65,6 +66,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   onDismissError,
   onRemoveAccount,
   onToggleType,
+  onToggleStale,
   onNavigate,
   onImageError,
   onAssignCreator
@@ -379,6 +381,11 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                           {account.isVerified && (
                             <img src="/verified-badge.png" alt="Verified" className="w-3.5 h-3.5" />
                           )}
+                          {account.isStale && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" title="Frozen — no auto-refresh">
+                              <Snowflake className="w-3 h-3" />
+                            </span>
+                          )}
                         </div>
                         {isAccountSyncing && (
                           <div className="flex items-center gap-2">
@@ -673,6 +680,17 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                           onToggleType(account);
                         }}
                       />
+                      {onToggleStale && (
+                        <DropdownItem
+                          icon={<Snowflake className="w-4 h-4" />}
+                          label={account.isStale ? 'Unfreeze Account' : 'Freeze Account'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            onToggleStale(account);
+                          }}
+                        />
+                      )}
                       {onAssignCreator && (
                         <DropdownItem
                           icon={<Users className="w-4 h-4" />}

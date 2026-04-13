@@ -1,15 +1,16 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
   query,
   where,
   orderBy,
   limit,
   Timestamp,
   writeBatch,
-  increment
+  increment,
+  updateDoc
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../firebase';
@@ -130,6 +131,36 @@ export class VideosDataService {
     VideosDataService.invalidateVideoCountCache(orgId);
     console.log(`✅ Added video ${videoRef.id} to project ${projectId}`);
     return videoRef.id;
+  }
+
+  /**
+   * Toggle isStale on a single video
+   */
+  static async setVideoStale(
+    orgId: string,
+    projectId: string,
+    videoId: string,
+    isStale: boolean
+  ): Promise<void> {
+    const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+    await updateDoc(videoRef, { isStale });
+  }
+
+  /**
+   * Bulk-toggle isStale on multiple videos
+   */
+  static async setVideosStale(
+    orgId: string,
+    projectId: string,
+    videoIds: string[],
+    isStale: boolean
+  ): Promise<void> {
+    const batch = writeBatch(db);
+    for (const videoId of videoIds) {
+      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+      batch.update(videoRef, { isStale });
+    }
+    await batch.commit();
   }
 
   /**

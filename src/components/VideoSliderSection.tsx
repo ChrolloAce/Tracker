@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Heart, MessageCircle, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Heart, MessageCircle, Play, Loader2 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ProxiedImage } from './ProxiedImage';
 
@@ -13,6 +13,8 @@ interface VideoSliderSectionProps {
   videos: VideoSubmission[];
   maxVideos?: number;
   onVideoClick?: (video: VideoSubmission) => void;
+  /** Number of skeleton "processing" cards to render after real videos */
+  pendingCount?: number;
 }
 
 /**
@@ -22,7 +24,8 @@ interface VideoSliderSectionProps {
 const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
   videos,
   maxVideos = 20,
-  onVideoClick
+  onVideoClick,
+  pendingCount = 0
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -93,7 +96,7 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
     });
   };
 
-  if (sortedVideos.length === 0) {
+  if (sortedVideos.length === 0 && pendingCount === 0) {
     return (
       <div className="bg-surface-secondary backdrop-blur rounded-2xl border border-border p-8 text-center">
         <Play className="w-12 h-12 text-content-muted mx-auto mb-3" />
@@ -166,10 +169,19 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
         ))}
       </div>
 
-      {/* Hide scrollbar styles */}
+      {/* Hide scrollbar + shimmer animation */}
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
+        }
+        .shimmer-bar {
+          background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.06) 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
       `}</style>
     </div>
@@ -185,19 +197,24 @@ const VideoCard: React.FC<{
   isBlurred?: boolean;
 }> = ({ video, platformIcon, formatNumber, onClick, isBlurred }) => {
   const [imageError, setImageError] = useState(false);
+  const isProcessing = !video.thumbnail || imageError;
 
   return (
     <div
-      onClick={onClick}
-      className="flex-shrink-0 w-[200px] cursor-pointer group/card"
+      onClick={isProcessing ? undefined : onClick}
+      className={`flex-shrink-0 w-[200px] group/card ${isProcessing ? '' : 'cursor-pointer'}`}
     >
       {/* Video Container - 9:16 Aspect Ratio */}
-      <div 
-        className="relative rounded-2xl overflow-hidden bg-surface-tertiary border border-border hover:border-border-strong transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+      <div
+        className={`relative rounded-2xl overflow-hidden bg-surface-tertiary border transition-all duration-300 ${
+          isProcessing
+            ? 'border-border'
+            : 'border-border hover:border-border-strong hover:scale-[1.02] hover:shadow-2xl'
+        }`}
         style={{ aspectRatio: '9/16' }}
       >
-        {/* Thumbnail */}
-        {video.thumbnail && !imageError ? (
+        {/* Thumbnail — or processing spinner when thumbnail hasn't arrived yet */}
+        {!isProcessing ? (
           <img
             src={video.thumbnail}
             alt={video.title || 'Video'}
@@ -209,8 +226,12 @@ const VideoCard: React.FC<{
             onLoad={() => console.log('✅ Loaded thumbnail for:', video.title?.substring(0, 30))}
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-surface-tertiary to-surface-secondary flex items-center justify-center">
-            <Play className="w-12 h-12 text-content-muted" />
+          <div className="absolute inset-0 bg-gradient-to-br from-surface-tertiary to-surface-secondary flex flex-col items-center justify-center gap-2">
+            <div className="w-12 h-12 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
+            </div>
+            <p className="text-xs font-medium text-content-muted">Processing...</p>
+            <p className="text-[10px] text-content-muted">Up to 5 min</p>
           </div>
         )}
 
@@ -226,56 +247,94 @@ const VideoCard: React.FC<{
 
         {/* Stats on Right Side - Vertical (Social Media Style) */}
         <div className="absolute right-2 bottom-20 flex flex-col items-center gap-3">
-          <div className="flex flex-col items-center">
-            <Eye className="w-5 h-5 text-white drop-shadow-lg" />
-            <span className="text-white text-[10px] font-bold mt-0.5 drop-shadow-lg">{formatNumber(video.views || 0)}</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <Heart className="w-5 h-5 text-white drop-shadow-lg" />
-            <span className="text-white text-[10px] font-bold mt-0.5 drop-shadow-lg">{formatNumber(video.likes || 0)}</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <MessageCircle className="w-5 h-5 text-white drop-shadow-lg" />
-            <span className="text-white text-[10px] font-bold mt-0.5 drop-shadow-lg">{formatNumber(video.comments || 0)}</span>
-          </div>
+          {isProcessing ? (
+            /* Shimmer bars replacing stat numbers */
+            <>
+              <div className="flex flex-col items-center">
+                <Eye className="w-5 h-5 text-white/30" />
+                <div className="h-2.5 w-6 mt-1 rounded-full shimmer-bar" />
+              </div>
+              <div className="flex flex-col items-center">
+                <Heart className="w-5 h-5 text-white/30" />
+                <div className="h-2.5 w-5 mt-1 rounded-full shimmer-bar" />
+              </div>
+              <div className="flex flex-col items-center">
+                <MessageCircle className="w-5 h-5 text-white/30" />
+                <div className="h-2.5 w-4 mt-1 rounded-full shimmer-bar" />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col items-center">
+                <Eye className="w-5 h-5 text-white drop-shadow-lg" />
+                <span className="text-white text-[10px] font-bold mt-0.5 drop-shadow-lg">{formatNumber(video.views || 0)}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <Heart className="w-5 h-5 text-white drop-shadow-lg" />
+                <span className="text-white text-[10px] font-bold mt-0.5 drop-shadow-lg">{formatNumber(video.likes || 0)}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <MessageCircle className="w-5 h-5 text-white drop-shadow-lg" />
+                <span className="text-white text-[10px] font-bold mt-0.5 drop-shadow-lg">{formatNumber(video.comments || 0)}</span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Play Button Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity">
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
-            <Play className="w-6 h-6 text-white fill-white ml-1" />
+        {/* Play Button Overlay — hidden during processing */}
+        {!isProcessing && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity">
+            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
+              <Play className="w-6 h-6 text-white fill-white ml-1" />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bottom Info */}
         <div className="absolute bottom-0 left-0 right-0 p-3">
-          {/* Uploader */}
-          <div className="flex items-center gap-2 mb-1.5">
-            {video.uploaderProfilePicture ? (
-              <ProxiedImage
-                src={video.uploaderProfilePicture}
-                alt={video.uploaderHandle || 'Creator'}
-                className="w-7 h-7 rounded-full object-cover ring-2 ring-white/30"
-                fallback={
+          {isProcessing ? (
+            /* Shimmer placeholders for uploader + caption */
+            <>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-full shimmer-bar flex-shrink-0" />
+                <div className="h-3 w-20 rounded-full shimmer-bar" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full rounded-full shimmer-bar" />
+                <div className="h-2.5 w-2/3 rounded-full shimmer-bar" />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Uploader */}
+              <div className="flex items-center gap-2 mb-1.5">
+                {video.uploaderProfilePicture ? (
+                  <ProxiedImage
+                    src={video.uploaderProfilePicture}
+                    alt={video.uploaderHandle || 'Creator'}
+                    className="w-7 h-7 rounded-full object-cover ring-2 ring-white/30"
+                    fallback={
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white/30">
+                        {(video.uploaderHandle || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    }
+                  />
+                ) : (
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white/30">
                     {(video.uploaderHandle || 'U').charAt(0).toUpperCase()}
                   </div>
-                }
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white/30">
-                {(video.uploaderHandle || 'U').charAt(0).toUpperCase()}
+                )}
+                <span className="text-white text-sm font-semibold truncate flex-1">
+                  @{video.uploaderHandle || 'unknown'}
+                </span>
               </div>
-            )}
-            <span className="text-white text-sm font-semibold truncate flex-1">
-              @{video.uploaderHandle || 'unknown'}
-            </span>
-          </div>
 
-          {/* Caption/Description */}
-          <p className="text-white/80 text-xs line-clamp-2 leading-relaxed drop-shadow-lg">
-            {video.caption || video.title || 'No caption'}
-          </p>
+              {/* Caption/Description */}
+              <p className="text-white/80 text-xs line-clamp-2 leading-relaxed drop-shadow-lg">
+                {video.caption || video.title || 'No caption'}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Blur Overlay - per card */}

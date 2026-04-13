@@ -3,23 +3,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
-import TeamInvitationService from '../services/TeamInvitationService';
+import CreatorShareLinkService from '../services/CreatorShareLinkService';
 import { DateFilterType } from './DateRangeFilter';
 import { useCreatorsData } from '../hooks/useCreatorsData';
 import { User, TrendingUp, Plus, FileText, UserPlus } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
 import CreateCreatorModal from './CreateCreatorModal';
+import EditPortalModal from './EditPortalModal';
 import EditCreatorModal from './EditCreatorModal';
 import EditCreatorProfileModal from './EditCreatorProfileModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import ContractsManagementPage from './ContractsManagementPage';
-import CreatorPayoutsPage from './CreatorPayoutsPage';
 import CreatorDetailModal from './CreatorDetailModal';
 import CreatorPaymentPlanModal from './CreatorPaymentPlanModal';
 import CreatorActivitySection from './CreatorActivitySection';
+import { CreatorDirectVideoSubmission } from './CreatorDirectVideoSubmission';
 import CreatorsTable from './creators/CreatorsTable';
-import PendingInvitationsTable from './creators/PendingInvitationsTable';
 
 export interface CreatorsManagementPageRef {
   openInviteModal: () => void;
@@ -57,7 +57,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     calculatedEarnings,
     creatorTotalViews,
     videoCounts,
-    pendingInvitations,
     isAdmin,
     loading,
     loadData,
@@ -65,11 +64,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
   // ─── Local UI state ──────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'accounts' | 'contracts' | 'activity'>('accounts');
-  const [isCreator, setIsCreator] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editPortalCreator, setEditPortalCreator] = useState<OrgMember | null>(null);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [, setActionLoading] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedCreatorIds, setSelectedCreatorIds] = useState<Set<string>>(new Set());
@@ -77,16 +76,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [detailCreator, setDetailCreator] = useState<OrgMember | null>(null);
   const [paymentPlanCreator, setPaymentPlanCreator] = useState<OrgMember | null>(null);
   const [editingProfileCreator, setEditingProfileCreator] = useState<OrgMember | null>(null);
-
-  // Check if user is a creator
-  useEffect(() => {
-    const checkRole = async () => {
-      if (!currentOrgId || !user) return;
-      const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
-      setIsCreator(role === 'creator');
-    };
-    checkRole();
-  }, [currentOrgId, user]);
+  const [addVideosForCreator, setAddVideosForCreator] = useState<OrgMember | null>(null);
 
   // Keyboard shortcut - Press Space to add creator
   useEffect(() => {
@@ -114,33 +104,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     }
   }));
 
-  const handleCancelInvitation = async (invitationId: string) => {
-    if (!currentOrgId) return;
-
-    setActionLoading(invitationId);
-    try {
-      await TeamInvitationService.cancelInvitation(invitationId, currentOrgId);
-      await loadData();
-    } catch (error) {
-      console.error('Failed to cancel invitation:', error);
-      alert('Failed to cancel invitation');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleCopyInvitationLink = (invitationId: string) => {
-    const inviteUrl = `${window.location.origin}/invitations/${invitationId}`;
-    navigator.clipboard.writeText(inviteUrl)
-      .then(() => {
-        alert('Invitation link copied to clipboard!');
-      })
-      .catch(err => {
-        console.error('Failed to copy:', err);
-        alert('Failed to copy link');
-      });
-  };
-
   const handleRemoveCreator = async (creatorId: string) => {
     if (!currentOrgId || !currentProjectId) return;
 
@@ -151,6 +114,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       if (memberRole === 'owner') {
         alert('Cannot remove the organization owner. You can unlink their creator accounts instead.');
         return;
+      }
+
+      // Revoke any public share links before tearing down the creator profile.
+      // Best-effort: a failure here shouldn't block removal since the link
+      // becomes effectively orphaned either way (reads would 404 on missing creator).
+      try {
+        await CreatorShareLinkService.revoke({ orgId: currentOrgId, creatorId });
+      } catch (err) {
+        console.warn('Failed to revoke share links during creator removal (non-critical):', err);
       }
 
       await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, creatorId);
@@ -168,6 +140,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       setActionLoading(null);
     }
   };
+
 
   // Multi-select helpers
   const toggleSelectCreator = (creatorId: string) => {
@@ -232,59 +205,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     }
   };
 
-  // Invite to portal state
-  const [inviteConfirm, setInviteConfirm] = useState<OrgMember | null>(null);
-  const [inviteMessage, setInviteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const handleInviteToPortal = (creator: OrgMember) => {
-    const creatorEmail = creator.email || creatorProfiles.get(creator.userId)?.email;
-    if (!creatorEmail) {
-      setInviteMessage({ type: 'error', text: 'This creator has no email address. Please edit their profile to add an email first.' });
-      return;
-    }
-    setInviteConfirm(creator);
-  };
-
-  const confirmInviteToPortal = async () => {
-    if (!inviteConfirm || !user || !currentOrgId || !currentProjectId) return;
-    const creatorEmail = inviteConfirm.email || creatorProfiles.get(inviteConfirm.userId)?.email;
-    if (!creatorEmail) return;
-
-    try {
-      setActionLoading(inviteConfirm.userId);
-      const orgs = await OrganizationService.getUserOrganizations(user.uid);
-      const currentOrg = orgs.find(o => o.id === currentOrgId);
-      if (!currentOrg) throw new Error('Organization not found');
-
-      await TeamInvitationService.createInvitation(
-        currentOrgId,
-        creatorEmail,
-        'creator',
-        user.uid,
-        user.displayName || user.email || 'Team Member',
-        user.email || '',
-        currentOrg.name,
-        currentProjectId
-      );
-
-      setInviteConfirm(null);
-      setInviteMessage({ type: 'success', text: `Invitation sent to ${creatorEmail}` });
-      setTimeout(() => setInviteMessage(null), 4000);
-      await loadData();
-    } catch (error: any) {
-      console.error('Failed to send portal invitation:', error);
-      setInviteConfirm(null);
-      setInviteMessage({ type: 'error', text: error.message || 'Failed to send invitation' });
-      setTimeout(() => setInviteMessage(null), 5000);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // If user is a creator, show their personal payouts page
-  if (isCreator) {
-    return <CreatorPayoutsPage />;
-  }
+  // Toast message state
+  const [toastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (loading) {
     return <PageLoadingSkeleton type="creators" />;
@@ -368,7 +290,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       {activeTab === 'accounts' && (
         <>
           {/* Creators List - Dashboard Style */}
-          {creators.length === 0 && pendingInvitations.length === 0 ? (
+          {creators.length === 0 ? (
         <EmptyState
           title="Invite Your First Creator"
           description="Add content creators to your team, link their social accounts, track performance, and manage payments all in one place."
@@ -406,7 +328,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           onSetPaymentPlan={setPaymentPlanCreator}
           onEditLinks={setLinkingCreator}
           onEditProfile={setEditingProfileCreator}
-          onInviteToPortal={handleInviteToPortal}
+          onEditPortal={(creator) => setEditPortalCreator(creator)}
+          onAddVideosForCreator={(creator) => setAddVideosForCreator(creator)}
           onRemoveCreator={(creator) => {
             if (confirm(`Remove ${creator.displayName || creator.email} from your team?\n\nThis will:\n• Remove them from the organization\n• Delete their creator profile\n• Unlink all their accounts\n• Remove all creator links`)) {
               handleRemoveCreator(creator.userId);
@@ -414,16 +337,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           }}
           onPageChange={setCurrentPage}
           onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
-        />
-      )}
-
-      {/* Pending Creator Invitations */}
-      {isAdmin && (
-        <PendingInvitationsTable
-          invitations={pendingInvitations}
-          actionLoading={actionLoading}
-          onCopyLink={handleCopyInvitationLink}
-          onCancel={handleCancelInvitation}
         />
       )}
 
@@ -436,6 +349,32 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
             setShowInviteModal(false);
             loadData();
           }}
+        />
+      )}
+
+      {/* Edit Portal Modal — manage existing share link: copy URL, toggle submissions, revoke */}
+      {editPortalCreator && (
+        <EditPortalModal
+          isOpen={!!editPortalCreator}
+          onClose={() => setEditPortalCreator(null)}
+          onSuccess={() => loadData()}
+          creator={editPortalCreator}
+          profile={creatorProfiles.get(editPortalCreator.userId)}
+        />
+      )}
+
+      {/* Add Videos for Creator Modal — uses the existing bulk-paste submission
+          component with the assignedCreatorId pre-set so videos land attributed
+          to this specific creator in the dashboard and public share page. */}
+      {addVideosForCreator && (
+        <CreatorDirectVideoSubmission
+          isOpen={!!addVideosForCreator}
+          onClose={() => setAddVideosForCreator(null)}
+          onSuccess={() => {
+            setAddVideosForCreator(null);
+            loadData();
+          }}
+          assignedCreatorId={addVideosForCreator.userId}
         />
       )}
 
@@ -504,36 +443,17 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         />
       )}
 
-      {/* Invite Confirmation Modal */}
-      {inviteConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-secondary rounded-xl border border-border shadow-2xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-semibold text-content mb-2">Send Portal Invitation?</h3>
-            <p className="text-sm text-content-secondary mb-6">
-              {inviteConfirm.displayName || inviteConfirm.email} will receive an email with a link to access the Creator Portal.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setInviteConfirm(null)} className="flex-1 px-4 py-2.5 bg-surface-secondary text-content border border-border rounded-lg font-semibold shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
-                Cancel
-              </button>
-              <button onClick={confirmInviteToPortal} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
-                Send Invite
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invite Message Toast */}
-      {inviteMessage && (
-        <div className={`fixed bottom-20 right-8 px-5 py-3 rounded-lg shadow-lg z-50 text-sm font-medium ${
-          inviteMessage.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+      {/* Toast — bottom center */}
+      {toastMessage && (
+        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-5 py-3 rounded-lg shadow-lg z-50 text-sm font-medium ${
+          toastMessage.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
         }`}>
-          {inviteMessage.text}
+          {toastMessage.text}
         </div>
       )}
 
-          {/* Floating Action Button - Add Creator (only on Accounts tab) */}
+          {/* Floating Action Button — single entry point for adding creators.
+              Portal creation is now a toggle inside the CreateCreatorModal. */}
           <button
             onClick={() => { if (onRequiresPaidPlan?.('to add creators')) return; setShowInviteModal(true); }}
             className="fixed bottom-8 right-8 flex items-center gap-2 px-5 py-3 rounded-xl bg-orange-500 text-white shadow-[0_4px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all z-40"

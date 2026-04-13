@@ -117,7 +117,8 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
       );
       const creatorVideos = allVideos.filter(v =>
         (v.trackedAccountId && linkedAccountIds.includes(v.trackedAccountId)) ||
-        v.addedBy === creator.userId
+        v.addedBy === creator.userId ||
+        (v as any).assignedCreatorId === creator.userId
       );
       setVideos(creatorVideos);
     } catch (error) {

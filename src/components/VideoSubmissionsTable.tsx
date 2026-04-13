@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, Users, BarChart3, Download, Link as LinkIcon } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, Users, BarChart3, Download, Link as LinkIcon, Snowflake } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { MiniTrendChart } from './ui/MiniTrendChart';
@@ -28,6 +28,8 @@ interface VideoSubmissionsTableProps {
   onAssignCreator?: (videoIds: string[], accountIds: string[], selectionLabel: string) => void;
   onRefreshVideo?: (video: VideoSubmission) => void;
   onBulkRefresh?: (videos: VideoSubmission[]) => void;
+  onToggleStale?: (video: VideoSubmission) => void;
+  onBulkToggleStale?: (videos: VideoSubmission[], isStale: boolean) => void;
   isSuperAdmin?: boolean;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
   trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
@@ -40,8 +42,9 @@ const DropdownMenu: React.FC<{
   onVideoClick?: (video: VideoSubmission) => void;
   onRefreshVideo?: (video: VideoSubmission) => void;
   onAssignCreator?: (videoId: string, accountId: string | undefined) => void;
+  onToggleStale?: (video: VideoSubmission) => void;
   isSuperAdmin?: boolean;
-}> = ({ submission, onDelete, onVideoClick, onRefreshVideo, onAssignCreator, isSuperAdmin }) => {
+}> = ({ submission, onDelete, onVideoClick, onRefreshVideo, onAssignCreator, onToggleStale, isSuperAdmin }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -122,6 +125,18 @@ const DropdownMenu: React.FC<{
           />
         )}
 
+        {onToggleStale && (
+          <DropdownItem
+            icon={<Snowflake className="w-4 h-4" />}
+            label={submission.isStale ? 'Unfreeze Video' : 'Freeze Video'}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+              onToggleStale(submission);
+            }}
+          />
+        )}
+
         {isSuperAdmin && onRefreshVideo && (
           <>
             <DropdownDivider />
@@ -136,7 +151,7 @@ const DropdownMenu: React.FC<{
             />
           </>
         )}
-        
+
         <DropdownDivider />
         
         <DropdownItem
@@ -195,6 +210,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onAssignCreator,
   onRefreshVideo,
   onBulkRefresh,
+  onToggleStale,
+  onBulkToggleStale,
   isSuperAdmin,
   headerTitle,
   trendPeriodDays = 7
@@ -757,6 +774,34 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         <span>Refresh Selected</span>
                       </button>
                     )}
+                    {onBulkToggleStale && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowActionsMenu(false);
+                            const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+                            onBulkToggleStale(selectedSubs, true);
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm text-blue-400 hover:bg-blue-500/10 flex items-center space-x-3 transition-colors border-t border-border"
+                        >
+                          <Snowflake className="w-4 h-4" />
+                          <span>Freeze Selected</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowActionsMenu(false);
+                            const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+                            onBulkToggleStale(selectedSubs, false);
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm text-content-secondary hover:bg-surface-active flex items-center space-x-3 transition-colors border-t border-border"
+                        >
+                          <Snowflake className="w-4 h-4" />
+                          <span>Unfreeze Selected</span>
+                        </button>
+                      </>
+                    )}
                     {onDelete && (
                       <button
                         onClick={(e) => {
@@ -1066,6 +1111,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                                 {isSyncing && (
                               <Loader className="animate-spin h-3 w-3 text-blue-400 flex-shrink-0" />
                             )}
+                            {submission.isStale && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" title="Frozen — no auto-refresh">
+                                <Snowflake className="w-3 h-3" />
+                              </span>
+                            )}
                           </div>
                           <p className="text-[10px] sm:text-xs text-content-muted mt-0.5 sm:mt-1 truncate">
                             @{submission.uploaderHandle || submission.uploader || 'unknown'}
@@ -1332,6 +1382,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           const accountIds = accountId ? [accountId] : [];
                           onAssignCreator([videoId], accountIds, `1 video`);
                         } : undefined}
+                        onToggleStale={onToggleStale}
                         isSuperAdmin={isSuperAdmin}
                       />
                     </div>

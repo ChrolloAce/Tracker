@@ -102,12 +102,19 @@
     },
     "api/queue-manual-video.ts": {
       "maxDuration": 10
+    },
+    "api/cron-refresh-creator-videos.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
     {
       "path": "/api/cron-orchestrator",
       "schedule": "0 5,11,17,23 * * *"
+    },
+    {
+      "path": "/api/cron-refresh-creator-videos",
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/queue-worker",

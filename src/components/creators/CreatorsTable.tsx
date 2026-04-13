@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { OrgMember, Creator } from '../../types/firestore';
-import { Trash2, MoreVertical, Edit3, DollarSign, FileText, TrendingUp, UserPlus, User as UserIcon } from 'lucide-react';
+import { Trash2, MoreVertical, Edit3, DollarSign, FileText, TrendingUp, User as UserIcon, Film, ExternalLink, Plus } from 'lucide-react';
 import { ProxiedImage } from '../ProxiedImage';
 import AdminCreatorPaymentBar from '../AdminCreatorPaymentBar';
 import Pagination from '../ui/Pagination';
@@ -28,7 +28,8 @@ interface CreatorsTableProps {
   onSetPaymentPlan: (creator: OrgMember) => void;
   onEditLinks: (creator: OrgMember) => void;
   onEditProfile: (creator: OrgMember) => void;
-  onInviteToPortal: (creator: OrgMember) => void;
+  onEditPortal: (creator: OrgMember) => void;
+  onAddVideosForCreator: (creator: OrgMember) => void;
   onRemoveCreator: (creator: OrgMember) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (n: number) => void;
@@ -62,7 +63,8 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
   onSetPaymentPlan,
   onEditLinks,
   onEditProfile,
-  onInviteToPortal,
+  onEditPortal,
+  onAddVideosForCreator,
   onRemoveCreator,
   onPageChange,
   onItemsPerPageChange,
@@ -121,6 +123,7 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                 />
               </th>
               <th className="px-4 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Creator</th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Portal</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Linked Accounts</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Total Videos</th>
               <th className="px-6 py-4 text-left text-xs font-medium text-content-muted uppercase tracking-wider">Payment Progress</th>
@@ -132,6 +135,7 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
             {paginatedCreators.map((creator) => {
               const profile = creatorProfiles.get(creator.userId);
               const isSelected = selectedCreatorIds.has(creator.userId);
+              const hasPortal = !!profile?.externalShareToken;
 
               return (
                 <tr key={creator.userId} className={`hover:bg-surface-hover transition-colors group ${isSelected ? 'bg-surface-secondary' : ''}`}>
@@ -172,6 +176,21 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                     </div>
                   </td>
 
+                  {/* Portal — direct button */}
+                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => onEditPortal(creator)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        hasPortal
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                          : 'bg-surface-tertiary text-content-muted border border-border hover:text-content hover:border-border-strong'
+                      }`}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {hasPortal ? 'Edit Portal' : 'Create Portal'}
+                    </button>
+                  </td>
+
                   {/* Linked Accounts */}
                   <td className="px-6 py-4 cursor-pointer" onClick={() => onCreatorClick(creator)}>
                     <div className="flex items-center gap-2">
@@ -190,10 +209,22 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                     </div>
                   </td>
 
-                  {/* Total Videos */}
-                  <td className="px-6 py-4 cursor-pointer" onClick={() => onCreatorClick(creator)}>
-                    <div className="text-sm text-content font-medium">
-                      {videoCounts.get(creator.userId) || 0} {videoCounts.get(creator.userId) === 1 ? 'video' : 'videos'}
+                  {/* Total Videos — count + inline add button */}
+                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-sm text-content font-medium cursor-pointer hover:underline"
+                        onClick={() => onCreatorClick(creator)}
+                      >
+                        {videoCounts.get(creator.userId) || 0} {videoCounts.get(creator.userId) === 1 ? 'video' : 'videos'}
+                      </span>
+                      <button
+                        onClick={() => onAddVideosForCreator(creator)}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-surface-tertiary border border-border text-content-muted hover:text-content hover:border-border-strong hover:bg-surface-hover transition-all"
+                        title="Add videos for this creator"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
 
@@ -258,13 +289,6 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                               label="Edit Profile"
                               onClick={() => { onEditProfile(creator); setOpenDropdownId(null); }}
                             />
-                            {profile?.addedWithoutInvite && (
-                              <DropdownItem
-                                icon={<UserPlus className="w-4 h-4 text-orange-400" />}
-                                label="Invite to Portal"
-                                onClick={() => { onInviteToPortal(creator); setOpenDropdownId(null); }}
-                              />
-                            )}
                             {profile?.customPaymentTerms && (
                               <DropdownItem
                                 icon={<FileText className="w-4 h-4 text-purple-400" />}
@@ -281,6 +305,11 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                               icon={<Edit3 className="w-4 h-4 text-blue-400" />}
                               label="Edit Linked Accounts"
                               onClick={() => { onEditLinks(creator); setOpenDropdownId(null); }}
+                            />
+                            <DropdownItem
+                              icon={<Film className="w-4 h-4 text-violet-400" />}
+                              label="Add Videos"
+                              onClick={() => { onAddVideosForCreator(creator); setOpenDropdownId(null); }}
                             />
                             {creator.role !== 'owner' && (
                               <>

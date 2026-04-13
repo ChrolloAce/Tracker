@@ -17,6 +17,7 @@ export interface Project {
   isArchived: boolean;
   archivedAt?: Timestamp;
   archivedBy?: string;
+  isStale?: boolean; // If true, cron skips refreshing all videos in this project
 }
 
 /**

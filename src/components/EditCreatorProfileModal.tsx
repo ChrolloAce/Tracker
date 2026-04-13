@@ -102,9 +102,9 @@ const EditCreatorProfileModal: React.FC<EditCreatorProfileModalProps> = ({
         creator.userId,
         {
           displayName: name.trim(),
-          email: email.trim() || undefined,
-          phone: phone.trim() || undefined,
-          notes: notes.trim() || undefined,
+          ...(email.trim() ? { email: email.trim() } : {}),
+          ...(phone.trim() ? { phone: phone.trim() } : {}),
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
         }
       );
 

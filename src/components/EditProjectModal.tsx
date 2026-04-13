@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit3, Upload, Trash2, AlertTriangle, Copy, Check } from 'lucide-react';
+import { X, Edit3, Upload, Trash2, AlertTriangle, Copy, Check, Snowflake } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ProjectService from '../services/ProjectService';
@@ -26,6 +26,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [isStale, setIsStale] = useState(project.isStale || false);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,6 +101,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
       await ProjectService.updateProject(currentOrgId, project.id, {
         name: name.trim(),
         imageUrl,
+        isStale,
       });
 
 
@@ -255,6 +257,41 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
           {/* API IDs */}
           <IdCopySection label="Project ID" value={project.id} />
           {currentOrgId && <IdCopySection label="Organization ID" value={currentOrgId} />}
+
+          {/* Freeze Project */}
+          <div className="border-t border-gray-200 dark:border-white/10 pt-6 mt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-start space-x-3">
+                <Snowflake className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isStale ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}`} />
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Freeze Project</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Stop all automatic video refreshes for this project. Videos stay in the dashboard but won't use API tokens.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStale(!isStale)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isStale ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isStale ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            {isStale && (
+              <div className="mt-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  This project is frozen. The cron will skip all video refreshes. You can still add videos manually — they just won't auto-update.
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Danger Zone - Delete Project */}
           <div className="border-t border-red-200 dark:border-red-900/30 pt-6 mt-6">

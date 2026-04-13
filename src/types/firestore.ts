@@ -273,6 +273,7 @@ export interface TrackedAccount {
   
   // Account type - determines refresh behavior
   creatorType?: 'automatic' | 'static'; // automatic: discovers new videos, static: only refreshes existing videos (default: automatic)
+  isStale?: boolean; // If true, cron skips refreshing this account entirely
   
   // Aggregates (computed)
   totalVideos: number;
@@ -350,6 +351,7 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   assignedCreatorId?: string; // Creator this video is assigned to (shows on their dashboard)
   status: 'active' | 'archived' | 'processing'; // processing = still being fetched from API
   isSingular: boolean; // Not tied to tracked account
+  isStale?: boolean; // If true, cron skips refreshing this video
   
   // Background processing (like accounts)
   syncStatus?: 'pending' | 'processing' | 'completed' | 'failed';
@@ -538,6 +540,7 @@ export interface OrganizationSettings {
   integrations?: {
     slack?: { webhookUrl: string };
     discord?: { webhookUrl: string };
+    superwall?: { apiKey: string; applicationId: string; applicationLabel?: string };
   };
 }
 
@@ -571,6 +574,8 @@ export interface Creator {
   notes?: string; // Optional notes about the creator
   photoURL?: string;
   addedWithoutInvite?: boolean; // True if added directly without portal invitation
+  isExternal?: boolean; // True if this creator uses a public share link instead of a portal account
+  externalShareToken?: string | null; // Denormalized pointer to current creatorShareLinks/{token}; cleared on revoke
   linkedAccountsCount: number;
   totalEarnings: number;
   payoutsEnabled: boolean;

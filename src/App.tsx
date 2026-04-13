@@ -41,7 +41,7 @@ const EditCampaignPage = lazy(() => import('./pages/EditCampaignPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const SupportPage = lazy(() => import('./pages/SupportPage'));
-const CreatorInvitationPage = lazy(() => import('./pages/CreatorInvitationPage'));
+// CreatorInvitationPage removed — legacy invite flow replaced by share link portals
 const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const ApiManagementPage = lazy(() => import('./pages/ApiManagementPage'));
 const ViralPage = lazy(() => import('./pages/ViralPage'));
@@ -49,6 +49,7 @@ const ViralPage = lazy(() => import('./pages/ViralPage'));
 const OpenClawPage = lazy(() => import('./pages/OpenClawPage'));
 const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
 const SharedFolderPage = lazy(() => import('./pages/SharedFolderPage'));
+const CreatorShareView = lazy(() => import('./pages/CreatorShareView'));
 
 // SEO Pages (lazy-loaded)
 const PricingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PricingPage })));
@@ -152,12 +153,14 @@ function App() {
         <Route path="/api-docs" element={<ApiDocsPage />} />
         {/* /l/:shortId handled by Vercel server-side redirect (api/redirect.ts) - no React fallback needed */}
 
-        {/* Creator invitation portal - public route */}
-        <Route path="/invitations/:invitationId" element={<CreatorInvitationPage />} />
+        {/* Legacy /invitations route removed — creator portals now use /c/:token share links */}
 
         {/* Public project share - no auth required */}
         <Route path="/share/:token" element={<PublicSharePage />} />
         <Route path="/shared/:token" element={<SharedFolderPage />} />
+
+        {/* Public creator share - per-creator dashboard, token-gated, no auth */}
+        <Route path="/c/:token" element={<CreatorShareView />} />
         
         {/* SEO Pages - Public */}
         <Route path="/pricing" element={<PricingPage />} />
@@ -469,8 +472,8 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/creators" 
+      <Route
+        path="/creators"
         element={
           !user ? (
             <Navigate to="/login" replace />
@@ -479,7 +482,7 @@ function App() {
           ) : (
             <CreatorsPage />
           )
-        } 
+        }
       />
 
       <Route 

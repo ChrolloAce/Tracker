@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { AlertCircle, X, RefreshCw, UserPlus } from 'lucide-react';
+import { AlertCircle, X, RefreshCw, UserPlus, Snowflake } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import UsageTrackingService from '../services/UsageTrackingService';
@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 interface AddVideoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddVideo: (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[], assignedCreatorId?: string) => Promise<void>;
+  onAddVideo: (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[], assignedCreatorId?: string, isStale?: boolean) => Promise<void>;
   showCreatorSelector?: boolean;
 }
 
@@ -48,6 +48,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
   const [isAtVideoLimit, setIsAtVideoLimit] = useState(false);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string>('');
+  const [addAsStale, setAddAsStale] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +91,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
           .catch(err => console.error('Failed to load creators:', err));
       }
       setSelectedCreatorId('');
+      setAddAsStale(false);
 
       // Focus the input after a tick
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -180,7 +182,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         onClose();
 
         for (const [platform, urls] of Object.entries(groups)) {
-          onAddVideo(platform as any, urls, selectedCreatorId || undefined).catch(err => console.error(`Failed to add ${platform} videos:`, err));
+          onAddVideo(platform as any, urls, selectedCreatorId || undefined, addAsStale || undefined).catch(err => console.error(`Failed to add ${platform} videos:`, err));
         }
         return;
       }
@@ -383,6 +385,20 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
             </select>
           </div>
         )}
+
+        {/* Add as Stale (frozen) */}
+        <label className="flex items-center gap-3 cursor-pointer group mb-4">
+          <div
+            onClick={() => setAddAsStale(!addAsStale)}
+            className={`relative w-9 h-5 rounded-full transition-colors ${addAsStale ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${addAsStale ? 'translate-x-4' : ''}`} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Snowflake className={`w-3.5 h-3.5 ${addAsStale ? 'text-blue-500' : 'text-content-muted'}`} />
+            <span className="text-sm text-content-secondary group-hover:text-content transition-colors">Add as frozen (no auto-refresh)</span>
+          </div>
+        </label>
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-border">

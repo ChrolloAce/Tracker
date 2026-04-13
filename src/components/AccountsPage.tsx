@@ -99,6 +99,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       
       // Account Management
       toggleAccountType,
+      toggleAccountStale,
+      bulkToggleAccountsStale,
       
       // Selection
       selectedAccounts,
@@ -438,6 +440,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                     setSingleAssignAccountId(null);
                                     setShowBulkAssignCreator(true);
                                 }}
+                                onBulkFreeze={() => {
+                                    const ids = Array.from(selectedAccounts);
+                                    bulkToggleAccountsStale(ids, true);
+                                    setSelectedAccounts(new Set());
+                                }}
+                                onBulkUnfreeze={() => {
+                                    const ids = Array.from(selectedAccounts);
+                                    bulkToggleAccountsStale(ids, false);
+                                    setSelectedAccounts(new Set());
+                                }}
                             />
                             <AccountsTable 
                                 realAccounts={processedAccounts.slice((accountsCurrentPage - 1) * accountsItemsPerPage, (accountsCurrentPage - 1) * accountsItemsPerPage + accountsItemsPerPage)} 
@@ -478,8 +490,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 onRetrySync={(account) => retryFailedAccount(account.id)} 
                                 onDismissError={(account) => dismissAccountError(account.id)} 
                                 onRemoveAccount={handleRemoveAccount} 
-                                onToggleType={toggleAccountType} 
-                                onNavigate={(url) => navigate(url)} 
+                                onToggleType={toggleAccountType}
+                                onToggleStale={toggleAccountStale}
+                                onNavigate={(url) => navigate(url)}
                                 onImageError={(id) => setImageErrors(prev => new Set(prev).add(id))}
                                 onAssignCreator={(accountId) => {
                                     setSingleAssignAccountId(accountId);

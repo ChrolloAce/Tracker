@@ -1,13 +1,14 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
-import { 
-  MoreVertical, 
-  ChevronDown, 
-  Link as LinkIcon, 
-  Download, 
+import {
+  MoreVertical,
+  ChevronDown,
+  Link as LinkIcon,
+  Download,
   Trash2,
-  Users 
+  Users,
+  Snowflake
 } from 'lucide-react';
 import { DateFilterType } from '../DateRangeFilter';
 
@@ -23,6 +24,8 @@ interface AccountsHeaderProps {
   onExport: () => void;
   onDelete: () => void;
   onAssignCreator?: () => void;
+  onBulkFreeze?: () => void;
+  onBulkUnfreeze?: () => void;
 }
 
 export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
@@ -34,7 +37,9 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
   onCopyLinks,
   onExport,
   onDelete,
-  onAssignCreator
+  onAssignCreator,
+  onBulkFreeze,
+  onBulkUnfreeze
 }) => {
   return (
     <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-border z-10" style={{ backgroundColor: 'var(--color-surface-secondary)' }}>
@@ -136,6 +141,32 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
                     >
                       <Users className="w-4 h-4" />
                       <span>Assign to Creator</span>
+                    </button>
+                  )}
+                  {onBulkFreeze && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowActionsMenu(false);
+                        onBulkFreeze();
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-blue-400 hover:bg-blue-500/10 flex items-center space-x-3 transition-colors border-t border-border"
+                    >
+                      <Snowflake className="w-4 h-4" />
+                      <span>Freeze Selected</span>
+                    </button>
+                  )}
+                  {onBulkUnfreeze && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowActionsMenu(false);
+                        onBulkUnfreeze();
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-content-muted hover:bg-surface-active flex items-center space-x-3 transition-colors border-t border-border"
+                    >
+                      <Snowflake className="w-4 h-4" />
+                      <span>Unfreeze Selected</span>
                     </button>
                   )}
                   <button

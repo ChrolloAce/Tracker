@@ -44,6 +44,7 @@ export interface VideoSubmission {
   lastRefreshed?: Date; // When metrics were last updated
   selected?: boolean;
   isRead?: boolean; // Whether the video has been read (for notification count)
+  isStale?: boolean; // If true, cron skips refreshing this video
 }
 
 export interface InstagramVideoData {

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TrackedAccount } from '../types/firestore';
-import { X, Link as LinkIcon, Search, Check, AlertCircle } from 'lucide-react';
-import { Button } from './ui/Button';
+import { X, Link as LinkIcon, Search, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
+import { createPortal } from 'react-dom';
 
 interface LinkCreatorAccountsModalProps {
   creator: OrgMember;
@@ -13,10 +13,6 @@ interface LinkCreatorAccountsModalProps {
   onSuccess: () => void;
 }
 
-/**
- * LinkCreatorAccountsModal
- * Modal for admins to link creators to organization accounts
- */
 const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
   creator,
   onClose,
@@ -37,22 +33,17 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId) return;
-
     setLoading(true);
     try {
-      // Load accounts for THIS PROJECT
       const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(accountsData);
 
-      // Load currently linked accounts for this creator in THIS PROJECT
       const links = await CreatorLinksService.getCreatorLinkedAccounts(
-        currentOrgId,
-        currentProjectId,
-        creator.userId
+        currentOrgId, currentProjectId, creator.userId
       );
       const linkedIds = new Set(links.map(link => link.accountId));
       setLinkedAccountIds(linkedIds);
-      setSelectedAccountIds(new Set(linkedIds)); // Pre-select already linked accounts
+      setSelectedAccountIds(new Set(linkedIds));
     } catch (error) {
       console.error('Failed to load accounts:', error);
       setError('Failed to load accounts');
@@ -64,48 +55,30 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
   const handleToggleAccount = (accountId: string) => {
     setSelectedAccountIds(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(accountId)) {
-        newSet.delete(accountId);
-      } else {
-        newSet.add(accountId);
-      }
+      if (newSet.has(accountId)) newSet.delete(accountId);
+      else newSet.add(accountId);
       return newSet;
     });
   };
 
   const handleSave = async () => {
     if (!currentOrgId || !currentProjectId || !user) return;
-
     setSaving(true);
     setError(null);
 
     try {
-      // Determine which accounts to link and unlink
-      const accountsToLink = Array.from(selectedAccountIds).filter(
-        id => !linkedAccountIds.has(id)
-      );
-      const accountsToUnlink = Array.from(linkedAccountIds).filter(
-        id => !selectedAccountIds.has(id)
-      );
+      const accountsToLink = Array.from(selectedAccountIds).filter(id => !linkedAccountIds.has(id));
+      const accountsToUnlink = Array.from(linkedAccountIds).filter(id => !selectedAccountIds.has(id));
 
-      // Link new accounts in THIS PROJECT
       if (accountsToLink.length > 0) {
         await CreatorLinksService.linkCreatorToAccounts(
-          currentOrgId,
-          currentProjectId,
-          creator.userId,
-          accountsToLink,
-          user.uid
+          currentOrgId, currentProjectId, creator.userId, accountsToLink, user.uid
         );
       }
 
-      // Unlink removed accounts from THIS PROJECT
       for (const accountId of accountsToUnlink) {
         await CreatorLinksService.unlinkCreatorFromAccount(
-          currentOrgId,
-          currentProjectId,
-          creator.userId,
-          accountId
+          currentOrgId, currentProjectId, creator.userId, accountId
         );
       }
 
@@ -122,65 +95,66 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
     account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const changesCount = 
+  const changesCount =
     Array.from(selectedAccountIds).filter(id => !linkedAccountIds.has(id)).length +
     Array.from(linkedAccountIds).filter(id => !selectedAccountIds.has(id)).length;
 
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0A0A0A] rounded-xl border border-white/10 w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-secondary rounded-2xl border border-border w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <LinkIcon className="w-6 h-6 text-white/70" />
+            <div className="w-10 h-10 bg-content rounded-xl flex items-center justify-center">
+              <LinkIcon className="w-5 h-5 text-content-inverse" />
+            </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">Link Tracked Accounts</h2>
-              <p className="text-sm text-white/50 mt-0.5">
-                Select from your project's tracked accounts to link to {creator.displayName || creator.email}
+              <h2 className="text-xl font-semibold text-content">Link Tracked Accounts</h2>
+              <p className="text-xs text-content-muted mt-0.5">
+                Select accounts to link to {creator.displayName || creator.email}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-white/50 hover:text-white transition-colors"
+            className="p-2 text-content-muted hover:text-content hover:bg-surface-hover rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col bg-[#0D0D0D]">
-          {/* Error Message */}
+        <div className="flex-1 overflow-hidden flex flex-col">
           {error && (
-            <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+            <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-red-400">{error}</div>
             </div>
           )}
 
           {/* Search */}
-          <div className="px-6 pt-4 pb-3">
+          <div className="px-6 pt-5 pb-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-content-muted" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search accounts by handle or name..."
-                className="w-full pl-10 pr-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-surface-secondary border border-border rounded-xl text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-strong focus:border-transparent transition-all"
               />
             </div>
             <div className="mt-2 flex items-center justify-between text-xs">
-              <div className="text-white/50">
-                {selectedAccountIds.size} of {accounts.length} tracked accounts selected
+              <div className="text-content-muted">
+                {selectedAccountIds.size} of {accounts.length} accounts selected
                 {changesCount > 0 && (
-                  <span className="ml-2 text-white font-medium">
-                    • {changesCount} change{changesCount !== 1 ? 's' : ''}
+                  <span className="ml-2 text-content font-medium">
+                    {changesCount} change{changesCount !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
-              {accounts.length === 0 && (
-                <div className="text-yellow-400/80">
+              {accounts.length === 0 && !loading && (
+                <div className="text-amber-400">
                   No tracked accounts in this project
                 </div>
               )}
@@ -191,23 +165,19 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
           <div className="flex-1 overflow-y-auto px-6 pb-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-white/50">Loading accounts...</div>
+                <Loader2 className="w-6 h-6 text-content-muted animate-spin" />
               </div>
             ) : filteredAccounts.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="text-white/60 mb-2">
+                  <div className="text-content-muted mb-2">
                     {searchQuery ? 'No accounts found' : 'No tracked accounts in this project'}
                   </div>
-                  {searchQuery ? (
-                    <div className="text-xs text-white/40">
-                      Try a different search term
-                    </div>
-                  ) : (
-                    <div className="text-xs text-white/40">
-                      Add tracked accounts to this project first in the "Tracked Accounts" tab
-                    </div>
-                  )}
+                  <div className="text-xs text-content-muted">
+                    {searchQuery
+                      ? 'Try a different search term'
+                      : 'Add tracked accounts to this project first in the "Tracked Accounts" tab'}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -220,61 +190,56 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
                     <button
                       key={account.id}
                       onClick={() => handleToggleAccount(account.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
                         isSelected
-                          ? 'bg-white/5 border-white/20 hover:bg-white/10'
-                          : 'bg-black/30 border-white/10 hover:bg-black/50'
+                          ? 'bg-surface-active border-border-strong'
+                          : 'bg-surface-secondary border-border hover:bg-surface-hover'
                       }`}
                     >
-                      {/* Checkbox */}
                       <div
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                           isSelected
-                            ? 'bg-white border-white'
-                            : 'border-white/30 hover:border-white/50'
+                            ? 'bg-content border-content'
+                            : 'border-border-strong'
                         }`}
                       >
-                        {isSelected && <Check className="w-3.5 h-3.5 text-black" />}
+                        {isSelected && <Check className="w-3 h-3 text-content-inverse" />}
                       </div>
 
-                      {/* Profile Picture */}
                       {account.profilePicture ? (
                         <img
                           src={account.profilePicture}
                           alt={`@${account.username}`}
-                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-1 ring-border"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center flex-shrink-0 ring-1 ring-border">
                           <PlatformIcon platform={account.platform} size="sm" />
                         </div>
                       )}
 
-                      {/* Account Info */}
                       <div className="flex-1 text-left min-w-0">
-                        <div className="text-sm font-medium text-white truncate">
+                        <div className="text-sm font-medium text-content truncate">
                           @{account.username}
                         </div>
                         {account.displayName && (
-                          <div className="text-xs text-white/50 truncate">
+                          <div className="text-xs text-content-muted truncate">
                             {account.displayName}
                           </div>
                         )}
                       </div>
 
-                      {/* Platform Badge */}
                       <div className="flex-shrink-0">
                         <PlatformIcon platform={account.platform} size="sm" />
                       </div>
 
-                      {/* Status Badge */}
                       {wasLinked && !isSelected && (
-                        <div className="text-xs px-2 py-1 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                        <div className="text-xs px-2 py-1 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
                           Will unlink
                         </div>
                       )}
                       {!wasLinked && isSelected && (
-                        <div className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+                        <div className="text-xs px-2 py-1 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20">
                           Will link
                         </div>
                       )}
@@ -287,28 +252,34 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10 bg-[#0A0A0A] flex gap-3">
-          <Button
+        <div className="flex gap-3 px-6 py-5 border-t border-border">
+          <button
             type="button"
-            variant="secondary"
             onClick={onClose}
             disabled={saving}
-            className="flex-1 bg-white/5 hover:bg-white/10 text-white border border-white/10"
+            className="flex-1 px-4 py-3 bg-surface-secondary text-content border border-border rounded-lg font-semibold shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50"
           >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={handleSave}
             disabled={saving || changesCount === 0}
-            className="flex-1 bg-white hover:bg-gray-200 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {saving ? 'Saving...' : `Save Changes${changesCount > 0 ? ` (${changesCount})` : ''}`}
-          </Button>
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              `Save Changes${changesCount > 0 ? ` (${changesCount})` : ''}`
+            )}
+          </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
 export default LinkCreatorAccountsModal;
-

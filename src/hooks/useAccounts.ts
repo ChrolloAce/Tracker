@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
@@ -562,6 +562,29 @@ export const useAccounts = ({
     } catch (error) { console.error('Toggle failed', error); }
   }, [currentOrgId, currentProjectId, isDemoMode]);
 
+  const toggleAccountStale = useCallback(async (account: TrackedAccount) => {
+    if (isDemoMode) return;
+    if (!currentOrgId || !currentProjectId) return;
+    const newStale = !account.isStale;
+    try {
+      const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', account.id);
+      await updateDoc(accountRef, { isStale: newStale });
+    } catch (error) { console.error('Toggle stale failed', error); }
+  }, [currentOrgId, currentProjectId, isDemoMode]);
+
+  const bulkToggleAccountsStale = useCallback(async (accountIds: string[], isStale: boolean) => {
+    if (isDemoMode) return;
+    if (!currentOrgId || !currentProjectId) return;
+    try {
+      const batch = writeBatch(db);
+      for (const accountId of accountIds) {
+        const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', accountId);
+        batch.update(accountRef, { isStale });
+      }
+      await batch.commit();
+    } catch (error) { console.error('Bulk toggle stale failed', error); }
+  }, [currentOrgId, currentProjectId, isDemoMode]);
+
   const cancelSync = useCallback(async (account: TrackedAccount) => {
     if (isDemoMode) return;
     if (!currentOrgId || !currentProjectId) return;
@@ -603,6 +626,8 @@ export const useAccounts = ({
     
     // Account Management
     toggleAccountType,
+    toggleAccountStale,
+    bulkToggleAccountsStale,
     
     // Selection
     selectedAccounts,

@@ -134,6 +134,14 @@ class FirestoreDataService {
     return VideosDataService.deleteVideo(orgId, projectId, videoId);
   }
 
+  static async setVideoStale(orgId: string, projectId: string, videoId: string, isStale: boolean): Promise<void> {
+    return VideosDataService.setVideoStale(orgId, projectId, videoId, isStale);
+  }
+
+  static async setVideosStale(orgId: string, projectId: string, videoIds: string[], isStale: boolean): Promise<void> {
+    return VideosDataService.setVideosStale(orgId, projectId, videoIds, isStale);
+  }
+
   static async addVideoSnapshot(
     orgId: string,
     projectId: string,

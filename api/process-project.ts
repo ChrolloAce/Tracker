@@ -89,9 +89,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const projectData = projectDoc.data();
     const projectName = projectData?.name || 'Default Project';
-    
+
     console.log(`    📦 Processing project: ${projectName} (${projectId})${isManualRefresh ? ' [MANUAL]' : ' [SCHEDULED]'}`);
-    
+
+    // Skip stale projects entirely (no refresh = saves API tokens)
+    if (projectData?.isStale === true) {
+      console.log(`    ❄️  Project "${projectName}" is frozen (isStale) — skipping refresh`);
+      return res.status(200).json({
+        success: true,
+        message: 'Project is frozen (isStale) — skipped',
+        projectId,
+        projectName,
+        skippedReason: 'stale'
+      });
+    }
+
     // Get organization's plan tier to determine refresh interval
     const subscriptionDoc = await db
       .collection('organizations')
@@ -152,9 +164,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const refreshIntervalHours = REFRESH_HOURS[planTier] || 48;
     const now = Date.now();
 
+    // Filter out frozen (stale) accounts first — they never refresh
+    const nonStaleAccounts = accountsSnapshot.docs.filter(doc => doc.data().isStale !== true);
+    const staleCount = accountsSnapshot.size - nonStaleAccounts.length;
+    if (staleCount > 0) {
+      console.log(`      ❄️  Skipping ${staleCount} frozen (isStale) account(s)`);
+    }
+
     const accountsToRefresh = isManualRefresh
-      ? accountsSnapshot.docs  // manual refresh always syncs everything
-      : accountsSnapshot.docs.filter(doc => {
+      ? nonStaleAccounts  // manual refresh syncs all non-stale accounts
+      : nonStaleAccounts.filter(doc => {
           const data = doc.data();
           const lastRefreshed = data.lastRefreshed?.toDate();
           if (!lastRefreshed) return true; // never synced — always include
