@@ -45,12 +45,12 @@ class RevenueCatService {
     orgId: string,
     chartName: string,
     resolution: string,
-    startTime: string,
-    endTime: string
+    startDate: string,
+    endDate: string
   ): Promise<RevenueCatChartResponse> {
     return AuthenticatedApiService.post<RevenueCatChartResponse>(
       '/api/revenuecat-metrics',
-      { orgId, chartName, resolution, startTime, endTime }
+      { orgId, chartName, resolution, startDate, endDate }
     );
   }
 
@@ -62,13 +62,13 @@ class RevenueCatService {
     orgId: string,
     metricKey: string,
     resolution: string,
-    startTime: string,
-    endTime: string
+    startDate: string,
+    endDate: string
   ): Promise<Array<{ x: string; value: number; incomplete: boolean }>> {
     const mapping = METRIC_TO_RC_CHART[metricKey];
     if (!mapping) throw new Error(`Unknown metric: ${metricKey}`);
 
-    const raw = await this.fetchRawChart(orgId, mapping.chartName, resolution, startTime, endTime);
+    const raw = await this.fetchRawChart(orgId, mapping.chartName, resolution, startDate, endDate);
 
     // Filter to just the measure we care about
     const points = (raw.values || []).filter(v => v.measure === mapping.measure);
@@ -88,10 +88,10 @@ class RevenueCatService {
   async fetchTrialCohorts(
     orgId: string,
     resolution: string,
-    startTime: string,
-    endTime: string
+    startDate: string,
+    endDate: string
   ): Promise<Map<string, { started: number; converted: number; expired: number; pending: number }>> {
-    const raw = await this.fetchRawChart(orgId, 'trial_conversion_rate', resolution, startTime, endTime);
+    const raw = await this.fetchRawChart(orgId, 'trial_conversion_rate', resolution, startDate, endDate);
 
     const cohorts = new Map<string, { started: number; converted: number; expired: number; pending: number }>();
 
@@ -127,11 +127,12 @@ class RevenueCatService {
   }
 
   /**
-   * Compute start/end ISO strings for our time range presets.
+   * Compute start/end date strings (YYYY-MM-DD) for our time range presets.
+   * RevenueCat requires start_date/end_date in plain date format.
    */
-  getTimeRange(timeRange: string): { startTime: string; endTime: string } {
+  getTimeRange(timeRange: string): { startDate: string; endDate: string } {
     const now = new Date();
-    const end = now.toISOString();
+    const end = now.toISOString().split('T')[0];
     let start: Date;
 
     switch (timeRange) {
@@ -147,7 +148,7 @@ class RevenueCatService {
       default:     start = new Date(now.getTime() - 30 * 86400000); break;
     }
 
-    return { startTime: start.toISOString(), endTime: end };
+    return { startDate: start.toISOString().split('T')[0], endDate: end };
   }
 }
 

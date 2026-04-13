@@ -1290,9 +1290,36 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                       </p>
                     </div>
 
-                    {/* Error */}
+                    {/* Error — with manual fallback */}
                     {rcProjectsError && (
-                      <p className="text-sm text-red-400">{rcProjectsError}</p>
+                      <div className="space-y-3">
+                        <p className="text-sm text-red-400">{rcProjectsError}</p>
+                        <div className="p-3 rounded-lg bg-surface-tertiary border border-border-subtle">
+                          <p className="text-xs text-content-secondary mb-2">
+                            Can't list projects? Enter the Project ID manually instead. Find it in RevenueCat under Project Settings — it looks like <code className="text-content bg-surface-hover px-1 rounded">projXXXXXXXX</code>.
+                          </p>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={rcProjectId}
+                              onChange={e => setRcProjectId(e.target.value)}
+                              placeholder="projXXXXXXXX"
+                              className="flex-1 px-3 py-2 bg-surface-secondary border border-border rounded-lg text-content text-sm placeholder:text-content-muted focus:outline-none focus:border-content-muted"
+                            />
+                            <button
+                              onClick={() => {
+                                if (rcProjectId.trim()) {
+                                  handleSelectRcProject(rcProjectId.trim(), rcProjectId.trim());
+                                }
+                              }}
+                              disabled={!rcProjectId.trim() || savingRc}
+                              className="px-4 py-2 bg-content text-content-inverse rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
 
                     {/* Step 2: Pick a project */}

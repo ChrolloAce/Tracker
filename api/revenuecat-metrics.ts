@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { orgId, chartName, resolution, startTime, endTime } = req.body;
+    const { orgId, chartName, resolution, startDate, endDate } = req.body;
 
     if (!orgId || !chartName) {
       return res.status(400).json({ error: 'Missing required fields: orgId, chartName' });
@@ -45,11 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Build query params
+    // Build query params — RC uses start_date/end_date with YYYY-MM-DD format
     const params = new URLSearchParams();
     if (resolution) params.set('resolution', resolution);
-    if (startTime) params.set('start_time', startTime);
-    if (endTime) params.set('end_time', endTime);
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
 
     const url = `https://api.revenuecat.com/v2/projects/${rcProjectId}/charts/${chartName}?${params.toString()}`;
 

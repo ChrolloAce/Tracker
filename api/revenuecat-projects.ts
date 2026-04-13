@@ -35,12 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!rcRes.ok) {
       const errorBody = await rcRes.text();
       console.error(`RevenueCat projects error (${rcRes.status}):`, errorBody);
-      return res.status(rcRes.status).json({
-        error: rcRes.status === 401
-          ? 'Invalid API key'
-          : 'Failed to fetch projects from RevenueCat',
-        details: errorBody,
-      });
+
+      let parsed: any = {};
+      try { parsed = JSON.parse(errorBody); } catch {}
+
+      let message = 'Failed to fetch projects from RevenueCat';
+      if (rcRes.status === 401) {
+        message = 'Invalid API key. Make sure you\'re using a secret key (sk_).';
+      } else if (rcRes.status === 403) {
+        message = 'This API key doesn\'t have permission to list projects. Make sure it has the "project_configuration:projects:read" scope, or ask the customer for their Project ID directly.';
+      } else if (parsed.message) {
+        message = parsed.message;
+      }
+
+      return res.status(rcRes.status).json({ error: message, details: errorBody });
     }
 
     const data = await rcRes.json();

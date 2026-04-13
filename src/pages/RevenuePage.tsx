@@ -214,9 +214,9 @@ export default function RevenuePage() {
         } else {
           // ── RevenueCat path ──
           const resolution = RevenueCatService.getResolution(granularity);
-          const { startTime, endTime } = RevenueCatService.getTimeRange(timeRange);
+          const { startDate, endDate } = RevenueCatService.getTimeRange(timeRange);
           const points = await RevenueCatService.fetchMetricData(
-            currentOrgId, selectedMetric, resolution, startTime, endTime
+            currentOrgId, selectedMetric, resolution, startDate, endDate
           );
 
           // Convert to Superwall-compatible format so the rest of the page works unchanged
@@ -338,14 +338,36 @@ export default function RevenuePage() {
       try {
         let rows: TrialCohortRow[] = [];
 
+        // Build Superwall preset from timeRange
+        let swPreset: string;
+        if (timeRange === '2y') {
+          swPreset = 'custom';
+        } else {
+          const presetMap: Record<string, string> = {
+            '7d': 'last_7_days', '30d': 'last_30_days', '90d': 'last_90_days',
+            '180d': 'last_180_days', '1y': 'last_365_days',
+          };
+          swPreset = presetMap[timeRange] || 'last_30_days';
+        }
+
         if (provider === 'superwall') {
           // ── Superwall: 6 separate metric calls ──
+          const buildDateFilter = (dim: 'purchaseDate' | 'installDate' | 'firstPurchaseDate' | 'tsDate' | 'mrrDate') => {
+            if (timeRange === '2y') {
+              const now = new Date();
+              const twoYearsAgo = new Date(now);
+              twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+              return { dimension: dim, preset: 'custom' as const, range: { from: twoYearsAgo.toISOString().split('.')[0], to: now.toISOString().split('.')[0] } };
+            }
+            return { dimension: dim, preset: swPreset };
+          };
+
           const fetchMetric = (yAxis: string, xAxis: string, dim: 'purchaseDate' | 'installDate' | 'firstPurchaseDate' | 'tsDate' | 'mrrDate') =>
             SuperwallService.fetchChartData({
               orgId: currentOrgId,
               applicationId: superwallAppId!,
               yAxis, xAxis,
-              dateFilter: { dimension: dim, preset: 'last_30_days' },
+              dateFilter: buildDateFilter(dim),
               dateInterval: 'day' as const,
             });
 
@@ -396,9 +418,9 @@ export default function RevenuePage() {
           }
         } else {
           // ── RevenueCat: single call, trial_conversion_rate has all measures ──
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+          const { startDate: rcStart, endDate: rcEnd } = RevenueCatService.getTimeRange(timeRange);
           const cohorts = await RevenueCatService.fetchTrialCohorts(
-            currentOrgId, 'day', thirtyDaysAgo.toISOString(), new Date().toISOString()
+            currentOrgId, 'day', rcStart, rcEnd
           );
 
           if (cancelled) return;
@@ -409,7 +431,7 @@ export default function RevenuePage() {
               date,
               started: data.started,
               converted: data.converted,
-              cancelled: 0, // RC doesn't separate cancellations in trial_conversion_rate
+              cancelled: 0,
               expired: data.expired,
               billing: 0,
               pending: data.pending,
@@ -426,7 +448,7 @@ export default function RevenuePage() {
     })();
 
     return () => { cancelled = true; };
-  }, [currentOrgId, provider, superwallAppId]);
+  }, [currentOrgId, provider, superwallAppId, timeRange]);
 
   // Build a quick trial cohort lookup by date
   const trialByDate = useMemo(() => {
