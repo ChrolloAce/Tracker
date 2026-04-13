@@ -402,31 +402,136 @@ export default function PublicSharePage() {
     <div className="min-h-screen bg-surface text-content">
       {/* Header - matches dashboard header with filters */}
       <header className="fixed top-0 left-0 right-0 bg-surface-secondary border-b border-border z-30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-16 md:h-[72px] flex items-center justify-between">
-          {/* Project name */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {project.icon && <span className="text-2xl">{project.icon}</span>}
-            <h1 className="text-lg md:text-xl font-bold text-content truncate">{project.name}</h1>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            {/* Account Filter */}
-            <div className="hidden lg:block">
-              <MultiSelectDropdown
-                options={accountOptions}
-                selectedIds={selectedAccountIds}
-                onChange={setSelectedAccountIds}
-                placeholder="All Accounts"
-              />
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6">
+          {/* Title row */}
+          <div className="flex items-center justify-between h-12 sm:h-16 md:h-[72px]">
+            {/* Project name */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {project.icon && <span className="text-2xl">{project.icon}</span>}
+              <h1 className="text-lg md:text-xl font-bold text-content truncate">{project.name}</h1>
             </div>
 
+            {/* Desktop filters — sm+ */}
+            <div className="hidden sm:flex items-center gap-2 md:gap-3 flex-shrink-0">
+              {/* Account Filter */}
+              <div className="hidden lg:block">
+                <MultiSelectDropdown
+                  options={accountOptions}
+                  selectedIds={selectedAccountIds}
+                  onChange={setSelectedAccountIds}
+                  placeholder="All Accounts"
+                />
+              </div>
+
+              {/* Platform Filter */}
+              <div className="relative">
+                <button
+                  onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
+                  onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
+                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer min-w-[140px]"
+                >
+                  {platformFilter.length === 0 ? (
+                    <span>All Platforms</span>
+                  ) : platformFilter.length === 1 ? (
+                    <>
+                      <PlatformIcon platform={platformFilter[0]} size="sm" />
+                      <span className="capitalize">{platformFilter[0] === 'twitter' ? 'X' : platformFilter[0]}</span>
+                    </>
+                  ) : (
+                    <span>{platformFilter.length} Platforms</span>
+                  )}
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted" />
+                </button>
+
+                {platformDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPlatformFilter([]); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
+                    >
+                      <span>Clear All</span>
+                    </button>
+                    {([
+                      { value: 'instagram' as const, label: 'Instagram' },
+                      { value: 'tiktok' as const, label: 'TikTok' },
+                      { value: 'youtube' as const, label: 'YouTube' },
+                      { value: 'twitter' as const, label: 'X' },
+                    ]).map((p) => {
+                      const isSelected = platformFilter.includes(p.value);
+                      return (
+                        <button
+                          key={p.value}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlatformFilter(prev =>
+                              isSelected ? prev.filter(x => x !== p.value) : [...prev, p.value]
+                            );
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-content hover:bg-surface-hover transition-colors"
+                        >
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                            isSelected ? 'bg-content border-content' : 'border-border-strong'
+                          }`}>
+                            {isSelected && <Check className="w-3 h-3 text-content-inverse" strokeWidth={3} />}
+                          </div>
+                          <PlatformIcon platform={p.value} size="sm" />
+                          <span>{p.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Granularity Selector */}
+              <div className="relative hidden md:block">
+                <select
+                  value={granularity}
+                  onChange={(e) => setManualGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                  className="appearance-none pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer"
+                >
+                  <option value="day" className="bg-surface-tertiary">Daily</option>
+                  <option value="week" className="bg-surface-tertiary">Weekly</option>
+                  <option value="month" className="bg-surface-secondary">Monthly</option>
+                  <option value="year" className="bg-surface-secondary">Yearly</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted pointer-events-none" />
+              </div>
+
+              {/* Date Range Filter */}
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
+
+              {/* Powered by */}
+              <a
+                href="https://viewtrack.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-content-muted hover:text-content transition-colors hidden md:block"
+              >
+                ViewTrack
+              </a>
+            </div>
+          </div>
+
+          {/* Mobile filters row — phones only */}
+          <div className="flex sm:hidden items-center gap-2 pb-2 flex-wrap">
+            {/* Date Range Filter */}
+            <DateRangeFilter
+              selectedFilter={dateFilter}
+              customRange={customDateRange}
+              onFilterChange={handleDateFilterChange}
+            />
+
             {/* Platform Filter */}
-            <div className="relative hidden sm:block">
+            <div className="relative">
               <button
                 onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                 onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                className="flex items-center gap-2 pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer min-w-[140px]"
+                className="flex items-center gap-2 pl-3 pr-7 py-1.5 bg-surface-secondary text-content rounded-lg text-xs font-medium border border-border hover:border-border-strong focus:outline-none transition-all cursor-pointer"
               >
                 {platformFilter.length === 0 ? (
                   <span>All Platforms</span>
@@ -442,7 +547,7 @@ export default function PublicSharePage() {
               </button>
 
               {platformDropdownOpen && (
-                <div className="absolute top-full right-0 mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
+                <div className="absolute top-full left-0 mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
                   <button
                     onClick={(e) => { e.stopPropagation(); setPlatformFilter([]); }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
@@ -465,7 +570,7 @@ export default function PublicSharePage() {
                             isSelected ? prev.filter(x => x !== p.value) : [...prev, p.value]
                           );
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-content hover:bg-surface-hover transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-content hover:bg-surface-hover transition-colors"
                       >
                         <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
                           isSelected ? 'bg-content border-content' : 'border-border-strong'
@@ -481,12 +586,12 @@ export default function PublicSharePage() {
               )}
             </div>
 
-            {/* Granularity Selector — matches main dashboard exactly */}
-            <div className="relative hidden md:block">
+            {/* Granularity Selector */}
+            <div className="relative">
               <select
                 value={granularity}
                 onChange={(e) => setManualGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
-                className="appearance-none pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-1.5 bg-surface-secondary text-content rounded-lg text-xs font-medium border border-border hover:border-border-strong focus:outline-none transition-all cursor-pointer"
               >
                 <option value="day" className="bg-surface-tertiary">Daily</option>
                 <option value="week" className="bg-surface-tertiary">Weekly</option>
@@ -495,31 +600,12 @@ export default function PublicSharePage() {
               </select>
               <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted pointer-events-none" />
             </div>
-
-            {/* Date Range Filter — reused component from the main dashboard */}
-            <div className="hidden sm:block">
-              <DateRangeFilter
-                selectedFilter={dateFilter}
-                customRange={customDateRange}
-                onFilterChange={handleDateFilterChange}
-              />
-            </div>
-
-            {/* Powered by */}
-            <a
-              href="https://viewtrack.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-content-muted hover:text-content transition-colors hidden md:block"
-            >
-              ViewTrack
-            </a>
           </div>
         </div>
       </header>
 
       {/* Main Content - matches dashboard layout */}
-      <main className="overflow-auto min-h-screen pt-16 md:pt-24" style={{ overflowX: 'hidden', overflowY: 'auto' }}>
+      <main className="overflow-auto min-h-screen pt-24 sm:pt-16 md:pt-24" style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8" style={{ overflow: 'visible' }}>
           <div className="space-y-6">
             {/* Video Slider - uses platform/account filtered but NOT date filtered */}
