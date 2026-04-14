@@ -116,7 +116,7 @@ class TeamInvitationService {
       const baseUrl = window.location.hostname === 'localhost' 
         ? 'http://localhost:5173' 
         : 'https://viewtrack.app';
-      const inviteLink = `${baseUrl}/invitations/${inviteRef.id}`;
+      const inviteLink = `${baseUrl}/login?invite=${inviteRef.id}&org=${orgId}`;
       
       // Extract name from email (part before @), capitalize first letter
       const emailUsername = email.split('@')[0];
