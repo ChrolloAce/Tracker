@@ -285,7 +285,7 @@ export default function AccountShareView() {
               href="https://www.viewtrack.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 text-white rounded-lg font-bold text-xs shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-orange-500 text-white rounded-lg font-bold text-xs shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all whitespace-nowrap"
             >
               Try ViewTrack
               <ArrowRight className="w-3.5 h-3.5" />
@@ -367,7 +367,7 @@ export default function AccountShareView() {
               variant="full"
               headline={`Track creators like @${account.username}`}
               body="Monitor any TikTok, Instagram, YouTube, or X account. Auto-sync videos, stats, and engagement in real time."
-              buttonLabel="Start Free"
+              buttonLabel="Get Started"
             />
 
             <PostingActivityHeatmap

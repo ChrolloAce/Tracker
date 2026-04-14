@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronDown, Check, Plus, X, Loader2, AlertCircle, UserCircle2, ArrowRight } from 'lucide-react';
-import LandingCTABanner from '../components/marketing/LandingCTABanner';
+import { ChevronDown, Check, Plus, X, Loader2, AlertCircle, UserCircle2 } from 'lucide-react';
 import KPICards from '../components/KPICards';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
@@ -612,15 +611,6 @@ export default function CreatorShareView() {
               />
             </div>
 
-            <a
-              href="https://www.viewtrack.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 text-white rounded-lg font-bold text-xs shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all whitespace-nowrap"
-            >
-              Try ViewTrack
-              <ArrowRight className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
       </header>
@@ -645,14 +635,6 @@ export default function CreatorShareView() {
               onVideoClick={handleVideoClick}
             />
 
-            {/* Mid-page marketing CTA . post-stats, peak engagement */}
-            <LandingCTABanner
-              variant="full"
-              headline="Track creators like this one"
-              body="Give every creator their own dashboard. Monitor videos, views, and engagement across every platform, automatically."
-              buttonLabel="Start Free"
-            />
-
             <PostingActivityHeatmap
               submissions={filteredSubmissions}
               onVideoClick={handleVideoClick}
@@ -667,10 +649,8 @@ export default function CreatorShareView() {
             />
           </div>
 
-          {/* Footer CTA . final conversion touchpoint */}
-          <div className="pt-12 pb-8">
-            <LandingCTABanner variant="footer" />
-            <p className="text-center text-xs text-content-muted mt-6">
+          <div className="pt-8 pb-8">
+            <p className="text-center text-xs text-content-muted">
               <a
                 href="https://www.viewtrack.app"
                 target="_blank"
@@ -702,7 +682,6 @@ export default function CreatorShareView() {
           onClose={() => setSelectedVideo(null)}
           updateUrlOnOpen={false}
           showAiAnalysis={false}
-          showLandingCTA={true}
         />
       )}
 

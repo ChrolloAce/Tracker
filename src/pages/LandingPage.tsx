@@ -289,7 +289,7 @@ const LandingPage: React.FC = () => {
   }, [charIdx, deleting, phraseIdx]);
 
   const onGetStarted = () => {
-    navigate('/login');
+    navigate('/create-organization');
   };
 
   const onWatchDemo = () => {

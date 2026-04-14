@@ -28,7 +28,7 @@ const LandingCTABanner: React.FC<LandingCTABannerProps> = ({
   if (variant === 'footer') {
     const h = headline || 'Want a dashboard like this?';
     const b = body || 'Track any TikTok, Instagram, YouTube, or X account. Get views, likes, and engagement metrics automatically.';
-    const cta = buttonLabel || 'Start Tracking Free';
+    const cta = buttonLabel || 'Start Tracking';
 
     return (
       <div className="bg-gradient-to-br from-orange-500/10 via-orange-500/5 to-transparent border border-orange-500/20 rounded-2xl p-8 md:p-12 text-center">
@@ -69,7 +69,7 @@ const LandingCTABanner: React.FC<LandingCTABannerProps> = ({
   // Default "full" variant: mid-page banner with emphasis
   const h = headline || 'Track your content with ViewTrack';
   const b = body || 'Monitor accounts, track videos, and measure growth across TikTok, Instagram, YouTube, and X, all in one dashboard.';
-  const cta = buttonLabel || 'Start Free';
+  const cta = buttonLabel || 'Get Started';
 
   return (
     <div className="relative overflow-hidden bg-content rounded-2xl p-8 md:p-10 border border-border">
