@@ -11,6 +11,7 @@ import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
 import { VideoDeleteModal } from './video-modal/VideoDeleteModal';
 import { VideoSidebar } from './video-modal/VideoSidebar';
 import { VideoSnapshotsHistory } from './video-modal/VideoSnapshotsHistory';
+import LandingCTABanner from './marketing/LandingCTABanner';
 import { formatNumber } from '../utils/formatters';
 import FirestoreDataService from '../services/FirestoreDataService';
 import FirebaseService from '../services/FirebaseService';
@@ -34,6 +35,12 @@ interface VideoAnalyticsModalProps {
    * keeps its current behaviour.
    */
   showAiAnalysis?: boolean;
+  /**
+   * When true, renders a subtle marketing CTA inside the modal linking
+   * to the landing page. Used by public share views (/a/:token, /c/:token)
+   * to convert viewers. Defaults to false.
+   */
+  showLandingCTA?: boolean;
 }
 
 interface ChartDataPoint {
@@ -48,7 +55,7 @@ interface ChartDataPoint {
   snapshotIndex: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true, showAiAnalysis = true }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true, showAiAnalysis = true, showLandingCTA = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Tooltip state for smooth custom tooltips
@@ -804,6 +811,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           <div className="space-y-4 min-w-0 overflow-hidden lg:overflow-y-auto lg:overflow-x-hidden lg:pr-2">
             {/* Historical Metrics Chart - Replace KPI Cards */}
             <VideoHistoricalMetricsChart data={chartData} cumulativeTotals={cumulativeTotals} />
+
+            {/* Subtle marketing CTA. Only shown on public share pages where a
+                viewer drilling into a single video's performance is peak intent. */}
+            {showLandingCTA && (
+              <LandingCTABanner
+                variant="compact"
+                headline="Track your own videos like this"
+                buttonLabel="Try ViewTrack"
+              />
+            )}
 
             {/* ── Gemini Video Analysis ─────────────────────────── */}
             {/* Hidden on the public share page (showAiAnalysis={false}) so

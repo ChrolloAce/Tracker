@@ -16,6 +16,8 @@ import { AccountsHeader } from './accounts/AccountsHeader';
 import { AddAccountModal } from './accounts/AddAccountModal';
 import { AttachCreatorModal } from './accounts/AttachCreatorModal';
 import { DeleteAccountModal } from './accounts/DeleteAccountModal';
+import AccountShareLinkModal from './AccountShareLinkModal';
+import SuperAdminService from '../services/SuperAdminService';
 import { ExportVideosModal } from './ExportVideosModal';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Toast } from './ui/Toast';
@@ -153,6 +155,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
+  const [shareLinkAccount, setShareLinkAccount] = useState<TrackedAccount | null>(null);
   const [showBulkAssignCreator, setShowBulkAssignCreator] = useState(false);
   const [singleAssignAccountId, setSingleAssignAccountId] = useState<string | null>(null);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -160,6 +163,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const actionsMenuRef = useRef<HTMLButtonElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Super admin detection — only super admins can mint public account share links
+  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
 
     // Pagination State
   const [accountsCurrentPage, setAccountsCurrentPage] = useState(1);
@@ -498,6 +504,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                     setSingleAssignAccountId(accountId);
                                     setShowBulkAssignCreator(true);
                                 }}
+                                onCreateShareLink={isSuperAdmin ? ((account) => setShareLinkAccount(account)) : undefined}
                             />
           <div className="mt-6">
             <Pagination
@@ -571,6 +578,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 onConfirm={confirmDeleteAccount}
                 account={accountToDelete}
             />
+
+            {/* SUPER-ADMIN-ONLY: public share link for a single tracked account */}
+            {shareLinkAccount && (
+                <AccountShareLinkModal
+                    isOpen={!!shareLinkAccount}
+                    onClose={() => setShareLinkAccount(null)}
+                    account={shareLinkAccount}
+                />
+            )}
 
       {showCreateLinkModal && selectedAccount && (
         <CreateLinkModal

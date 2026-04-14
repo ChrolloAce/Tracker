@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "syncQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "trackedAccounts",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
@@ -224,13 +232,6 @@
       "fields": [
         { "fieldPath": "folderId", "order": "ASCENDING" },
         { "fieldPath": "savedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "linkClicks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
     {

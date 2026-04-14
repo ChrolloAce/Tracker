@@ -51,6 +51,7 @@ const RevenuePage = lazy(() => import('./pages/RevenuePage'));
 const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
 const SharedFolderPage = lazy(() => import('./pages/SharedFolderPage'));
 const CreatorShareView = lazy(() => import('./pages/CreatorShareView'));
+const AccountShareView = lazy(() => import('./pages/AccountShareView'));
 
 // SEO Pages (lazy-loaded)
 const PricingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PricingPage })));
@@ -162,6 +163,9 @@ function App() {
 
         {/* Public creator share - per-creator dashboard, token-gated, no auth */}
         <Route path="/c/:token" element={<CreatorShareView />} />
+
+        {/* Public account share - per-account dashboard, super-admin-minted, token-gated */}
+        <Route path="/a/:token" element={<AccountShareView />} />
         
         {/* SEO Pages - Public */}
         <Route path="/pricing" element={<PricingPage />} />

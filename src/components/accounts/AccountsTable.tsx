@@ -45,6 +45,8 @@ interface AccountsTableProps {
   onImageError: (id: string) => void;
   /** Assign a single account to a creator (opens modal) */
   onAssignCreator?: (accountId: string) => void;
+  /** SUPER-ADMIN-ONLY: open the public share link modal for this account. */
+  onCreateShareLink?: (account: TrackedAccount) => void;
 }
 
 export const AccountsTable: React.FC<AccountsTableProps> = ({
@@ -69,7 +71,8 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   onToggleStale,
   onNavigate,
   onImageError,
-  onAssignCreator
+  onAssignCreator,
+  onCreateShareLink,
 }) => {
   const typeBadgeRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -701,6 +704,20 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                             onAssignCreator(account.id);
                           }}
                         />
+                      )}
+                      {onCreateShareLink && (
+                        <>
+                          <DropdownDivider />
+                          <DropdownItem
+                            icon={<ExternalLink className="w-4 h-4 text-cyan-400" />}
+                            label="Share Account Dashboard"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(null);
+                              onCreateShareLink(account);
+                            }}
+                          />
+                        </>
                       )}
                       <DropdownDivider />
                       <DropdownItem

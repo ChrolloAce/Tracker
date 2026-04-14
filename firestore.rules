@@ -724,6 +724,16 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ==================== ACCOUNT SHARE LINKS ====================
+    // Per-account, token-gated, single-account public dashboard links.
+    // Super-admin-minted (via /api/create-account-share). Same security
+    // pattern as creatorShareLinks — token IS the credential.
+    match /accountShareLinks/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
     // ==================== VIRAL CONTENT LIBRARY ====================
     
     // Curated viral content — any signed-in user can browse,
