@@ -1187,7 +1187,9 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     if (igMediaUrl) console.log(`🎙️ [INSTAGRAM] Media URL found: ${igMediaUrl.substring(0, 80)}...`);
 
     return {
-      id: rawData.id || rawData.code || '',
+      // Prefer shortcode (e.g. DXFnHzLgQux) over numeric id — downstream refresh
+      // paths match by shortcode, so storing the numeric id freezes the video.
+      id: rawData.code || rawData.shortCode || rawData.id || '',
       thumbnail_url: thumbnailUrl,
       caption: caption,
       username: username,
