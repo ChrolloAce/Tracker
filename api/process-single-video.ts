@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './_services/ErrorNotificationService.js';
 import { CleanupService } from './_services/CleanupService.js';
+import { notifyCreatorShareSubmission } from './_services/CreatorSubmissionEmailService.js';
 import { resolveTikTokUrl, isShortenedTikTokUrl, isFullTikTokUrl } from './_utils/resolve-tiktok-url.js';
 import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './_middleware/auth.js';
 import { checkVideoLimit } from './_utils/video-limits.js';
@@ -764,6 +765,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log(`✅ Successfully processed video: ${video.url}`);
+
+    // Email notification: only for videos submitted via creator share link
+    // portal. Signal: addedBy field starts with "creatorShare:" (set by
+    // submit-creator-share-video.ts). Fire-and-forget — non-blocking.
+    console.log(`[submission-email] Gate check — addedBy=${String(addedBy)}, assignedCreatorId=${assignedCreatorId || '(none)'}`);
+    if (typeof addedBy === 'string' && addedBy.startsWith('creatorShare:') && assignedCreatorId) {
+      console.log(`[submission-email] ✅ Gate passed — invoking notifyCreatorShareSubmission`);
+      notifyCreatorShareSubmission({
+        db,
+        orgId,
+        projectId,
+        creatorId: assignedCreatorId,
+        video: {
+          url: videoData.url || video.url,
+          platform: video.platform,
+          thumbnail: finalThumbnail || '',
+          title: videoData.caption?.split('\n')[0] || 'Untitled Video',
+          caption: videoData.caption || '',
+          uploaderHandle: videoData.username || '',
+          views: videoData.view_count || 0,
+        },
+      }).catch(err => console.warn('[submission-email] Notify call threw (non-blocking):', err?.message || err));
+    } else {
+      console.log(`[submission-email] ⏭️  Gate skipped — not a creator share submission`);
+    }
 
     // Auto-link account to creator if video was submitted by a creator
     if (accountId && (addedBy || video.addedBy) && (addedBy || video.addedBy) !== 'system') {
