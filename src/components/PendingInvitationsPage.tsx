@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { TeamInvitation } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
@@ -12,22 +14,29 @@ const PendingInvitationsPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    loadInvitations();
-  }, [currentOrgId]);
-
-  const loadInvitations = async () => {
     if (!currentOrgId) return;
 
-    setLoading(true);
-    try {
-      const invites = await TeamInvitationService.getOrgInvitations(currentOrgId);
-      setInvitations(invites.filter(inv => inv.role !== 'creator'));
-    } catch (error) {
-      console.error('Failed to load invitations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const invitesQuery = query(
+      collection(db, 'organizations', currentOrgId, 'invitations'),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      invitesQuery,
+      (snap) => {
+        const invites = snap.docs.map(d => d.data() as TeamInvitation);
+        setInvitations(invites.filter(inv => inv.role !== 'creator'));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Failed to subscribe to invitations:', error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentOrgId]);
 
   const handleCancel = async (invitation: TeamInvitation) => {
     if (!window.confirm(`Are you sure you want to cancel the invitation to ${invitation.email}?`)) {
@@ -39,7 +48,6 @@ const PendingInvitationsPage: React.FC = () => {
     setActionLoading(invitation.id);
     try {
       await TeamInvitationService.declineInvitation(invitation.id, currentOrgId);
-      await loadInvitations();
     } catch (error) {
       console.error('Failed to cancel invitation:', error);
       alert('Failed to cancel invitation');
@@ -65,7 +73,6 @@ const PendingInvitationsPage: React.FC = () => {
         invitation.organizationName || ''
       );
       alert(`Invitation resent to ${invitation.email}`);
-      await loadInvitations();
     } catch (error) {
       console.error('Failed to resend invitation:', error);
       alert('Failed to resend invitation');

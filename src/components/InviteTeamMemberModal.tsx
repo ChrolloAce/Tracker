@@ -64,7 +64,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         const activeMembersCount = activeMembersSnap.size;
         
         // Count pending invitations
-        const invitationsRef = collection(db, 'organizations', currentOrgId, 'teamInvitations');
+        const invitationsRef = collection(db, 'organizations', currentOrgId, 'invitations');
         const pendingInvitesQuery = query(invitationsRef, where('status', '==', 'pending'));
         const pendingInvitesSnap = await getDocs(pendingInvitesQuery);
         const pendingInvitesCount = pendingInvitesSnap.size;

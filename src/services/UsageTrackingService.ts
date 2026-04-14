@@ -208,7 +208,7 @@ class UsageTrackingService {
     const membersSnapshot = await getDocs(membersQuery);
     
     // Also count pending invitations
-    const invitationsRef = collection(db, 'organizations', orgId, 'teamInvitations');
+    const invitationsRef = collection(db, 'organizations', orgId, 'invitations');
     const invitationsQuery = query(invitationsRef, where('status', '==', 'pending'));
     const invitationsSnapshot = await getDocs(invitationsQuery);
     

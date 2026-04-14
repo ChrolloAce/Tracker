@@ -278,32 +278,38 @@ class TeamInvitationService {
       
       if (existingMemberDoc.exists()) {
         const memberData = existingMemberDoc.data();
-        console.log(`📋 Found existing member document with status: ${memberData.status}`);
-        
+        console.log(`📋 Found existing member document with status: ${memberData.status}, role: ${memberData.role}`);
+
         if (memberData.status === 'active') {
-          console.log(`⚠️ User is already an active member of this organization`);
-          // Mark invitation as accepted anyway
-          await updateDoc(inviteRef, { 
-            status: 'accepted',
-            acceptedAt: Timestamp.now()
-          });
-          
-          // Try to update the public lookup (don't fail if it doesn't exist)
-          try {
-            const lookupRef = doc(db, 'invitationsLookup', invitationId);
-            await updateDoc(lookupRef, {
-              status: 'accepted',
-              acceptedAt: Timestamp.now()
-            });
-            console.log(`✅ Public lookup updated (already member case)`);
-          } catch (err: any) {
-            console.warn(`⚠️ Could not update public lookup:`, err.message);
+          const roleChanged = memberData.role !== invite.role;
+          console.log(`⚠️ User is already an active member. Role change needed: ${roleChanged} (${memberData.role} → ${invite.role})`);
+
+          const batch = writeBatch(db);
+
+          // Delete the invitation (consistent with new-user accept path)
+          batch.delete(inviteRef);
+
+          // Upgrade role if the invite is for a different role
+          if (roleChanged) {
+            batch.update(existingMemberRef, { role: invite.role });
           }
-          
+
           // Set as default org
           const userRef = doc(db, 'users', userId);
-          await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
-          return; // Already a member, just return
+          batch.set(userRef, { defaultOrgId: orgId }, { merge: true });
+
+          await batch.commit();
+          console.log(`✅ Existing member accept: invite deleted${roleChanged ? `, role upgraded to ${invite.role}` : ''}`);
+
+          // Clean up lookup doc (non-critical)
+          try {
+            const lookupRef = doc(db, 'invitationsLookup', invitationId);
+            await deleteDoc(lookupRef);
+            console.log(`✅ Lookup doc deleted`);
+          } catch (err: any) {
+            console.warn(`⚠️ Could not delete public lookup:`, err.message);
+          }
+          return;
         } else {
           // Member exists but is not active (was removed/deleted)
           // We'll reactivate them by updating the document below

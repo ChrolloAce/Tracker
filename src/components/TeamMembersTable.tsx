@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Mail, Shield, Clock, MoreVertical, Trash2, Edit3, FolderOpen, Check } from 'lucide-react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
@@ -23,9 +25,20 @@ const TeamMembersTable: React.FC = () => {
   const [savingProjects, setSavingProjects] = useState(false);
 
   useEffect(() => {
-    loadMembers();
+    if (!currentOrgId || !user) return;
+
     loadProjects();
-  }, [currentOrgId]);
+
+    const membersQuery = query(
+      collection(db, 'organizations', currentOrgId, 'members'),
+      where('status', '==', 'active')
+    );
+    const unsubscribe = onSnapshot(membersQuery, () => {
+      loadMembers();
+    });
+
+    return () => unsubscribe();
+  }, [currentOrgId, user]);
 
   const loadMembers = async () => {
     if (!currentOrgId || !user) return;
