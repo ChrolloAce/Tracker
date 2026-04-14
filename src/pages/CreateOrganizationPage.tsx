@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { Camera, ArrowLeft } from 'lucide-react';
 import ViralContentService from '../services/ViralContentService';
+import OrganizationService from '../services/OrganizationService';
+import ProjectService from '../services/ProjectService';
+import { db } from '../services/firebase';
 
 const CreateOrganizationPage: React.FC = () => {
-  const { signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, switchOrganization } = useAuth();
   const [step, setStep] = useState(1);
   const [orgName, setOrgName] = useState('');
-  const [yourName, setYourName] = useState('');
+  const [yourName, setYourName] = useState(user?.displayName || '');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,11 +43,53 @@ const CreateOrganizationPage: React.FC = () => {
     setError('');
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!orgName.trim()) { setError('Give your workspace a name'); return; }
     if (!yourName.trim()) { setError('We need your name'); return; }
     setError('');
-    setStep(2);
+
+    if (user) {
+      await handleDirectCreate();
+    } else {
+      setStep(2);
+    }
+  };
+
+  const handleDirectCreate = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const newOrgId = await OrganizationService.createOrganization(user.uid, {
+        name: orgName.trim(),
+        email: user.email || undefined,
+        displayName: yourName.trim(),
+      });
+
+      const newProjectId = await ProjectService.createProject(newOrgId, user.uid, {
+        name: orgName.trim(),
+      });
+
+      if (logoPreview) {
+        try {
+          const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
+          const { storage } = await import('../services/firebase');
+          const logoRef = ref(storage, `users/${user.uid}/org-logos/${newOrgId}.jpg`);
+          await uploadString(logoRef, logoPreview, 'data_url');
+          const logoUrl = await getDownloadURL(logoRef);
+          await setDoc(doc(db, 'organizations', newOrgId), { logoUrl }, { merge: true });
+        } catch (logoErr) {
+          console.error('Logo upload failed (non-critical):', logoErr);
+        }
+      }
+
+      switchOrganization(newOrgId);
+      await ProjectService.setActiveProject(newOrgId, user.uid, newProjectId).catch(() => {});
+
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setError(err.message || 'Failed to create workspace');
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
@@ -130,15 +176,24 @@ const CreateOrganizationPage: React.FC = () => {
 
               <button
                 onClick={handleContinue}
-                className="group w-full py-3.5 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all text-sm flex items-center justify-center gap-2"
+                disabled={loading}
+                className="group w-full py-3.5 bg-orange-500 text-white rounded-lg font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Continue
-                <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {user ? 'Create Workspace' : 'Continue'}
+                    <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
 
-              <p className="text-center text-gray-400 text-xs mt-6">
-                Already have an account? <a href="/login" className="text-orange-500 hover:underline">Sign in</a>
-              </p>
+              {!user && (
+                <p className="text-center text-gray-400 text-xs mt-6">
+                  Already have an account? <a href="/login" className="text-orange-500 hover:underline">Sign in</a>
+                </p>
+              )}
             </>
           )}
 

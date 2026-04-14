@@ -356,12 +356,10 @@ function App() {
         element={
           loading ? (
             <LoadingSkeleton />
-          ) : currentOrgId ? (
-            <Navigate to="/dashboard" replace />
           ) : (
             <CreateOrganizationPage />
           )
-        } 
+        }
       />
 
       {/* Super Admin Page */}
