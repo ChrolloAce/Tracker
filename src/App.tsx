@@ -210,19 +210,23 @@ function App() {
         } 
       />
       
-      <Route 
-        path="/login" 
+      <Route
+        path="/login"
         element={
           loading ? (
             <LoadingSkeleton />
           ) : !user ? (
+            <LoginPage />
+          ) : new URLSearchParams(window.location.search).get('invite') ? (
+            // Keep LoginPage mounted while it processes an invite accept —
+            // otherwise the redirect fires before the auto-accept effect runs.
             <LoginPage />
           ) : currentOrgId && currentProjectId ? (
             <Navigate to="/dashboard" replace />
           ) : (
             <Navigate to="/onboarding" replace />
           )
-        } 
+        }
       />
       
       {/* Preparing workspace page - shown after login while checking org status */}

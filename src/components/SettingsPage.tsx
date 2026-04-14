@@ -1084,7 +1084,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                       <div>
                         <p className="text-sm text-content-muted">Your Role</p>
                         <p className="font-medium text-content mt-1 capitalize">
-                          {isOwner ? 'Owner' : 'Member'}
+                          {userRole || '—'}
                         </p>
                       </div>
                     </div>
