@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronDown, Check, Plus, X, Loader2, AlertCircle, UserCircle2 } from 'lucide-react';
+import { ChevronDown, Check, Plus, X, Loader2, AlertCircle, UserCircle2, RefreshCw } from 'lucide-react';
 import KPICards from '../components/KPICards';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
@@ -110,6 +110,9 @@ function ChartSkeleton() {
 }
 
 // ─── Submit Video Modal (public, token-auth) ────────────────────────────────
+// Mirrors the paying-user AddVideoModal UX: bulk paste, chip display, multi-platform.
+// Creator-selector and freeze-stats options are omitted intentionally — the share
+// token identifies the creator, and creator-submitted videos must stay auto-refreshing.
 
 interface SubmitVideoModalProps {
   token: string;
@@ -118,129 +121,306 @@ interface SubmitVideoModalProps {
   onSuccess: (url: string, platform: string | null) => void;
 }
 
+interface ParsedVideo {
+  url: string;
+  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null;
+}
+
+function parseUrlsFromText(text: string): ParsedVideo[] {
+  if (!text.trim()) return [];
+  const lines = text.split(/[\n,]+/).map(l => l.trim()).filter(Boolean);
+  const videos: ParsedVideo[] = [];
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const urlMatch = line.match(/https?:\/\/[^\s]+/);
+    const url = urlMatch ? urlMatch[0] : line;
+    if (!url || seen.has(url.toLowerCase())) continue;
+    seen.add(url.toLowerCase());
+    videos.push({ url, platform: UrlParserService.parseUrl(url).platform });
+  }
+  return videos;
+}
+
 function SubmitVideoModal({ token, isOpen, onClose, onSuccess }: SubmitVideoModalProps) {
-  const [url, setUrl] = useState('');
+  const [videos, setVideos] = useState<ParsedVideo[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [successCount, setSuccessCount] = useState(0);
+  const [failures, setFailures] = useState<{ url: string; error: string }[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setUrl('');
-      setError(null);
-      setSuccess(false);
+      setVideos([]);
+      setInputValue('');
+      setUrlError(null);
+      setSuccessCount(0);
+      setFailures([]);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
-  const platform = useMemo(() => {
-    if (!url.trim()) return null;
-    return UrlParserService.parseUrl(url.trim()).platform;
-  }, [url]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = url.trim();
-    if (!trimmed) {
-      setError('Please paste a video URL');
-      return;
+  const processInput = useCallback((text: string) => {
+    setUrlError(null);
+    const hasNewlines = text.includes('\n');
+    if (hasNewlines) {
+      const newVideos = parseUrlsFromText(text);
+      if (newVideos.length > 0) {
+        setVideos(prev => {
+          const existing = new Set(prev.map(v => v.url.toLowerCase()));
+          const unique = newVideos.filter(v => !existing.has(v.url.toLowerCase()));
+          return [...prev, ...unique];
+        });
+        setInputValue('');
+      } else {
+        setInputValue(text);
+      }
+    } else {
+      setInputValue(text);
     }
-    if (!platform) {
-      setError("That doesn't look like a TikTok, Instagram, YouTube, or X link");
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const trimmed = inputValue.trim();
+      if (!trimmed) return;
+      const parsed = parseUrlsFromText(trimmed);
+      if (parsed.length > 0) {
+        setVideos(prev => {
+          const existing = new Set(prev.map(v => v.url.toLowerCase()));
+          const unique = parsed.filter(v => !existing.has(v.url.toLowerCase()));
+          return [...prev, ...unique];
+        });
+        setInputValue('');
+      }
+    }
+  }, [inputValue]);
+
+  const removeVideo = useCallback((urlToRemove: string) => {
+    setVideos(prev => prev.filter(v => v.url !== urlToRemove));
+  }, []);
+
+  const validVideos = useMemo(() => videos.filter(v => v.platform !== null), [videos]);
+  const invalidVideos = useMemo(() => videos.filter(v => v.platform === null), [videos]);
+  const platformCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const v of validVideos) {
+      if (v.platform) counts[v.platform] = (counts[v.platform] || 0) + 1;
+    }
+    return counts;
+  }, [validVideos]);
+
+  const handleSubmit = async () => {
+    // Flush any remaining text in the input into chips first.
+    let allVideos = [...videos];
+    if (inputValue.trim()) {
+      const remaining = parseUrlsFromText(inputValue.trim());
+      const existing = new Set(allVideos.map(v => v.url.toLowerCase()));
+      const unique = remaining.filter(v => !existing.has(v.url.toLowerCase()));
+      allVideos = [...allVideos, ...unique];
+    }
+    const toSubmit = allVideos.filter(v => v.platform !== null);
+    if (toSubmit.length === 0) {
+      setUrlError('Please paste at least one valid video URL');
       return;
     }
 
     setSubmitting(true);
-    setError(null);
-    try {
-      await CreatorShareLinkService.submitVideo(token, trimmed);
-      setSuccess(true);
-      // Pass URL + platform so the parent can inject a shimmer placeholder immediately
-      onSuccess(trimmed, platform);
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit video');
-    } finally {
-      setSubmitting(false);
+    setUrlError(null);
+    setFailures([]);
+    setSuccessCount(0);
+
+    // Submit sequentially so we respect per-token rate limits and surface per-URL errors.
+    const errs: { url: string; error: string }[] = [];
+    let ok = 0;
+    for (const v of toSubmit) {
+      try {
+        await CreatorShareLinkService.submitVideo(token, v.url);
+        onSuccess(v.url, v.platform);
+        ok += 1;
+        setSuccessCount(ok);
+      } catch (err: any) {
+        errs.push({ url: v.url, error: err.message || 'Failed to submit' });
+        setFailures([...errs]);
+      }
+    }
+
+    setSubmitting(false);
+
+    if (errs.length === 0) {
+      setTimeout(() => onClose(), 1500);
     }
   };
 
   if (!isOpen) return null;
 
+  const totalCount = validVideos.length;
+  const isDone = !submitting && successCount > 0 && failures.length === 0;
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-surface-secondary rounded-2xl border border-border w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
-          <h2 className="text-lg font-semibold text-content">Submit a Video</h2>
-          <button onClick={onClose} className="p-2 text-content-muted hover:text-content hover:bg-surface-hover rounded-lg transition-colors">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-secondary rounded-[14px] w-full max-w-[620px] shadow-2xl" style={{ padding: '24px' }}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-lg font-bold text-content mb-1">Submit Videos</h2>
+            <p className="text-sm text-content-secondary">
+              Paste video URLs — one per line or a block of links.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-content-secondary hover:text-content transition-colors p-1"
+          >
+            <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {success ? (
-            <div className="flex flex-col items-center py-6">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-3">
-                <Check className="w-7 h-7 text-emerald-400" />
-              </div>
-              <h3 className="text-base font-semibold text-content mb-1">Submitted</h3>
-              <p className="text-sm text-content-muted text-center">Your video is queued for processing. It will appear here shortly.</p>
+        {isDone ? (
+          <div className="flex flex-col items-center py-8">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-3">
+              <Check className="w-7 h-7 text-emerald-400" />
             </div>
-          ) : (
-            <>
-              <div>
-                <label className="block text-sm font-semibold text-content mb-2">Video URL</label>
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://www.tiktok.com/@you/video/123..."
-                  className="w-full px-4 py-3 bg-surface-secondary border border-border rounded-xl text-content placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-border-strong transition-colors"
-                  autoFocus
-                />
-                {platform && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-content-muted">
-                    <PlatformIcon platform={platform} size="sm" />
-                    <span>Detected: <span className="capitalize text-content">{platform === 'twitter' ? 'X' : platform}</span></span>
+            <h3 className="text-base font-semibold text-content mb-1">
+              {successCount === 1 ? 'Video submitted' : `${successCount} videos submitted`}
+            </h3>
+            <p className="text-sm text-content-muted text-center">
+              Queued for processing. They will appear here shortly.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Combined input field with inline icons */}
+            <div
+              ref={containerRef}
+              onClick={() => inputRef.current?.focus()}
+              className="bg-surface-tertiary border border-border rounded-xl overflow-hidden cursor-text mb-4 focus-within:ring-1 focus-within:ring-border-strong focus-within:border-border-strong transition-all"
+            >
+              <div className="max-h-[280px] overflow-y-auto p-1">
+                {videos.map((video) => (
+                  <div
+                    key={video.url}
+                    className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg mx-0.5 my-0.5 transition-colors ${
+                      video.platform ? 'hover:bg-surface-hover' : 'bg-red-500/5'
+                    }`}
+                  >
+                    <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                      {video.platform ? (
+                        <PlatformIcon platform={video.platform} size="sm" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                      )}
+                    </div>
+                    <span className={`flex-1 truncate text-[13px] font-mono ${
+                      video.platform ? 'text-content-secondary' : 'text-red-300'
+                    }`}>
+                      {video.url}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeVideo(video.url); }}
+                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-surface-active transition-all"
+                    >
+                      <X className="w-3 h-3 text-content-muted hover:text-content-secondary" />
+                    </button>
                   </div>
+                ))}
+
+                <textarea
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => processInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={videos.length === 0
+                    ? "Paste video URLs here — one per line...\n\nhttps://www.tiktok.com/t/example/\nhttps://www.instagram.com/reel/example/\nhttps://youtube.com/shorts/example"
+                    : "Paste more URLs..."
+                  }
+                  rows={videos.length === 0 ? 6 : 2}
+                  disabled={submitting}
+                  className="w-full px-3 py-2 bg-transparent text-content placeholder-gray-600 focus:outline-none text-[13px] font-mono leading-relaxed resize-none disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            {/* Summary bar */}
+            {videos.length > 0 && (
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-content-muted">
+                    {totalCount} video{totalCount !== 1 ? 's' : ''} detected
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {Object.entries(platformCounts).map(([platform, count]) => (
+                      <div key={platform} className="flex items-center gap-1 px-2 py-0.5 bg-surface-hover rounded-full">
+                        <PlatformIcon platform={platform as any} size="sm" />
+                        <span className="text-[11px] text-content-secondary font-medium">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {invalidVideos.length > 0 && (
+                  <span className="text-[11px] text-red-400">
+                    {invalidVideos.length} invalid
+                  </span>
                 )}
               </div>
+            )}
 
-              {error && (
-                <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-xs text-red-300">{error}</span>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={submitting}
-                  className="flex-1 px-4 py-3 bg-surface-secondary text-content border border-border rounded-lg font-semibold hover:bg-surface-hover transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || !url.trim()}
-                  className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Submitting
-                    </>
-                  ) : (
-                    'Submit'
-                  )}
-                </button>
+            {urlError && (
+              <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-400" />
+                <span className="text-xs text-red-300">{urlError}</span>
               </div>
-            </>
-          )}
-        </form>
+            )}
+
+            {/* Per-URL submission failures */}
+            {failures.length > 0 && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-xs font-medium text-red-300">
+                    {successCount > 0
+                      ? `${successCount} submitted, ${failures.length} failed`
+                      : `${failures.length} failed to submit`}
+                  </span>
+                </div>
+                <ul className="space-y-1">
+                  {failures.map((f, i) => (
+                    <li key={i} className="text-[11px] text-red-300/90 font-mono truncate">
+                      {f.url}: {f.error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              <div className="flex items-center gap-2 text-content-muted text-xs">
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Processing takes up to 5 minutes.</span>
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || (validVideos.length === 0 && !inputValue.trim())}
+                className="px-5 py-2 text-sm font-bold text-white bg-orange-500 rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 flex items-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting {successCount + 1}/{totalCount}
+                  </>
+                ) : totalCount > 0 ? (
+                  `Submit ${totalCount} Video${totalCount !== 1 ? 's' : ''}`
+                ) : (
+                  'Submit Videos'
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
