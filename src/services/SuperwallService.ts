@@ -69,6 +69,7 @@ const METRIC_AXIS_MAP: Record<string, { xAxis: string; dimension: string }> = {
   paidConversionRate:      { xAxis: 'installDate',   dimension: 'installDate' },
   transactionCompletes:    { xAxis: 'purchaseDate',  dimension: 'purchaseDate' },
   arpu:                    { xAxis: 'installDate',    dimension: 'installDate' },
+  newUsers:                { xAxis: 'installDate',    dimension: 'installDate' },
 };
 
 class SuperwallService {

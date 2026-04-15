@@ -34,6 +34,7 @@ const METRIC_TO_RC_CHART: Record<string, { chartName: string; measure: number }>
   paidConversionRate:      { chartName: 'conversion_to_paying',  measure: 0 },
   transactionCompletes:    { chartName: 'conversion_to_paying',  measure: 0 },
   arpu:                    { chartName: 'ltv_per_customer',      measure: 0 },
+  newUsers:                { chartName: 'customers_new',         measure: 0 },
 };
 
 class RevenueCatService {

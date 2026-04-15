@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, DollarSign, Users, Repeat, AlertCircle, Settings } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, Repeat, AlertCircle, Settings, ChevronDown, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
+import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { useAuth } from '../contexts/AuthContext';
 import SuperwallService, {
   SUPERWALL_METRICS,
@@ -43,6 +44,9 @@ interface VideoDelta {
   handle: string;
   thumbnail: string;
   views: number;
+  platform?: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
+  uploaderName?: string;
+  uploaderProfilePic?: string;
 }
 
 interface MergedDataPoint {
@@ -53,14 +57,16 @@ interface MergedDataPoint {
   trialConverted: number;
   trialCancelled: number;
   trialBilling: number;
+  downloads: number;
   videoBreakdown: VideoDelta[];
 }
 
-type OverlayKey = 'views' | 'metric' | 'trialStarts' | 'trialConverted' | 'trialCancelled' | 'trialBilling';
+type OverlayKey = 'views' | 'metric' | 'trialStarts' | 'trialConverted' | 'trialCancelled' | 'trialBilling' | 'downloads';
 
 const OVERLAY_SERIES: { key: OverlayKey; label: string; color: string; axis: 'left' | 'right' | 'trials' }[] = [
   { key: 'metric',          label: 'Revenue',         color: '#3b82f6', axis: 'left' },
   { key: 'views',           label: 'Views',           color: '#10b981', axis: 'right' },
+  { key: 'downloads',       label: 'Downloads',       color: '#06b6d4', axis: 'trials' },
   { key: 'trialStarts',     label: 'Trial Starts',    color: '#8b5cf6', axis: 'trials' },
   { key: 'trialConverted',  label: 'Converted',       color: '#22c55e', axis: 'trials' },
   { key: 'trialCancelled',  label: 'Cancelled',       color: '#ef4444', axis: 'trials' },
@@ -122,7 +128,32 @@ export default function RevenuePage() {
   const [superwallData, setSuperwallData] = useState<SuperwallDataPoint[]>([]);
   const [viewsByDate, setViewsByDate] = useState<Map<string, number>>(new Map());
   const [videosByDate, setVideosByDate] = useState<Map<string, VideoDelta[]>>(new Map());
+  const [downloadsByDate, setDownloadsByDate] = useState<Map<string, number>>(new Map());
   const [trialCohorts, setTrialCohorts] = useState<TrialCohortRow[]>([]);
+  const [selectedCreators, setSelectedCreators] = useState<Set<string>>(new Set());
+  const [creatorDropdownOpen, setCreatorDropdownOpen] = useState(false);
+
+  const toggleCreator = useCallback((handle: string) => {
+    setSelectedCreators(prev => {
+      const next = new Set(prev);
+      if (next.has(handle)) next.delete(handle);
+      else next.add(handle);
+      return next;
+    });
+  }, []);
+  const creatorDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close creator dropdown when clicking outside
+  useEffect(() => {
+    if (!creatorDropdownOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (creatorDropdownRef.current && !creatorDropdownRef.current.contains(e.target as Node)) {
+        setCreatorDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [creatorDropdownOpen]);
   const [loadingTrials, setLoadingTrials] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -261,7 +292,7 @@ export default function RevenuePage() {
         const videosSnap = await getDocs(query(videosRef));
 
         // For each video, fetch its snapshots subcollection + store metadata
-        const videoMeta = new Map<string, { title: string; handle: string; thumbnail: string }>();
+        const videoMeta = new Map<string, { title: string; handle: string; thumbnail: string; platform?: any; uploaderName?: string; uploaderProfilePic?: string }>();
         const snapshotsByVideo = new Map<string, any[]>();
 
         const fetchPromises = videosSnap.docs.map(async (videoDoc) => {
@@ -270,6 +301,9 @@ export default function RevenuePage() {
             title: vData.videoTitle || vData.caption || vData.title || 'Untitled',
             handle: vData.uploaderHandle || vData.uploader || '',
             thumbnail: vData.thumbnail || '',
+            platform: vData.platform,
+            uploaderName: vData.uploader || vData.uploaderHandle,
+            uploaderProfilePic: vData.uploaderProfilePicture,
           });
 
           const snapsRef = collection(
@@ -284,8 +318,7 @@ export default function RevenuePage() {
         });
         await Promise.all(fetchPromises);
 
-        // Compute deltas — both aggregate and per-video
-        const viewsMap = new Map<string, number>();
+        // Compute deltas — store per-video breakdown only (totals derived later for creator filtering)
         const videosMap = new Map<string, VideoDelta[]>();
 
         snapshotsByVideo.forEach((snapshots, videoId) => {
@@ -305,9 +338,8 @@ export default function RevenuePage() {
             if (!currDate) continue;
 
             const dateKey = currDate.toISOString().split('T')[0];
-            viewsMap.set(dateKey, (viewsMap.get(dateKey) || 0) + delta);
 
-            // Track per-video breakdown
+            // Track per-video breakdown — combine same video on same day
             const existing = videosMap.get(dateKey) || [];
             const videoEntry = existing.find(v => v.title === meta.title && v.handle === meta.handle);
             if (videoEntry) {
@@ -319,8 +351,14 @@ export default function RevenuePage() {
           }
         });
 
-        setViewsByDate(viewsMap);
         setVideosByDate(videosMap);
+
+        // Derive aggregate viewsMap from videosMap (will be re-derived per creator filter)
+        const viewsMap = new Map<string, number>();
+        videosMap.forEach((vids, date) => {
+          viewsMap.set(date, vids.reduce((s, v) => s + v.views, 0));
+        });
+        setViewsByDate(viewsMap);
       } catch (err) {
         console.error('Failed to load views data:', err);
       }
@@ -450,6 +488,109 @@ export default function RevenuePage() {
     return () => { cancelled = true; };
   }, [currentOrgId, provider, superwallAppId, timeRange]);
 
+  // ─── Fetch downloads data (newUsers / customers_new) ──────────────
+  useEffect(() => {
+    if (!currentOrgId || !provider) return;
+    if (provider === 'superwall' && !superwallAppId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        if (provider === 'superwall') {
+          const presetMap: Record<string, string> = {
+            '7d': 'last_7_days', '30d': 'last_30_days', '90d': 'last_90_days',
+            '180d': 'last_180_days', '1y': 'last_365_days',
+          };
+          const dateFilterObj: any = { dimension: 'installDate' };
+          if (timeRange === '2y') {
+            const now = new Date();
+            const twoYearsAgo = new Date(now);
+            twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+            dateFilterObj.preset = 'custom';
+            dateFilterObj.range = {
+              from: twoYearsAgo.toISOString().split('.')[0],
+              to: now.toISOString().split('.')[0],
+            };
+          } else {
+            dateFilterObj.preset = presetMap[timeRange] || 'last_30_days';
+          }
+
+          const res = await SuperwallService.fetchChartData({
+            orgId: currentOrgId,
+            applicationId: superwallAppId!,
+            yAxis: 'newUsers',
+            xAxis: 'installDate',
+            dateFilter: dateFilterObj,
+            dateInterval: granularity,
+          });
+
+          if (cancelled) return;
+          const m = new Map<string, number>();
+          for (const p of res.data || []) {
+            const dateKey = p.x?.split('T')[0] || p.x;
+            const keys = Object.keys(p.values || {});
+            const entry = keys.length > 0 ? p.values[keys[0]] : undefined;
+            const val = entry && typeof entry === 'object' && 'y' in entry ? (entry as any).y : 0;
+            m.set(dateKey, val);
+          }
+          setDownloadsByDate(m);
+        } else {
+          const resolution = RevenueCatService.getResolution(granularity);
+          const { startDate, endDate } = RevenueCatService.getTimeRange(timeRange);
+          const points = await RevenueCatService.fetchMetricData(
+            currentOrgId, 'newUsers', resolution, startDate, endDate
+          );
+          if (cancelled) return;
+          const m = new Map<string, number>();
+          for (const p of points) m.set(p.x, p.value);
+          setDownloadsByDate(m);
+        }
+      } catch (err) {
+        console.error('Failed to load downloads data:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [currentOrgId, provider, superwallAppId, timeRange, granularity]);
+
+  // List of unique creators with platform/name/pic from all video snapshots
+  const creatorList = useMemo(() => {
+    const map = new Map<string, { handle: string; platform?: string; name?: string; profilePic?: string }>();
+    videosByDate.forEach(vids => vids.forEach(v => {
+      if (!v.handle || map.has(v.handle)) return;
+      map.set(v.handle, {
+        handle: v.handle,
+        platform: v.platform,
+        name: v.uploaderName || v.handle,
+        profilePic: v.uploaderProfilePic,
+      });
+    }));
+    return [...map.values()].sort((a, b) => a.handle.localeCompare(b.handle));
+  }, [videosByDate]);
+
+  // Filter views/videos by selected creators (empty set = all)
+  const filteredViewsByDate = useMemo(() => {
+    if (selectedCreators.size === 0) return viewsByDate;
+    const m = new Map<string, number>();
+    videosByDate.forEach((vids, date) => {
+      const filtered = vids.filter(v => selectedCreators.has(v.handle));
+      if (filtered.length > 0) {
+        m.set(date, filtered.reduce((s, v) => s + v.views, 0));
+      }
+    });
+    return m;
+  }, [viewsByDate, videosByDate, selectedCreators]);
+
+  const filteredVideosByDate = useMemo(() => {
+    if (selectedCreators.size === 0) return videosByDate;
+    const m = new Map<string, VideoDelta[]>();
+    videosByDate.forEach((vids, date) => {
+      const filtered = vids.filter(v => selectedCreators.has(v.handle));
+      if (filtered.length > 0) m.set(date, filtered);
+    });
+    return m;
+  }, [videosByDate, selectedCreators]);
+
   // Build a quick trial cohort lookup by date
   const trialByDate = useMemo(() => {
     const m = new Map<string, TrialCohortRow>();
@@ -486,36 +627,31 @@ export default function RevenuePage() {
         }
       }
 
-      // Sum view deltas + collect video breakdowns that fall within this bucket
+      // Sum view deltas + collect video breakdowns (filtered by creator) within this bucket
       let views = 0;
       const breakdown: VideoDelta[] = [];
 
       if (granularity === 'day') {
-        views = viewsByDate.get(dateKey) || 0;
-        const vids = videosByDate.get(dateKey);
+        views = filteredViewsByDate.get(dateKey) || 0;
+        const vids = filteredVideosByDate.get(dateKey);
         if (vids) breakdown.push(...vids);
       } else {
-        viewsByDate.forEach((delta, vDateKey) => {
+        filteredViewsByDate.forEach((delta, vDateKey) => {
           const vTime = new Date(vDateKey + 'T00:00:00').getTime();
           if (vTime >= bucketStart && vTime < bucketEnd) {
             views += delta;
-            const vids = videosByDate.get(vDateKey);
+            const vids = filteredVideosByDate.get(vDateKey);
             if (vids) {
-              // Merge into breakdown, combining duplicates
               for (const v of vids) {
                 const existing = breakdown.find(b => b.title === v.title && b.handle === v.handle);
-                if (existing) {
-                  existing.views += v.views;
-                } else {
-                  breakdown.push({ ...v });
-                }
+                if (existing) existing.views += v.views;
+                else breakdown.push({ ...v });
               }
             }
           }
         });
       }
 
-      // Sort by views descending
       breakdown.sort((a, b) => b.views - a.views);
 
       // Sum trial cohort data for this bucket
@@ -533,9 +669,20 @@ export default function RevenuePage() {
         });
       }
 
-      return { date: dateKey, views, metric: metricValue, trialStarts, trialConverted, trialCancelled, trialBilling, videoBreakdown: breakdown };
+      // Sum downloads for this bucket
+      let downloads = 0;
+      if (granularity === 'day') {
+        downloads = downloadsByDate.get(dateKey) || 0;
+      } else {
+        downloadsByDate.forEach((val, dDate) => {
+          const dTime = new Date(dDate + 'T00:00:00').getTime();
+          if (dTime >= bucketStart && dTime < bucketEnd) downloads += val;
+        });
+      }
+
+      return { date: dateKey, views, metric: metricValue, trialStarts, trialConverted, trialCancelled, trialBilling, downloads, videoBreakdown: breakdown };
     });
-  }, [superwallData, viewsByDate, videosByDate, trialByDate]);
+  }, [superwallData, filteredViewsByDate, filteredVideosByDate, trialByDate, downloadsByDate, granularity]);
 
   // ─── KPI summaries ───────────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -562,6 +709,7 @@ export default function RevenuePage() {
   const seriesLabelMap: Record<string, string> = {
     metric: activeMetricDef.label,
     views: 'Views',
+    downloads: 'Downloads',
     trialStarts: 'Trial Starts',
     trialConverted: 'Converted',
     trialCancelled: 'Cancelled',
@@ -796,21 +944,145 @@ export default function RevenuePage() {
                     })}
                   </div>
 
-                  {/* Granularity selector */}
-                  <div className="flex items-center bg-surface-tertiary rounded-lg border border-border-subtle p-0.5">
-                    {([['day', 'D'], ['week', 'W'], ['month', 'M'], ['year', 'Y']] as [Granularity, string][]).map(([g, label]) => (
-                      <button
-                        key={g}
-                        onClick={() => setGranularity(g)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
-                          granularity === g
-                            ? 'bg-surface-active text-content shadow-sm'
-                            : 'text-content-muted hover:text-content-secondary'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    {/* Creator filter — multi-select with profile pic, platform, name */}
+                    {creatorList.length > 0 && (
+                      <div className="relative" ref={creatorDropdownRef}>
+                        <button
+                          onClick={() => setCreatorDropdownOpen(o => !o)}
+                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-tertiary border border-border-subtle text-content hover:border-border-strong transition-colors min-w-[200px] max-w-[280px]"
+                        >
+                          {(() => {
+                            const count = selectedCreators.size;
+                            if (count === 0) {
+                              return (
+                                <>
+                                  <Users className="w-3.5 h-3.5 text-content-muted flex-shrink-0" />
+                                  <span className="flex-1 text-left truncate">All creators ({creatorList.length})</span>
+                                </>
+                              );
+                            }
+                            if (count === 1) {
+                              const handle = [...selectedCreators][0];
+                              const sel = creatorList.find(c => c.handle === handle);
+                              return (
+                                <>
+                                  {sel?.profilePic ? (
+                                    <img src={sel.profilePic} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                                  ) : (
+                                    <div className="w-5 h-5 rounded-full bg-surface-hover flex-shrink-0" />
+                                  )}
+                                  <span className="flex-1 text-left truncate">@{(sel?.handle || handle).replace('@', '')}</span>
+                                  {sel?.platform && (
+                                    <PlatformIcon platform={sel.platform as any} size="xs" className="flex-shrink-0" />
+                                  )}
+                                </>
+                              );
+                            }
+                            // Multiple selected — show stacked avatars + count
+                            const selected = [...selectedCreators].slice(0, 3).map(h => creatorList.find(c => c.handle === h)).filter(Boolean);
+                            return (
+                              <>
+                                <div className="flex -space-x-1.5 flex-shrink-0">
+                                  {selected.map((c, i) => (
+                                    c?.profilePic ? (
+                                      <img key={i} src={c.profilePic} alt="" className="w-5 h-5 rounded-full object-cover ring-1 ring-surface-tertiary" />
+                                    ) : (
+                                      <div key={i} className="w-5 h-5 rounded-full bg-surface-hover ring-1 ring-surface-tertiary" />
+                                    )
+                                  ))}
+                                </div>
+                                <span className="flex-1 text-left truncate">{count} creators selected</span>
+                              </>
+                            );
+                          })()}
+                          <ChevronDown className={`w-3.5 h-3.5 text-content-muted flex-shrink-0 transition-transform ${creatorDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {creatorDropdownOpen && (
+                          <div className="absolute right-0 top-full mt-1.5 w-72 max-h-96 rounded-xl bg-surface-secondary border border-border shadow-2xl z-50 flex flex-col">
+                            {/* Header with clear */}
+                            <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
+                              <span className="text-[10px] font-semibold text-content-muted uppercase tracking-wider">
+                                {selectedCreators.size > 0 ? `${selectedCreators.size} selected` : `${creatorList.length} creators`}
+                              </span>
+                              {selectedCreators.size > 0 && (
+                                <button
+                                  onClick={() => setSelectedCreators(new Set())}
+                                  className="text-[10px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  Clear all
+                                </button>
+                              )}
+                            </div>
+
+                            {/* List */}
+                            <div className="overflow-y-auto flex-1">
+                              {creatorList.map(c => {
+                                const isSelected = selectedCreators.has(c.handle);
+                                return (
+                                  <button
+                                    key={c.handle}
+                                    onClick={() => toggleCreator(c.handle)}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover ${
+                                      isSelected ? 'bg-surface-active' : ''
+                                    }`}
+                                  >
+                                    {/* Checkbox */}
+                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                      isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-border-strong'
+                                    }`}>
+                                      {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                                    </div>
+
+                                    {/* Avatar */}
+                                    {c.profilePic ? (
+                                      <img src={c.profilePic} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded-full bg-surface-tertiary flex items-center justify-center flex-shrink-0">
+                                        <span className="text-xs text-content-muted font-semibold">
+                                          {c.handle.charAt(0).toUpperCase()}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* Name + handle */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-content truncate">@{c.handle.replace('@', '')}</p>
+                                      {c.name && c.name !== c.handle && (
+                                        <p className="text-[10px] text-content-muted truncate">{c.name}</p>
+                                      )}
+                                    </div>
+
+                                    {/* Platform */}
+                                    {c.platform && (
+                                      <PlatformIcon platform={c.platform as any} size="sm" className="flex-shrink-0" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Granularity selector */}
+                    <div className="flex items-center bg-surface-tertiary rounded-lg border border-border-subtle p-0.5">
+                      {([['day', 'D'], ['week', 'W'], ['month', 'M'], ['year', 'Y']] as [Granularity, string][]).map(([g, label]) => (
+                        <button
+                          key={g}
+                          onClick={() => setGranularity(g)}
+                          className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                            granularity === g
+                              ? 'bg-surface-active text-content shadow-sm'
+                              : 'text-content-muted hover:text-content-secondary'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
