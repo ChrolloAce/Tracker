@@ -3,6 +3,7 @@ import {
   Key,
   Copy,
   Check,
+  Plus,
   Trash2,
   Shield,
   AlertTriangle,
@@ -19,6 +20,7 @@ import type { ApiKeyResponse, ApiKeyCreateResponse, ApiKeyScope } from '../types
 const ALL_SCOPES: { value: ApiKeyScope; label: string; group: string }[] = [
   { value: 'videos:read', label: 'Read Videos', group: 'Videos' },
   { value: 'videos:write', label: 'Write Videos', group: 'Videos' },
+  { value: 'videos:analyze', label: 'Analyze Videos (AI)', group: 'Videos' },
   { value: 'accounts:read', label: 'Read Accounts', group: 'Accounts' },
   { value: 'accounts:write', label: 'Write Accounts', group: 'Accounts' },
   { value: 'analytics:read', label: 'Read Analytics', group: 'Analytics' },
@@ -100,6 +102,23 @@ const ApiManagementPage: React.FC<{ onRequiresPaidPlan?: (context: string) => bo
         {error && (
           <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {error}
+          </div>
+        )}
+
+        {/* Persistent action header — visible whether there are 0 keys or many.
+            Restored after commit 09e63313 dropped it into the empty-state only. */}
+        {!loading && keys.length > 0 && (
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => {
+                if (onRequiresPaidPlan?.('to bring your self-learning agent to life')) return;
+                setShowCreate(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Generate Key
+            </button>
           </div>
         )}
 

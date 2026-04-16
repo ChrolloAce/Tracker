@@ -43,6 +43,10 @@
       "maxDuration": 180,
       "includeFiles": "api/_bin/**"
     },
+    "api/v1-analyze-video.ts": {
+      "maxDuration": 180,
+      "includeFiles": "api/_bin/**"
+    },
     "api/cron-orchestrator.ts": {
       "maxDuration": 60
     },

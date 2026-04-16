@@ -153,7 +153,7 @@ async function createApiKey(
 
   const validScopes = [
     'accounts:read', 'accounts:write',
-    'videos:read', 'videos:write',
+    'videos:read', 'videos:write', 'videos:analyze',
     'analytics:read',
     'projects:read', 'projects:write',
     'organizations:read',

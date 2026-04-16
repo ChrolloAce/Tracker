@@ -39,6 +39,7 @@ export type ApiKeyScope =
   | 'accounts:write'
   | 'videos:read'
   | 'videos:write'
+  | 'videos:analyze'
   | 'analytics:read'
   | 'projects:read'
   | 'projects:write'
