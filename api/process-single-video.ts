@@ -791,9 +791,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`[submission-email] ⏭️  Gate skipped — not a creator share submission`);
     }
 
-    // Auto-link account to creator if video was submitted by a creator
-    if (accountId && (addedBy || video.addedBy) && (addedBy || video.addedBy) !== 'system') {
-      const creatorId = addedBy || video.addedBy;
+    // Auto-link account to creator if video was submitted by a creator.
+    //
+    // HISTORICAL BUG: this block used `addedBy || video.addedBy` as the
+    // creatorId. For share-link submissions `addedBy` is `"creatorShare:<token>"`
+    // (an audit string, not a UID), and for cron-initiated refreshes it's
+    // `"cron:creator-video-refresh"`. Those garbage values got written into
+    // `creatorLinks.creatorId`, so the dedup query in cron-refresh-creator-videos
+    // (which filters by the real creator UID from creatorShareLinks) never
+    // matched, and every portal-submitted video got duplicate-fetched daily.
+    //
+    // The real creator UID is `assignedCreatorId`, which submit-creator-share-video
+    // and cron-refresh-creator-videos both set correctly on the job payload.
+    const creatorIdForLink = assignedCreatorId || video.assignedCreatorId;
+    if (accountId && creatorIdForLink) {
+      const creatorId = creatorIdForLink;
       try {
         console.log(`🔗 Auto-linking account ${accountId} to creator ${creatorId}...`);
         
