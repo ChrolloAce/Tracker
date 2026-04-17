@@ -21,6 +21,9 @@ const { db } = initializeFirebase();
 /**
  * Filter video IDs by age for the refresh phase.
  * Videos with < 2 non-initial snapshots ALWAYS refresh (so charts can render).
+ * Videos with `assignedCreatorId` set ALWAYS refresh — creator-submitted videos
+ *   must stay fresh for the public creator portal regardless of age (replaces
+ *   the deleted cron-refresh-creator-videos path).
  * Recent videos (≤30 days) refresh every sync.
  * Mid-age videos (31-90 days) refresh weekly (Sundays).
  * Archival videos (90+ days) refresh monthly (1st of month).
@@ -29,7 +32,7 @@ const { db } = initializeFirebase();
 const REFRESH_BATCH_CAP = 50; // Max videos per Apify refresh call
 
 function partitionVideosByAge(
-  videoDocs: Array<{ videoId: string; uploadDate?: any; snapshotCount?: number; isStale?: boolean }>,
+  videoDocs: Array<{ videoId: string; uploadDate?: any; snapshotCount?: number; isStale?: boolean; assignedCreatorId?: string }>,
   isManualRefresh: boolean
 ): string[] {
   // Always exclude stale (frozen) videos — they should never burn API tokens
@@ -44,6 +47,11 @@ function partitionVideosByAge(
   const today = new Date();
 
   const filtered = nonStale.filter(v => {
+    // Creator-submitted videos bypass age throttling. The creator's public
+    // portal expects these to stay fresh, and the old cron-refresh-creator-videos
+    // used to guarantee daily refresh. Now the unified account-sync handles it.
+    if (v.assignedCreatorId) return true;
+
     // Always include videos that don't have enough snapshots for charts to render
     // Charts require >= 2 non-initial snapshots to display a trend
     if (v.snapshotCount === undefined || v.snapshotCount < 2) return true;
@@ -325,11 +333,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'tiktok')
-          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale', 'assignedCreatorId')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false, assignedCreatorId: doc.data().assignedCreatorId }))
           .filter(v => v.videoId);
 
         // Full set for discovery deduplication
@@ -479,11 +487,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'youtube')
-          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale', 'assignedCreatorId')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false, assignedCreatorId: doc.data().assignedCreatorId }))
           .filter(v => v.videoId);
 
         const existingVideoIds = new Set(allExistingVideos.map(v => v.videoId));
@@ -654,11 +662,11 @@ export default async function handler(
         .collection('videos')
         .where('trackedAccountId', '==', accountId)
         .where('platform', '==', 'twitter')
-        .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
+        .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale', 'assignedCreatorId')
         .get();
 
       const allExistingTweets = existingTweetsSnapshot.docs
-        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
+        .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false, assignedCreatorId: doc.data().assignedCreatorId }))
         .filter(v => v.videoId);
 
       const existingTweetIds = new Set(allExistingTweets.map(v => v.videoId));
@@ -775,11 +783,11 @@ export default async function handler(
           .collection('videos')
           .where('trackedAccountId', '==', accountId)
           .where('platform', '==', 'instagram')
-          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale')
+          .select('videoId', 'uploadDate', 'refreshSnapshotCount', 'isStale', 'assignedCreatorId')
           .get();
 
         const allExistingVideos = existingVideosSnapshot.docs
-          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false }))
+          .map(doc => ({ videoId: doc.data().videoId, uploadDate: doc.data().uploadDate, snapshotCount: doc.data().refreshSnapshotCount || 0, isStale: doc.data().isStale || false, assignedCreatorId: doc.data().assignedCreatorId }))
           .filter(v => v.videoId);
 
         // Full set for discovery deduplication
