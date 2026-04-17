@@ -18,6 +18,7 @@ x-api-key: vt_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 API keys are scoped with permissions. Each key can have any combination of:
 - videos:read — Read video data
 - videos:write — Add/delete videos
+- videos:analyze — Run paid AI analysis (Gemini 3 Flash) on tracked videos. Kept separate from videos:write so you can gate AI spend independently.
 - accounts:read — Read account data
 - accounts:write — Add/delete accounts
 - analytics:read — Read analytics & refresh history
@@ -332,6 +333,134 @@ Response:
 \`\`\`json
 { "success": true, "message": "Video removed from tracking" }
 \`\`\`
+
+---
+
+#### POST /api/v1-analyze-video
+Run AI video analysis powered by Gemini 3 Flash. Returns a structured breakdown of the video: transcript with timestamps, plain-English summary, hook analysis, topics, tone, pacing, what's working, and actionable suggestions for the creator — all in a single call.
+
+> **URL note:** This endpoint lives at \`/api/v1-analyze-video\` (root), not under \`/api/v1/videos/...\`. The flat path lets us bundle a 36 MB video-download binary with this one function only, instead of every \`/api/v1/*\` function. Everything else (auth header, response envelope, rate limits) is identical to the rest of the API.
+
+Required scope: \`videos:analyze\`
+
+This scope is deliberately separate from \`videos:write\` because each fresh call triggers a paid Gemini API request. Issue keys with this scope only to trusted integrations, and prefer \`force: false\` (the default) so repeated calls return cached results instantly.
+
+**Latency expectations:**
+| Path | Typical time |
+|------|-------------|
+| Cached (\`force: false\` and video was previously analyzed) | <500 ms |
+| Fresh — YouTube (Gemini fetches URL directly) | 30–60 s |
+| Fresh — TikTok / Instagram / Twitter (download → upload → analyze) | 60–180 s |
+
+The endpoint is synchronous — it holds the connection open until Gemini returns. Plan for up to 3 minutes on the first call for a non-YouTube video.
+
+Request body:
+| Field     | Type    | Required | Default | Description |
+|-----------|---------|----------|---------|-------------|
+| videoId   | string  | yes      | —       | ViewTrack video document ID (from GET /api/v1/videos) |
+| projectId | string  | no       | —       | Speeds up lookup if you know it. Otherwise we search across all projects in your org. |
+| force     | boolean | no       | false   | Always re-run the Gemini analysis even if a cached one exists. Use sparingly — each run costs money. |
+
+Example request:
+\`\`\`bash
+curl -X POST https://viewtrack.app/api/v1-analyze-video \\
+  -H "x-api-key: vt_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{"videoId": "abc123"}'
+\`\`\`
+
+Response (success):
+\`\`\`json
+{
+  "success": true,
+  "data": {
+    "videoId": "abc123",
+    "projectId": "proj_1",
+    "analysis": {
+      "transcript": "Hey everyone, welcome back. Today we're breaking down the three hooks...",
+      "transcriptSegments": [
+        { "timestamp": "00:00", "text": "Hey everyone, welcome back." },
+        { "timestamp": "00:02", "text": "Today we're breaking down the three hooks..." }
+      ],
+      "summary": "The creator walks through three pattern-interrupt hooks used in viral short-form video, with a live example for each.",
+      "hook": "The video opens with 'most people get this wrong' over a fast-cut compilation, setting up curiosity within the first 2 seconds.",
+      "topics": ["short-form video", "hook writing", "TikTok strategy"],
+      "tone": "Educational, energetic, conversational",
+      "pacing": "Fast — aggressive jump-cuts every 1–2 seconds, on-screen captions reinforce the audio.",
+      "whatWorked": [
+        "Strong pattern-interrupt hook in the first 2 seconds",
+        "Each of the three examples is under 10 seconds, keeping retention high",
+        "Clear CTA at the end tied to the creator's profile"
+      ],
+      "suggestions": [
+        "Add a visual countdown to the three examples to reinforce structure",
+        "Hold the final frame longer so viewers can screenshot the key insight",
+        "Test a version with larger on-screen captions sized for full-screen viewing"
+      ],
+      "modelVersion": "gemini-3-flash-preview"
+    }
+  },
+  "meta": {
+    "cached": false,
+    "durationMs": 36114
+  }
+}
+\`\`\`
+
+**Analysis fields:**
+| Field | Description |
+|-------|-------------|
+| transcript | Full spoken audio, verbatim. Empty string if the video has no speech. |
+| transcriptSegments | Array of \`{ timestamp, text }\`. Timestamps are \`MM:SS\` and roughly align with scene or sentence boundaries. |
+| summary | 2–4 sentence plain-English description of what the video is about. |
+| hook | What specifically grabs attention in the first ~3 seconds — visual, verbal, or both. |
+| topics | Short list of key topics covered. |
+| tone | Overall tone/style — e.g., "educational, conversational" or "emotional, storytelling". |
+| pacing | One-sentence read on the edit style and pacing. |
+| whatWorked | 3–5 bullets explaining why the video might perform well. |
+| suggestions | 3–5 actionable tweaks the creator could apply to future videos. |
+| modelVersion | The Gemini model that produced this analysis. Useful for audit trails and deciding when to \`force\` a re-run after a model upgrade. |
+
+**Meta fields:**
+| Field | Description |
+|-------|-------------|
+| meta.cached | \`true\` if the response came from a stored analysis (no new Gemini call). \`false\` means a fresh analysis was just run. |
+| meta.durationMs | How long the Gemini work took in milliseconds. \`0\` when \`cached: true\`. |
+
+**Caching behavior:**
+- The first call for a given video runs a fresh analysis and stores it on the video document.
+- Every subsequent call with \`force: false\` (the default) returns the stored analysis in <500 ms with \`meta.cached: true\` and no Gemini cost.
+- \`force: true\` bypasses the cache and always calls Gemini again. Use this when the model version has upgraded or the video's content has materially changed.
+- Cached results persist on the video document until the video is deleted.
+
+**Error responses:**
+
+403 — Key lacks the required scope:
+\`\`\`json
+{ "success": false, "error": { "message": "Missing required scope: videos:analyze", "code": "FORBIDDEN" } }
+\`\`\`
+
+404 — videoId doesn't exist in your organization:
+\`\`\`json
+{ "success": false, "error": { "message": "Video not found", "code": "NOT_FOUND" } }
+\`\`\`
+
+409 — A concurrent request is already analyzing this video:
+\`\`\`json
+{ "success": false, "error": { "message": "Analysis already in progress for this video. Please wait.", "code": "ALREADY_PROCESSING" } }
+\`\`\`
+Retry the same request after ~30 seconds.
+
+500 — Gemini call failed. The error message preserves the underlying reason (rate limit, blocked content, download failure, etc.). Safe to retry after a brief backoff:
+\`\`\`json
+{ "success": false, "error": { "message": "Gemini API 429: quota exceeded…", "code": "ANALYSIS_FAILED" } }
+\`\`\`
+
+**Common patterns:**
+- **Transcript-only workflows:** use GET /api/v1/videos/:id — it returns the transcript faster (25 s max) and is free for YouTube videos.
+- **Deep content analysis:** use this endpoint — you get the structured \`hook\`, \`whatWorked\`, and \`suggestions\` fields that the basic transcript endpoint doesn't provide.
+- **Feeding LLM prompts:** the \`hook\`, \`pacing\`, and \`whatWorked\` fields are designed to drop directly into a downstream prompt template for script generation or creator coaching.
+- **Batch analysis:** process videos serially (not in parallel) to stay within Gemini's rate limits and your own 100 req/min key rate limit.
 
 ---
 

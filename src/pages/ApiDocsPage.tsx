@@ -111,6 +111,16 @@ const ApiDocsPage: React.FC = () => {
           ],
         },
         { name: 'Delete tracked video', method: 'DELETE', path: '/v1/videos/{id}' },
+        {
+          name: 'Analyze video with AI (transcript + insights)',
+          method: 'POST',
+          path: '/v1-analyze-video',
+          params: [
+            { name: 'videoId', type: 'string', required: true, description: 'ViewTrack video ID to analyze' },
+            { name: 'projectId', type: 'string', description: 'Project ID (speeds up lookup). Optional — we search all projects if omitted.' },
+            { name: 'force', type: 'boolean', description: 'Re-run the Gemini analysis even if a cached result exists. Default: false' },
+          ],
+        },
       ]
     },
     {
