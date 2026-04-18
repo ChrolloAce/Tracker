@@ -138,8 +138,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
     console.log(`🕐 Current hour: ${currentHour}:00 UTC`);
 
-    // Determine if this is a manual trigger (bypasses time restrictions)
-    const isManualTrigger = authMethod === 'Cron Secret' || authMethod === 'Firebase User';
+    // Determine if this is a manual trigger (bypasses plan-tier refresh interval).
+    //
+    // Manual triggers are:
+    //   - Firebase-authenticated user actions (e.g. the "Refresh Now" button — already
+    //     gated per-plan by SubscriptionService).
+    //   - Anything that explicitly passes `{ manual: true }` in the POST body
+    //     (e.g. trigger-orchestrator.ts when an admin hits the force-refresh endpoint).
+    //
+    // Scheduled Vercel cron uses CRON_SECRET auth but does NOT send a body, so those
+    // fires correctly flow into the plan-throttled branch. Previously this was
+    // `authMethod === 'Cron Secret' || 'Firebase User'`, which treated every
+    // scheduled cron fire as manual and silently bypassed the plan interval —
+    // making every plan effectively Enterprise-tier.
+    const explicitManual = req.body?.manual === true;
+    const isManualTrigger = authMethod === 'Firebase User' || explicitManual;
     
     if (isManualTrigger) {
       console.log(`⚡ Manual trigger detected - processing ALL organizations immediately\n`);
