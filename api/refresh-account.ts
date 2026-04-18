@@ -4,6 +4,11 @@ import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { progressiveFetchVideos } from './_utils/progressive-video-fetch.js';
+import { authenticateAndVerifyOrg } from './_middleware/auth.js';
+
+// Plans that are allowed to trigger manual on-demand refreshes.
+// Mirrors src/types/subscription.ts `refreshOnDemand` feature flag.
+const PLANS_WITH_REFRESH_ON_DEMAND = new Set(['ultra', 'enterprise', 'admin']);
 
 // Initialize Firebase Admin
 function initializeFirebase() {
@@ -128,23 +133,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify authorization (cron secret or authenticated user)
-  const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET;
-  
-  const isAuthorizedCron = authHeader === cronSecret;
-  const isManualTrigger = !isAuthorizedCron; // For now, allow manual triggers
-
-  if (!isAuthorizedCron && !isManualTrigger) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
   const { orgId, projectId, accountId } = req.body;
 
   if (!orgId || !projectId || !accountId) {
-    return res.status(400).json({ 
-      error: 'Missing required fields: orgId, projectId, accountId' 
+    return res.status(400).json({
+      error: 'Missing required fields: orgId, projectId, accountId'
     });
+  }
+
+  // ──────────── AUTH ────────────
+  // Previously this was:
+  //   const isAuthorizedCron = authHeader === cronSecret;
+  //   const isManualTrigger = !isAuthorizedCron;          // "// For now, allow manual triggers"
+  //   if (!isAuthorizedCron && !isManualTrigger) { 401 }  // always-false, never fired
+  // …which made this endpoint completely public: anyone POSTing the right
+  // (orgId, projectId, accountId) tuple could trigger unlimited Apify
+  // account syncs bypassing the plan interval.
+  //
+  // The correct gate: accept either a CRON_SECRET match (legitimate
+  // orchestrator/admin calls) OR a Firebase user who is an active member
+  // of the requesting org. For Firebase-user calls we additionally enforce
+  // the plan's `refreshOnDemand` feature flag — Free/Basic/Pro can't
+  // bypass their scheduled-refresh cadence from the UI.
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  const isAuthorizedCron =
+    !!cronSecret && (authHeader === cronSecret || authHeader === `Bearer ${cronSecret}`);
+
+  if (!isAuthorizedCron) {
+    try {
+      await authenticateAndVerifyOrg(req, orgId);
+    } catch (err: any) {
+      return res.status(401).json({ error: err.message || 'Unauthorized' });
+    }
+
+    // Plan gate: does this org's plan allow on-demand refresh?
+    try {
+      const subDoc = await db
+        .collection('organizations').doc(orgId)
+        .collection('billing').doc('subscription').get();
+      const planTier = (subDoc.data()?.planTier || 'free').toLowerCase();
+      if (!PLANS_WITH_REFRESH_ON_DEMAND.has(planTier)) {
+        return res.status(403).json({
+          error: 'On-demand refresh is not available in your plan',
+          code: 'PLAN_LIMIT',
+          planTier,
+        });
+      }
+    } catch (planErr: any) {
+      console.error('refresh-account plan check failed:', planErr?.message);
+      return res.status(500).json({ error: 'Subscription check failed' });
+    }
   }
 
   const startTime = Date.now();

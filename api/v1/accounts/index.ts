@@ -8,6 +8,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { initializeFirebase } from '../../_utils/firebase-admin.js';
 import { withApiAuth } from '../../_middleware/apiKeyAuth.js';
+import { checkVideoLimit } from '../../_utils/video-limits.js';
 import type { AuthenticatedApiRequest } from '../../../src/types/apiKeys';
 
 import { getBaseUrl } from '../../_utils/base-url.js';
@@ -164,6 +165,28 @@ async function addAccount(
 
   const videoLimit = Math.max(parseInt(maxVideos) || DEFAULT_MAX_VIDEOS, 1);
   const cleanUsername = username.toLowerCase().replace(/^@/, '');
+
+  // ──────────── PLAN LIMIT ENFORCEMENT ────────────
+  // Previously this endpoint had no plan check, so an API key with the
+  // accounts:write scope could add unlimited accounts (each triggering an
+  // initial Apify discovery of up to videoLimit videos). queue-manual-account
+  // enforces this for the dashboard UI; adding the same check here closes
+  // the public-API bypass path.
+  const orgLimitCheck = await checkVideoLimit(auth.organizationId);
+  if (!orgLimitCheck.allowed) {
+    return res.status(403).json({
+      success: false,
+      error: {
+        message: `Video limit reached (${orgLimitCheck.currentCount}/${orgLimitCheck.limit}) for plan "${orgLimitCheck.planTier}". Adding another account would exceed it.`,
+        code: 'VIDEO_LIMIT_REACHED',
+      },
+      data: {
+        currentCount: orgLimitCheck.currentCount,
+        limit: orgLimitCheck.limit,
+        planTier: orgLimitCheck.planTier,
+      },
+    });
+  }
 
   const accountsCol = db
     .collection(COLL_ORGS).doc(auth.organizationId)
