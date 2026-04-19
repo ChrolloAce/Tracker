@@ -1284,6 +1284,7 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
     (s, c) => s + videosInDateWindow(c, campaign).reduce((s2, v) => s2 + v.views, 0),
     0,
   );
+  const cpm = totalViews > 0 ? (totalEarnings / totalViews) * 1000 : 0;
   const approvedCount = campaign.creators.filter(c => c.payoutStatus === 'approved' || c.payoutStatus === 'paid').length;
   const pendingCount = campaign.creators.filter(c => c.payoutStatus === 'pending').length;
   const withStructure = campaign.creators.filter(c => c.structure).length;
@@ -1704,9 +1705,10 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <DetailKPI icon={<Users className="w-5 h-5" />} label="Creators" value={String(campaign.creators.length)} tint="neutral" />
         <DetailKPI icon={<Eye className="w-5 h-5" />} label="Total Views" value={fmt(totalViews)} tint="neutral" />
+        <DetailKPI icon={<DollarSign className="w-5 h-5" />} label="Effective CPM" value={totalViews > 0 ? fmtMoneyCurrency(cpm, campaignCurrency(campaign)) : '—'} tint="emerald" />
         <DetailKPI icon={<Settings2 className="w-5 h-5" />} label="With Structure" value={`${withStructure} / ${campaign.creators.length}`} tint="orange" />
         <DetailKPI icon={<CheckCircle2 className="w-5 h-5" />} label="Approved" value={`${approvedCount} / ${campaign.creators.length}`} tint="emerald" />
       </div>
