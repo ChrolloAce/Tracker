@@ -678,18 +678,27 @@ export default async function handler(
       console.log(`📊 Refresh filter: ${tweetIdsToRefresh.length}/${allExistingTweets.length} tweets (recent + scheduled older)`);
 
       // ==================== PHASE 1: REFRESH EXISTING TWEETS ====================
-      // Always run refresh FIRST for any account with existing tweets
+      // ⛔ DISABLED 2026-04-19 — Twitter refresh was ~$216/mo of Apify tweet
+      // events + heavy compute/queue overhead (apidojo/tweet-scraper supports
+      // only 1 startUrl per run, so refreshing N tweets = N runs). Discovery
+      // + profile fetch remain enabled; we just stop re-polling existing
+      // tweets. Re-enable by uncommenting the block below and removing this
+      // short-circuit. TwitterSyncService.refresh() is intentionally kept.
+      if (tweetIdsToRefresh.length > 0) {
+        console.log(`\n⏭️  [TWITTER PHASE 1] Refresh DISABLED — would have refreshed ${tweetIdsToRefresh.length} tweets (cost-control)`);
+      }
+      /* ORIGINAL — re-enable by removing this comment wrapper:
       if (tweetIdsToRefresh.length > 0) {
         console.log(`\n🔄 [TWITTER PHASE 1] Refreshing ${tweetIdsToRefresh.length} existing tweets...`);
         try {
           const refreshedTweets = await TwitterSyncService.refresh(account, orgId, tweetIdsToRefresh);
-          
+
           // Mark ALL refreshed tweets with flag to prevent duplication
           const markedRefreshedTweets = refreshedTweets.map((v: any) => ({
             ...v,
             _isRefreshOnly: true
           }));
-          
+
           tweets.push(...markedRefreshedTweets);
           console.log(`   ✅ Refreshed ${refreshedTweets.length} tweets`);
         } catch (refreshError: any) {
@@ -700,6 +709,7 @@ export default async function handler(
           });
         }
       }
+      */
       
       // ==================== PHASE 2: DISCOVER NEW TWEETS ====================
       if (!hasVideoCapacity) {
