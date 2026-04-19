@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { videoId, orgId, projectId, jobId, addedBy, assignedCreatorId } = req.body;
+  const { videoId, orgId, projectId, jobId, addedBy, assignedCreatorId, crossPostGroupId } = req.body;
 
   // Validate required fields
   const validation = validateRequiredFields(req.body, ['videoId', 'orgId', 'projectId']);
@@ -193,6 +193,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         videoRef = existingDoc.ref;
         video = existingDoc.data();
         console.log(`📹 Found existing video document: ${existingDoc.id}`);
+
+        // Backfill creator-portal-specific fields onto the existing doc when missing.
+        // Without this, a creator resubmitting an already-synced URL via the share portal
+        // would silently lose the crossPostGroupId / assignedCreatorId tied to this submission.
+        const backfill: Record<string, unknown> = {};
+        if (crossPostGroupId && !video.crossPostGroupId) backfill.crossPostGroupId = crossPostGroupId;
+        if (assignedCreatorId && !video.assignedCreatorId) backfill.assignedCreatorId = assignedCreatorId;
+        if (Object.keys(backfill).length > 0) {
+          await videoRef.update(backfill);
+          video = { ...video, ...backfill };
+          console.log(`🔗 Backfilled fields on existing video ${existingDoc.id}: ${Object.keys(backfill).join(', ')}`);
+        }
       } else {
         // Create new video document
         isNewVideo = true;
@@ -219,6 +231,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           dateAdded: Timestamp.now(),
           addedBy: addedBy || 'system', // Use the user ID who submitted the video
           ...(assignedCreatorId && { assignedCreatorId }),
+          // Creator-portal cross-post grouping: shared id across copies of the same content on
+          // different platforms. Persisted on initial create; the later .update() doesn't touch it.
+          ...(crossPostGroupId && { crossPostGroupId }),
           lastRefreshed: null,
           isSingular: true,
           isRead: false

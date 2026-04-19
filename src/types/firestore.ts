@@ -349,6 +349,14 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   // Metadata
   addedBy: string; // userId
   assignedCreatorId?: string; // Creator this video is assigned to (shows on their dashboard)
+  /**
+   * Cross-post group ID. Videos sharing this ID are treated as copies of the same
+   * piece of content across different platforms (e.g. the same short on TikTok + IG + YT).
+   * Admin sets this from the payouts card, or creators set it via the submit modal's
+   * "same video, different platforms" toggle. Payout engine applies per-component
+   * crossPostPolicy to decide how grouped videos are counted/paid.
+   */
+  crossPostGroupId?: string;
   status: 'active' | 'archived' | 'processing'; // processing = still being fetched from API
   isSingular: boolean; // Not tied to tracked account
   isStale?: boolean; // If true, cron skips refreshing this video

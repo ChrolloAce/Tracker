@@ -491,12 +491,22 @@ service cloud.firestore {
         }
         
         // ==================== PROJECT PAYOUT STRUCTURES ====================
-        
+
         match /payoutStructures/{structureId} {
           // All org members can read payout structures
           allow read: if canReadOrg(orgId);
-          
+
           // Only admins can create/update/delete payout structures
+          allow write: if canManageOrg(orgId);
+        }
+
+        // ==================== PROJECT PAYOUT CAMPAIGNS ====================
+
+        match /payoutCampaigns/{campaignId} {
+          // All org members can read payout campaigns
+          allow read: if canReadOrg(orgId);
+
+          // Only admins can create/update/delete payout campaigns
           allow write: if canManageOrg(orgId);
         }
         

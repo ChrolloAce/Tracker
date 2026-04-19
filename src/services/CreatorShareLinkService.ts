@@ -15,6 +15,28 @@ export interface CreateShareLinkParams {
   acceptSubmissions?: boolean;
 }
 
+/** One row in the creator's "My payouts" section on the public portal. */
+export interface CreatorPayoutSummary {
+  campaignId: string;
+  campaignName: string;
+  campaignDescription: string;
+  campaignStatus: 'draft' | 'active' | 'completed';
+  campaignCreatedAt: string;
+  status: 'not_calculated' | 'pending' | 'approved' | 'paid';
+  amount: number | null;
+  currency: string;
+  note?: string;
+  structureName?: string;
+  /** Human-readable deal terms — server-generated. UI should render as bullets.
+   *  Empty means the structure was missing/malformed; show a generic fallback. */
+  dealSummary: string[];
+  /** When status === 'paid' — ISO string of when the admin clicked Pay. */
+  paidAt?: string;
+  /** When status === 'paid' — immutable paid amount from the snapshot (may differ from `amount`
+   *  if the underlying structure/videos change after payment, which is why we freeze it). */
+  paidAmount?: number;
+}
+
 export interface CreateShareLinkResponse {
   success: boolean;
   token: string;
@@ -140,17 +162,80 @@ class CreatorShareLinkService {
    * Public: submit a video URL from the share page. No auth — token only.
    * Returns the new job ID on success. Throws on rate limits / errors.
    */
-  async submitVideo(token: string, url: string): Promise<{ jobId: string }> {
-    const res = await fetch('/api/submit-creator-share-video', {
+  /** Fetch a creator's payout summaries for their public share page. Read-only. */
+  async fetchPayouts(token: string): Promise<{ payouts: CreatorPayoutSummary[] }> {
+    const res = await fetch('/api/public-creator-payouts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, url }),
+      body: JSON.stringify({ token }),
     });
     const body = await res.json().catch(() => ({} as any));
     if (!res.ok || !body.success) {
       throw new Error(body.error || body.message || `HTTP ${res.status}`);
     }
-    return { jobId: body.jobId };
+    return { payouts: body.payouts || [] };
+  }
+
+  /**
+   * Public: start Stripe Connect onboarding for the creator behind this share token.
+   * Returns a short-lived hosted URL — always open in a new tab.
+   */
+  async startStripeOnboarding(token: string): Promise<{ onboardingUrl: string; accountId: string }> {
+    const res = await fetch('/api/stripe/creator-onboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const body = await res.json().catch(() => ({} as any));
+    if (!res.ok || !body.success) {
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return { onboardingUrl: body.onboardingUrl, accountId: body.accountId };
+  }
+
+  /** Public: current Stripe Connect status for this creator — drives portal UI state. */
+  async fetchStripeStatus(token: string): Promise<{
+    status: 'none' | 'pending' | 'restricted' | 'complete';
+    detailsSubmitted: boolean;
+    payoutsEnabled: boolean;
+    chargesEnabled: boolean;
+    requirements?: { currentlyDue: string[]; disabledReason: string | null };
+  }> {
+    const res = await fetch('/api/stripe/creator-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const body = await res.json().catch(() => ({} as any));
+    if (!res.ok || !body.success) {
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return {
+      status: body.status,
+      detailsSubmitted: body.detailsSubmitted,
+      payoutsEnabled: body.payoutsEnabled,
+      chargesEnabled: body.chargesEnabled,
+      requirements: body.requirements,
+    };
+  }
+
+  async submitVideo(
+    token: string,
+    url: string,
+    opts?: { crossPostGroupId?: string },
+  ): Promise<{ jobId: string }> {
+    const body: Record<string, unknown> = { token, url };
+    if (opts?.crossPostGroupId) body.crossPostGroupId = opts.crossPostGroupId;
+    const res = await fetch('/api/submit-creator-share-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const resBody = await res.json().catch(() => ({} as any));
+    if (!res.ok || !resBody.success) {
+      throw new Error(resBody.error || resBody.message || `HTTP ${res.status}`);
+    }
+    return { jobId: resBody.jobId };
   }
 }
 

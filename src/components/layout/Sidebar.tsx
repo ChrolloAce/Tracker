@@ -18,7 +18,8 @@ import {
   Flame,
   Bookmark,
   Key,
-  DollarSign
+  DollarSign,
+  CircleDollarSign
 } from 'lucide-react';
 import SuperAdminService from '../../services/SuperAdminService';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -74,7 +75,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const { theme } = useTheme();
   const { can, loading: permissionsLoading } = usePermissions();
-  const { userRole, currentOrgId, currentProjectId } = useAuth();
+  const { userRole, currentOrgId, currentProjectId, user } = useAuth();
+  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
   const location = useLocation();
   const { unreadCounts, loading: loadingCounts } = useUnreadCounts(currentOrgId, currentProjectId);
 
@@ -169,6 +171,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: DollarSign,
         href: `${baseHref}/revenue`,
           },
+      {
+        id: 'payouts',
+        label: 'Payouts',
+        icon: CircleDollarSign,
+        href: `${baseHref}/payouts`,
+          },
         ]
       },
       {
@@ -214,18 +222,23 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'creators') return can.accessTab('creators');
           if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
+          // Payouts is super-admin-only for now (parallel to Super Admin nav item). Mirrors the
+          // access gate inside PayoutsPage so non-admins never see the entry to begin with.
+          if (item.id === 'payouts') return isSuperAdmin;
           return true;
         });
       });
     }
 
-    // In demo mode, filter out extension, integrations, and team
+    // In demo mode, filter out extension, integrations, team, and payouts
+    // (payouts is super-admin-only so has no business being in the demo experience).
     if (isDemoMode) {
       sections.forEach(section => {
         section.items = section.items.filter(item =>
           item.id !== 'extension' &&
           item.id !== 'integrations' &&
-          item.id !== 'team'
+          item.id !== 'team' &&
+          item.id !== 'payouts'
         );
       });
     }
@@ -243,14 +256,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           item.id !== 'creators' &&
           item.id !== 'revenue' &&
           item.id !== 'viral' && // Hide Discover/Viral Content for creators
-          item.id !== 'saved' // Hide Saved for creators
+          item.id !== 'saved' && // Hide Saved for creators
+          item.id !== 'payouts' // Admin-side payouts UI — creators have their own surface elsewhere
         );
       });
     }
 
     // Remove empty sections
     return sections.filter(section => section.items.length > 0);
-  }, [can, permissionsLoading, userRole, baseHref, unreadCounts, loadingCounts]);
+  }, [can, permissionsLoading, userRole, baseHref, unreadCounts, loadingCounts, isSuperAdmin, isDemoMode]);
 
   // Settings item (standalone at bottom)
   const settingsItem: NavItem | null = useMemo(() => {
@@ -266,9 +280,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     return null;
   }, [can, permissionsLoading, isDemoMode]);
 
-  // Super Admin item (only for super admins)
-  const { user } = useAuth();
-  const isSuperAdmin = SuperAdminService.isSuperAdmin(user?.email);
+  // Super Admin item (only for super admins) — `isSuperAdmin` is computed at the top alongside
+  // other auth-derived flags so it can gate nav sections too (e.g. Payouts).
   const superAdminItem: NavItem | null = useMemo(() => {
     if (isSuperAdmin && !isDemoMode) {
       return {

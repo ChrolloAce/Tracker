@@ -45,6 +45,8 @@ export interface VideoSubmission {
   selected?: boolean;
   isRead?: boolean; // Whether the video has been read (for notification count)
   isStale?: boolean; // If true, cron skips refreshing this video
+  /** Cross-post group ID (see VideoDoc.crossPostGroupId). */
+  crossPostGroupId?: string;
 }
 
 export interface InstagramVideoData {

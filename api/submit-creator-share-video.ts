@@ -33,6 +33,20 @@ const db = getFirestore();
 const MAX_PER_HOUR = 10;
 const MAX_PER_DAY = 100;
 
+// Typed error used inside the rate-limit transaction. The transaction body can
+// only signal a policy rejection by throwing — this class lets the outer catch
+// tell a rate-limit bounce apart from an unexpected Firestore failure.
+class SubmitRateLimitError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly retryAfter?: number,
+  ) {
+    super(message);
+    this.name = 'SubmitRateLimitError';
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -42,9 +56,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { token, url } = req.body || {};
+    const { token, url, crossPostGroupId } = req.body || {};
+    console.log(`📩 [submit-creator-share-video] Received: url=${url}, crossPostGroupId=${crossPostGroupId || '(none)'}`);
     if (!token || !url) {
       return res.status(400).json({ error: 'token and url are required' });
+    }
+    // Optional shared id that the creator portal passes when batch-submitting the same
+    // video across platforms. Must be a short identifier; ignored if malformed.
+    const validCrossPostGroupId = (typeof crossPostGroupId === 'string' && /^[a-zA-Z0-9_-]{4,64}$/.test(crossPostGroupId))
+      ? crossPostGroupId
+      : undefined;
+    if (crossPostGroupId && !validCrossPostGroupId) {
+      console.warn(`⚠️ [submit-creator-share-video] crossPostGroupId failed validation: ${crossPostGroupId}`);
     }
 
     const shareRef = db.collection('creatorShareLinks').doc(token);
@@ -71,28 +94,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid video URL' });
     }
 
-    // ==================== RATE LIMITING ====================
-    // Bucket strings are the recipe for "did we roll over". If the doc's
-    // stored bucket doesn't match the current bucket, we reset to 0 before
-    // counting this request.
+    // ==================== RATE LIMITING (atomic) ====================
+    // Run the read-check-increment inside a Firestore transaction so two
+    // concurrent requests can't both see the same stale count and both slip
+    // past the limit by one. Bucket strings are the "did we roll over" recipe:
+    // if the doc's stored bucket doesn't match the current bucket, we reset
+    // to 0 before counting this request.
+    //
+    // The share-validation reads above (exists / revoked / acceptSubmissions
+    // / required fields) are fine outside the transaction — those aren't the
+    // racy part. We re-fetch the share inside the transaction so the
+    // check+write see a consistent view of the counter fields.
     const now = new Date();
     const hourBucket = now.toISOString().slice(0, 13); // e.g. "2026-04-12T01"
     const dayBucket = now.toISOString().slice(0, 10);  // e.g. "2026-04-12"
 
-    const currentHour = share.submitCountHourBucket === hourBucket ? (share.submitCountHour || 0) : 0;
-    const currentDay = share.submitCountDayBucket === dayBucket ? (share.submitCountToday || 0) : 0;
+    try {
+      await db.runTransaction(async (tx) => {
+        const txDoc = await tx.get(shareRef);
+        // Defensive: the share existed a moment ago; if it vanished (admin
+        // deleted it mid-flight) we surface the right error rather than
+        // silently incrementing a ghost doc.
+        if (!txDoc.exists) {
+          throw new SubmitRateLimitError(404, 'Invalid share link');
+        }
+        const txShare = txDoc.data()!;
+        if (txShare.revoked) {
+          throw new SubmitRateLimitError(410, 'This share link has been revoked');
+        }
+        if (txShare.acceptSubmissions === false) {
+          throw new SubmitRateLimitError(403, 'Submissions are disabled for this share link');
+        }
 
-    if (currentHour >= MAX_PER_HOUR) {
-      return res.status(429).json({
-        error: `Rate limit reached: ${MAX_PER_HOUR} submissions per hour. Try again later.`,
-        retryAfter: 3600,
+        const currentHour = txShare.submitCountHourBucket === hourBucket
+          ? (txShare.submitCountHour || 0)
+          : 0;
+        const currentDay = txShare.submitCountDayBucket === dayBucket
+          ? (txShare.submitCountToday || 0)
+          : 0;
+
+        if (currentHour >= MAX_PER_HOUR) {
+          throw new SubmitRateLimitError(
+            429,
+            `Rate limit reached: ${MAX_PER_HOUR} submissions per hour. Try again later.`,
+            3600,
+          );
+        }
+        if (currentDay >= MAX_PER_DAY) {
+          throw new SubmitRateLimitError(
+            429,
+            `Daily limit reached: ${MAX_PER_DAY} submissions per day. Try again tomorrow.`,
+            86400,
+          );
+        }
+
+        tx.update(shareRef, {
+          submitCount: (txShare.submitCount || 0) + 1,
+          submitCountHour: currentHour + 1,
+          submitCountHourBucket: hourBucket,
+          submitCountToday: currentDay + 1,
+          submitCountDayBucket: dayBucket,
+          lastSubmitAt: Timestamp.now(),
+        });
       });
-    }
-    if (currentDay >= MAX_PER_DAY) {
-      return res.status(429).json({
-        error: `Daily limit reached: ${MAX_PER_DAY} submissions per day. Try again tomorrow.`,
-        retryAfter: 86400,
-      });
+    } catch (rateErr: any) {
+      if (rateErr instanceof SubmitRateLimitError) {
+        const body: { error: string; retryAfter?: number } = { error: rateErr.message };
+        if (rateErr.retryAfter !== undefined) body.retryAfter = rateErr.retryAfter;
+        return res.status(rateErr.status).json(body);
+      }
+      throw rateErr;
     }
 
     // ==================== PLAN LIMIT CHECK ====================
@@ -119,7 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ==================== QUEUE THE JOB ====================
     const jobRef = db.collection('syncQueue').doc();
-    await jobRef.set({
+    const jobPayload: Record<string, unknown> = {
       type: 'single_video',
       status: 'pending',
       orgId,
@@ -139,18 +210,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       userInitiated: true,
       assignedCreatorId: creatorId,
       sourceToken: token,
-    });
+    };
+    if (validCrossPostGroupId) {
+      jobPayload.crossPostGroupId = validCrossPostGroupId;
+    }
+    await jobRef.set(jobPayload);
+    console.log(`📦 [submit-creator-share-video] Queued syncQueue job ${jobRef.id} for ${resolvedUrl}${validCrossPostGroupId ? ` (cross-post group ${validCrossPostGroupId})` : ''}`);
 
-    // Update counters atomically-enough. This is a single-writer hot path per
-    // token; a full transaction would be overkill given the per-token limits.
-    await shareRef.update({
-      submitCount: (share.submitCount || 0) + 1,
-      submitCountHour: currentHour + 1,
-      submitCountHourBucket: hourBucket,
-      submitCountToday: currentDay + 1,
-      submitCountDayBucket: dayBucket,
-      lastSubmitAt: Timestamp.now(),
-    });
+    // Note: counters were already incremented atomically inside the rate-limit
+    // transaction above. If the job creation fails between here and there the
+    // counter is slightly over-counted, which fails closed (blocks sooner) —
+    // better than the old post-queue increment, which could fail open if the
+    // update itself errored after the job was already queued.
 
     // Fire-and-forget queue-worker nudge so the job starts processing
     // without waiting for the next cron tick. Failure here is non-critical
@@ -158,7 +229,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const baseUrl = getBaseUrl();
       const cronSecret = process.env.CRON_SECRET;
-      if (baseUrl && cronSecret) {
+      if (!cronSecret) {
+        console.warn(`⚠️ [submit-creator-share-video] CRON_SECRET missing — queue-worker won't be nudged. Job ${jobRef.id} will sit until manually triggered. This is the most common cause of "no sync" in local dev.`);
+      } else if (!baseUrl) {
+        console.warn(`⚠️ [submit-creator-share-video] baseUrl unresolved — can't nudge queue-worker.`);
+      } else {
+        console.log(`🔔 [submit-creator-share-video] Nudging queue-worker at ${baseUrl}/api/queue-worker for job ${jobRef.id}`);
         fetch(`${baseUrl}/api/queue-worker`, {
           method: 'POST',
           headers: {

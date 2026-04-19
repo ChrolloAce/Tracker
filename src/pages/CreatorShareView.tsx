@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronDown, Check, Plus, X, Loader2, AlertCircle, UserCircle2, RefreshCw } from 'lucide-react';
+import { ChevronDown, Check, Plus, X, Loader2, AlertCircle, UserCircle2, RefreshCw, Banknote, ExternalLink, CheckCircle2 } from 'lucide-react';
 import KPICards from '../components/KPICards';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
@@ -11,7 +11,7 @@ import DateFilterService from '../services/DateFilterService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
-import CreatorShareLinkService, { PublicCreatorShareData } from '../services/CreatorShareLinkService';
+import CreatorShareLinkService, { PublicCreatorShareData, CreatorPayoutSummary } from '../services/CreatorShareLinkService';
 import { VideoSubmission } from '../types';
 import { TrackedAccount } from '../types/firestore';
 import { Timestamp } from 'firebase/firestore';
@@ -148,6 +148,9 @@ function SubmitVideoModal({ token, isOpen, onClose, onSuccess }: SubmitVideoModa
   const [submitting, setSubmitting] = useState(false);
   const [successCount, setSuccessCount] = useState(0);
   const [failures, setFailures] = useState<{ url: string; error: string }[]>([]);
+  // When true, all URLs submitted in this batch are the SAME video cross-posted to
+  // different platforms. We assign them a shared crossPostGroupId on submit.
+  const [isCrossPost, setIsCrossPost] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -158,6 +161,7 @@ function SubmitVideoModal({ token, isOpen, onClose, onSuccess }: SubmitVideoModa
       setUrlError(null);
       setSuccessCount(0);
       setFailures([]);
+      setIsCrossPost(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
@@ -234,11 +238,16 @@ function SubmitVideoModal({ token, isOpen, onClose, onSuccess }: SubmitVideoModa
     setSuccessCount(0);
 
     // Submit sequentially so we respect per-token rate limits and surface per-URL errors.
+    // If cross-post mode is on AND we have ≥2 valid URLs, generate one shared group id
+    // that the API will attach to every resulting VideoDoc in this batch.
+    const groupId = isCrossPost && toSubmit.length >= 2
+      ? `xp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+      : undefined;
     const errs: { url: string; error: string }[] = [];
     let ok = 0;
     for (const v of toSubmit) {
       try {
-        await CreatorShareLinkService.submitVideo(token, v.url);
+        await CreatorShareLinkService.submitVideo(token, v.url, groupId ? { crossPostGroupId: groupId } : undefined);
         onSuccess(v.url, v.platform);
         ok += 1;
         setSuccessCount(ok);
@@ -293,6 +302,46 @@ function SubmitVideoModal({ token, isOpen, onClose, onSuccess }: SubmitVideoModa
           </div>
         ) : (
           <>
+            {/* Cross-post toggle — flag a batch of URLs as the same video across platforms */}
+            <div className="mb-4 rounded-xl border border-border bg-surface-tertiary/60 p-3">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-content">Are these the same video or different videos?</p>
+                  <p className="text-[11px] text-content-muted mt-0.5 leading-snug">
+                    Turn on cross-post mode if the links below are the <span className="font-semibold text-content">same video</span> posted to different platforms.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCrossPost(false)}
+                  disabled={submitting}
+                  className={`px-3 py-2 text-xs font-semibold rounded-lg border text-left transition-all ${
+                    !isCrossPost
+                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-500/40 ring-2 ring-orange-500/20'
+                      : 'bg-surface text-content-muted border-border hover:bg-surface-hover'
+                  }`}
+                >
+                  <div className="font-bold mb-0.5">Multiple different videos</div>
+                  <div className="text-[10px] font-normal opacity-80">Each link is a separate piece of content</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCrossPost(true)}
+                  disabled={submitting}
+                  className={`px-3 py-2 text-xs font-semibold rounded-lg border text-left transition-all ${
+                    isCrossPost
+                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-500/40 ring-2 ring-orange-500/20'
+                      : 'bg-surface text-content-muted border-border hover:bg-surface-hover'
+                  }`}
+                >
+                  <div className="font-bold mb-0.5">Same video, different platforms</div>
+                  <div className="text-[10px] font-normal opacity-80">All links = one cross-posted video</div>
+                </button>
+              </div>
+            </div>
+
             {/* Combined input field with inline icons */}
             <div
               ref={containerRef}
@@ -426,6 +475,234 @@ function SubmitVideoModal({ token, isOpen, onClose, onSuccess }: SubmitVideoModa
   );
 }
 
+// ─── My payouts (public, read-only section on the creator portal) ─────────
+
+/**
+ * Stripe Connect onboarding banner — shown to the creator inside the public portal so they can
+ * set up payouts before admins try to mark them paid. Fetches status on mount, re-fetches when
+ * the URL returns from Stripe's hosted onboarding (?stripe=complete or ?stripe=refresh).
+ *
+ * UI states (all orange = action needed, emerald = all set):
+ *   - none / pending — "Set up payments" CTA → opens Stripe onboarding in new tab
+ *   - restricted    — "Action required" amber warning, same CTA reopens onboarding
+ *   - complete      — green confirmation (subdued; no CTA)
+ */
+function StripeConnectBanner({ token }: { token: string }) {
+  const [status, setStatus] = useState<'none' | 'pending' | 'restricted' | 'complete' | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setError(null);
+      const res = await CreatorShareLinkService.fetchStripeStatus(token);
+      setStatus(res.status);
+    } catch (e: any) {
+      // 503 means the server isn't configured for Stripe yet — don't spam the creator, just hide.
+      if (/503|not configured|not available/i.test(String(e?.message))) {
+        setStatus(null);
+      } else {
+        setError(e?.message || 'Failed to load payment setup');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // If we come back from Stripe's hosted onboarding (return_url includes ?stripe=complete),
+  // re-fetch status and strip the query param so a second load doesn't loop.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe') === 'complete' || params.get('stripe') === 'refresh') {
+      refresh();
+      params.delete('stripe');
+      const qs = params.toString();
+      const url = window.location.pathname + (qs ? `?${qs}` : '');
+      window.history.replaceState({}, '', url);
+    }
+  }, [refresh]);
+
+  const startOnboarding = async () => {
+    setStarting(true);
+    setError(null);
+    try {
+      const { onboardingUrl } = await CreatorShareLinkService.startStripeOnboarding(token);
+      // New tab so the creator doesn't lose their portal state — return_url brings them back.
+      window.open(onboardingUrl, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to start onboarding');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  if (loading || status === null) return null;
+
+  if (status === 'complete') {
+    return (
+      <section className="rounded-2xl bg-emerald-500/5 border border-emerald-500/20 px-5 py-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+          <CheckCircle2 className="w-5 h-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-content">You're ready to receive payments</p>
+          <p className="text-xs text-content-muted">When Maktub releases your earnings, they'll arrive in your bank in 1–2 business days.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const needsAttention = status === 'restricted';
+  return (
+    <section className={`rounded-2xl border px-5 py-4 flex items-center gap-3 ${needsAttention ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-500/5 border-orange-500/20'}`}>
+      <div className="w-10 h-10 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+        {needsAttention ? <AlertCircle className="w-5 h-5" /> : <Banknote className="w-5 h-5" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-content">
+          {needsAttention ? 'Stripe needs more info before you can be paid' :
+           status === 'pending' ? 'Finish your payment setup' :
+           'Set up payments to get paid'}
+        </p>
+        <p className="text-xs text-content-muted">
+          {needsAttention
+            ? 'Click below to resolve the outstanding items on your Stripe account.'
+            : `Before Maktub can send you money, we need to verify your identity and bank info through Stripe. Takes about 2 minutes.`}
+        </p>
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      </div>
+      <button
+        onClick={startOnboarding}
+        disabled={starting}
+        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+      >
+        {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+        {needsAttention ? 'Resolve' : status === 'pending' ? 'Continue' : 'Set up'}
+      </button>
+    </section>
+  );
+}
+
+function MyPayoutsSection({ payouts }: { payouts: CreatorPayoutSummary[] }) {
+  // Currency-aware money formatter — each payout can be in its own currency so we can't
+  // bake `$` into the helper. Falls back to USD formatting on unknown currency codes.
+  const fmtMoney = (n: number | null, currency: string = 'usd') => {
+    if (n === null || n === undefined) return '—';
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(n);
+    } catch {
+      return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+  };
+
+  // New action-oriented status copy. Short label (chip) + longer sub-message (under the chip)
+  // so creators understand what's happening at each step without jargon. "Internal" labels like
+  // campaign name + template name are deliberately NOT surfaced — those are Maktub business
+  // info that doesn't help the creator understand their earnings.
+  const statusChipCls: Record<CreatorPayoutSummary['status'], string> = {
+    not_calculated: 'bg-surface-tertiary text-content-muted border border-border',
+    pending:        'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30',
+    approved:       'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30',
+    paid:           'bg-emerald-500 text-white border border-emerald-500',
+  };
+  const statusLabel: Record<CreatorPayoutSummary['status'], string> = {
+    not_calculated: 'Tracking earnings',
+    pending:        'Being finalized',
+    approved:       'Ready to pay out',
+    paid:           'Paid',
+  };
+  const statusSubMessage: Record<CreatorPayoutSummary['status'], string> = {
+    not_calculated: `We're tracking your videos. Your earnings will appear here once they're counted.`,
+    pending:        `Your earnings are being finalized. Payment will be released once reviewed.`,
+    approved:       `You're cleared for payment. Make sure your payment setup is complete so it can be released.`,
+    paid:           `Payment was sent to your Stripe account. It should land in your bank within 1–2 business days.`,
+  };
+
+  // Total earned across all deals — group by currency so we don't mix USD and EUR into one bogus sum.
+  const totalByCurrency = payouts.reduce<Record<string, number>>((acc, p) => {
+    // Prefer the immutable paid amount where it exists; fall back to the live calc.
+    const value = p.status === 'paid' ? (p.paidAmount ?? p.amount ?? 0) : (p.amount ?? 0);
+    const cur = (p.currency || 'usd').toLowerCase();
+    acc[cur] = (acc[cur] || 0) + value;
+    return acc;
+  }, {});
+  const totalLines = Object.entries(totalByCurrency).map(([cur, sum]) => fmtMoney(sum, cur));
+
+  return (
+    <section className="rounded-2xl bg-surface-secondary border border-border-subtle shadow-theme overflow-hidden">
+      <div className="px-5 py-4 border-b border-border-subtle flex items-center justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Your earnings</p>
+          <p className="font-semibold text-content">{payouts.length} active deal{payouts.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Total</p>
+          <p className="text-xl font-bold text-emerald-600 dark:text-emerald-500">
+            {totalLines.length > 0 ? totalLines.join(' · ') : '—'}
+          </p>
+        </div>
+      </div>
+      <ul className="divide-y divide-border-subtle">
+        {payouts.map(p => {
+          // Paid creators see the FROZEN snapshot amount — that's the truth of what they were paid.
+          // Everyone else sees the live-calc amount, which can still move as videos rack up views.
+          const displayAmount = p.status === 'paid' ? (p.paidAmount ?? p.amount) : p.amount;
+          return (
+            <li key={p.campaignId} className="px-5 py-4 space-y-3">
+              {/* Header row: status + earnings side-by-side, biggest visual element */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusChipCls[p.status]}`}>
+                    {statusLabel[p.status]}
+                  </span>
+                  <p className="text-xs text-content-muted mt-1.5 leading-snug">{statusSubMessage[p.status]}</p>
+                  {p.status === 'paid' && p.paidAt && (
+                    <p className="text-[10px] text-content-muted mt-1">
+                      Paid on {new Date(p.paidAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  )}
+                  {p.note && <p className="text-[10px] text-content-muted italic mt-1">Note from Maktub: {p.note}</p>}
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className={`text-2xl font-bold leading-tight ${p.status === 'paid' || p.status === 'approved' ? 'text-emerald-600 dark:text-emerald-500' : 'text-content'}`}>
+                    {fmtMoney(displayAmount ?? null, p.currency)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Deal breakdown — verbose human-readable bullets. Hides all internal structure
+                  components, metric keys, etc. — creators see only the "how I earn" translation. */}
+              {p.dealSummary && p.dealSummary.length > 0 && (
+                <div className="rounded-xl bg-surface-tertiary/60 border border-border-subtle p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted mb-1.5">Your deal</p>
+                  <ul className="space-y-1">
+                    {p.dealSummary.map((line, i) => (
+                      <li key={i} className="text-xs text-content-secondary flex gap-2">
+                        <span className="text-orange-500 font-bold flex-shrink-0">•</span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function CreatorShareView() {
@@ -435,6 +712,7 @@ export default function CreatorShareView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoSubmission | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [payouts, setPayouts] = useState<CreatorPayoutSummary[]>([]);
 
   // Processing state . combines two sources:
   //   1. localPlaceholders: temporary video stubs injected immediately after
@@ -469,6 +747,11 @@ export default function CreatorShareView() {
   const load = useCallback((silent?: boolean) => {
     if (!token) return;
     if (!silent) setLoading(true);
+    // Fetch payouts in parallel with the main share data — small payload, no need to block the page.
+    CreatorShareLinkService.fetchPayouts(token)
+      .then(({ payouts }) => setPayouts(payouts))
+      .catch(err => console.warn('Payouts fetch failed (non-fatal):', err));
+
     CreatorShareLinkService.fetchPublic(token)
       .then((result) => {
         setData(result);
@@ -799,6 +1082,12 @@ export default function CreatorShareView() {
       <main className="overflow-auto min-h-screen pt-16 md:pt-24" style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8" style={{ overflow: 'visible' }}>
           <div className="space-y-6">
+            {/* Stripe Connect onboarding — only shown once the creator has a payout queued
+                (no point asking them to set up Stripe if admins haven't approved anything yet). */}
+            {payouts.length > 0 && token && <StripeConnectBanner token={token} />}
+            {/* My payouts — hidden until creator has at least one non-draft campaign entry */}
+            {payouts.length > 0 && <MyPayoutsSection payouts={payouts} />}
+
             <VideoSliderSection
               videos={submissionsWithoutDateFilter}
               maxVideos={20}

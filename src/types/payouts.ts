@@ -8,6 +8,33 @@
  * - Campaign-level competitions
  */
 
+// ==================== SHARED TYPES ====================
+
+/**
+ * Supported video platforms
+ */
+export type VideoPlatform = 'tiktok' | 'instagram' | 'youtube' | 'twitter';
+
+/**
+ * Caps that can be applied to bonus-type components
+ */
+export interface BonusCaps {
+  perVideo?: number;    // Max bonus earned from a single video
+  perCampaign?: number; // Max bonus earned across entire campaign
+}
+
+/**
+ * Structure-level caps
+ */
+export interface StructureCaps {
+  perCampaign?: number; // Max total payout per creator per campaign
+  perPeriod?: {
+    amount: number;
+    period: 'week' | 'month';
+    alignment: 'calendar' | 'rolling';
+  };
+}
+
 // ==================== COMPONENT TYPES ====================
 
 /**
@@ -52,6 +79,14 @@ export interface CPMPayoutComponent {
   metric: 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'ig_reel_plays' | 'yt_views' | 'tt_views';
   cap?: number; // Max payout from this component
   minThreshold?: number; // Don't pay unless they hit this number
+  platformRates?: Partial<Record<VideoPlatform, number>>; // Override rate per platform
+  /**
+   * How to handle cross-posted video groups.
+   * 'sum-all' (default) — sum metric across all platform copies (each view/like counts).
+   * 'max-per-group' — per cross-post group, take only the best-performing copy's metric.
+   * Ungrouped videos are unaffected.
+   */
+  crossPostPolicy?: 'sum-all' | 'max-per-group';
   description?: string;
 }
 
@@ -80,8 +115,39 @@ export interface BonusPayoutComponent {
     operator?: '>=' | '>' | '=' | '<' | '<=';
   };
   amount?: number; // Fixed amount
+  /**
+   * If set, switches to STACKING mode: pays `amount` for every `per` units of the metric.
+   * Example: amount=100, per=100000, metric=views → $100 for every 100k views.
+   * The condition.value is treated as a minimum threshold (creator must hit it before any payout).
+   */
+  per?: number;
+  /**
+   * For stacking bonuses: how to apply the calculation.
+   * 'per_video' = each video earns bonus independently (most common for clipping campaigns).
+   * 'creator_total' = sum of metric across all videos, then one bonus calculation.
+   * Defaults to 'per_video' if not set.
+   */
+  scope?: 'per_video' | 'creator_total';
+  /**
+   * Piecewise rate tiers for stacking bonuses. The primary `amount`/`per` represents
+   * the "from 0" band. Each entry here defines a higher band that takes over at `threshold`.
+   * Example: $100/100K from 0 → after 1M, $50/100K → after 2M, $25/100K.
+   *   rateTiers: [{ threshold: 1_000_000, rate: 50, per: 100_000 }, { threshold: 2_000_000, rate: 25, per: 100_000 }]
+   * Only meaningful when `per` is set (stacking mode).
+   */
+  rateTiers?: Array<{ threshold: number; rate: number; per: number }>;
+  /**
+   * How to evaluate cross-posted video groups (only relevant for stacking + per_video scope,
+   * or a one-time bonus with a perVideo cap).
+   * 'max-per-group' (default) — a single platform copy in the group must hit the threshold;
+   *   pays once per group using the best-performing copy's metric.
+   * 'sum-per-group' — combined metric across all copies in the group; pays once per group.
+   * 'per-platform' — each platform copy evaluated independently (no grouping).
+   */
+  crossPostPolicy?: 'max-per-group' | 'sum-per-group' | 'per-platform';
   percentOfTotal?: number; // OR percentage of total earned
   once?: boolean; // Only pay once when crossed (default true)
+  caps?: BonusCaps; // Per-video and per-campaign caps
   description?: string;
 }
 
@@ -98,6 +164,12 @@ export interface TieredBonusPayoutComponent {
     amount: number;
     description?: string;
   }>;
+  caps?: BonusCaps; // Per-video and per-campaign caps
+  /**
+   * Cross-post handling when perVideo cap is set (per-video evaluation mode).
+   * Same semantics as BonusPayoutComponent.crossPostPolicy.
+   */
+  crossPostPolicy?: 'max-per-group' | 'sum-per-group' | 'per-platform';
   description?: string;
 }
 
@@ -127,6 +199,15 @@ export interface VideoPayoutComponent {
     metric: 'views' | 'likes' | 'engagement_rate';
     value: number;
   };
+  /**
+   * How to count cross-posted video groups.
+   * 'count-as-1' (default) — a cross-post group is paid as one video, regardless of platform count.
+   * 'count-as-each' — each platform copy counts as its own video (legacy behavior).
+   * 'count-with-cap' — pay for up to `crossPostCap` platform copies per group.
+   */
+  crossPostPolicy?: 'count-as-1' | 'count-as-each' | 'count-with-cap';
+  /** Only used when crossPostPolicy is 'count-with-cap'. Max platform copies paid per group. */
+  crossPostCap?: number;
   description?: string;
 }
 
@@ -154,7 +235,8 @@ export interface PayoutStructure {
   name: string; // e.g. "Base + CPM w/ cap", "Flat + tiered bonus"
   description?: string;
   components: PayoutComponent[];
-  maxPayout?: number; // Structure-level cap
+  maxPayout?: number; // Legacy: structure-level cap (use caps.perCampaign instead)
+  caps?: StructureCaps; // Structure-level caps (per-campaign, per-period)
   createdAt: Date;
   createdBy: string;
   isActive: boolean;
@@ -177,6 +259,7 @@ export interface PayoutComponentOverride {
 export interface CampaignCreatorAssignment {
   creatorId: string;
   payoutStructureId: string;
+  structureSnapshot?: PayoutStructure; // Immutable copy at assignment time for dispute resolution
   overrides?: PayoutComponentOverride[]; // Custom values for this creator
   assignedAt: Date;
   assignedBy: string;
