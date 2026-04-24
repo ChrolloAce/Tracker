@@ -349,7 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserRole(role);
 
         // Get or create default project (role-aware — depends on role, so must be sequential)
-        const projectId = await loadOrCreateProject(orgId, user.uid, role);
+        const projectId = await loadOrCreateProject(orgId, user.uid, role, member?.assignedProjects);
         setCurrentProjectId(projectId);
         } catch (error) {
           console.error('❌ Failed to initialize user session:', error);
@@ -371,10 +371,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const loadOrCreateProject = async (orgId: string, userId: string, role: string | null): Promise<string> => {
+  const loadOrCreateProject = async (
+    orgId: string,
+    userId: string,
+    role: string | null,
+    assignedProjects?: string[]
+  ): Promise<string> => {
     const maxRetries = 3;
     let lastError;
     const isCreator = role === 'creator';
+    // UI-level restriction: only applies to role === 'member' with a non-empty assignedProjects list.
+    const restrictedMemberProjectIds =
+      role === 'member' && assignedProjects && assignedProjects.length > 0 ? assignedProjects : null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -385,6 +393,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (isCreator) {
             const creatorProjectIds = await ProjectService.getCreatorProjectIds(orgId, userId);
             if (creatorProjectIds.includes(lastProjectId)) {
+              const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
+              if (project && !project.isArchived) {
+                return lastProjectId;
+              }
+            }
+          } else if (restrictedMemberProjectIds) {
+            // Restricted members: only honor lastProjectId if it's in their assigned list
+            if (restrictedMemberProjectIds.includes(lastProjectId)) {
               const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
               if (project && !project.isArchived) {
                 return lastProjectId;
@@ -404,8 +420,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           projects = await ProjectService.getProjectsForCreator(orgId, userId);
         } else {
           projects = await ProjectService.getProjects(orgId, false);
+          if (restrictedMemberProjectIds) {
+            projects = projects.filter(p => restrictedMemberProjectIds.includes(p.id));
+          }
         }
-        
+
         if (projects.length > 0) {
           // Use first available project
           const projectId = projects[0].id;
@@ -416,6 +435,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // For creators with no assigned projects, return empty string
         if (isCreator) {
           console.log('⚠️ Creator has no assigned projects');
+          return '';
+        }
+
+        // Restricted members: don't auto-create a default project (it wouldn't be in their allowed set)
+        if (restrictedMemberProjectIds) {
+          console.log('⚠️ Restricted member has no accessible assigned projects');
           return '';
         }
 

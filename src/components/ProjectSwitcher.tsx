@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, Check, Folder, Plus, Pencil } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import ProjectService from '../services/ProjectService';
 import { Project } from '../types/projects';
 import { clsx } from 'clsx';
@@ -13,7 +14,12 @@ interface ProjectSwitcherProps {
 
 const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }) => {
   const { currentOrgId, currentProjectId, switchProject, userRole, user } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { member } = usePermissions();
+  const [rawProjects, setRawProjects] = useState<Project[]>([]);
+  const projects = useMemo(
+    () => ProjectService.filterByAssignedProjects(rawProjects, member),
+    [rawProjects, member]
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -31,11 +37,11 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
         // Creators only see their assigned projects
         if (userRole === 'creator' && user?.uid) {
           const creatorProjects = await ProjectService.getProjectsForCreator(currentOrgId, user.uid);
-          setProjects(creatorProjects);
+          setRawProjects(creatorProjects);
         } else {
-          // Admins/members see all projects
+          // Admins see everything; restricted members are filtered via filterByAssignedProjects (useMemo)
           const projectsList = await ProjectService.getProjects(currentOrgId, false);
-          setProjects(projectsList);
+          setRawProjects(projectsList);
         }
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -83,7 +89,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
     if (currentOrgId) {
       try {
         const projectsList = await ProjectService.getProjects(currentOrgId, false);
-        setProjects(projectsList);
+        setRawProjects(projectsList);
       } catch (error) {
         console.error('Failed to reload projects:', error);
       }
@@ -96,7 +102,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
     if (currentOrgId) {
       try {
         const projectsList = await ProjectService.getProjects(currentOrgId, false);
-        setProjects(projectsList);
+        setRawProjects(projectsList);
       } catch (error) {
         console.error('Failed to reload projects:', error);
       }

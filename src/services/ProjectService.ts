@@ -428,6 +428,21 @@ class ProjectService {
   }
 
   /**
+   * Apply the `assignedProjects` UI filter for restricted members.
+   * Only takes effect when role === 'member' and assignedProjects is non-empty;
+   * owners/admins/creators are unaffected.
+   */
+  static filterByAssignedProjects<T extends { id: string }>(
+    projects: T[],
+    member: { role?: string; assignedProjects?: string[] } | null | undefined
+  ): T[] {
+    if (!member || member.role !== 'member') return projects;
+    const assigned = member.assignedProjects;
+    if (!assigned || assigned.length === 0) return projects;
+    return projects.filter(p => assigned.includes(p.id));
+  }
+
+  /**
    * Get projects for a creator (filtered by their assigned projects)
    */
   static async getProjectsForCreator(orgId: string, userId: string): Promise<Project[]> {
