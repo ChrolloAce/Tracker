@@ -12,6 +12,7 @@ import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 import CreatorShareLinkService, { PublicCreatorShareData, CreatorPayoutSummary } from '../services/CreatorShareLinkService';
+import { PRIORITY_COUNTRIES, OTHER_COUNTRIES } from '../data/stripe-countries';
 import { VideoSubmission } from '../types';
 import { TrackedAccount } from '../types/firestore';
 import { Timestamp } from 'firebase/firestore';
@@ -492,6 +493,9 @@ function StripeConnectBanner({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Default to US since that's our largest creator geo. Only used for first-time account creation —
+  // once the Stripe account exists, country is immutable and this state is ignored by the API.
+  const [country, setCountry] = useState<string>('US');
 
   const refresh = useCallback(async () => {
     try {
@@ -531,7 +535,12 @@ function StripeConnectBanner({ token }: { token: string }) {
     setStarting(true);
     setError(null);
     try {
-      const { onboardingUrl } = await CreatorShareLinkService.startStripeOnboarding(token);
+      // Only send country on first-time creation (status === 'none'). Stripe locks country at
+      // account create, so sending it on resume would be ignored anyway — but we omit for clarity.
+      const { onboardingUrl } = await CreatorShareLinkService.startStripeOnboarding(
+        token,
+        status === 'none' ? country : undefined,
+      );
       // New tab so the creator doesn't lose their portal state — return_url brings them back.
       window.open(onboardingUrl, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
@@ -558,32 +567,78 @@ function StripeConnectBanner({ token }: { token: string }) {
   }
 
   const needsAttention = status === 'restricted';
+  const showCountryPicker = status === 'none';
+
   return (
-    <section className={`rounded-2xl border px-5 py-4 flex items-center gap-3 ${needsAttention ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-500/5 border-orange-500/20'}`}>
-      <div className="w-10 h-10 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
-        {needsAttention ? <AlertCircle className="w-5 h-5" /> : <Banknote className="w-5 h-5" />}
+    <section className={`rounded-2xl border px-5 py-4 ${needsAttention ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-500/5 border-orange-500/20'}`}>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+          {needsAttention ? <AlertCircle className="w-5 h-5" /> : <Banknote className="w-5 h-5" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-content">
+            {needsAttention ? 'Stripe needs more info before you can be paid' :
+             status === 'pending' ? 'Finish your payment setup' :
+             'Set up payments to get paid'}
+          </p>
+          <p className="text-xs text-content-muted">
+            {needsAttention
+              ? 'Click below to resolve the outstanding items on your Stripe account.'
+              : `Before Maktub can send you money, we need to verify your identity and bank info through Stripe. Takes about 2 minutes.`}
+          </p>
+          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        </div>
+        {!showCountryPicker && (
+          <button
+            onClick={startOnboarding}
+            disabled={starting}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+            {needsAttention ? 'Resolve' : 'Continue'}
+          </button>
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-content">
-          {needsAttention ? 'Stripe needs more info before you can be paid' :
-           status === 'pending' ? 'Finish your payment setup' :
-           'Set up payments to get paid'}
-        </p>
-        <p className="text-xs text-content-muted">
-          {needsAttention
-            ? 'Click below to resolve the outstanding items on your Stripe account.'
-            : `Before Maktub can send you money, we need to verify your identity and bank info through Stripe. Takes about 2 minutes.`}
-        </p>
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      </div>
-      <button
-        onClick={startOnboarding}
-        disabled={starting}
-        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
-      >
-        {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-        {needsAttention ? 'Resolve' : status === 'pending' ? 'Continue' : 'Set up'}
-      </button>
+
+      {/* Country picker — only when creator hasn't started onboarding yet. Stripe locks country
+           at account creation time, so this is a one-time decision the creator must make. */}
+      {showCountryPicker && (
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-content-muted mb-1">
+              Where do you live / where should payouts go?
+            </label>
+            <select
+              value={country}
+              onChange={e => setCountry(e.target.value)}
+              disabled={starting}
+              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-content text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <optgroup label="Most common">
+                {PRIORITY_COUNTRIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Other supported countries">
+                {OTHER_COUNTRIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                ))}
+              </optgroup>
+            </select>
+            <p className="text-[10px] text-content-muted mt-1">
+              This determines the currency you'll be paid in and the tax forms you'll complete. It can't be changed later.
+            </p>
+          </div>
+          <button
+            onClick={startOnboarding}
+            disabled={starting}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+            Set up
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -690,6 +745,76 @@ function MyPayoutsSection({ payouts }: { payouts: CreatorPayoutSummary[] }) {
                       <li key={i} className="text-xs text-content-secondary flex gap-2">
                         <span className="text-orange-500 font-bold flex-shrink-0">•</span>
                         <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Calculation breakdown — exact math, component by component. Shown for every status
+                  except `paid` (where the frozen amount is what matters, not the live calc). */}
+              {p.status !== 'paid' && p.breakdown && p.breakdown.length > 0 && (
+                <div className="rounded-xl bg-surface-tertiary/60 border border-border-subtle p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted mb-2">How your earnings were calculated</p>
+                  <ul className="space-y-1.5">
+                    {p.breakdown.map((b, i) => (
+                      <li key={i} className="flex items-start justify-between gap-3 text-xs">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-semibold uppercase text-content-muted">{b.typeLabel}</span>
+                            <span className="font-medium text-content">{b.componentName}</span>
+                          </div>
+                          <p className="text-content-muted mt-0.5 leading-snug">{b.details}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {b.wasCapped && <p className="text-[9px] text-content-muted italic">capped from {fmtMoney(b.originalAmount ?? 0, p.currency)}</p>}
+                          <p className="font-bold text-content">{fmtMoney(b.amount, p.currency)}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Gross / paid / net summary — only when prior payouts exist (otherwise gross == net and this is noise). */}
+                  {typeof p.grossAmount === 'number' && (p.priorPayouts?.length ?? 0) > 0 && (
+                    <div className="grid grid-cols-3 gap-2 pt-3 mt-3 border-t border-border-subtle">
+                      <div className="text-center">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Gross</p>
+                        <p className="text-sm font-bold text-content mt-0.5">{fmtMoney(p.grossAmount, p.currency)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Already paid</p>
+                        <p className="text-sm font-bold text-content-secondary mt-0.5">−{fmtMoney((p.priorPayouts || []).reduce((s, x) => s + x.amount, 0) + (p.paidAmount || 0), p.currency)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Still owed</p>
+                        <p className="text-sm font-bold text-orange-600 dark:text-orange-400 mt-0.5">{fmtMoney(p.netOwed ?? 0, p.currency)}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Prior payouts — transparency into what the creator has already been paid for this campaign. */}
+              {p.priorPayouts && p.priorPayouts.length > 0 && (
+                <div className="rounded-xl bg-emerald-500/5 border border-emerald-300/40 dark:border-emerald-500/25 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2">
+                    Payments you've received
+                  </p>
+                  <ul className="space-y-1.5">
+                    {p.priorPayouts.map(pp => (
+                      <li key={pp.id} className="flex items-center justify-between gap-3 text-xs">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-content">{fmtMoney(pp.amount, pp.currency)}</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-surface-tertiary text-content-secondary border border-border">
+                              {pp.method}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-content-muted mt-0.5">
+                            {new Date(pp.paidAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {' · based on '}{pp.metricsAtPayout.views.toLocaleString()} views
+                            {pp.metricsAtPayout.videoCount !== undefined && `, ${pp.metricsAtPayout.videoCount} videos`}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -1082,11 +1207,14 @@ export default function CreatorShareView() {
       <main className="overflow-auto min-h-screen pt-16 md:pt-24" style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8" style={{ overflow: 'visible' }}>
           <div className="space-y-6">
-            {/* Stripe Connect onboarding — only shown once the creator has a payout queued
-                (no point asking them to set up Stripe if admins haven't approved anything yet). */}
-            {payouts.length > 0 && token && <StripeConnectBanner token={token} />}
-            {/* My payouts — hidden until creator has at least one non-draft campaign entry */}
-            {payouts.length > 0 && <MyPayoutsSection payouts={payouts} />}
+            {/* Stripe Connect onboarding — gated by both (a) the admin's per-creator
+                `payoutPortalEnabled` toggle AND (b) at least one non-draft payout, so creators
+                without approved earnings don't see "set up payments" prompts out of nowhere. */}
+            {data?.creator.payoutsVisible && payouts.length > 0 && token && <StripeConnectBanner token={token} />}
+            {/* My payouts — same gate. Admin-disabled creators never see this section at all
+                (the payouts API returns an empty array for them, but we double-gate in the UI
+                just in case the API response was cached from a prior allowed state). */}
+            {data?.creator.payoutsVisible && payouts.length > 0 && <MyPayoutsSection payouts={payouts} />}
 
             <VideoSliderSection
               videos={submissionsWithoutDateFilter}

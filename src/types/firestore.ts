@@ -588,6 +588,12 @@ export interface Creator {
   linkedAccountsCount: number;
   totalEarnings: number;
   payoutsEnabled: boolean;
+  /** Admin-gated toggle that controls whether this creator sees the Stripe Connect banner and
+   *  "My payouts" section on their public share portal. Default is OFF (hidden) — admin must
+   *  explicitly flip it on per creator in the Creators tab. Undefined / missing field on legacy
+   *  docs is treated as false. Intentionally separate from `payoutsEnabled` (always-true dead
+   *  field) so we don't break any code that wrote the old field. */
+  payoutPortalEnabled?: boolean;
   createdAt: Timestamp;
   lastPayoutAt?: Timestamp;
   status?: string; // Status of the creator (e.g., 'pending', 'active')

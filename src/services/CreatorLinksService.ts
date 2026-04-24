@@ -341,6 +341,26 @@ class CreatorLinksService {
   }
 
   /**
+   * Flip the per-creator `payoutPortalEnabled` gate.
+   *
+   * This is the single source of truth for whether a creator sees the Stripe Connect banner
+   * and "My payouts" section on their public share link. Default is OFF (not set = hidden);
+   * admin must explicitly enable per creator from the Creators tab. Used for staged rollout —
+   * e.g., only turn on for yourself to test in production before exposing to all creators.
+   *
+   * Writes to: organizations/{orgId}/projects/{projectId}/creators/{creatorId}.payoutPortalEnabled
+   */
+  static async updateCreatorPayoutPortalEnabled(
+    orgId: string,
+    projectId: string,
+    creatorId: string,
+    enabled: boolean
+  ): Promise<void> {
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
+    await updateDoc(creatorRef, { payoutPortalEnabled: enabled });
+  }
+
+  /**
    * Remove all links for a creator in a project (when removing from project)
    */
   static async removeAllCreatorLinks(

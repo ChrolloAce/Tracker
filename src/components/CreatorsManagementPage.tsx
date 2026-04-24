@@ -335,6 +335,23 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
               handleRemoveCreator(creator.userId);
             }
           }}
+          onTogglePayoutPortal={async (creator, next) => {
+            // Flip the per-creator `payoutPortalEnabled` flag. Default for every creator is OFF
+            // until the admin explicitly turns it on here. Writes to creators/{id} via
+            // CreatorLinksService so the gate takes effect on the creator's next portal load.
+            try {
+              await CreatorLinksService.updateCreatorPayoutPortalEnabled(
+                currentOrgId!,
+                currentProjectId!,
+                creator.userId,
+                next,
+              );
+              await loadData();
+            } catch (e) {
+              console.error('Failed to toggle payout portal:', e);
+              alert('Failed to update setting. Check console for details.');
+            }
+          }}
           onPageChange={setCurrentPage}
           onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
         />

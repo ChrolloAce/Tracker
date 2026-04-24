@@ -71,6 +71,9 @@
     "api/stripe-webhook.ts": {
       "maxDuration": 30
     },
+    "api/stripe-connect-webhook.ts": {
+      "maxDuration": 30
+    },
     "api/create-checkout-session.ts": {
       "maxDuration": 30
     },

@@ -501,63 +501,62 @@ export class PayoutStructureService {
     const existing = await this.listStructures(orgId, projectId);
     if (existing.length > 0) return existing;
 
+    // Seed templates — shapes only, zero values. The admin fills in their own rates/thresholds.
     const seeds: Array<{ name: string; description: string; components: PayoutComponent[] }> = [
       {
         name: 'CPM Only',
-        description: 'Pay per 1,000 views — simplest structure',
+        description: 'Pay per 1,000 views',
         components: [
-          { id: 'seed_cpm', type: 'cpm', name: 'CPM', rate: 3, metric: 'views' },
+          { id: 'seed_cpm', type: 'cpm', name: 'CPM', rate: 0, metric: 'views' },
         ],
       },
       {
         name: 'Flat + CPM',
-        description: 'Guaranteed base + performance pay',
+        description: 'Guaranteed base fee plus performance pay',
         components: [
-          { id: 'seed_flat', type: 'flat', name: 'Base Fee', amount: 100 },
-          { id: 'seed_cpm2', type: 'cpm', name: 'CPM', rate: 3, metric: 'views' },
+          { id: 'seed_flat', type: 'flat', name: 'Base Fee', amount: 0 },
+          { id: 'seed_cpm2', type: 'cpm', name: 'CPM', rate: 0, metric: 'views' },
         ],
       },
       {
-        name: 'Tiered CPM',
-        description: 'Escalating rates at higher view counts',
+        name: 'Tiered Bonus',
+        description: 'Escalating bonus at view thresholds',
         components: [
           { id: 'seed_tiered', type: 'bonus_tiered', name: 'Tiered Bonus', metric: 'views', tiers: [
-            { threshold: 100000, amount: 100 },
-            { threshold: 500000, amount: 400 },
-            { threshold: 1000000, amount: 800 },
+            { threshold: 0, amount: 0 },
           ]},
         ],
       },
       {
         name: 'Per-Video + Viral Bonus',
-        description: '$50/video + bonus at 1M views',
+        description: 'Fixed amount per video plus a one-time bonus at a view milestone',
         components: [
-          { id: 'seed_pv', type: 'per_video', name: 'Per Video', amountPerVideo: 50 },
-          { id: 'seed_viral', type: 'bonus', name: 'Viral Bonus', amount: 500, condition: { metric: 'views', value: 1000000, operator: '>=' as const }, caps: { perVideo: 500 } },
+          { id: 'seed_pv', type: 'per_video', name: 'Per Video', amountPerVideo: 0 },
+          { id: 'seed_viral', type: 'bonus', name: 'Viral Bonus', amount: 0, condition: { metric: 'views', value: 0, operator: '>=' as const } },
         ],
       },
       {
-        name: '$15/video + $100 per 100K views',
-        description: 'Flat $15 per video, plus a view bonus per video',
+        name: 'Per-Video + Stacking View Bonus',
+        description: 'Fixed amount per video plus a view bonus that stacks per video',
         components: [
-          { id: 'seed_pv2', type: 'per_video', name: 'Per Video', amountPerVideo: 15 },
-          { id: 'seed_stack', type: 'bonus', name: 'View Bonus', amount: 100, per: 100000, scope: 'per_video' as const, condition: { metric: 'views', value: 0, operator: '>=' as const } },
+          { id: 'seed_pv2', type: 'per_video', name: 'Per Video', amountPerVideo: 0 },
+          { id: 'seed_stack', type: 'bonus', name: 'View Bonus', amount: 0, per: 100000, scope: 'per_video' as const, condition: { metric: 'views', value: 0, operator: '>=' as const } },
         ],
       },
       {
-        name: '$100 per 100K views (capped $1K per video)',
-        description: 'Per-video view bonus with a ceiling — each video earns independently',
+        name: 'Stacking View Bonus (Per Video)',
+        description: 'Per-video view bonus with an optional cap',
         components: [
-          { id: 'seed_capped_view', type: 'bonus', name: 'View Bonus', amount: 100, per: 100000, scope: 'per_video' as const, condition: { metric: 'views', value: 0, operator: '>=' as const }, caps: { perVideo: 1000 } },
+          { id: 'seed_capped_view', type: 'bonus', name: 'View Bonus', amount: 0, per: 100000, scope: 'per_video' as const, condition: { metric: 'views', value: 0, operator: '>=' as const } },
         ],
       },
       {
         name: 'Retainer + Performance',
-        description: 'Fixed base + CPM + milestone bonuses',
+        description: 'Base retainer plus CPM plus milestone bonus',
         components: [
-          { id: 'seed_ret', type: 'base', name: 'Retainer', amount: 500 },
-          { id: 'seed_perf', type: 'cpm', name: 'Performance CPM', rate: 2, metric: 'views' },
-          { id: 'seed_mile', type: 'bonus', name: 'Milestone Bonus', amount: 300, condition: { metric: 'views', value: 500000, operator: '>=' as const } },
+          { id: 'seed_ret', type: 'base', name: 'Retainer', amount: 0 },
+          { id: 'seed_perf', type: 'cpm', name: 'Performance CPM', rate: 0, metric: 'views' },
+          { id: 'seed_mile', type: 'bonus', name: 'Milestone Bonus', amount: 0, condition: { metric: 'views', value: 0, operator: '>=' as const } },
         ],
       },
     ];

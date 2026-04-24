@@ -12,8 +12,8 @@ import Sidebar from '../components/layout/Sidebar';
 import { Button } from '../components/ui/Button';
 import PayoutStructureManager from '../components/PayoutStructureManager';
 import VideoSliderSection from '../components/VideoSliderSection';
-import { PayoutCalculationEngine, type PayoutCalculationResult } from '../services/PayoutCalculationEngine';
-import type { PayoutStructure, PayoutComponentType } from '../types/payouts';
+import { PayoutCalculationEngine, type PayoutCalculationResult, type CreatorPerformance } from '../services/PayoutCalculationEngine';
+import type { PayoutStructure, PayoutComponentType, PayoutMetric } from '../types/payouts';
 import type { Creator } from '../types/firestore';
 import type { VideoSubmission } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -125,6 +125,40 @@ interface CampaignCreator {
   };
   /** Chronological log of mutations on this creator's payout (approvals, overrides, exclusions, etc.). */
   history?: AuditEntry[];
+  /** Ledger of payouts already made to this creator, INCLUDING OFF-PLATFORM ones (Venmo, bank transfer,
+   *  etc. that happened before Stripe was wired). Each entry captures a metric snapshot at the time of
+   *  payment so audit trails are intact even if view counts change later. The NET OWED calculation is
+   *  `gross - sum(priorPayouts.amount)` — so the admin only needs to pay the delta next time. */
+  priorPayouts?: PriorPayoutEntry[];
+}
+
+interface PriorPayoutEntry {
+  id: string;
+  amount: number;
+  /** ISO-4217 lowercase, mirrored from campaign.currency at record-time. */
+  currency: string;
+  paidAt: Date;
+  /** How/where the payout happened. */
+  method: 'bank_transfer' | 'venmo' | 'paypal' | 'wire' | 'cash' | 'stripe' | 'other';
+  /** Free-text reference (bank txn ID, Venmo note, Stripe transfer ID, etc.). */
+  reference?: string;
+  notes?: string;
+  /** Metric snapshot at time of payment — immutable audit trail. Captures every driver metric
+   *  the structure might read so an auditor can always reconstruct the amount. Shares/saves/
+   *  conversions matter for CPM-on-shares, CPM-on-saves, and per-conversion structures —
+   *  without them stored here, the amount would be unexplained after the fact. */
+  metricsAtPayout: {
+    views: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    saves?: number;
+    videoCount?: number;
+    conversions?: number;
+  };
+  /** Email/uid of the admin who logged the entry. */
+  recordedBy: string;
+  recordedAt: Date;
 }
 
 // ==================== COMPONENT TYPE STYLING ====================
@@ -138,6 +172,16 @@ const COMPONENT_META: Record<PayoutComponentType, { label: string; icon: typeof 
   bonus_tiered: { label: 'Tiered Bonus',   icon: Layers },
   conversion:   { label: 'Per Conversion', icon: Target },
   per_video:    { label: 'Per Video',      icon: Film },
+};
+
+const METHOD_LABEL: Record<PriorPayoutEntry['method'], string> = {
+  bank_transfer: 'Bank transfer',
+  venmo:         'Venmo',
+  paypal:        'PayPal',
+  wire:          'Wire',
+  cash:          'Cash',
+  stripe:        'Stripe (manual)',
+  other:         'Other',
 };
 
 // ==================== HELPERS ====================
@@ -267,6 +311,19 @@ function buildIdempotencyKey(campaignId: string, creatorId: string): string {
   const ts = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
   return `${campaignId}_${creatorId}_${ts}_${rand}`;
+}
+
+/** Sum of all off-platform / prior payouts logged for a creator. */
+function sumPriorPayouts(c: CampaignCreator): number {
+  return (c.priorPayouts || []).reduce((s, p) => s + (p.amount || 0), 0);
+}
+
+/** Net amount still owed = gross (from calc engine) minus everything already paid (off-platform + on-platform). */
+function netOwed(c: CampaignCreator): number {
+  const gross = c.payoutOverride?.amount ?? c.payoutResult?.totalPayout ?? 0;
+  const priorPaid = sumPriorPayouts(c);
+  const platformPaid = c.paidSnapshot?.amount ?? 0;
+  return Math.max(0, gross - priorPaid - platformPaid);
 }
 
 function toVideoSubmission(v: TrackedVideo, creator: CampaignCreator): VideoSubmission {
@@ -437,6 +494,20 @@ async function saveCampaignToFirestore(orgId: string, projectId: string, campaig
           ...(h.details ? { details: h.details } : {}),
         }));
       }
+      if (c.priorPayouts?.length) {
+        entry.priorPayouts = c.priorPayouts.map(p => ({
+          id: p.id,
+          amount: p.amount,
+          currency: p.currency,
+          paidAt: Timestamp.fromDate(p.paidAt),
+          method: p.method,
+          ...(p.reference ? { reference: p.reference } : {}),
+          ...(p.notes ? { notes: p.notes } : {}),
+          metricsAtPayout: p.metricsAtPayout,
+          recordedBy: p.recordedBy,
+          recordedAt: Timestamp.fromDate(p.recordedAt),
+        }));
+      }
       return entry;
     }),
   };
@@ -522,6 +593,18 @@ async function loadCampaignsFromFirestore(orgId: string, projectId: string): Pro
           at: h.at?.toDate?.() || new Date(),
           by: h.by,
           details: h.details,
+        })),
+        priorPayouts: (c.priorPayouts || []).map((p: any) => ({
+          id: p.id,
+          amount: p.amount,
+          currency: p.currency || 'usd',
+          paidAt: p.paidAt?.toDate?.() || new Date(),
+          method: p.method || 'other',
+          reference: p.reference,
+          notes: p.notes,
+          metricsAtPayout: p.metricsAtPayout || { views: 0 },
+          recordedBy: p.recordedBy,
+          recordedAt: p.recordedAt?.toDate?.() || new Date(),
         })),
       })),
     };
@@ -1339,10 +1422,15 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
     ...campaign,
     creators: campaign.creators.map(c => c.payoutStatus === 'pending' ? logAction({ ...c, payoutStatus: 'approved' as const }, 'Approved (bulk)', actingUser) : c),
   });
-  /** Final dollar amount a creator will be paid — manual override wins, otherwise engine result. */
+  /** Final dollar amount a creator will actually be paid — the NET they're owed after subtracting
+   *  any prior off-platform payouts (Venmo/bank/etc.) AND any already-settled on-platform payments.
+   *  Manual override wins over the engine result, but even the override is still net-adjusted so
+   *  an admin who sets `override=200` on a creator who's already received $50 externally only
+   *  transfers $150. This keeps the Pay button, the PayConfirmModal, the paidSnapshot.amount,
+   *  the minimum-payout check, and the actual Stripe transfer all in lockstep — no path where
+   *  the UI promises "$150 net" but Stripe moves $200. */
   const finalAmountFor = (c: CampaignCreator): number => {
-    if (c.payoutOverride?.amount !== undefined) return c.payoutOverride.amount;
-    return c.payoutResult?.totalPayout ?? 0;
+    return netOwed(c);
   };
 
   /** Build an immutable payment record. Captures amount, currency, actor, timestamp, and an
@@ -1656,6 +1744,40 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
     if (!confirm('Remove this creator from the campaign? Their tracked videos and payouts in other campaigns are untouched.')) return;
     onUpdate({ ...campaign, creators: campaign.creators.filter(c => c.id !== id) });
   };
+  const logPriorPayout = (cid: string, entry: Omit<PriorPayoutEntry, 'id' | 'recordedBy' | 'recordedAt'>) => {
+    const newEntry: PriorPayoutEntry = {
+      ...entry,
+      id: `pp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      recordedBy: actingUser,
+      recordedAt: new Date(),
+    };
+    onUpdate({
+      ...campaign,
+      creators: campaign.creators.map(c => c.id === cid
+        ? logAction(
+            { ...c, priorPayouts: [...(c.priorPayouts || []), newEntry] },
+            'Logged prior payout',
+            actingUser,
+            `${fmtMoneyCurrency(newEntry.amount, newEntry.currency)} via ${METHOD_LABEL[newEntry.method]} on ${newEntry.paidAt.toLocaleDateString()}${newEntry.reference ? ` · ${newEntry.reference}` : ''}`,
+          )
+        : c),
+    });
+  };
+  const removePriorPayout = (cid: string, entryId: string) => {
+    onUpdate({
+      ...campaign,
+      creators: campaign.creators.map(c => {
+        if (c.id !== cid) return c;
+        const removed = (c.priorPayouts || []).find(p => p.id === entryId);
+        return logAction(
+          { ...c, priorPayouts: (c.priorPayouts || []).filter(p => p.id !== entryId) },
+          'Removed prior payout entry',
+          actingUser,
+          removed ? `${fmtMoneyCurrency(removed.amount, removed.currency)} from ${removed.paidAt.toLocaleDateString()}` : entryId,
+        );
+      }),
+    });
+  };
   const addCreators = (newOnes: CampaignCreator[]) => {
     onUpdate({ ...campaign, creators: [...campaign.creators, ...newOnes] });
     setShowAddCreator(false);
@@ -1789,6 +1911,8 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
                 c.id === creator.id ? recalcCreator({ ...c, videos }, campaign) : c
               ),
             })}
+            onLogPriorPayout={(entry) => logPriorPayout(creator.id, entry)}
+            onRemovePriorPayout={(id) => removePriorPayout(creator.id, id)}
           />
         ))}
       </div>
@@ -1831,7 +1955,10 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
       {payConfirmFor && (() => {
         const c = campaign.creators.find(cr => cr.id === payConfirmFor);
         if (!c) return null;
-        const amount = c.payoutOverride?.amount ?? c.payoutResult?.totalPayout ?? 0;
+        // Show NET (what we actually transfer), not gross — keeps the modal honest with the
+        // Pay button label and with the amount Stripe will move. Using finalAmountFor here
+        // so any future policy change lives in one place.
+        const amount = finalAmountFor(c);
         return (
           <PayConfirmModal
             title={`Pay ${c.name}`}
@@ -1853,7 +1980,10 @@ function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, pa
           skipped AFTER confirmation; this modal just gets consent for the bulk action itself. */}
       {showBulkPayConfirm && (() => {
         const approved = campaign.creators.filter(cr => cr.payoutStatus === 'approved');
-        const approxTotal = approved.reduce((s, cr) => s + (cr.payoutOverride?.amount ?? cr.payoutResult?.totalPayout ?? 0), 0);
+        // Bulk total = sum of NET amounts (what we'll actually transfer per creator).
+        // Using finalAmountFor so bulk pay can't drift from single-creator pay — both route
+        // through the same netOwed calculation.
+        const approxTotal = approved.reduce((s, cr) => s + finalAmountFor(cr), 0);
         return (
           <PayConfirmModal
             title={`Pay all ${approved.length} approved creator${approved.length === 1 ? '' : 's'}`}
@@ -1958,7 +2088,7 @@ function DetailKPI({ icon, label, value, tint }: { icon: React.ReactNode; label:
 
 // ==================== CREATOR CARD ====================
 
-function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onApprove, onMarkPaid, onUnapprove, onRevertPaid, onRetryTransfer, payoutsEnabled, onOpenPicker, onRemove, onSetOverride, onClearOverride, onSetStartDate, onToggleExcludeVideo, onVideosChange }: {
+function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onApprove, onMarkPaid, onUnapprove, onRevertPaid, onRetryTransfer, payoutsEnabled, onOpenPicker, onRemove, onSetOverride, onClearOverride, onSetStartDate, onToggleExcludeVideo, onVideosChange, onLogPriorPayout, onRemovePriorPayout }: {
   creator: CampaignCreator;
   orgId: string; projectId: string;
   campaign: PayoutCampaign;
@@ -1978,12 +2108,17 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
   onSetStartDate: (date: Date | undefined) => void;
   onToggleExcludeVideo: (videoId: string) => void;
   onVideosChange: (videos: TrackedVideo[]) => void;
+  /** Append a new prior-payout entry (off-platform payout already made). */
+  onLogPriorPayout: (entry: Omit<PriorPayoutEntry, 'id' | 'recordedBy' | 'recordedAt'>) => void;
+  /** Remove a prior-payout entry by id (e.g. mis-entry correction). */
+  onRemovePriorPayout: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showCrossPostModal, setShowCrossPostModal] = useState(false);
   const [showOverrideForm, setShowOverrideForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [editingStartDate, setEditingStartDate] = useState(false);
+  const [showLogPayoutModal, setShowLogPayoutModal] = useState(false);
 
   // Build cross-post groups map for display — groups videos with the same crossPostGroupId.
   // The admin sees these whether they came from the creator portal (auto-tagged at submit)
@@ -2102,14 +2237,15 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
         <div className="shrink-0 text-right flex items-center gap-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">
-              {creator.paidSnapshot ? 'Paid' : 'Payout'}
+              {creator.paidSnapshot ? 'Paid' : (creator.priorPayouts?.length ?? 0) > 0 ? 'Net owed' : 'Payout'}
             </p>
             {/* Once paid, show the immutable snapshot amount — NOT the live payoutResult, which
-                can drift if videos/structure change after payment. */}
+                can drift if videos/structure change after payment. Otherwise show net owed
+                (gross minus prior payouts), which degrades to gross when there are no priors. */}
             <p className={`text-2xl font-bold leading-tight ${creator.paidSnapshot ? 'text-emerald-600 dark:text-emerald-500' : hasPayout ? 'text-emerald-600 dark:text-emerald-500' : 'text-content-muted'}`}>
               {creator.paidSnapshot
                 ? fmtMoneyCurrency(creator.paidSnapshot.amount, creator.paidSnapshot.currency)
-                : hasPayout ? fmtMoney(creator.payoutResult!.totalPayout) : '—'}
+                : hasPayout ? fmtMoney(netOwed(creator)) : '—'}
             </p>
             {creator.paidSnapshot && (
               <p className="text-[10px] text-content-muted mt-0.5">
@@ -2160,7 +2296,7 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
             title={payoutsEnabled ? undefined : 'Disabled until Stripe Connect platform is activated'}
             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500 text-white shadow-[0_2px_0_0_#047857] hover:shadow-[0_1px_0_0_#047857] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-[0_2px_0_0_#047857] disabled:hover:translate-y-0"
           >
-            <Wallet className="w-3.5 h-3.5" /> Pay {fmtMoneyCurrency(creator.payoutOverride?.amount ?? creator.payoutResult?.totalPayout ?? 0, campaignCurrency(campaign))}
+            <Wallet className="w-3.5 h-3.5" /> Pay {fmtMoneyCurrency(netOwed(creator), campaignCurrency(campaign))}{(creator.priorPayouts?.length ?? 0) > 0 ? ' net' : ''}
           </button>
           {/* Reverse transition — deliberately small/ghost to signal this is a meaningful, logged state change. */}
           <button onClick={onUnapprove}
@@ -2248,6 +2384,93 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
                 )}
               </div>
             </div>
+          )}
+
+          {/* Prior payouts — off-platform payments already made. Shown above cross-posts so the
+               admin sees the "already paid" context before diving into video detail. */}
+          <div className="p-5 border-b border-border-subtle">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Prior payouts</p>
+                <p className="text-xs text-content-muted mt-0.5">Log payouts already made outside the platform (Venmo, bank, etc.)</p>
+              </div>
+              <button onClick={() => setShowLogPayoutModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
+                <Plus className="w-3.5 h-3.5" /> Log payout
+              </button>
+            </div>
+
+            {(creator.priorPayouts?.length ?? 0) === 0 ? (
+              <div className="rounded-xl bg-surface border border-border-subtle border-dashed p-4 text-center text-xs text-content-muted">
+                No prior payouts logged. Click "Log payout" to record money you've already paid this creator.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {creator.priorPayouts!.map(p => (
+                  <div key={p.id} className="rounded-xl bg-surface border border-border p-3.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-content">{fmtMoneyCurrency(p.amount, p.currency)}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-surface-tertiary text-content-secondary border border-border">
+                          {METHOD_LABEL[p.method] || p.method}
+                        </span>
+                        <span className="text-xs text-content-muted">
+                          {p.paidAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-content-muted mt-1">
+                        For {p.metricsAtPayout.views.toLocaleString()} views
+                        {p.metricsAtPayout.videoCount !== undefined && ` · ${p.metricsAtPayout.videoCount} videos`}
+                        {p.reference && ` · ${p.reference}`}
+                      </p>
+                      {p.notes && <p className="text-xs text-content-secondary mt-1 italic">"{p.notes}"</p>}
+                    </div>
+                    <button onClick={() => {
+                      if (confirm(`Remove this ${fmtMoneyCurrency(p.amount, p.currency)} prior payout entry? (This only removes the record — it does not reverse any actual payment you made.)`)) {
+                        onRemovePriorPayout(p.id);
+                      }
+                    }}
+                      className="p-1.5 text-content-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
+                      title="Remove entry">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Net owed summary — only shown if prior payouts exist, since otherwise "Net owed" == gross */}
+                {creator.payoutResult && (
+                  <div className="rounded-xl bg-orange-500/5 border border-orange-300/40 dark:border-orange-500/25 p-4 mt-2">
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Gross owed</p>
+                        <p className="text-lg font-bold text-content mt-0.5">{fmtMoneyCurrency(creator.payoutOverride?.amount ?? creator.payoutResult.totalPayout, campaignCurrency(campaign))}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Already paid</p>
+                        <p className="text-lg font-bold text-content-secondary mt-0.5">−{fmtMoneyCurrency(sumPriorPayouts(creator) + (creator.paidSnapshot?.amount ?? 0), campaignCurrency(campaign))}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Net owed now</p>
+                        <p className="text-xl font-bold text-orange-600 dark:text-orange-400 mt-0.5">{fmtMoneyCurrency(netOwed(creator), campaignCurrency(campaign))}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Log Prior Payout modal — opens on click */}
+          {showLogPayoutModal && (
+            <LogPriorPayoutModal
+              creator={creator}
+              campaign={campaign}
+              onCancel={() => setShowLogPayoutModal(false)}
+              onSubmit={entry => {
+                onLogPriorPayout(entry);
+                setShowLogPayoutModal(false);
+              }}
+            />
           )}
 
           {/* Cross-post groups — compact, one row per group. Renders above the videos slider so
@@ -2465,6 +2688,333 @@ function OverrideForm({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: 
           className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-500 text-white disabled:opacity-50 hover:bg-orange-600 transition-colors">
           Apply override
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ==================== LOG PRIOR PAYOUT MODAL ====================
+
+/** Set of metrics a structure's components read — we show inputs for just these, nothing else. */
+function deriveDriverMetrics(structure: PayoutStructure | undefined): { needsVideos: boolean; needsConversions: boolean; metricFields: PayoutMetric[] } {
+  if (!structure) return { needsVideos: true, needsConversions: false, metricFields: ['views'] };
+  const metricSet = new Set<PayoutMetric>();
+  let needsVideos = false;
+  let needsConversions = false;
+  for (const c of structure.components) {
+    switch (c.type) {
+      case 'base': case 'flat': break; // no metric
+      case 'cpm': metricSet.add((c as any).metric || 'views'); break;
+      case 'bonus': metricSet.add(c.condition.metric); break;
+      case 'bonus_tiered': metricSet.add((c as any).metric || 'views'); break;
+      case 'per_video': needsVideos = true; break;
+      case 'conversion': needsConversions = true; break;
+    }
+  }
+  if (metricSet.size === 0 && !needsVideos && !needsConversions) metricSet.add('views');
+  return { needsVideos, needsConversions, metricFields: Array.from(metricSet) };
+}
+
+/** Build a synthetic CreatorPerformance to run through the engine. For per-video components, we
+ *  create N "average" videos so the engine's per-video iteration produces sensible aggregate output.
+ *  Perfect for components that operate on totals; approximate but transparent for per-video caps/bonuses. */
+function buildSyntheticPerformance(inputs: { views: number; likes: number; comments: number; shares: number; saves: number; videoCount: number; conversions: number }): CreatorPerformance {
+  const n = Math.max(1, inputs.videoCount);
+  const perVid = {
+    views: inputs.videoCount > 0 ? inputs.views / n : 0,
+    likes: inputs.videoCount > 0 ? inputs.likes / n : 0,
+    comments: inputs.videoCount > 0 ? inputs.comments / n : 0,
+    shares: inputs.videoCount > 0 ? inputs.shares / n : 0,
+    saves: inputs.videoCount > 0 ? inputs.saves / n : 0,
+  };
+  const videos: VideoSubmission[] = Array.from({ length: Math.max(0, inputs.videoCount) }, (_, i) => ({
+    id: `synthetic_${i}`, url: '', platform: 'tiktok' as const, thumbnail: '',
+    title: `Synthetic ${i}`, uploader: '', uploaderHandle: '', status: 'approved' as const,
+    views: perVid.views, likes: perVid.likes, comments: perVid.comments,
+    shares: perVid.shares, saves: perVid.saves,
+    dateSubmitted: new Date(), uploadDate: new Date(),
+  }));
+  const totalEngagement = inputs.likes + inputs.comments + inputs.shares + inputs.saves;
+  return {
+    creatorId: 'estimate',
+    videoCount: inputs.videoCount,
+    totalViews: inputs.views,
+    totalLikes: inputs.likes,
+    totalComments: inputs.comments,
+    totalShares: inputs.shares,
+    totalSaves: inputs.saves,
+    totalEngagement,
+    engagementRate: inputs.views > 0 ? (totalEngagement / inputs.views) * 100 : 0,
+    conversions: inputs.conversions,
+    videos,
+  };
+}
+
+/** Modal for logging an off-platform payout. Drives the amount off metric inputs via the real
+ *  payout engine (forward-only, same code path as the live owed calculation). The admin can still
+ *  override the amount — override is tracked so we can surface "estimate vs actual" discrepancies. */
+function LogPriorPayoutModal({ creator, campaign, onCancel, onSubmit }: {
+  creator: CampaignCreator;
+  campaign: PayoutCampaign;
+  onCancel: () => void;
+  onSubmit: (entry: Omit<PriorPayoutEntry, 'id' | 'recordedBy' | 'recordedAt'>) => void;
+}) {
+  const defaultCurrency = campaignCurrency(campaign);
+  const hasStructure = !!creator.structure;
+  const drivers = deriveDriverMetrics(creator.structure);
+
+  // Current values (defaults for inputs — admin tweaks to reflect values at time of payment)
+  const curViews = creator.payoutResult?.performance.totalViews ?? creator.videos.reduce((s, v) => s + v.views, 0);
+  const curLikes = creator.payoutResult?.performance.totalLikes ?? creator.videos.reduce((s, v) => s + v.likes, 0);
+  const curComments = creator.payoutResult?.performance.totalComments ?? creator.videos.reduce((s, v) => s + v.comments, 0);
+  const curShares = creator.payoutResult?.performance.totalShares ?? creator.videos.reduce((s, v) => s + (v.shares || 0), 0);
+  const curSaves = creator.payoutResult?.performance.totalSaves ?? creator.videos.reduce((s, v) => s + (v.saves || 0), 0);
+  const curVideoCount = creator.videos.length;
+
+  // Driver metric inputs — numeric strings for smoother UX
+  const [views, setViews] = useState<string>(String(curViews));
+  const [likes, setLikes] = useState<string>(String(curLikes));
+  const [comments, setComments] = useState<string>(String(curComments));
+  const [shares, setShares] = useState<string>(String(curShares));
+  const [saves, setSaves] = useState<string>(String(curSaves));
+  const [videoCount, setVideoCount] = useState<string>(String(curVideoCount));
+  const [conversions, setConversions] = useState<string>('0');
+
+  // Other fields
+  const [paidAt, setPaidAt] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState<PriorPayoutEntry['method']>('bank_transfer');
+  const [reference, setReference] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Amount: tracks whether admin overrode the estimate
+  const [manualAmount, setManualAmount] = useState<number | undefined>(undefined);
+  const [amountManuallyEdited, setAmountManuallyEdited] = useState(false);
+
+  const inp = 'w-full px-3 py-2 bg-surface-tertiary border border-border rounded-lg text-content text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder:text-content-muted';
+  const lbl = 'block text-xs font-semibold uppercase tracking-wider text-content-muted mb-1';
+
+  // Live estimate via the REAL engine — same calc path as the live owed calculation.
+  const estimate = (() => {
+    if (!creator.structure) return null;
+    try {
+      const perf = buildSyntheticPerformance({
+        views: Number(views) || 0,
+        likes: Number(likes) || 0,
+        comments: Number(comments) || 0,
+        shares: Number(shares) || 0,
+        saves: Number(saves) || 0,
+        videoCount: Number(videoCount) || 0,
+        conversions: Number(conversions) || 0,
+      });
+      return PayoutCalculationEngine.calculateCreatorPayout('estimate', creator.structure, perf);
+    } catch (e) {
+      console.error('Estimate failed:', e);
+      return null;
+    }
+  })();
+
+  const estimatedAmount = estimate?.totalPayout ?? 0;
+  const effectiveAmount = amountManuallyEdited && manualAmount !== undefined ? manualAmount : estimatedAmount;
+  const discrepancy = amountManuallyEdited && manualAmount !== undefined ? manualAmount - estimatedAmount : 0;
+
+  const canSubmit = effectiveAmount > 0;
+
+  const submit = () => {
+    if (!canSubmit) return;
+    // Persist EVERY driver metric we collected, not just views/likes/comments/videoCount.
+    // For structures that pay on shares, saves, or conversions, dropping those values would
+    // break the audit trail — an auditor reopening the entry wouldn't be able to reconstruct
+    // why the amount is what it is. Only include keys that had a numeric value collected to
+    // keep Firestore docs tight (stripUndefined on save also handles zero-vs-missing).
+    const metricsAtPayout: PriorPayoutEntry['metricsAtPayout'] = {
+      views: Number(views) || 0,
+    };
+    const likesN = Number(likes); if (Number.isFinite(likesN) && likesN > 0) metricsAtPayout.likes = likesN;
+    const commentsN = Number(comments); if (Number.isFinite(commentsN) && commentsN > 0) metricsAtPayout.comments = commentsN;
+    const sharesN = Number(shares); if (Number.isFinite(sharesN) && sharesN > 0) metricsAtPayout.shares = sharesN;
+    const savesN = Number(saves); if (Number.isFinite(savesN) && savesN > 0) metricsAtPayout.saves = savesN;
+    const videoCountN = Number(videoCount); if (Number.isFinite(videoCountN) && videoCountN > 0) metricsAtPayout.videoCount = videoCountN;
+    const conversionsN = Number(conversions); if (Number.isFinite(conversionsN) && conversionsN > 0) metricsAtPayout.conversions = conversionsN;
+
+    onSubmit({
+      amount: Math.round(effectiveAmount * 100) / 100,
+      currency: defaultCurrency,
+      paidAt: new Date(paidAt + 'T12:00:00'),
+      method,
+      reference: reference.trim() || undefined,
+      notes: notes.trim() || undefined,
+      metricsAtPayout,
+    });
+  };
+
+  // Build dynamic input list based on what the structure actually needs.
+  const metricInputs: Array<{ key: string; label: string; value: string; setValue: (s: string) => void }> = [];
+  if (drivers.metricFields.includes('views')) metricInputs.push({ key: 'views', label: 'Views', value: views, setValue: setViews });
+  if (drivers.metricFields.includes('likes')) metricInputs.push({ key: 'likes', label: 'Likes', value: likes, setValue: setLikes });
+  if (drivers.metricFields.includes('comments')) metricInputs.push({ key: 'comments', label: 'Comments', value: comments, setValue: setComments });
+  if (drivers.metricFields.includes('shares')) metricInputs.push({ key: 'shares', label: 'Shares', value: shares, setValue: setShares });
+  if (drivers.metricFields.includes('saves')) metricInputs.push({ key: 'saves', label: 'Saves', value: saves, setValue: setSaves });
+  if (drivers.needsVideos || drivers.metricFields.includes('videos_posted')) metricInputs.push({ key: 'videoCount', label: 'Videos', value: videoCount, setValue: setVideoCount });
+  if (drivers.needsConversions) metricInputs.push({ key: 'conversions', label: 'Conversions', value: conversions, setValue: setConversions });
+  if (metricInputs.length === 0) metricInputs.push({ key: 'views', label: 'Views', value: views, setValue: setViews });
+
+  // Warn when per-video iteration may produce approximate results (perVideo caps w/ stacking).
+  const hasPerVideoApprox = !!creator.structure?.components.some(c =>
+    (c.type === 'bonus' || c.type === 'bonus_tiered') && (c as any).caps?.perVideo
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-surface-secondary border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5 border-b border-border-subtle sticky top-0 bg-surface-secondary z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-content">Log a prior payout</h3>
+              <p className="text-xs text-content-muted mt-0.5">
+                Record a payout you made to <span className="font-semibold text-content">{creator.name}</span> outside the platform.
+              </p>
+            </div>
+            <button onClick={onCancel} className="p-2 text-content-muted hover:text-content rounded-lg hover:bg-surface-hover">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Metrics at time of payment — drives the estimated amount */}
+          {hasStructure ? (
+            <div className="rounded-xl bg-surface-tertiary border border-border-subtle p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-content">Metrics at time of payment</p>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Drives estimate</span>
+              </div>
+              <p className="text-[11px] text-content-muted mb-3">
+                Prefilled with current counts. Change these to what the creator had WHEN you paid them.
+              </p>
+              <div className={`grid gap-3 ${metricInputs.length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                {metricInputs.map(({ key, label, value, setValue }) => (
+                  <div key={key}>
+                    <label className={lbl}>{label}</label>
+                    <input type="number" min="0" value={value}
+                      onChange={e => { setValue(e.target.value); if (!amountManuallyEdited) { /* estimate recalcs via the effect */ } }}
+                      className={inp} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-amber-500/10 border border-amber-400/40 dark:border-amber-500/30 p-3 text-xs text-content-secondary">
+              This creator has no payout structure assigned. Enter the amount manually below.
+            </div>
+          )}
+
+          {/* Amount — live-driven by engine, overridable */}
+          <div className="rounded-xl bg-orange-500/5 border border-orange-300/40 dark:border-orange-500/25 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className={lbl}>Amount paid ({defaultCurrency.toUpperCase()})</label>
+              {amountManuallyEdited && (
+                <button type="button"
+                  onClick={() => { setManualAmount(undefined); setAmountManuallyEdited(false); }}
+                  className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 hover:underline">
+                  Reset to estimate
+                </button>
+              )}
+            </div>
+            <input type="text" inputMode="decimal"
+              value={amountManuallyEdited && manualAmount !== undefined
+                ? manualAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                : estimatedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              onChange={e => {
+                const raw = e.target.value.replace(/,/g, '');
+                if (raw === '') { setManualAmount(undefined); setAmountManuallyEdited(false); return; }
+                if (!/^\d*\.?\d*$/.test(raw)) return;
+                const n = Number(raw);
+                if (!isNaN(n) && n >= 0) { setManualAmount(n); setAmountManuallyEdited(true); }
+              }}
+              className={`${inp} text-2xl font-bold`} />
+            {amountManuallyEdited && Math.abs(discrepancy) > 0.01 && (
+              <p className={`text-[11px] mt-2 ${Math.abs(discrepancy) > estimatedAmount * 0.1 ? 'text-amber-600 dark:text-amber-400' : 'text-content-muted'}`}>
+                {discrepancy > 0 ? '▲' : '▼'} {fmtMoneyCurrency(Math.abs(discrepancy), defaultCurrency)} vs. estimate ({fmtMoneyCurrency(estimatedAmount, defaultCurrency)})
+              </p>
+            )}
+          </div>
+
+          {/* Breakdown preview */}
+          {estimate && estimate.componentBreakdown.length > 0 && (
+            <div className="rounded-xl bg-surface border border-border-subtle overflow-hidden">
+              <div className="px-4 py-2 border-b border-border-subtle bg-surface-tertiary/50">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">How the estimate was calculated</p>
+              </div>
+              <div className="p-3 space-y-2">
+                {estimate.componentBreakdown.map((comp, i) => {
+                  const meta = COMPONENT_META[comp.type as PayoutComponentType] || COMPONENT_META.base;
+                  return (
+                    <div key={i} className="flex items-start justify-between gap-3 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold uppercase text-content-muted">{meta.label}</span>
+                          <span className="font-medium text-content">{comp.componentName}</span>
+                        </div>
+                        <p className="text-content-muted mt-0.5">{comp.details}</p>
+                      </div>
+                      <span className="font-bold text-content flex-shrink-0">{fmtMoneyExact(comp.amount)}</span>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between pt-2 mt-1 border-t border-border-subtle">
+                  <span className="text-xs font-semibold text-content">Estimated total</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">{fmtMoneyExact(estimatedAmount)}</span>
+                </div>
+              </div>
+              {hasPerVideoApprox && (
+                <div className="px-3 py-2 border-t border-border-subtle bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-400">
+                  ⚠ Per-video bonus caps use aggregate averages for the estimate. Verify the amount matches what you actually paid — override if needed.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Payment details */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={lbl}>Date paid</label>
+              <input type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>Method</label>
+              <select value={method} onChange={e => setMethod(e.target.value as any)} className={inp}>
+                {(Object.entries(METHOD_LABEL) as Array<[PriorPayoutEntry['method'], string]>).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={lbl}>Reference (optional)</label>
+            <input type="text" value={reference} onChange={e => setReference(e.target.value)}
+              placeholder="Bank txn ID, Venmo note, etc." className={inp} />
+          </div>
+
+          <div>
+            <label className={lbl}>Notes (optional)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              placeholder="Any context for future reference..." className={inp} />
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-border-subtle flex items-center justify-between sticky bottom-0 bg-surface-secondary">
+          <p className="text-xs text-content-muted">
+            {amountManuallyEdited ? 'Amount manually overridden' : 'Amount auto-calculated from structure'}
+            {!hasStructure && ' · no structure assigned'}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+            <Button onClick={submit} disabled={!canSubmit}>
+              <Check className="w-4 h-4 mr-1.5" /> Log {fmtMoneyCurrency(effectiveAmount, defaultCurrency)}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

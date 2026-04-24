@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { OrgMember, Creator } from '../../types/firestore';
-import { Trash2, MoreVertical, Edit3, DollarSign, FileText, TrendingUp, User as UserIcon, Film, ExternalLink, Plus } from 'lucide-react';
+import { Trash2, MoreVertical, Edit3, DollarSign, FileText, TrendingUp, User as UserIcon, Film, ExternalLink, Plus, Banknote, EyeOff } from 'lucide-react';
 import { ProxiedImage } from '../ProxiedImage';
 import AdminCreatorPaymentBar from '../AdminCreatorPaymentBar';
 import Pagination from '../ui/Pagination';
@@ -31,6 +31,9 @@ interface CreatorsTableProps {
   onEditPortal: (creator: OrgMember) => void;
   onAddVideosForCreator: (creator: OrgMember) => void;
   onRemoveCreator: (creator: OrgMember) => void;
+  /** Flip the creator's `payoutPortalEnabled` flag (show/hide the Stripe Connect banner and
+   *  "My payouts" section on their public portal). Default is OFF for every creator. */
+  onTogglePayoutPortal: (creator: OrgMember, next: boolean) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (n: number) => void;
 }
@@ -66,6 +69,7 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
   onEditPortal,
   onAddVideosForCreator,
   onRemoveCreator,
+  onTogglePayoutPortal,
   onPageChange,
   onItemsPerPageChange,
 }) => {
@@ -310,6 +314,21 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
                               icon={<Film className="w-4 h-4 text-violet-400" />}
                               label="Add Videos"
                               onClick={() => { onAddVideosForCreator(creator); setOpenDropdownId(null); }}
+                            />
+                            {/* Payout portal gate — show/hide the Stripe Connect banner and
+                                 "My payouts" section on this creator's public share link.
+                                 Default OFF; admin must explicitly enable per creator. The label
+                                 flips based on current state so one menu item handles both actions. */}
+                            <DropdownDivider />
+                            <DropdownItem
+                              icon={profile?.payoutPortalEnabled
+                                ? <EyeOff className="w-4 h-4 text-content-muted" />
+                                : <Banknote className="w-4 h-4 text-orange-500" />}
+                              label={profile?.payoutPortalEnabled ? 'Hide payouts in portal' : 'Show payouts in portal'}
+                              onClick={() => {
+                                onTogglePayoutPortal(creator, !profile?.payoutPortalEnabled);
+                                setOpenDropdownId(null);
+                              }}
                             />
                             {creator.role !== 'owner' && (
                               <>

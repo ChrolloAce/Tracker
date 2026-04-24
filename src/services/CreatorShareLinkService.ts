@@ -35,6 +35,39 @@ export interface CreatorPayoutSummary {
   /** When status === 'paid' — immutable paid amount from the snapshot (may differ from `amount`
    *  if the underlying structure/videos change after payment, which is why we freeze it). */
   paidAmount?: number;
+  /** Component-by-component calculation breakdown — shows creators EXACTLY how their earnings
+   *  were computed. Server-generated labels (no internal type strings leak through). */
+  breakdown?: Array<{
+    componentName: string;
+    typeLabel: string;
+    details: string;
+    amount: number;
+    wasCapped?: boolean;
+    originalAmount?: number;
+  }>;
+  /** Gross amount before subtracting prior payouts. Same as `amount` when no priors exist. */
+  grossAmount?: number;
+  /** Net owed = gross − sum(priorPayouts) − paidSnapshot. What the creator actually gets next. */
+  netOwed?: number;
+  /** Ledger of payouts already made for this campaign — off-platform (bank/Venmo/etc) or Stripe.
+   *  Server-filtered: only creator-safe fields (amount, date, method, metrics). Notes/references
+   *  are stripped since those may contain internal admin context. */
+  priorPayouts?: Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    paidAt: string;
+    method: string;
+    metricsAtPayout: {
+      views: number;
+      likes?: number;
+      comments?: number;
+      shares?: number;
+      saves?: number;
+      videoCount?: number;
+      conversions?: number;
+    };
+  }>;
 }
 
 export interface CreateShareLinkResponse {
@@ -46,7 +79,15 @@ export interface CreateShareLinkResponse {
 
 export interface PublicCreatorShareData {
   project: { name: string; icon: string; color: string };
-  creator: { id: string; displayName: string; photoURL: string };
+  creator: {
+    id: string;
+    displayName: string;
+    photoURL: string;
+    /** Admin-controlled flag. When false, the portal hides the Stripe Connect banner and
+     *  "My payouts" section — creator sees their videos/stats only, no payout info. Default
+     *  false for every creator until admin explicitly enables them in the Creators tab. */
+    payoutsVisible: boolean;
+  };
   acceptSubmissions: boolean;
   pendingJobs: number;
   summary: {
@@ -180,11 +221,11 @@ class CreatorShareLinkService {
    * Public: start Stripe Connect onboarding for the creator behind this share token.
    * Returns a short-lived hosted URL — always open in a new tab.
    */
-  async startStripeOnboarding(token: string): Promise<{ onboardingUrl: string; accountId: string }> {
+  async startStripeOnboarding(token: string, country?: string): Promise<{ onboardingUrl: string; accountId: string }> {
     const res = await fetch('/api/stripe/creator-onboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, ...(country ? { country } : {}) }),
     });
     const body = await res.json().catch(() => ({} as any));
     if (!res.ok || !body.success) {

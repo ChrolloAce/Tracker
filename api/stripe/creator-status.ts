@@ -62,6 +62,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const share = shareDoc.data()!;
     if (share.revoked) return res.status(410).json({ error: 'This share link has been revoked' });
 
+    // Per-creator admin gate — same flag the portal UI reads. If the admin hasn't explicitly
+    // enabled payouts for this creator yet, return an immediate 'none' status so the
+    // StripeConnectBanner treats it the same as "not configured yet" and stays hidden. This
+    // prevents a curl-the-API path from leaking the creator's Stripe account state.
+    const { orgId, projectId, creatorId } = share;
+    if (orgId && projectId && creatorId) {
+      const creatorDoc = await db
+        .collection('organizations').doc(orgId)
+        .collection('projects').doc(projectId)
+        .collection('creators').doc(creatorId)
+        .get();
+      if (!creatorDoc.exists || creatorDoc.data()?.payoutPortalEnabled !== true) {
+        return res.status(200).json({
+          success: true,
+          status: 'none' as CreatorStripeStatus,
+          detailsSubmitted: false,
+          payoutsEnabled: false,
+          chargesEnabled: false,
+        });
+      }
+    }
+
     const accountId: string | undefined = share.stripeConnectAccountId;
     if (!accountId) {
       return res.status(200).json({

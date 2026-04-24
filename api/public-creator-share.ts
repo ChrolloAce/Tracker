@@ -274,6 +274,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           id: creatorId,
           displayName: creatorData.displayName || 'Creator',
           photoURL,
+          // Explicit admin gate for showing payout UI in the creator portal. Defaults to FALSE
+          // so creators can't see the Stripe Connect banner or "My payouts" section until the
+          // admin flips the switch in the Creators tab. Strict `=== true` check so legacy docs
+          // without this field stay hidden.
+          payoutsVisible: creatorData.payoutPortalEnabled === true,
         },
         acceptSubmissions: acceptSubmissions !== false,
         pendingJobs,

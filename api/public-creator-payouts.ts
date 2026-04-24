@@ -61,6 +61,43 @@ interface PayoutSummary {
    *  Only populated when status === 'paid'. */
   paidAt?: string;
   paidAmount?: number;
+  /** Live calculation breakdown — one row per component, with the math shown. Lets the creator
+   *  see EXACTLY how their earnings were computed (not just a status chip). */
+  breakdown?: Array<{
+    componentName: string;
+    typeLabel: string; // human label, e.g. "Per Video", "CPM"
+    details: string;   // engine-generated: "12 × $15 = $180" etc.
+    amount: number;
+    wasCapped?: boolean;
+    originalAmount?: number;
+  }>;
+  /** Gross amount before any prior payouts subtract. Useful when priorPayouts exist — creator
+   *  sees both the "you earned X" number and "you've already been paid Y" breakdown. */
+  grossAmount?: number;
+  /** Net owed after subtracting prior payouts and any paid snapshot. This is what the creator
+   *  will actually get on the next payout (when status === 'approved'). */
+  netOwed?: number;
+  /** Log of payouts already made to this creator for THIS campaign — both off-platform
+   *  (bank transfer, Venmo, etc.) and via Stripe. Full transparency: the creator sees what
+   *  they've already been paid and when. Note: sensitive fields like reference IDs/notes
+   *  intended for internal use are hidden; only method, amount, date, metric snapshot
+   *  make it through to the creator view. */
+  priorPayouts?: Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    paidAt: string; // ISO
+    method: string; // human label, e.g. "Bank transfer"
+    metricsAtPayout: {
+      views: number;
+      likes?: number;
+      comments?: number;
+      shares?: number;
+      saves?: number;
+      videoCount?: number;
+      conversions?: number;
+    };
+  }>;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -151,6 +188,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw rateErr;
     }
 
+    // Admin-gated visibility: if the creator doc has `payoutPortalEnabled !== true`, the creator
+    // shouldn't see ANY payout data in their portal. Strict check — undefined/missing = hidden.
+    // This is the single global gate for the payouts feature per creator. Keep it before the
+    // (expensive) campaign fetch so disabled creators don't waste reads.
+    const creatorRef = db
+      .collection('organizations').doc(orgId)
+      .collection('projects').doc(projectId)
+      .collection('creators').doc(creatorId);
+    const creatorSnap = await creatorRef.get();
+    const creatorData = creatorSnap.exists ? creatorSnap.data() : null;
+    if (!creatorData || creatorData.payoutPortalEnabled !== true) {
+      return res.status(200).json({ success: true, payouts: [] });
+    }
+
     // Firestore can't filter arrays-of-objects by nested field directly, so fetch all campaigns
     // in the project and filter in memory. Payout campaign docs are small (metadata + creator list).
     const campaignsSnap = await db
@@ -190,6 +241,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const paidAt = myEntry.paidSnapshot?.paidAt?.toDate?.()?.toISOString?.();
       const paidAmount = typeof myEntry.paidSnapshot?.amount === 'number' ? myEntry.paidSnapshot.amount : undefined;
 
+      // Build breakdown from the calculation result — translates internal component types
+      // to friendly labels so the creator sees "Per Video" not "per_video".
+      const TYPE_LABEL: Record<string, string> = {
+        base: 'Base Pay',
+        flat: 'Flat Fee',
+        cpm: 'Per 1K Views',
+        bonus: 'Bonus',
+        bonus_tiered: 'Tiered Bonus',
+        conversion: 'Per Conversion',
+        per_video: 'Per Video',
+      };
+      const breakdown: PayoutSummary['breakdown'] = Array.isArray(myEntry.payoutResult?.componentBreakdown)
+        ? myEntry.payoutResult.componentBreakdown.map((c: any) => ({
+            componentName: c.componentName || c.type,
+            typeLabel: TYPE_LABEL[c.type] || c.type,
+            details: c.details || '',
+            amount: c.amount || 0,
+            ...(c.wasCapped ? { wasCapped: true } : {}),
+            ...(typeof c.originalAmount === 'number' ? { originalAmount: c.originalAmount } : {}),
+          }))
+        : undefined;
+
+      // Prior payouts — off-platform payments already recorded. We only send creator-safe fields:
+      // amount, currency, date, method, and the metric snapshot. Internal `reference`, `notes`,
+      // and `recordedBy` stay server-side (may contain admin context the creator shouldn't see).
+      const METHOD_LABEL: Record<string, string> = {
+        bank_transfer: 'Bank transfer',
+        venmo:         'Venmo',
+        paypal:        'PayPal',
+        wire:          'Wire',
+        cash:          'Cash',
+        stripe:        'Stripe',
+        other:         'Other',
+      };
+      const priorPayouts: PayoutSummary['priorPayouts'] = Array.isArray(myEntry.priorPayouts)
+        ? myEntry.priorPayouts.map((p: any) => ({
+            id: p.id,
+            amount: p.amount || 0,
+            currency: (p.currency || data.currency || 'usd').toLowerCase(),
+            paidAt: (p.paidAt?.toDate?.() || new Date()).toISOString(),
+            method: METHOD_LABEL[p.method] || p.method || 'Other',
+            metricsAtPayout: {
+              views: p.metricsAtPayout?.views || 0,
+              ...(typeof p.metricsAtPayout?.likes === 'number' ? { likes: p.metricsAtPayout.likes } : {}),
+              ...(typeof p.metricsAtPayout?.comments === 'number' ? { comments: p.metricsAtPayout.comments } : {}),
+              ...(typeof p.metricsAtPayout?.shares === 'number' ? { shares: p.metricsAtPayout.shares } : {}),
+              ...(typeof p.metricsAtPayout?.saves === 'number' ? { saves: p.metricsAtPayout.saves } : {}),
+              ...(typeof p.metricsAtPayout?.videoCount === 'number' ? { videoCount: p.metricsAtPayout.videoCount } : {}),
+              ...(typeof p.metricsAtPayout?.conversions === 'number' ? { conversions: p.metricsAtPayout.conversions } : {}),
+            },
+          }))
+        : undefined;
+
+      // Gross vs net — server computes so client doesn't have to re-implement the logic.
+      const grossAmount = typeof amount === 'number' ? amount : undefined;
+      const sumPrior = (priorPayouts || []).reduce((s, p) => s + (p.amount || 0), 0);
+      const netOwed = grossAmount !== undefined
+        ? Math.max(0, grossAmount - sumPrior - (paidAmount || 0))
+        : undefined;
+
       payouts.push({
         campaignId: data.id || doc.id,
         campaignName: data.name || 'Untitled',
@@ -204,6 +315,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dealSummary,
         paidAt,
         paidAmount,
+        ...(breakdown && breakdown.length > 0 ? { breakdown } : {}),
+        ...(grossAmount !== undefined ? { grossAmount } : {}),
+        ...(netOwed !== undefined ? { netOwed } : {}),
+        ...(priorPayouts && priorPayouts.length > 0 ? { priorPayouts } : {}),
       });
     }
 
