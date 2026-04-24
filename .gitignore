@@ -55,3 +55,6 @@ api/_bin/
 
 # Local one-off scripts (diagnostic/investigation). Already-tracked scripts stay tracked.
 scripts/
+
+# Claude Code local harness state (permissions, agent worktrees)
+.claude/
