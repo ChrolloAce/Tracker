@@ -52,3 +52,6 @@ temp/
 
 # yt-dlp binary (fetched by scripts/install-yt-dlp.mjs at install time)
 api/_bin/
+
+# Local one-off scripts (diagnostic/investigation). Already-tracked scripts stay tracked.
+scripts/
