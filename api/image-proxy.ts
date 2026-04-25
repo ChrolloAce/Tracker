@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+// @ts-ignore - heic-convert has no types
+import convert from 'heic-convert';
 
 // --- SSRF Protection ---
 
@@ -145,30 +147,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Get the image as buffer
-    const buffer = await response.arrayBuffer();
-    
+    const arrayBuffer = await response.arrayBuffer();
+    let buffer = Buffer.from(arrayBuffer);
+
     // Validate we got actual image data
-    if (buffer.byteLength < 100) {
-      console.error(`❌ Downloaded data too small (${buffer.byteLength} bytes), likely not an image`);
-      return res.status(400).json({ 
+    if (buffer.length < 100) {
+      console.error(`❌ Downloaded data too small (${buffer.length} bytes), likely not an image`);
+      return res.status(400).json({
         error: 'Downloaded data too small, likely not an image',
-        size: buffer.byteLength
+        size: buffer.length
       });
     }
-    
-    const base64 = Buffer.from(buffer).toString('base64');
-    
-    // Determine content type
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+    let contentType = response.headers.get('content-type') || 'image/jpeg';
+
+    // HEIC → JPEG conversion. TikTok (and other CDNs) sometimes serve creator
+    // profile pics in HEIC format because the source upload was an iPhone
+    // photo. Browsers other than Safari can't render HEIC in <img>, so we
+    // convert to JPEG before handing the bytes back to the client uploader.
+    // Mirrors the magic-byte check used in ImageUploadService.
+    const isHEIC =
+      contentType.includes('heic') ||
+      contentType.includes('heif') ||
+      imageUrl.toLowerCase().includes('.heic') ||
+      imageUrl.toLowerCase().includes('.heif') ||
+      (buffer.length > 12 &&
+       buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70 &&
+       buffer[8] === 0x68 && buffer[9] === 0x65 && buffer[10] === 0x69 && buffer[11] === 0x63);
+
+    if (isHEIC) {
+      console.log(`🔄 [HEIC] Converting HEIC image to JPEG for ${identifier || 'unknown'}…`);
+      try {
+        const out = await convert({ buffer, format: 'JPEG', quality: 0.9 });
+        buffer = Buffer.from(out);
+        contentType = 'image/jpeg';
+        console.log(`✅ [HEIC] Converted to JPEG (${buffer.length} bytes)`);
+      } catch (err) {
+        console.error(`❌ [HEIC] Conversion failed:`, err);
+        // Fall through and return the original HEIC bytes; better to upload
+        // something than nothing, the backfill script can clean up later.
+      }
+    }
+
+    const base64 = buffer.toString('base64');
     const dataUrl = `data:${contentType};base64,${base64}`;
 
-    console.log(`✅ Successfully proxied image: ${identifier || 'unknown'} (${buffer.byteLength} bytes, ${contentType})`);
+    console.log(`✅ Successfully proxied image: ${identifier || 'unknown'} (${buffer.length} bytes, ${contentType})`);
 
     return res.status(200).json({
       success: true,
       dataUrl: dataUrl,
       contentType: contentType,
-      size: buffer.byteLength,
+      size: buffer.length,
       identifier: identifier
     });
 
