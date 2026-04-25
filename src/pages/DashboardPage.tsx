@@ -77,7 +77,7 @@ import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, doc,
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
-import { TrackedAccount, TrackedLink } from '../types/firestore';
+import { TrackedAccount, TrackedLink, Creator, CreatorLink, OrgMember } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { Toast } from '../components/ui/Toast';
 
@@ -367,6 +367,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [creatorLinks, setCreatorLinks] = useState<CreatorLink[]>([]);
+  const [creatorMembers, setCreatorMembers] = useState<OrgMember[]>([]);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
   
   // Total counts (unfiltered) - for empty state check
@@ -558,6 +561,33 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       MarkAsReadService.markAccountsAsRead(currentOrgId, currentProjectId);
     }
   }, [activeTab, currentOrgId, currentProjectId, isOverrideMode]);
+
+  // Load creators + creator-links + creator-role members so the "All Accounts"
+  // filter can group accounts under their creator. We resolve a creatorId to a
+  // display name/photo via a fallback chain: project-scoped Creator profile →
+  // org-wide OrgMember (role=='creator'). This matters because a creator added
+  // through the team/invite flow can have a CreatorLink in the project before
+  // their project-scoped Creator doc is materialized — without the OrgMember
+  // fallback, those accounts would render as "ungrouped" at the top.
+  useEffect(() => {
+    if (!currentOrgId || !currentProjectId) return;
+    let cancelled = false;
+    const membersRef = collection(db, 'organizations', currentOrgId, 'members');
+    Promise.all([
+      CreatorLinksService.getAllCreators(currentOrgId, currentProjectId),
+      CreatorLinksService.getAllCreatorLinks(currentOrgId, currentProjectId),
+      getDocs(query(membersRef, where('role', '==', 'creator'))),
+    ])
+      .then(([loadedCreators, loadedLinks, membersSnapshot]) => {
+        if (cancelled) return;
+        const members = membersSnapshot.docs.map(d => ({ ...(d.data() as OrgMember) }));
+        setCreators(loadedCreators);
+        setCreatorLinks(loadedLinks);
+        setCreatorMembers(members);
+      })
+      .catch(err => console.error('Failed to load creators for accounts filter:', err));
+    return () => { cancelled = true; };
+  }, [currentOrgId, currentProjectId]);
 
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
@@ -1803,6 +1833,76 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return combined;
   }, [pendingVideos, strictFilteredSubmissions]);
 
+  // Per-account / per-creator post counts for the All-Accounts dropdown.
+  // Honors the date filter and the platform filter, but NOT the account filter
+  // (we don't want the counts to change as the user clicks accounts in the
+  // dropdown). Strict mode = only videos UPLOADED in the period.
+  const accountActivityCounts = useMemo(() => {
+    const byAccountId = new Map<string, number>();
+    const byCreatorId = new Map<string, number>();
+    if (!isDemoMode && (userRole === 'creator' || userRole === '')) {
+      return { byAccountId, byCreatorId };
+    }
+
+    let pool = submissions;
+    if (dashboardPlatformFilter.length > 0) {
+      pool = pool.filter(v => dashboardPlatformFilter.includes(v.platform as any));
+    }
+    pool = DateFilterService.filterVideosByDateRange(pool, dateFilter, customDateRange, true);
+
+    // Build lookup tables for account resolution.
+    const accountByPlatformHandle = new Map<string, string>();
+    for (const a of trackedAccounts) {
+      accountByPlatformHandle.set(`${a.platform}_${a.username.toLowerCase()}`, a.id);
+    }
+    const creatorIdByAccountId = new Map<string, string>();
+    for (const link of creatorLinks) {
+      if (!creatorIdByAccountId.has(link.accountId)) {
+        creatorIdByAccountId.set(link.accountId, link.creatorId);
+      } else {
+        // Prefer real userIds over synthetic creatorShare:/cron: ids — same
+        // dedupe rule used by the dropdown's grouping logic.
+        const existing = creatorIdByAccountId.get(link.accountId)!;
+        const existingSynthetic = !existing ||
+          existing.startsWith('creatorShare:') ||
+          existing.startsWith('cron:') ||
+          existing === 'system' || existing === 'api';
+        const candidateSynthetic = !link.creatorId ||
+          link.creatorId.startsWith('creatorShare:') ||
+          link.creatorId.startsWith('cron:') ||
+          link.creatorId === 'system' || link.creatorId === 'api';
+        if (existingSynthetic && !candidateSynthetic) {
+          creatorIdByAccountId.set(link.accountId, link.creatorId);
+        }
+      }
+    }
+
+    for (const v of pool) {
+      // Resolve to a tracked account: prefer trackedAccountId field, fall
+      // back to (platform, uploaderHandle) match for older videos.
+      let accountId = (v as any).trackedAccountId as string | undefined;
+      if (!accountId && v.uploaderHandle) {
+        accountId = accountByPlatformHandle.get(`${v.platform}_${v.uploaderHandle.toLowerCase()}`);
+      }
+      if (accountId) {
+        byAccountId.set(accountId, (byAccountId.get(accountId) || 0) + 1);
+      }
+
+      // Cumulative per creator: via creatorLink, AND via direct
+      // assignedCreatorId on the video itself (portal-submitted videos).
+      const linkedCreatorId = accountId ? creatorIdByAccountId.get(accountId) : undefined;
+      const assignedCreatorId = (v as any).assignedCreatorId as string | undefined;
+      const creditCreators = new Set<string>();
+      if (linkedCreatorId) creditCreators.add(linkedCreatorId);
+      if (assignedCreatorId) creditCreators.add(assignedCreatorId);
+      for (const cid of creditCreators) {
+        byCreatorId.set(cid, (byCreatorId.get(cid) || 0) + 1);
+      }
+    }
+
+    return { byAccountId, byCreatorId };
+  }, [submissions, dashboardPlatformFilter, dateFilter, customDateRange, trackedAccounts, creatorLinks, isDemoMode, userRole]);
+
   // Filter link clicks to only include clicks from existing links (exclude deleted links)
   const filteredLinkClicks = useMemo(() => {
     if (links.length === 0) return linkClicks;
@@ -2836,16 +2936,113 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {/* All filters aligned to the right */}
                   {/* Accounts Filter - Hide on mobile */}
                   <div className="hidden lg:block">
-                  <MultiSelectDropdown
-                    options={trackedAccounts.map(account => ({
-                      id: account.id,
-                      label: account.displayName || `@${account.username}`,
-                      avatar: account.profilePicture
-                    }))}
-                    selectedIds={selectedAccountIds}
-                    onChange={setSelectedAccountIds}
-                    placeholder="All Accounts"
-                  />
+                  {(() => {
+                    // accountId → creatorId. The public-portal pipeline can write
+                    // creatorLinks docs with synthetic ids like "creatorShare:<token>"
+                    // alongside the real ones, so the same accountId may appear in
+                    // multiple links. Prefer a real userId; only fall back to a
+                    // synthetic id if no real link exists for that account.
+                    const isSyntheticCreatorId = (cid: string) =>
+                      !cid ||
+                      cid.startsWith('creatorShare:') ||
+                      cid.startsWith('cron:') ||
+                      cid === 'system' ||
+                      cid === 'api';
+                    const accountToCreator = new Map<string, string>();
+                    for (const link of creatorLinks) {
+                      const existing = accountToCreator.get(link.accountId);
+                      if (!existing) {
+                        accountToCreator.set(link.accountId, link.creatorId);
+                      } else if (isSyntheticCreatorId(existing) && !isSyntheticCreatorId(link.creatorId)) {
+                        accountToCreator.set(link.accountId, link.creatorId);
+                      }
+                    }
+
+                    // Lookup tables for resolving a creatorId → name / photo.
+                    const creatorById = new Map(creators.map(c => [c.id, c]));
+                    const memberByUserId = new Map(creatorMembers.map(m => [m.userId, m]));
+
+                    // Only build groups for creatorIds that an account actually links to,
+                    // and that resolve to a real account on the current trackedAccounts list.
+                    const trackedAccountIds = new Set(trackedAccounts.map(a => a.id));
+                    const creatorIdsInUse = new Set<string>();
+                    for (const [accountId, creatorId] of accountToCreator) {
+                      if (trackedAccountIds.has(accountId)) creatorIdsInUse.add(creatorId);
+                    }
+
+                    // Per-creator: find the profile pic of their linked Instagram
+                    // account first (highest-fidelity, branded). Fall back to the
+                    // creator/member photoURL if they don't have an Instagram.
+                    const accountById = new Map(trackedAccounts.map(a => [a.id, a]));
+                    const accountIdsByCreator = new Map<string, string[]>();
+                    for (const link of creatorLinks) {
+                      if (!accountIdsByCreator.has(link.creatorId)) accountIdsByCreator.set(link.creatorId, []);
+                      accountIdsByCreator.get(link.creatorId)!.push(link.accountId);
+                    }
+                    const preferredAvatarFor = (creatorId: string): string | undefined => {
+                      const accountIds = accountIdsByCreator.get(creatorId) || [];
+                      for (const id of accountIds) {
+                        const a = accountById.get(id);
+                        if (a && a.platform === 'instagram' && a.profilePicture) return a.profilePicture;
+                      }
+                      return undefined;
+                    };
+
+                    const ORPHAN_GROUP_ID = '__unknown_creator__';
+                    let hasOrphan = false;
+                    const groups: { id: string; label: string; avatar?: string; count?: number }[] = [];
+                    for (const creatorId of creatorIdsInUse) {
+                      const profile = creatorById.get(creatorId);
+                      const member = memberByUserId.get(creatorId);
+                      const label = profile?.displayName || member?.displayName || member?.email;
+                      const avatar = preferredAvatarFor(creatorId) || profile?.photoURL || member?.photoURL;
+                      if (label) {
+                        groups.push({
+                          id: creatorId,
+                          label,
+                          avatar,
+                          count: accountActivityCounts.byCreatorId.get(creatorId) || 0,
+                        });
+                      } else {
+                        hasOrphan = true;
+                      }
+                    }
+                    if (hasOrphan) {
+                      groups.push({ id: ORPHAN_GROUP_ID, label: 'Unknown creator', count: 0 });
+                    }
+
+                    // For accounts whose creatorId exists but didn't resolve, route them to
+                    // the orphan group so they don't fall into the "ungrouped" loose section.
+                    const resolvedCreatorIds = new Set(groups.map(g => g.id));
+
+                    return (
+                      <MultiSelectDropdown
+                        options={trackedAccounts.map(account => {
+                          const creatorId = accountToCreator.get(account.id);
+                          let groupId: string | undefined;
+                          if (creatorId) {
+                            groupId = resolvedCreatorIds.has(creatorId) ? creatorId : ORPHAN_GROUP_ID;
+                          }
+                          return {
+                            id: account.id,
+                            label: account.displayName || `@${account.username}`,
+                            avatar: account.profilePicture,
+                            platform: account.platform,
+                            groupId,
+                            count: accountActivityCounts.byAccountId.get(account.id) || 0,
+                          };
+                        })}
+                        selectedIds={selectedAccountIds}
+                        onChange={setSelectedAccountIds}
+                        placeholder="All Accounts"
+                        groups={groups}
+                        sortByCount
+                        dimNonPosters
+                        collapsibleGroups
+                        triggerVariant="creators-posted"
+                      />
+                    );
+                  })()}
                   </div>
                   
                   {/* Platform Filter - Multi-select - Hide text on mobile */}
