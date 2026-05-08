@@ -2831,7 +2831,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const totalShares = totals.shares;
     const totalVideos = totals.videos;
     const totalAccounts = totals.accounts;
-    const totalEngagement = totalLikes + totalComments + totalShares;
     const engagementRate = totals.engagement;
     
     // Count total link clicks (already filtered to existing links only)
