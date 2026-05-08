@@ -32,6 +32,8 @@ interface CreatorsTableProps {
   onToggleSelectCreator: (id: string) => void;
   onToggleSelectAll: () => void;
   onBulkDelete: () => void;
+  /** Open the bulk-label modal for every currently selected creator. */
+  onBulkLabel: () => void;
   onCreatorClick: (creator: OrgMember) => void;
   onEditPayment: (creator: OrgMember) => void;
   onSetPaymentPlan: (creator: OrgMember) => void;
@@ -156,6 +158,7 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
   onToggleSelectCreator,
   onToggleSelectAll,
   onBulkDelete,
+  onBulkLabel,
   onCreatorClick,
   onEditPayment,
   onSetPaymentPlan,
@@ -196,18 +199,28 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
               Clear
             </button>
           </div>
-          <button
-            onClick={onBulkDelete}
-            disabled={bulkActionLoading}
-            className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
-          >
-            {bulkActionLoading ? (
-              <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
-            ) : (
-              <Trash2 className="w-4 h-4" />
-            )}
-            Remove Selected
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBulkLabel}
+              disabled={bulkActionLoading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            >
+              <Tag className="w-4 h-4" />
+              Label Selected
+            </button>
+            <button
+              onClick={onBulkDelete}
+              disabled={bulkActionLoading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            >
+              {bulkActionLoading ? (
+                <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Remove Selected
+            </button>
+          </div>
         </div>
       )}
 

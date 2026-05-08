@@ -22,6 +22,7 @@ import CreatorActivitySection from './CreatorActivitySection';
 import { CreatorDirectVideoSubmission } from './CreatorDirectVideoSubmission';
 import CreatorsTable from './creators/CreatorsTable';
 import ManageCreatorLabelsModal from './creators/ManageCreatorLabelsModal';
+import BulkLabelModal from './creators/BulkLabelModal';
 import AssignCreatorProjectsModal from './creators/AssignCreatorProjectsModal';
 
 export interface CreatorsManagementPageRef {
@@ -85,6 +86,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [editingProfileCreator, setEditingProfileCreator] = useState<OrgMember | null>(null);
   const [addVideosForCreator, setAddVideosForCreator] = useState<OrgMember | null>(null);
   const [labelingCreator, setLabelingCreator] = useState<OrgMember | null>(null);
+  const [showBulkLabelModal, setShowBulkLabelModal] = useState(false);
   const [assigningProjectsCreator, setAssigningProjectsCreator] = useState<OrgMember | null>(null);
   const [labels, setLabels] = useState<CreatorLabel[]>([]);
 
@@ -366,6 +368,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           onToggleSelectCreator={toggleSelectCreator}
           onToggleSelectAll={toggleSelectAll}
           onBulkDelete={handleBulkDelete}
+          onBulkLabel={() => setShowBulkLabelModal(true)}
           onCreatorClick={setDetailCreator}
           onEditPayment={setEditingPaymentCreator}
           onSetPaymentPlan={setPaymentPlanCreator}
@@ -516,6 +519,24 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           initialLabelIds={creatorProfiles.get(labelingCreator.userId)?.labelIds || []}
           onClose={() => setLabelingCreator(null)}
           onSaved={async () => {
+            await loadLabels();
+            await loadData();
+          }}
+        />
+      )}
+
+      {/* Bulk Label Modal — applies one or more labels to every selected creator
+          at once (additive by default, optional replace mode). Triggered from
+          the table's bulk action bar when the selection is non-empty. */}
+      {showBulkLabelModal && currentOrgId && currentProjectId && user?.uid && (
+        <BulkLabelModal
+          orgId={currentOrgId}
+          projectId={currentProjectId}
+          userId={user.uid}
+          creatorIds={Array.from(selectedCreatorIds)}
+          onClose={() => setShowBulkLabelModal(false)}
+          onSaved={async () => {
+            setSelectedCreatorIds(new Set());
             await loadLabels();
             await loadData();
           }}
