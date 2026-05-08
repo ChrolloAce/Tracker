@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus, ChevronLeft, ChevronDown, Users, DollarSign, Check, Eye, Search, RefreshCw,
-  CircleDollarSign, Coins, Banknote, Gift, Layers, Target, Film, Wallet, Sparkles, CheckCircle2,
-  X, ArrowRight, Settings2, Heart, Clock, AlertCircle, UserPlus, Trash2, Link2, Pencil, Calendar,
-  Lock, CalendarDays, Loader2,
+  Coins, Banknote, Gift, Layers, Target, Film, Wallet, Sparkles, CheckCircle2,
+  X, ArrowRight, Clock, AlertCircle, UserPlus, Trash2, Link2, Pencil,
+  Lock, CalendarDays, Loader2, Send, Calendar,
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -14,13 +14,16 @@ import PayoutStructureManager from '../components/PayoutStructureManager';
 import VideoSliderSection from '../components/VideoSliderSection';
 import { PayoutCalculationEngine, type PayoutCalculationResult, type CreatorPerformance } from '../services/PayoutCalculationEngine';
 import type { PayoutStructure, PayoutComponentType, PayoutMetric } from '../types/payouts';
-import type { Creator } from '../types/firestore';
-import type { VideoSubmission } from '../types';
+import type { Creator, TrackedAccount } from '../types/firestore';
+import { AccountsDataService } from '../services/firestore/AccountsDataService';
+import FirestoreDataService from '../services/FirestoreDataService';
+import type { VideoSubmission, VideoSnapshot } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import CreatorLinksService from '../services/CreatorLinksService';
 import SuperAdminService from '../services/SuperAdminService';
 import AdminStripeService from '../services/AdminStripeService';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
+import { CreatorPlatformBubbles } from '../components/creators/CreatorPlatformBubbles';
 
 // ==================== TYPES ====================
 
@@ -46,6 +49,24 @@ interface TrackedVideo {
   /** Direct CDN URL of the video file (Apify-extracted). Powers hover-preview in the cross-post modal.
    *  May be expired or absent — UI falls back to thumbnail on load failure. */
   mediaUrl?: string;
+  /** Historical metrics snapshots — required for snapshot-aware payout math (date-window deltas)
+   *  and spark subtraction. Loaded via `FirestoreDataService.getVideoSnapshotsBatch` in
+   *  `fetchCreatorVideos`. May be empty for legacy videos that pre-date snapshotting; engine
+   *  falls back to lifetime values in that case. */
+  snapshots?: VideoSnapshot[];
+  /** When the video was marked as Sparked. Drives spark-subtraction math for organic-only
+   *  payment math. See VideoDoc.sparkedAt. */
+  sparkedAt?: Date;
+  /** Manual ad-view log entries. Overrides `sparkedAt`-derived snapshot deltas when present.
+   *  See VideoDoc.sparkViewLogs. */
+  sparkViewLogs?: Array<{
+    id: string;
+    date: string;
+    views: number;
+    note?: string;
+    loggedBy?: string;
+    loggedAt?: Date;
+  }>;
 }
 
 interface PayoutCampaign {
@@ -199,6 +220,11 @@ async function fetchCreatorVideos(orgId: string, projectId: string, creatorId: s
     uploadDate: d.uploadDate?.toDate?.() || undefined,
     dateAdded: d.dateAdded?.toDate?.() || undefined,
     mediaUrl: d.mediaUrl || undefined,
+    // Spark fields drive `excludeSparked` math downstream — pass them through
+    // so payout calc can subtract paid views from creator earnings.
+    sparkedAt: d.sparkedAt?.toDate?.() || undefined,
+    sparkViewLogs: d.sparkViewLogs || undefined,
+    // snapshots populated below in batch — leave undefined here.
   });
 
   const snap1 = await getDocs(query(videosRef, where('assignedCreatorId', '==', creatorId)));
@@ -211,7 +237,26 @@ async function fetchCreatorVideos(orgId: string, projectId: string, creatorId: s
     const snap = await getDocs(query(videosRef, where('trackedAccountId', 'in', accountIds.slice(i, i + 30))));
     for (const doc of snap.docs) if (!videoMap.has(doc.id)) videoMap.set(doc.id, toVid(doc.id, doc.data()));
   }
-  return Array.from(videoMap.values()).sort((a, b) => b.views - a.views);
+
+  // Load snapshots in a single batched call — same pattern as DashboardPage.
+  // Snapshots power the date-window deltas inside `computePerVideoMetricInRange`,
+  // so without them the payout engine silently falls back to lifetime totals
+  // (which the dashboard does NOT show — that's the bug we're fixing).
+  const allVideos = Array.from(videoMap.values());
+  if (allVideos.length > 0) {
+    try {
+      const videoIds = allVideos.map(v => v.id);
+      const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(orgId, projectId, videoIds);
+      for (const v of allVideos) {
+        v.snapshots = snapshotsMap.get(v.id) || [];
+      }
+    } catch (err) {
+      console.error('[Payouts] Failed to load snapshots for creator videos — falling back to lifetime metrics:', err);
+      // Leave snapshots undefined; helpers fall back to lifetime values.
+    }
+  }
+
+  return allVideos.sort((a, b) => b.views - a.views);
 }
 
 /** Pull the YouTube video id from common URL shapes (shorts, watch, youtu.be, embed). */
@@ -260,10 +305,6 @@ function fmt(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-function fmtMoney(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 /** Exact money formatter with commas, never abbreviates. Use for detail breakdowns. */
 function fmtMoneyExact(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -333,8 +374,19 @@ function toVideoSubmission(v: TrackedVideo, creator: CampaignCreator): VideoSubm
     uploaderProfilePicture: v.uploaderProfilePicture || creator.photoURL,
     views: v.views, likes: v.likes, comments: v.comments,
     shares: v.shares, saves: v.saves,
-    status: 'approved', dateSubmitted: new Date(), uploadDate: new Date(),
+    status: 'approved',
+    // Use the real upload date so date-window math (computePerVideoMetricInRange)
+    // can correctly bucket each video. Falling back to `new Date()` here meant
+    // every video looked freshly-uploaded, breaking date-bounded payout math.
+    dateSubmitted: v.dateAdded || v.uploadDate || new Date(),
+    uploadDate: v.uploadDate || v.dateAdded || new Date(),
     crossPostGroupId: v.crossPostGroupId,
+    // Snapshots + spark fields are required for snapshot-aware payout math
+    // and `excludeSparked` (organic-only views). Without these the engine
+    // silently uses lifetime values and over-pays creators.
+    snapshots: v.snapshots,
+    sparkedAt: v.sparkedAt,
+    sparkViewLogs: v.sparkViewLogs,
   };
 }
 
@@ -404,7 +456,20 @@ function recalcCreator(cr: CampaignCreator, campaign?: PayoutCampaign): Campaign
 
   const videos = eligibleVideos(cr, campaign);
   if (!cr.structure || videos.length === 0) return cr;
-  const perf = PayoutCalculationEngine.calculatePerformance(cr.id, videos.map(v => toVideoSubmission(v, cr)));
+  // Build the campaign date window. The engine uses this to compute
+  // snapshot-aware per-video metrics inside [start, end] AND to subtract
+  // sparked (paid) views so creators are paid on ORGANIC views only —
+  // matching what the dashboard shows in 'organic' reporting mode.
+  // null start = "all time" (no lower bound).
+  const dateRange = {
+    start: campaign?.startDate ?? null,
+    end: campaign?.endDate ?? new Date(),
+  };
+  const perf = PayoutCalculationEngine.calculatePerformance(
+    cr.id,
+    videos.map(v => toVideoSubmission(v, cr)),
+    dateRange,
+  );
   const result = PayoutCalculationEngine.calculateCreatorPayout(cr.id, cr.structure, perf);
   const payoutStatus = cr.payoutStatus === 'not_calculated' ? 'pending' as const : cr.payoutStatus;
   return { ...cr, payoutResult: result, payoutStatus };
@@ -613,22 +678,18 @@ async function loadCampaignsFromFirestore(orgId: string, projectId: string): Pro
 
 // ==================== MAIN PAGE ====================
 
-type View = 'list' | 'create' | 'detail';
+type View = 'list' | 'create';
+type PayoutsTab = 'payouts' | 'campaigns';
 
 export default function PayoutsPage() {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [view, setView] = useState<View>('list');
+  const [tab, setTab] = useState<PayoutsTab>('payouts');
   const [campaigns, setCampaigns] = useState<PayoutCampaign[]>([]);
-  const [activeCampaign, setActiveCampaign] = useState<PayoutCampaign | null>(null);
-  // Mirrors activeCampaign so updateCampaign can read the latest state synchronously — needed when
-  // multiple parallel callers (e.g. all CreatorCards auto-loading videos on mount) each produce an
-  // update from the same render's props. Without this, stale-closure reads cause last-write-wins
-  // clobbering of sibling creators' data.
-  const activeCampaignRef = useRef<PayoutCampaign | null>(null);
-  activeCampaignRef.current = activeCampaign;
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
 
   const orgId = currentOrgId || '';
   const projectId = currentProjectId || '';
@@ -671,18 +732,14 @@ export default function PayoutsPage() {
   }, [isSuperAdmin]);
   const payoutsEnabled = stripeConfig?.payoutsEnabled === true;
 
-  const openCampaign = (c: PayoutCampaign) => { setActiveCampaign(c); setView('detail'); };
-  const goBack = () => { setView('list'); setActiveCampaign(null); };
+  const goBack = () => setView('list');
 
   const persistCampaign = async (u: PayoutCampaign) => {
     setSaveStatus('saving'); setSaveError(null);
     try {
       const newUpdatedAt = await saveCampaignToFirestore(orgId, projectId, u, userId);
       // Bump the in-memory baseline so the NEXT save's stale-write check uses this write's
-      // timestamp, not the load timestamp. IMPORTANT: merge into `prev` rather than `u` —
-      // another update may have fired while we awaited the save, and re-applying `u` would
-      // clobber it (causing visible flicker/stutter). We only own the timestamp here.
-      setActiveCampaign(prev => (prev && prev.id === u.id ? { ...prev, lastLoadedUpdatedAt: newUpdatedAt } : prev));
+      // timestamp, not the load timestamp.
       setCampaigns(prev => prev.map(c => c.id === u.id ? { ...c, lastLoadedUpdatedAt: newUpdatedAt } : c));
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2000);
@@ -697,28 +754,29 @@ export default function PayoutsPage() {
     }
   };
 
-  // Accepts either a raw campaign (legacy call sites) or a functional updater. The updater form is
-  // required for any flow that may fire in parallel (e.g. N CreatorCards loading videos at once):
-  // it reads from `activeCampaignRef.current`, which we mutate eagerly below so subsequent calls
-  // in the same tick see each other's work. `skipPersist` is for transient UI state (videos
-  // loading/loaded) that is never written to Firestore anyway — skipping the save avoids pointless
-  // stale-write-guard errors during page load.
-  const updateCampaign = (
+  /** Mutate one campaign by id and (unless `skipPersist`) write to Firestore.
+   *  Functional updater receives the latest state via the setter — safe for
+   *  parallel calls across different campaigns (e.g. N rows auto-loading videos
+   *  at once). `skipPersist` is for transient UI state (videos loading/loaded)
+   *  that is never written to Firestore anyway. */
+  const updateCampaignById = (
+    campaignId: string,
     u: PayoutCampaign | ((prev: PayoutCampaign) => PayoutCampaign),
     options?: { skipPersist?: boolean },
   ) => {
-    const prev = activeCampaignRef.current;
-    if (!prev) return;
-    const next = typeof u === 'function' ? u(prev) : u;
-    activeCampaignRef.current = next;
-    setActiveCampaign(next);
-    setCampaigns(cs => cs.map(c => c.id === next.id ? next : c));
-    if (!options?.skipPersist) persistCampaign(next);
+    let computed: PayoutCampaign | null = null;
+    setCampaigns(cs => cs.map(c => {
+      if (c.id !== campaignId) return c;
+      const next = typeof u === 'function' ? u(c) : u;
+      computed = next;
+      return next;
+    }));
+    if (computed && !options?.skipPersist) persistCampaign(computed);
   };
 
   const createCampaign = (c: PayoutCampaign) => {
-    setCampaigns([c, ...campaigns]);
-    openCampaign(c);
+    setCampaigns(prev => [c, ...prev]);
+    setView('list');
     persistCampaign(c);
   };
 
@@ -745,7 +803,26 @@ export default function PayoutsPage() {
     <div className="flex min-h-screen bg-surface">
       <Sidebar onCollapsedChange={setSidebarCollapsed} isMobileOpen={mobileMenuOpen} onMobileToggle={setMobileMenuOpen} />
       <main className="flex-1 transition-all duration-300" style={{ marginLeft: sidebarCollapsed ? '4rem' : '16rem' }}>
-        <div className="p-4 md:p-8 lg:p-10 max-w-[1400px] mx-auto">
+        {/* Fixed top bar: platform balance always visible while scrolling. Sits
+            above content, offset right of the sidebar via the same dynamic
+            margin the main column uses (4rem collapsed / 16rem expanded). */}
+        {view !== 'create' && (
+          <div
+            className="fixed top-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-b border-border-subtle transition-all duration-300"
+            style={{ left: sidebarCollapsed ? '4rem' : '16rem' }}
+          >
+            <div className="px-4 md:px-8 lg:px-10 py-3 max-w-[1400px] mx-auto">
+              <PlatformBalanceCard payoutsEnabled={payoutsEnabled} compact />
+            </div>
+          </div>
+        )}
+
+        <div
+          className="p-4 md:p-8 lg:p-10 max-w-[1400px] mx-auto"
+          // Push the page body down enough that the fixed balance bar doesn't
+          // overlap content. Skipped on the create view (no fixed bar there).
+          style={view !== 'create' ? { paddingTop: '6.5rem' } : undefined}
+        >
           {/* Live-mode-without-Connect banner. Explains to admins that campaign creation + approval
               still work, but real money movement is paused until Stripe Connect is activated. */}
           {stripeConfig && !payoutsEnabled && (
@@ -761,13 +838,77 @@ export default function PayoutsPage() {
               </div>
             </div>
           )}
-          {/* Platform balance — always visible at the top. Admins need to know funds are sufficient
-              before marking creators paid. Hidden on the create view to avoid visual clutter during
-              campaign setup. */}
-          {view !== 'create' && <PlatformBalanceCard payoutsEnabled={payoutsEnabled} />}
-          {view === 'list' && <CampaignListView campaigns={campaigns} loading={loadingCampaigns} onOpen={openCampaign} onCreate={() => setView('create')} />}
+          {view === 'list' && (
+            <div className="space-y-5">
+              {/* Page header — title swaps to match the active tab; the tab strip
+                  below pivots between "Payouts" (per-creator payout rows) and
+                  "Campaigns" (campaign-level config table). Same layout, same
+                  toolbar pattern, so they feel like two views of one page. */}
+              <div className="flex items-end justify-between gap-4 flex-wrap">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-content tracking-tight">
+                    {tab === 'payouts' ? 'Payouts' : 'Campaigns'}
+                  </h1>
+                  <p className="text-sm text-content-muted mt-1">
+                    {tab === 'payouts'
+                      ? 'Track creator payout statuses across campaigns.'
+                      : 'Configure the campaigns that drive your payouts.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-tertiary/40 border border-border-subtle">
+                  {([['payouts', 'Payouts'], ['campaigns', 'Campaigns']] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setTab(key)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === key ? 'bg-surface text-content shadow-sm' : 'text-content-muted hover:text-content'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {tab === 'payouts' ? (
+                <FlatPayoutsView
+                  campaigns={campaigns}
+                  loading={loadingCampaigns}
+                  orgId={orgId}
+                  projectId={projectId}
+                  userId={userId}
+                  actingUser={actingUser}
+                  payoutsEnabled={payoutsEnabled}
+                  onUpdateCampaign={updateCampaignById}
+                  onCreateCampaign={() => setView('create')}
+                />
+              ) : (
+                <CampaignsTableView
+                  campaigns={campaigns}
+                  loading={loadingCampaigns}
+                  onCreateCampaign={() => setView('create')}
+                  onEditCampaign={(c) => setEditingCampaignId(c.id)}
+                />
+              )}
+            </div>
+          )}
           {view === 'create' && <CreateCampaignView orgId={orgId} projectId={projectId} userId={userId} onCreated={createCampaign} onCancel={goBack} />}
-          {view === 'detail' && activeCampaign && <CampaignDetailView campaign={activeCampaign} orgId={orgId} projectId={projectId} userId={userId} actingUser={actingUser} payoutsEnabled={payoutsEnabled} onUpdate={updateCampaign} onBack={goBack} />}
+
+          {/* Edit campaign drawer — opens from a Campaigns table row click. Reads
+              the latest campaign from `campaigns` so concurrent updates from
+              other places (e.g. payout actions) stay in sync while open. */}
+          {editingCampaignId && (() => {
+            const c = campaigns.find(x => x.id === editingCampaignId);
+            if (!c) return null;
+            return (
+              <EditCampaignDrawer
+                campaign={c}
+                onClose={() => setEditingCampaignId(null)}
+                onSave={(patch) => {
+                  updateCampaignById(c.id, prev => ({ ...prev, ...patch }));
+                  setEditingCampaignId(null);
+                }}
+              />
+            );
+          })()}
         </div>
       </main>
 
@@ -800,7 +941,7 @@ export default function PayoutsPage() {
  * without leaving the page. Fetches on mount and after returning from a successful Checkout
  * (URL `?topup=success`).
  */
-function PlatformBalanceCard({ payoutsEnabled }: { payoutsEnabled: boolean }) {
+function PlatformBalanceCard({ payoutsEnabled, compact = false }: { payoutsEnabled: boolean; compact?: boolean }) {
   const [balance, setBalance] = useState<{ available: Array<{amount: number; currency: string}>; pending: Array<{amount: number; currency: string}>; livemode: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -850,6 +991,55 @@ function PlatformBalanceCard({ payoutsEnabled }: { payoutsEnabled: boolean }) {
     return entries.map(e => fmtMoneyCurrency(e.amount, e.currency)).join(' · ');
   };
 
+  // Compact variant: lower-profile horizontal layout for the fixed top bar.
+  // No icon, no card chrome — just the label + balance + pending + actions.
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Platform balance</p>
+            {balance && !balance.livemode && (
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-400/30">Test mode</span>
+            )}
+          </div>
+          {loading ? (
+            <p className="text-lg font-bold text-content-muted leading-tight">—</p>
+          ) : error ? (
+            <p className="text-xs text-red-500">{error}</p>
+          ) : balance ? (
+            <div className="flex items-baseline gap-2 flex-wrap leading-tight">
+              <span className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">
+                {fmtEntries(balance.available)}
+              </span>
+              {balance.pending.some(p => p.amount > 0) && (
+                <span className="text-[11px] text-content-muted">
+                  + {fmtEntries(balance.pending)} pending
+                </span>
+              )}
+            </div>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-1.5 rounded-lg text-content-muted hover:text-content hover:bg-surface-hover transition-colors disabled:opacity-50"
+            title="Refresh balance"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          {payoutsEnabled && (
+            <Button size="sm" onClick={() => setShowTopup(true)} disabled={!!error}>
+              <Plus className="w-4 h-4 mr-1.5" /> Top up
+            </Button>
+          )}
+        </div>
+        {showTopup && <TopupModal onClose={() => setShowTopup(false)} />}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl bg-surface-secondary border border-border-subtle shadow-theme p-5 mb-6 flex items-center gap-4 flex-wrap">
       <div className="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center flex-shrink-0">
@@ -888,8 +1078,6 @@ function PlatformBalanceCard({ payoutsEnabled }: { payoutsEnabled: boolean }) {
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
-        {/* Top-up button is hidden entirely when payouts are disabled — there's nothing useful
-            to do with it yet. Admin still sees the balance (read-only) for informational purposes. */}
         {payoutsEnabled && (
           <Button size="sm" onClick={() => setShowTopup(true)} disabled={!!error}>
             <Plus className="w-4 h-4 mr-1.5" /> Top up
@@ -981,187 +1169,1207 @@ function TopupModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ==================== LIST VIEW ====================
+// ==================== FLAT PAYOUTS VIEW ====================
 
-function CampaignListView({ campaigns, loading, onOpen, onCreate }: {
-  campaigns: PayoutCampaign[]; loading: boolean; onOpen: (c: PayoutCampaign) => void; onCreate: () => void;
+/**
+ * Multi-select dropdown for filtering by campaign. Closes on outside click.
+ * Stays compact when nothing's selected ("All campaigns"); shows the single
+ * campaign's name when only one is picked, or "N campaigns" otherwise.
+ */
+function CampaignMultiSelect({
+  campaigns, selected, onChange,
+}: {
+  campaigns: PayoutCampaign[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
 }) {
-  const agg = campaigns.reduce(
-    (acc, c) => {
-      const total = c.creators.reduce((s, cr) => s + (cr.payoutResult?.totalPayout || 0), 0);
-      const approved = c.creators.filter(cr => cr.payoutStatus === 'approved' || cr.payoutStatus === 'paid').length;
-      const pending = c.creators.filter(cr => cr.payoutStatus === 'pending').length;
-      const paid = c.creators.filter(cr => cr.payoutStatus === 'paid').length;
-      acc.total += total;
-      acc.creators += c.creators.length;
-      acc.approved += approved;
-      acc.pending += pending;
-      acc.paid += paid;
-      if (c.status === 'active') acc.active += 1;
-      return acc;
-    },
-    { total: 0, creators: 0, approved: 0, pending: 0, paid: 0, active: 0 }
-  );
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        triggerRef.current && !triggerRef.current.contains(t) &&
+        dropdownRef.current && !dropdownRef.current.contains(t)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const label = selected.size === 0
+    ? 'All campaigns'
+    : selected.size === 1
+      ? campaigns.find(c => selected.has(c.id))?.name || '1 campaign'
+      : `${selected.size} campaigns`;
 
   return (
-    <div className="space-y-8">
-      {/* HERO */}
-      <div className="relative overflow-hidden rounded-3xl border border-border-subtle bg-gradient-to-br from-orange-500/10 via-surface-secondary to-surface-secondary p-6 md:p-8 shadow-theme">
-        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-[0_4px_0_0_#c2410c]">
-              <CircleDollarSign className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-content tracking-tight">Creator Payouts</h1>
-              <p className="text-sm md:text-base text-content-muted mt-1 max-w-xl">
-                Build payout campaigns, assign flexible structures (CPM, flat, bonuses, tiers), and approve creator payments — all in one place.
-              </p>
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-secondary border text-sm transition-colors ${open || selected.size > 0 ? 'border-orange-500' : 'border-border-subtle hover:border-border'}`}
+      >
+        <Target className="w-4 h-4 text-content-muted" />
+        <span className={selected.size > 0 ? 'text-content font-medium max-w-[160px] truncate' : 'text-content-muted'}>{label}</span>
+        <ChevronDown className={`w-4 h-4 text-content-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div ref={dropdownRef} className="absolute top-full mt-1 left-0 w-72 max-h-72 overflow-y-auto rounded-xl bg-surface-secondary border border-border shadow-xl z-30 p-1">
+          {selected.size > 0 && (
+            <button
+              onClick={() => onChange(new Set())}
+              className="w-full px-3 py-2 text-left text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-surface-tertiary rounded-lg transition-colors"
+            >
+              Clear all
+            </button>
+          )}
+          {campaigns.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-content-muted">No campaigns yet</p>
+          ) : (
+            campaigns.map(c => {
+              const isSel = selected.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    const next = new Set(selected);
+                    if (isSel) next.delete(c.id); else next.add(c.id);
+                    onChange(next);
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg transition-colors ${isSel ? 'bg-orange-500/10' : 'hover:bg-surface-tertiary'}`}
+                >
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSel ? 'bg-orange-500 border-orange-500' : 'border-border-strong'}`}>
+                    {isSel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="text-sm text-content truncate">{c.name}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Creator multi-select dropdown. Mirrors CampaignMultiSelect's pattern (trigger
+ * button, outside-click close, checkbox rows) so the toolbar feels uniform —
+ * stacked PFP avatar in each row keeps it visually anchored to the rest of
+ * the creator-identity treatment we use across the app.
+ */
+function CreatorMultiSelect({
+  creators, selected, onChange,
+}: {
+  creators: CampaignCreator[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        triggerRef.current && !triggerRef.current.contains(t) &&
+        dropdownRef.current && !dropdownRef.current.contains(t)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const label = selected.size === 0
+    ? 'Select creators'
+    : selected.size === 1
+      ? creators.find(c => selected.has(c.id))?.name || '1 creator'
+      : `${selected.size} creators`;
+
+  const filtered = search
+    ? creators.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase()))
+    : creators;
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-secondary border text-sm transition-colors ${open || selected.size > 0 ? 'border-orange-500' : 'border-border-subtle hover:border-border'}`}
+      >
+        <Users className="w-4 h-4 text-content-muted" />
+        <span className={selected.size > 0 ? 'text-content font-medium max-w-[160px] truncate' : 'text-content-muted'}>{label}</span>
+        <ChevronDown className={`w-4 h-4 text-content-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div ref={dropdownRef} className="absolute top-full mt-1 left-0 w-80 max-h-80 overflow-hidden rounded-xl bg-surface-secondary border border-border shadow-xl z-30 flex flex-col">
+          <div className="p-2 border-b border-border-subtle">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-muted" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search creators..."
+                className="w-full pl-8 pr-2 py-1.5 rounded-lg bg-surface-tertiary border border-border-subtle text-xs text-content placeholder:text-content-muted focus:outline-none focus:border-orange-500"
+              />
             </div>
           </div>
-          <Button onClick={onCreate} size="lg" className="shrink-0">
-            <Plus className="w-5 h-5 mr-2" /> New Campaign
-          </Button>
+          <div className="overflow-y-auto p-1">
+            {selected.size > 0 && (
+              <button
+                onClick={() => onChange(new Set())}
+                className="w-full px-3 py-2 text-left text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-surface-tertiary rounded-lg transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+            {filtered.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-content-muted">{creators.length === 0 ? 'No creators yet' : 'No matches'}</p>
+            ) : (
+              filtered.map(c => {
+                const isSel = selected.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      const next = new Set(selected);
+                      if (isSel) next.delete(c.id); else next.add(c.id);
+                      onChange(next);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg transition-colors ${isSel ? 'bg-orange-500/10' : 'hover:bg-surface-tertiary'}`}
+                  >
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSel ? 'bg-orange-500 border-orange-500' : 'border-border-strong'}`}>
+                      {isSel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                    </div>
+                    <CreatorAccountStack creator={c} max={2} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="text-sm text-content truncate">{c.name}</p>
+                        <CreatorPlatformBubbles items={c.videos} max={3} />
+                      </div>
+                      <p className="text-[11px] text-content-muted truncate">{c.email || 'No email'}</p>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* KPI strip inside hero */}
-        <div className="relative grid grid-cols-2 md:grid-cols-4 gap-3 mt-8">
-          <HeroStat icon={<Wallet className="w-4 h-4" />} label="Total Payouts" value={fmtMoney(agg.total)} tint="emerald" />
-          <HeroStat icon={<Sparkles className="w-4 h-4" />} label="Active Campaigns" value={String(agg.active)} tint="orange" />
-          <HeroStat icon={<Users className="w-4 h-4" />} label="Creators" value={String(agg.creators)} tint="neutral" />
-          <HeroStat icon={<Clock className="w-4 h-4" />} label="Pending Approval" value={String(agg.pending)} tint="orange" />
+/**
+ * Flat all-creators-across-all-campaigns view. The new entry point for /payouts:
+ * one table, one row per (creator, campaign) pair. Status tabs at the top
+ * (All / Pending / Approved / Paid) act as a primary filter; below them, search
+ * by creator name/email and a multi-select campaign filter narrow further.
+ *
+ * Replaces the old two-screen flow (campaign list → click into campaign detail).
+ * Per-row actions and the click-to-expand breakdown are reused from CreatorCard;
+ * the row gets `showCampaignColumn` so the Campaign cell renders here but stays
+ * suppressed in any single-campaign context where it'd be redundant.
+ *
+ * Add Creator FAB only renders when the user has narrowed to a single campaign,
+ * since otherwise we wouldn't know which campaign to add the creator(s) to.
+ */
+function FlatPayoutsView({
+  campaigns, loading, orgId, projectId, userId, actingUser, payoutsEnabled,
+  onUpdateCampaign, onCreateCampaign,
+}: {
+  campaigns: PayoutCampaign[];
+  loading: boolean;
+  orgId: string; projectId: string; userId: string; actingUser: string;
+  payoutsEnabled: boolean;
+  onUpdateCampaign: (
+    campaignId: string,
+    u: PayoutCampaign | ((prev: PayoutCampaign) => PayoutCampaign),
+    options?: { skipPersist?: boolean },
+  ) => void;
+  onCreateCampaign: () => void;
+}) {
+  // Status vocabulary mirrors viral.app (Upcoming / Due / Canceled / Paid) but maps onto our
+  // existing data model: pending+not_calculated → upcoming (still under review/setup), approved
+  // → due (approved, ready to send), paid → paid. We don't model canceled yet — bucket exists
+  // for parity and reads 0 until we add cancellation.
+  type StatusBucket = 'all' | 'upcoming' | 'due' | 'canceled' | 'paid';
+  const bucketFor = (s: CampaignCreator['payoutStatus']): Exclude<StatusBucket, 'all'> => {
+    if (s === 'paid') return 'paid';
+    if (s === 'approved') return 'due';
+    return 'upcoming';
+  };
+
+  const [statusFilter, setStatusFilter] = useState<StatusBucket>('all');
+  const [campaignFilter, setCampaignFilter] = useState<Set<string>>(new Set());
+  const [creatorFilter, setCreatorFilter] = useState<Set<string>>(new Set());
+  const [creatorSearch, setCreatorSearch] = useState('');
+  const [showAddCreatorFor, setShowAddCreatorFor] = useState<string | null>(null);
+  /** When the "Add creators" button can't resolve a single campaign target
+   *  (multiple campaigns exist + no single-campaign filter), surface a small
+   *  picker so the admin chooses which campaign to add into before the
+   *  slide-over opens. */
+  const [showCampaignPicker, setShowCampaignPicker] = useState(false);
+  const addCreatorsTriggerRef = useRef<HTMLButtonElement>(null);
+  const campaignPickerRef = useRef<HTMLDivElement>(null);
+  const [pickerForCreatorId, setPickerForCreatorId] = useState<{ campaignId: string; creatorId: string } | null>(null);
+  const [payConfirmFor, setPayConfirmFor] = useState<{ campaignId: string; creatorId: string } | null>(null);
+
+  useEffect(() => {
+    if (!showCampaignPicker) return;
+    const h = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        addCreatorsTriggerRef.current && !addCreatorsTriggerRef.current.contains(t) &&
+        campaignPickerRef.current && !campaignPickerRef.current.contains(t)
+      ) setShowCampaignPicker(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showCampaignPicker]);
+
+  // Flatten + filter. `nonStatusRows` ignores the status tab so totals stay
+  // stable across tab switches — they reflect the active campaign/creator/search
+  // scope but show all four status buckets.
+  const allRows = campaigns.flatMap(c => c.creators.map(cr => ({ campaign: c, creator: cr })));
+  const passesNonStatus = (r: { campaign: PayoutCampaign; creator: CampaignCreator }) => {
+    if (campaignFilter.size > 0 && !campaignFilter.has(r.campaign.id)) return false;
+    if (creatorFilter.size > 0 && !creatorFilter.has(r.creator.id)) return false;
+    if (creatorSearch) {
+      const q = creatorSearch.toLowerCase();
+      if (!r.creator.name.toLowerCase().includes(q) &&
+          !(r.creator.email || '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  };
+  const nonStatusRows = allRows.filter(passesNonStatus);
+  const filteredRows = nonStatusRows.filter(r =>
+    statusFilter === 'all' || bucketFor(r.creator.payoutStatus) === statusFilter
+  );
+  const counts = {
+    all: nonStatusRows.length,
+    upcoming: nonStatusRows.filter(r => bucketFor(r.creator.payoutStatus) === 'upcoming').length,
+    due: nonStatusRows.filter(r => bucketFor(r.creator.payoutStatus) === 'due').length,
+    canceled: 0,
+    paid: nonStatusRows.filter(r => bucketFor(r.creator.payoutStatus) === 'paid').length,
+  };
+
+  // Totals strip — sums per-bucket money across the visible (filter-scoped)
+  // rows. Paid uses paidSnapshot.amount (immutable record); upcoming/due use
+  // netOwed (live calculation). Currency is fixed per campaign — when totals
+  // mix campaigns with different currencies we just label "mixed" since
+  // summing across currencies isn't meaningful.
+  function bucketTotal(bucket: 'upcoming' | 'due' | 'paid') {
+    const rows = nonStatusRows.filter(r => bucketFor(r.creator.payoutStatus) === bucket);
+    let amount = 0;
+    const currencies = new Set<string>();
+    for (const r of rows) {
+      const cur = campaignCurrency(r.campaign);
+      const a = bucket === 'paid'
+        ? (r.creator.paidSnapshot?.amount ?? 0)
+        : (r.creator.payoutResult ? netOwed(r.creator) : 0);
+      amount += a;
+      if (a > 0) currencies.add(cur);
+    }
+    return { count: rows.length, amount, currency: currencies.size === 1 ? Array.from(currencies)[0] : currencies.size === 0 ? DEFAULT_CURRENCY : 'mixed' };
+  }
+  const totals = {
+    upcoming: bucketTotal('upcoming'),
+    due: bucketTotal('due'),
+    paid: bucketTotal('paid'),
+  };
+
+  // Unique creators across all campaigns — feeds the creator multi-select filter.
+  const uniqueCreators = (() => {
+    const seen = new Map<string, CampaignCreator>();
+    for (const r of allRows) if (!seen.has(r.creator.id)) seen.set(r.creator.id, r.creator);
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
+  // Build a per-row handler bundle. All mutations route through `onUpdateCampaign`
+  // (which the parent wires to `updateCampaignById`) using functional updaters so
+  // parallel operations across different rows / campaigns don't clobber each other.
+  function makeHandlers(campaign: PayoutCampaign, creatorId: string) {
+    const updateCreator = (mutator: (cr: CampaignCreator) => CampaignCreator) =>
+      onUpdateCampaign(campaign.id, prev => ({
+        ...prev,
+        creators: prev.creators.map(c => c.id === creatorId ? mutator(c) : c),
+      }));
+    return {
+      onLoadVideos: async () => {
+        let shouldLoad = false;
+        onUpdateCampaign(campaign.id, prev => {
+          const cr = prev.creators.find(c => c.id === creatorId);
+          if (!cr || cr.videosLoading) return prev;
+          // Allow re-loading even when videosLoaded is already true — this is
+          // how the drawer's Retry button gets back into a loading state after
+          // a previous failure.
+          shouldLoad = true;
+          return { ...prev, creators: prev.creators.map(c => c.id === creatorId ? { ...c, videosLoading: true, videosLoaded: false } : c) };
+        }, { skipPersist: true });
+        if (!shouldLoad) return;
+        try {
+          const videos = await fetchCreatorVideos(orgId, projectId, creatorId);
+          onUpdateCampaign(campaign.id, prev => ({
+            ...prev,
+            creators: prev.creators.map(c => c.id === creatorId
+              ? recalcCreator({ ...c, videos, videosLoaded: true, videosLoading: false }, prev)
+              : c),
+          }), { skipPersist: true });
+        } catch (err) {
+          // Surface the failure in the console so it's debuggable, and mark
+          // the creator as loaded with empty videos so the drawer renders the
+          // "couldn't load" hint instead of spinning forever.
+          console.error(`[Payouts] Failed to load videos for creator ${creatorId}:`, err);
+          onUpdateCampaign(campaign.id, prev => ({
+            ...prev,
+            creators: prev.creators.map(c => c.id === creatorId ? { ...c, videosLoaded: true, videosLoading: false } : c),
+          }), { skipPersist: true });
+        }
+      },
+      onApprove: () => updateCreator(c => logAction({ ...c, payoutStatus: 'approved' as const }, 'Approved', actingUser)),
+      onMarkPaid: () => setPayConfirmFor({ campaignId: campaign.id, creatorId }),
+      onUnapprove: () => {
+        if (!confirm('Un-approve this payout and move it back to pending? This is recorded in the audit log.')) return;
+        updateCreator(c => logAction({ ...c, payoutStatus: 'pending' as const }, 'Un-approved', actingUser));
+      },
+      onRevertPaid: () => {
+        if (!confirm('Revert this paid status back to approved? Only allowed if the Stripe transfer has not yet succeeded.')) return;
+        updateCreator(c => {
+          if (c.paidSnapshot?.stripeTransferId) {
+            alert('Cannot revert — the Stripe transfer has already settled. Reversals must be done in the Stripe dashboard.');
+            return c;
+          }
+          const { paidSnapshot: _ps, ...rest } = c;
+          return logAction({ ...rest, payoutStatus: 'approved' as const }, 'Reverted from paid', actingUser);
+        });
+      },
+      onRetryTransfer: async () => {
+        try {
+          const result = await AdminStripeService.transferToCreator({ orgId, projectId, campaignId: campaign.id, creatorId });
+          updateCreator(c => logAction(
+            { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferId: result.transferId, stripeTransferStatus: 'paid' as const, stripeTransferError: undefined } },
+            'Stripe transfer retried', actingUser, result.transferId,
+          ));
+        } catch (err: any) {
+          updateCreator(c => logAction(
+            { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferStatus: 'failed' as const, stripeTransferError: err?.message || 'Retry failed' } },
+            'Stripe transfer retry FAILED', actingUser, err?.message || 'unknown',
+          ));
+        }
+      },
+      onOpenPicker: () => setPickerForCreatorId({ campaignId: campaign.id, creatorId }),
+      onRemove: () => {
+        if (!confirm(`Remove this creator from ${campaign.name}?`)) return;
+        onUpdateCampaign(campaign.id, prev => ({
+          ...prev,
+          creators: prev.creators.filter(c => c.id !== creatorId),
+        }));
+      },
+      onSetOverride: (amount: number, note?: string) => updateCreator(c => logAction(
+        { ...c, payoutOverride: { amount, ...(note ? { note } : {}) } },
+        'Set manual override', actingUser, `${amount}${note ? ` — ${note}` : ''}`,
+      )),
+      onClearOverride: () => updateCreator(c => {
+        const { payoutOverride: _o, ...rest } = c;
+        return logAction(rest, 'Cleared manual override', actingUser);
+      }),
+      onSetStartDate: (date: Date | undefined) => updateCreator(c => logAction(
+        recalcCreator({ ...c, countVideosFromDate: date }, campaign),
+        date ? 'Set payout start date' : 'Cleared payout start date',
+        actingUser,
+        date ? date.toLocaleDateString() : undefined,
+      )),
+      onToggleExcludeVideo: (videoId: string) => updateCreator(c => {
+        const ex = c.excludedVideoIds || [];
+        const isExcluded = ex.includes(videoId);
+        const next = isExcluded ? ex.filter(id => id !== videoId) : [...ex, videoId];
+        return logAction(
+          recalcCreator({ ...c, excludedVideoIds: next }, campaign),
+          isExcluded ? 'Re-included video' : 'Excluded video', actingUser, videoId,
+        );
+      }),
+      onVideosChange: (videos: TrackedVideo[]) => updateCreator(c => recalcCreator({ ...c, videos }, campaign)),
+      onLogPriorPayout: (entry: Omit<PriorPayoutEntry, 'id' | 'recordedBy' | 'recordedAt'>) => updateCreator(c => {
+        const newEntry: PriorPayoutEntry = {
+          ...entry,
+          id: `pp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          recordedBy: actingUser,
+          recordedAt: new Date(),
+        };
+        return logAction(
+          recalcCreator({ ...c, priorPayouts: [...(c.priorPayouts || []), newEntry] }, campaign),
+          'Logged prior payout', actingUser, `${entry.amount} ${entry.method}`,
+        );
+      }),
+      onRemovePriorPayout: (id: string) => updateCreator(c => recalcCreator(
+        { ...c, priorPayouts: (c.priorPayouts || []).filter(p => p.id !== id) },
+        campaign,
+      )),
+      // Edit the campaign-level billing period from a payout row. All
+      // creators on this campaign share the same window, so the change
+      // applies to every row of this campaign at once.
+      onUpdatePeriod: (start: Date | undefined, end: Date | undefined) =>
+        onUpdateCampaign(campaign.id, prev => ({ ...prev, startDate: start, endDate: end })),
+    };
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Status tabs — viral.app vocabulary: Upcoming / Due / Canceled / Paid.
+          Mapped from our status field via bucketFor(). All tab keeps its
+          escape-hatch role of "show me everything". */}
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-tertiary/40 border border-border-subtle w-fit">
+        {([
+          ['all', 'All', counts.all],
+          ['upcoming', 'Upcoming', counts.upcoming],
+          ['due', 'Due', counts.due],
+          ['canceled', 'Canceled', counts.canceled],
+          ['paid', 'Paid', counts.paid],
+        ] as const).map(([key, label, count]) => (
+          <button
+            key={key}
+            onClick={() => setStatusFilter(key)}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${statusFilter === key ? 'bg-surface text-content shadow-sm' : 'text-content-muted hover:text-content'}`}
+          >
+            {label}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${statusFilter === key ? 'bg-surface-tertiary text-content-secondary' : 'bg-surface-tertiary/60 text-content-muted'}`}>{count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Filter row — Select creators + Select campaigns multi-selects on the left
+          (search input is folded into them now), New campaign pushed to the right.
+          The button uses the brand-orange neo-brutalism vocabulary so it carries
+          the visual weight of a primary action, sized to match the toolbar. */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <CreatorMultiSelect creators={uniqueCreators} selected={creatorFilter} onChange={setCreatorFilter} />
+        <CampaignMultiSelect campaigns={campaigns} selected={campaignFilter} onChange={setCampaignFilter} />
+        <div className="relative w-full sm:w-auto sm:flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+          <input
+            value={creatorSearch}
+            onChange={e => setCreatorSearch(e.target.value)}
+            placeholder="Search by name or email"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-secondary border border-border-subtle text-sm text-content placeholder:text-content-muted focus:outline-none focus:border-orange-500 transition-colors"
+          />
+        </div>
+        {/* Primary action: Add creators. Resolves the target campaign in this
+            order: single-campaign filter → only campaign that exists → picker.
+            When a picker is needed it pops out below the button so the user
+            stays in the toolbar context. */}
+        <div className="ml-auto relative">
+          <button
+            ref={addCreatorsTriggerRef}
+            onClick={() => {
+              if (campaignFilter.size === 1) {
+                setShowAddCreatorFor(Array.from(campaignFilter)[0]);
+              } else if (campaigns.length === 1) {
+                setShowAddCreatorFor(campaigns[0].id);
+              } else if (campaigns.length === 0) {
+                onCreateCampaign();
+              } else {
+                setShowCampaignPicker(s => !s);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-500 text-white font-bold text-sm border border-orange-700 shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition-all"
+          >
+            <UserPlus className="w-4 h-4" /> Add creators
+            {campaigns.length > 1 && campaignFilter.size !== 1 && (
+              <ChevronDown className={`w-4 h-4 transition-transform ${showCampaignPicker ? 'rotate-180' : ''}`} />
+            )}
+          </button>
+          {showCampaignPicker && (
+            <div ref={campaignPickerRef} className="absolute top-full mt-1 right-0 w-72 max-h-72 overflow-y-auto rounded-xl bg-surface-secondary border border-border shadow-xl z-30 p-1">
+              <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-content-muted">Add creators to…</p>
+              {campaigns.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => { setShowCampaignPicker(false); setShowAddCreatorFor(c.id); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-surface-tertiary transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-content truncate">{c.name}</p>
+                    <p className="text-[11px] text-content-muted truncate">{c.creators.length} creator{c.creators.length === 1 ? '' : 's'}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* CAMPAIGNS */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-content">Campaigns</h2>
-          <p className="text-xs text-content-muted mt-0.5">{campaigns.length} total</p>
+      {/* Totals strip — shown above the table so the admin sees the money
+          aggregates at a glance before scanning rows. Each tile is also a
+          shortcut to that status bucket (clicking jumps the status tab). */}
+      {!loading && nonStatusRows.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {([
+            ['upcoming', 'Upcoming', totals.upcoming, 'text-content'],
+            ['due',      'Due',      totals.due,      'text-orange-600 dark:text-orange-400'],
+            ['paid',     'Paid',     totals.paid,     'text-emerald-600 dark:text-emerald-500'],
+          ] as const).map(([key, label, t, accent]) => (
+            <button
+              key={key}
+              onClick={() => setStatusFilter(key)}
+              className={`text-left rounded-xl bg-surface-secondary border p-3.5 transition-all hover:border-orange-500 ${statusFilter === key ? 'border-orange-500 shadow-[0_3px_0_0_#c2410c]' : 'border-border-subtle'}`}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wider text-content-muted">{label}</p>
+              <p className={`text-xl font-bold mt-0.5 ${accent}`}>
+                {t.currency === 'mixed' ? 'Mixed' : fmtMoneyCurrency(t.amount, t.currency)}
+              </p>
+              <p className="text-[11px] text-content-muted mt-0.5">{t.count} creator{t.count === 1 ? '' : 's'}</p>
+            </button>
+          ))}
+          <div className="text-left rounded-xl bg-surface-secondary border border-border-subtle p-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-content-muted">Total</p>
+            <p className="text-xl font-bold text-content mt-0.5">
+              {totals.upcoming.currency === totals.due.currency && totals.due.currency === totals.paid.currency && totals.upcoming.currency !== 'mixed'
+                ? fmtMoneyCurrency(totals.upcoming.amount + totals.due.amount + totals.paid.amount, totals.upcoming.currency)
+                : 'Mixed'}
+            </p>
+            <p className="text-[11px] text-content-muted mt-0.5">{nonStatusRows.length} creator{nonStatusRows.length === 1 ? '' : 's'}</p>
+          </div>
         </div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-12 text-center text-content-muted text-sm flex items-center justify-center gap-2">
+          <RefreshCw className="w-4 h-4 animate-spin" /> Loading campaigns...
+        </div>
+      ) : filteredRows.length === 0 ? (
+        <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-12 text-center">
+          <Users className="w-8 h-8 mx-auto text-content-muted mb-2" />
+          <p className="text-sm font-medium text-content">{allRows.length === 0 ? 'No creators yet' : 'No creators match your filters'}</p>
+          <p className="text-xs text-content-muted mt-1">{allRows.length === 0 ? 'Create a campaign and add creators to start tracking payouts.' : 'Adjust the filters or status tab to see more.'}</p>
+          {allRows.length === 0 && (
+            <Button size="sm" onClick={onCreateCampaign} className="mt-4">
+              <Plus className="w-4 h-4 mr-1.5" /> New campaign
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="hidden md:flex items-center bg-surface-tertiary/40 text-[11px] font-semibold uppercase tracking-wider text-content-muted">
+              <div className="sticky left-0 bg-surface-tertiary/40 w-[260px] flex-shrink-0 pl-5 pr-2 py-2.5">Creator</div>
+              <div className="flex-1 min-w-[200px] px-3 py-2.5">Campaign</div>
+              <div className="w-[180px] flex-shrink-0 px-3 py-2.5">Billing Period</div>
+              <div className="w-[140px] flex-shrink-0 px-3 py-2.5">Amount</div>
+              <div className="w-[120px] flex-shrink-0 px-3 py-2.5">Status</div>
+              <div className="sticky right-0 bg-surface-tertiary/40 w-[120px] flex-shrink-0 pl-2 pr-5 py-2.5 text-right">Action</div>
+            </div>
+            <div className="border-t border-border-subtle divide-y divide-border-subtle">
+              {filteredRows.map(({ campaign, creator }) => {
+                const handlers = makeHandlers(campaign, creator.id);
+                return (
+                  <CreatorCard
+                    key={`${campaign.id}-${creator.id}`}
+                    creator={creator}
+                    orgId={orgId}
+                    projectId={projectId}
+                    campaign={campaign}
+                    showCampaignColumn
+                    payoutsEnabled={payoutsEnabled}
+                    {...handlers}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Structure picker */}
+      {pickerForCreatorId && (() => {
+        const c = campaigns.find(cmp => cmp.id === pickerForCreatorId.campaignId);
+        const cr = c?.creators.find(x => x.id === pickerForCreatorId.creatorId);
+        if (!c || !cr) return null;
+        return (
+          <StructurePickerSlideOver
+            creator={cr}
+            orgId={orgId}
+            projectId={projectId}
+            userId={userId}
+            onClose={() => setPickerForCreatorId(null)}
+            onAssign={s => {
+              onUpdateCampaign(c.id, prev => ({
+                ...prev,
+                creators: prev.creators.map(x => x.id === cr.id ? recalcCreator({ ...x, structure: s }, prev) : x),
+              }));
+              setPickerForCreatorId(null);
+            }}
+          />
+        );
+      })()}
+
+      {/* Pay confirmation modal — runs the same Stripe pre-flight + transfer flow
+          as the per-campaign view, just routed through updateCampaignById. */}
+      {payConfirmFor && (() => {
+        const c = campaigns.find(cmp => cmp.id === payConfirmFor.campaignId);
+        const cr = c?.creators.find(x => x.id === payConfirmFor.creatorId);
+        if (!c || !cr) return null;
+        const amount = netOwed(cr);
+        const minimum = campaignMinimumPayout(c);
+        const cur = campaignCurrency(c);
+        return (
+          <PayConfirmModal
+            title={`Pay ${cr.name}`}
+            amount={amount}
+            currency={cur}
+            bodyLines={[
+              `You're about to send ${cr.name} ${fmtMoneyCurrency(amount, cur)} from your Maktub Stripe balance.`,
+              `Stripe will move the funds to their connected account, then release to their bank within 1–2 business days.`,
+              `This is recorded in the audit log and cannot be undone from here once the transfer settles — reversals would require the Stripe dashboard.`,
+            ]}
+            onCancel={() => setPayConfirmFor(null)}
+            onConfirm={async () => {
+              setPayConfirmFor(null);
+              if (cr.payoutStatus !== 'approved') {
+                alert(`This payout is ${cr.payoutStatus}, not approved. Nothing to pay.`);
+                return;
+              }
+              if (amount < minimum) {
+                alert(`Cannot mark paid — amount ${fmtMoneyCurrency(amount, cur)} is below the minimum payout of ${fmtMoneyCurrency(minimum, cur)} for this campaign.`);
+                return;
+              }
+              try {
+                const stripeStatus = await AdminStripeService.fetchCreatorStatus({ orgId, projectId, creatorId: cr.id });
+                if (stripeStatus.status !== 'complete') {
+                  const reason = stripeStatus.status === 'none' ? 'has not started Stripe onboarding'
+                    : stripeStatus.status === 'pending' ? 'has not finished Stripe onboarding'
+                    : 'has an issue with their Stripe account (action required)';
+                  alert(`Cannot mark paid — ${cr.name} ${reason}. Ask them to complete setup in their creator portal.`);
+                  return;
+                }
+              } catch (err: any) {
+                alert(`Stripe status check failed: ${err?.message || 'unknown error'}. Try again.`);
+                return;
+              }
+              const baseSnapshot = {
+                amount,
+                currency: cur,
+                paidAt: new Date(),
+                paidBy: actingUser,
+                idempotencyKey: buildIdempotencyKey(c.id, cr.id),
+                stripeTransferStatus: 'pending' as const,
+              };
+              onUpdateCampaign(c.id, prev => ({
+                ...prev,
+                creators: prev.creators.map(x => x.id === cr.id
+                  ? logAction(
+                      { ...x, payoutStatus: 'paid' as const, paidSnapshot: baseSnapshot },
+                      'Marked paid', actingUser,
+                      `${fmtMoneyCurrency(amount, baseSnapshot.currency)} · ${baseSnapshot.idempotencyKey}`,
+                    )
+                  : x),
+              }));
+              try {
+                const result = await AdminStripeService.transferToCreator({ orgId, projectId, campaignId: c.id, creatorId: cr.id });
+                onUpdateCampaign(c.id, prev => ({
+                  ...prev,
+                  creators: prev.creators.map(x => x.id === cr.id
+                    ? logAction(
+                        { ...x, paidSnapshot: { ...x.paidSnapshot!, stripeTransferId: result.transferId, stripeTransferStatus: 'paid' as const, stripeTransferError: undefined } },
+                        'Stripe transfer created', actingUser,
+                        `${result.transferId}${result.alreadyTransferred ? ' (idempotent — already existed)' : ''}`,
+                      )
+                    : x),
+                }));
+              } catch (err: any) {
+                onUpdateCampaign(c.id, prev => ({
+                  ...prev,
+                  creators: prev.creators.map(x => x.id === cr.id
+                    ? logAction(
+                        { ...x, paidSnapshot: { ...x.paidSnapshot!, stripeTransferStatus: 'failed' as const, stripeTransferError: err?.message || 'Unknown transfer error' } },
+                        'Stripe transfer FAILED', actingUser, err?.message || 'unknown',
+                      )
+                    : x),
+                }));
+              }
+            }}
+          />
+        );
+      })()}
+
+      {/* Add creators slide-over — opens with whatever campaign was resolved
+          by the toolbar button (filter-of-one, only-one, or picker). */}
+      {showAddCreatorFor && (() => {
+        const target = campaigns.find(c => c.id === showAddCreatorFor);
+        if (!target) return null;
+        return (
+          <AddCreatorsSlideOver
+            campaign={target}
+            orgId={orgId}
+            projectId={projectId}
+            onClose={() => setShowAddCreatorFor(null)}
+            onAdd={(newOnes) => {
+              onUpdateCampaign(target.id, prev => ({
+                ...prev,
+                creators: [...prev.creators, ...newOnes],
+              }));
+              setShowAddCreatorFor(null);
+            }}
+          />
+        );
+      })()}
+    </div>
+  );
+}
+
+
+// ==================== CAMPAIGNS TABLE VIEW ====================
+
+/**
+ * Sister tab to FlatPayoutsView. Lists every campaign as a row with the same
+ * column DNA viral.app uses for its campaigns table: name + cadence subtitle,
+ * creator stack + count, target (total tracked videos), validity (created → end),
+ * active period (campaign date window), base payout sum, fixed salary sum.
+ *
+ * Fields like "base payout" and "fixed salary" are derived by walking each
+ * creator's assigned PayoutStructure and summing components by type — gives a
+ * directionally-correct campaign-level number rather than just per-creator data.
+ */
+function CampaignsTableView({
+  campaigns, loading, onCreateCampaign, onEditCampaign,
+}: {
+  campaigns: PayoutCampaign[];
+  loading: boolean;
+  onCreateCampaign: () => void;
+  /** Open edit drawer for the clicked campaign. */
+  onEditCampaign: (c: PayoutCampaign) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [creatorFilter, setCreatorFilter] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<PayoutCampaign['status']>>(new Set());
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusTriggerRef = useRef<HTMLButtonElement>(null);
+  const statusDropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!statusOpen) return;
+    const h = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        statusTriggerRef.current && !statusTriggerRef.current.contains(t) &&
+        statusDropRef.current && !statusDropRef.current.contains(t)
+      ) setStatusOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [statusOpen]);
+
+  // Unique creators across all campaigns — feeds the creator multi-select filter.
+  const uniqueCreators = (() => {
+    const seen = new Map<string, CampaignCreator>();
+    for (const c of campaigns) for (const cr of c.creators) if (!seen.has(cr.id)) seen.set(cr.id, cr);
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
+  const rows = campaigns.filter(c => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!c.name.toLowerCase().includes(q) && !(c.description || '').toLowerCase().includes(q)) return false;
+    }
+    if (creatorFilter.size > 0 && !c.creators.some(cr => creatorFilter.has(cr.id))) return false;
+    if (statusFilter.size > 0 && !statusFilter.has(c.status)) return false;
+    return true;
+  });
+
+  const fmtRange = (start?: Date, end?: Date) => {
+    if (!start && !end) return null;
+    const s = start ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—';
+    const e = end ? end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'open';
+    return `${s} – ${e}`;
+  };
+
+  // Roll structure components into a campaign-level total. Sums every creator's
+  // assigned structure by type — base + per_video for "base payout", flat for
+  // "fixed salary". Returns undefined when no creators have a structure yet so
+  // the cell can render "—" instead of "$0.00".
+  const sumByTypes = (c: PayoutCampaign, types: PayoutComponentType[]): number | undefined => {
+    let any = false;
+    let sum = 0;
+    for (const cr of c.creators) {
+      if (!cr.structure) continue;
+      for (const comp of cr.structure.components) {
+        if (!types.includes(comp.type as PayoutComponentType)) continue;
+        const a = (comp as { amount?: number }).amount;
+        if (typeof a === 'number') { sum += a; any = true; }
+      }
+    }
+    return any ? sum : undefined;
+  };
+
+  const fmtMoneyOrDash = (v: number | undefined, currency: string) =>
+    v === undefined ? <span className="text-content-muted">—</span> : fmtMoneyCurrency(v, currency);
+
+  return (
+    <div className="space-y-5">
+      {/* Filter row — symmetry with FlatPayoutsView: multi-selects + search on
+          left, primary action right. Status replaces "campaigns" filter since
+          we're already listing campaigns. */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <CreatorMultiSelect creators={uniqueCreators} selected={creatorFilter} onChange={setCreatorFilter} />
+        <div className="relative">
+          <button
+            ref={statusTriggerRef}
+            onClick={() => setStatusOpen(!statusOpen)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-secondary border text-sm transition-colors ${statusOpen || statusFilter.size > 0 ? 'border-orange-500' : 'border-border-subtle hover:border-border'}`}
+          >
+            <Sparkles className="w-4 h-4 text-content-muted" />
+            <span className={statusFilter.size > 0 ? 'text-content font-medium' : 'text-content-muted'}>
+              {statusFilter.size === 0 ? 'Current Campaigns' : statusFilter.size === 1 ? Array.from(statusFilter)[0] : `${statusFilter.size} statuses`}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-content-muted transition-transform ${statusOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {statusOpen && (
+            <div ref={statusDropRef} className="absolute top-full mt-1 left-0 w-56 rounded-xl bg-surface-secondary border border-border shadow-xl z-30 p-1">
+              {(['draft', 'active', 'completed'] as const).map(s => {
+                const isSel = statusFilter.has(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      const next = new Set(statusFilter);
+                      if (isSel) next.delete(s); else next.add(s);
+                      setStatusFilter(next);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg transition-colors capitalize ${isSel ? 'bg-orange-500/10' : 'hover:bg-surface-tertiary'}`}
+                  >
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${isSel ? 'bg-orange-500 border-orange-500' : 'border-border-strong'}`}>
+                      {isSel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                    </div>
+                    <span className="text-sm text-content">{s}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="relative w-full sm:w-auto sm:flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or notes"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-secondary border border-border-subtle text-sm text-content placeholder:text-content-muted focus:outline-none focus:border-orange-500 transition-colors"
+          />
+        </div>
+        <button
+          onClick={onCreateCampaign}
+          className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-500 text-white font-bold text-sm border border-orange-700 shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition-all"
+        >
+          <Plus className="w-4 h-4" /> Create Campaign
+        </button>
       </div>
 
       {loading ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="h-48 rounded-2xl bg-surface-secondary border border-border-subtle animate-pulse" />
-          ))}
+        <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-12 text-center text-content-muted text-sm flex items-center justify-center gap-2">
+          <RefreshCw className="w-4 h-4 animate-spin" /> Loading campaigns...
         </div>
-      ) : campaigns.length === 0 ? (
-        <EmptyPayoutsState onCreate={onCreate} />
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme p-12 text-center">
+          <Sparkles className="w-8 h-8 mx-auto text-content-muted mb-2" />
+          <p className="text-sm font-medium text-content">{campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns match your filters'}</p>
+          <p className="text-xs text-content-muted mt-1">{campaigns.length === 0 ? 'Create your first payout campaign to get started.' : 'Adjust the filters to see more.'}</p>
+          {campaigns.length === 0 && (
+            <Button size="sm" onClick={onCreateCampaign} className="mt-4">
+              <Plus className="w-4 h-4 mr-1.5" /> Create Campaign
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {campaigns.map(c => <CampaignCard key={c.id} campaign={c} onOpen={() => onOpen(c)} />)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HeroStat({ icon, label, value, tint }: { icon: React.ReactNode; label: string; value: string; tint: 'emerald' | 'orange' | 'neutral' }) {
-  const tints = {
-    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    orange: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-    neutral: 'bg-surface-tertiary text-content-secondary',
-  } as const;
-  return (
-    <div className="rounded-2xl bg-surface border border-border-subtle p-4 flex items-center gap-3">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${tints[tint]}`}>{icon}</div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">{label}</p>
-        <p className="text-xl font-bold text-content leading-tight truncate">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function CampaignCard({ campaign, onOpen }: { campaign: PayoutCampaign; onOpen: () => void }) {
-  const total = campaign.creators.reduce((s, cr) => s + (cr.payoutResult?.totalPayout || 0), 0);
-  const totalViews = campaign.creators.reduce(
-    (s, cr) => s + videosInDateWindow(cr, campaign).reduce((s2, v) => s2 + v.views, 0),
-    0,
-  );
-  const approved = campaign.creators.filter(cr => cr.payoutStatus === 'approved' || cr.payoutStatus === 'paid').length;
-  const pct = campaign.creators.length > 0 ? (approved / campaign.creators.length) * 100 : 0;
-
-  return (
-    <button onClick={onOpen}
-      className="text-left group relative overflow-hidden rounded-2xl bg-surface-secondary border border-border-subtle shadow-theme p-5 hover:border-orange-300 dark:hover:border-orange-500/40 hover:-translate-y-0.5 transition-all">
-      {/* accent stripe */}
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-orange-400 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-content text-base truncate group-hover:text-orange-500 transition-colors">{campaign.name}</h3>
-          {campaign.description && <p className="text-xs text-content-muted mt-0.5 line-clamp-1">{campaign.description}</p>}
-        </div>
-        <CampaignStatusBadge status={campaign.status} />
-      </div>
-
-      {/* Big total */}
-      <div className="mt-5 flex items-end justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Total Payout</p>
-          <p className={`text-3xl font-bold leading-none mt-1 ${total > 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-content'}`}>
-            {fmtMoney(total)}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-content-muted">{fmt(totalViews)} views</p>
-          <p className="text-xs text-content-muted mt-0.5">{campaign.creators.length} creators</p>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-[11px] text-content-muted mb-1.5">
-          <span className="font-medium">Approval progress</span>
-          <span><span className="text-content font-semibold">{approved}</span> / {campaign.creators.length}</span>
-        </div>
-        <div className="h-1.5 rounded-full bg-surface-tertiary overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Avatars */}
-      {campaign.creators.length > 0 && (
-        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border-subtle">
-          <div className="flex -space-x-2">
-            {campaign.creators.slice(0, 5).map(cr => cr.photoURL
-              ? <img key={cr.id} src={cr.photoURL} className="w-7 h-7 rounded-full border-2 border-surface-secondary object-cover" alt="" />
-              : <div key={cr.id} className="w-7 h-7 rounded-full border-2 border-surface-secondary bg-surface-tertiary flex items-center justify-center"><Users className="w-3 h-3 text-content-muted" /></div>
-            )}
+        <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="hidden md:flex items-center bg-surface-tertiary/40 text-[11px] font-semibold uppercase tracking-wider text-content-muted">
+              <div className="sticky left-0 bg-surface-tertiary/40 w-[260px] flex-shrink-0 pl-5 pr-2 py-2.5">Campaign</div>
+              <div className="w-[140px] flex-shrink-0 px-3 py-2.5">Creators</div>
+              <div className="w-[110px] flex-shrink-0 px-3 py-2.5">Target</div>
+              <div className="w-[180px] flex-shrink-0 px-3 py-2.5">Validity</div>
+              <div className="w-[180px] flex-shrink-0 px-3 py-2.5">Active Period</div>
+              <div className="w-[140px] flex-shrink-0 px-3 py-2.5">Base Payout</div>
+              <div className="flex-1 min-w-[140px] px-3 py-2.5">Fixed Salary</div>
+            </div>
+            <div className="border-t border-border-subtle divide-y divide-border-subtle">
+              {rows.map(c => {
+                const cur = campaignCurrency(c);
+                const totalVideos = c.creators.reduce((s, cr) => s + cr.videos.length, 0);
+                const validity = fmtRange(c.createdAt, c.endDate);
+                const activePeriod = fmtRange(c.startDate, c.endDate);
+                const basePayout = sumByTypes(c, ['base', 'per_video']);
+                const fixedSalary = sumByTypes(c, ['flat']);
+                return (
+                  <div
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onEditCampaign(c)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEditCampaign(c); } }}
+                    className="group/row flex items-center cursor-pointer hover:bg-surface-tertiary/30 transition-colors"
+                  >
+                    <div className="sticky left-0 z-[1] bg-surface-secondary group-hover/row:bg-surface-tertiary/30 transition-colors flex items-center gap-3 pl-5 pr-2 py-3.5 w-[260px] flex-shrink-0 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-content truncate">{c.name}</p>
+                        <p className="text-xs text-content-muted truncate capitalize">{c.status}{c.endDate ? ' · Fixed Window' : ' · Open Window'}</p>
+                      </div>
+                    </div>
+                    <div className="w-[140px] flex-shrink-0 px-3 py-3.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <CampaignCreatorStack creators={c.creators} />
+                        <span className="text-xs text-content-muted">{c.creators.length}</span>
+                      </div>
+                    </div>
+                    <div className="w-[110px] flex-shrink-0 px-3 py-3.5 min-w-0">
+                      <p className="text-sm text-content">{totalVideos > 0 ? `${fmt(totalVideos)} videos` : <span className="text-content-muted">—</span>}</p>
+                    </div>
+                    <div className="w-[180px] flex-shrink-0 px-3 py-3.5 min-w-0">
+                      <p className="text-xs text-content truncate inline-flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-content-muted" />
+                        {validity || <span className="text-content-muted">—</span>}
+                      </p>
+                    </div>
+                    <div className="w-[180px] flex-shrink-0 px-3 py-3.5 min-w-0">
+                      <p className="text-xs text-content truncate inline-flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-content-muted" />
+                        {activePeriod || <span className="text-content-muted">All time</span>}
+                      </p>
+                    </div>
+                    <div className="w-[140px] flex-shrink-0 px-3 py-3.5 min-w-0">
+                      <p className="text-sm font-semibold text-content">{fmtMoneyOrDash(basePayout, cur)}</p>
+                    </div>
+                    <div className="flex-1 min-w-[140px] px-3 py-3.5 min-w-0">
+                      <p className="text-sm font-semibold text-content">{fmtMoneyOrDash(fixedSalary, cur)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {campaign.creators.length > 5 && <span className="text-xs text-content-muted">+{campaign.creators.length - 5}</span>}
-          <div className="flex-1" />
-          <span className="text-xs text-content-muted flex items-center gap-1 group-hover:text-orange-500 transition-colors">
-            Open <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-          </span>
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
-function EmptyPayoutsState({ onCreate }: { onCreate: () => void }) {
+/**
+ * Stacked avatar of a campaign's creators — uses the first linked-account
+ * profile picture per creator (via CreatorAccountStack's primary avatar logic).
+ * Stays compact: shows up to `max` creator avatars, then a +N chip. Used in
+ * the Campaigns table's Creators column.
+ */
+function CampaignCreatorStack({ creators, max = 3 }: { creators: CampaignCreator[]; max?: number }) {
+  const shown = creators.slice(0, max);
+  const extra = Math.max(0, creators.length - shown.length);
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border-subtle shadow-theme py-20 text-center">
-      <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 via-transparent to-transparent pointer-events-none" />
-      <div className="relative">
-        <div className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-[0_6px_0_0_#c2410c]">
-          <CircleDollarSign className="w-10 h-10 text-white" />
+    <div className="flex -space-x-2">
+      {shown.map(cr => {
+        const initial = (cr.name || '?').slice(0, 1).toUpperCase();
+        const pic = cr.videos.find(v => v.uploaderProfilePicture)?.uploaderProfilePicture;
+        return (
+          <div key={cr.id} className="relative w-7 h-7 rounded-full bg-surface-tertiary ring-2 ring-surface-secondary overflow-hidden flex items-center justify-center text-[10px] font-bold text-content-muted">
+            {pic ? (
+              <img
+                src={pic}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : initial}
+          </div>
+        );
+      })}
+      {extra > 0 && (
+        <div className="w-7 h-7 rounded-full bg-surface-tertiary ring-2 ring-surface-secondary flex items-center justify-center text-[10px] font-bold text-content-muted">
+          +{extra}
         </div>
-        <h3 className="text-2xl font-bold text-content mb-2">Start paying your creators</h3>
-        <p className="text-sm text-content-muted max-w-md mx-auto mb-7">
-          Build a payout campaign, pick the creators you want to pay, choose a structure like CPM or flat fee, and approve in one click.
-        </p>
-        <Button onClick={onCreate} size="lg">
-          <Plus className="w-5 h-5 mr-2" /> Create your first campaign
-        </Button>
+      )}
+    </div>
+  );
+}
+
+// ==================== EDIT CAMPAIGN DRAWER ====================
+
+/**
+ * Slide-in drawer for editing a campaign's metadata. Mirrors the visual
+ * vocabulary of CreatorCard's drawer (right-side, max-w-2xl, dark backdrop).
+ * Edits campaign-level fields only — name, description, status, date window,
+ * currency, minimum payout. Per-creator edits live in the Payouts row drawer.
+ *
+ * Saves through `onSave(patch)` so the parent stays in control of the actual
+ * campaign mutation pipeline (firestore write, optimistic state, etc.). Local
+ * draft state means the user can cancel without persisting partial edits.
+ */
+function EditCampaignDrawer({ campaign, onClose, onSave }: {
+  campaign: PayoutCampaign;
+  onClose: () => void;
+  onSave: (patch: Partial<PayoutCampaign>) => void;
+}) {
+  const toInput = (d?: Date) => d ? d.toISOString().slice(0, 10) : '';
+  const fromInput = (s: string): Date | undefined => s ? new Date(s + 'T00:00:00') : undefined;
+
+  const [name, setName] = useState(campaign.name);
+  const [description, setDescription] = useState(campaign.description || '');
+  const [status, setStatus] = useState<PayoutCampaign['status']>(campaign.status);
+  const [startDate, setStartDate] = useState(toInput(campaign.startDate));
+  const [endDate, setEndDate] = useState(toInput(campaign.endDate));
+  const [currency, setCurrency] = useState((campaign.currency || DEFAULT_CURRENCY).toLowerCase());
+  const [minimumPayout, setMinimumPayout] = useState<string>(
+    campaign.minimumPayout !== undefined ? String(campaign.minimumPayout) : ''
+  );
+
+  const dirty =
+    name !== campaign.name ||
+    description !== (campaign.description || '') ||
+    status !== campaign.status ||
+    startDate !== toInput(campaign.startDate) ||
+    endDate !== toInput(campaign.endDate) ||
+    currency !== (campaign.currency || DEFAULT_CURRENCY).toLowerCase() ||
+    minimumPayout !== (campaign.minimumPayout !== undefined ? String(campaign.minimumPayout) : '');
+
+  const canSave = dirty && name.trim().length > 0;
+
+  const save = () => {
+    if (!canSave) return;
+    const minNum = minimumPayout.trim() === '' ? undefined : Number(minimumPayout);
+    onSave({
+      name: name.trim(),
+      description: description.trim(),
+      status,
+      startDate: fromInput(startDate),
+      endDate: fromInput(endDate),
+      currency,
+      minimumPayout: minNum !== undefined && !Number.isNaN(minNum) ? minNum : undefined,
+    });
+  };
+
+  const lbl = 'block text-xs font-bold text-content mb-1.5';
+  const inp = 'w-full px-3 py-2 bg-surface-tertiary border border-border-subtle rounded-lg text-content text-sm focus:outline-none focus:border-orange-500 placeholder:text-content-muted transition-colors';
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className="w-full max-w-2xl bg-surface border-l border-border shadow-2xl flex flex-col animate-slide-up">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-border-subtle">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Edit campaign</p>
+              <p className="font-semibold text-content truncate">{campaign.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl text-content-muted hover:text-content hover:bg-surface-hover flex items-center justify-center transition-colors flex-shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <div>
+            <label className={lbl}>Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} className={inp} placeholder="e.g. Q2 TikTok Push" />
+          </div>
+
+          <div>
+            <label className={lbl}>Description</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className={`${inp} resize-none`} placeholder="A short note about what this campaign is for..." />
+          </div>
+
+          <div>
+            <label className={lbl}>Status</label>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-tertiary/40 border border-border-subtle w-fit">
+              {(['draft', 'active', 'completed'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatus(s)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all capitalize ${status === s ? 'bg-surface text-content shadow-sm' : 'text-content-muted hover:text-content'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Start date</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>End date</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inp} />
+            </div>
+          </div>
+          <p className="text-[11px] text-content-muted -mt-3">
+            Videos uploaded outside this window won't contribute to payouts. Leave blank for "all time".
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Currency</label>
+              <select value={currency} onChange={e => setCurrency(e.target.value)} className={inp}>
+                <option value="usd">USD ($)</option>
+                <option value="eur">EUR (€)</option>
+                <option value="gbp">GBP (£)</option>
+                <option value="cad">CAD ($)</option>
+                <option value="aud">AUD ($)</option>
+              </select>
+            </div>
+            <div>
+              <label className={lbl}>Minimum payout</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={minimumPayout}
+                onChange={e => setMinimumPayout(e.target.value)}
+                placeholder={String(DEFAULT_MINIMUM_PAYOUT_BY_CURRENCY[currency] ?? 1)}
+                className={inp}
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-content-muted -mt-3">
+            Creators below this amount can't be marked paid. Stripe's own Connect minimum is ~$1 USD.
+          </p>
+
+          <div className="rounded-xl bg-surface-tertiary/40 border border-border-subtle p-3.5 space-y-1">
+            <p className="text-xs font-bold text-content">{campaign.creators.length} creator{campaign.creators.length === 1 ? '' : 's'} attached</p>
+            <p className="text-[11px] text-content-muted">To add or remove creators, open the Payouts tab and filter by this campaign — the floating action gives you full control there.</p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border-subtle p-4 flex items-center justify-end gap-2.5">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <button
+            onClick={save}
+            disabled={!canSave}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-500 text-white font-bold text-sm border border-orange-700 shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-[0_3px_0_0_#c2410c] disabled:hover:translate-y-0"
+          >
+            <Check className="w-4 h-4" /> Save changes
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1176,15 +2384,39 @@ function CreateCampaignView({ orgId, projectId, onCreated, onCancel }: {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [allCreators, setAllCreators] = useState<Creator[]>([]);
+  // Map of creatorId → linked TrackedAccount[]. Lets each row render
+  // the creator's actual TikTok / IG / YT profile pictures (stacked
+  // avatars) instead of just the auth user's photoURL — same pattern
+  // as the AddCreatorsSlideOver below.
+  const [creatorAccounts, setCreatorAccounts] = useState<Map<string, TrackedAccount[]>>(new Map());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (orgId && projectId) {
-      setLoading(true);
-      CreatorLinksService.getAllCreators(orgId, projectId).then(setAllCreators).catch(console.error).finally(() => setLoading(false));
-    }
+    if (!orgId || !projectId) return;
+    setLoading(true);
+    Promise.all([
+      CreatorLinksService.getAllCreators(orgId, projectId),
+      getDocs(collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks')),
+      AccountsDataService.getTrackedAccounts(orgId, projectId).catch(() => [] as TrackedAccount[]),
+    ])
+      .then(([creators, linksSnap, accounts]) => {
+        setAllCreators(creators);
+        const accById = new Map(accounts.map(a => [a.id, a]));
+        const map = new Map<string, TrackedAccount[]>();
+        linksSnap.docs.forEach(d => {
+          const link = d.data() as { creatorId: string; accountId: string };
+          const acc = accById.get(link.accountId);
+          if (!acc) return;
+          const arr = map.get(link.creatorId) || [];
+          arr.push(acc);
+          map.set(link.creatorId, arr);
+        });
+        setCreatorAccounts(map);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [orgId, projectId]);
 
   const filtered = allCreators.filter(c => {
@@ -1296,17 +2528,22 @@ function CreateCampaignView({ orgId, projectId, onCreated, onCancel }: {
               <div className="max-h-[28rem] overflow-y-auto divide-y divide-border-subtle">
                 {filtered.map(c => {
                   const sel = selectedIds.has(c.id);
+                  const accounts = creatorAccounts.get(c.id) || [];
                   return (
                     <button key={c.id} onClick={() => toggle(c.id)} type="button"
                       className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors ${sel ? 'bg-orange-500/5' : 'hover:bg-surface-hover'}`}>
                       <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${sel ? 'bg-orange-500 border-orange-500 scale-105' : 'border-border-strong'}`}>
                         {sel && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                       </div>
-                      {c.photoURL
-                        ? <img src={c.photoURL} className="w-10 h-10 rounded-full object-cover ring-2 ring-border-subtle" alt="" />
-                        : <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center ring-2 ring-border-subtle"><Users className="w-5 h-5 text-content-muted" /></div>}
+                      <AddCreatorsAccountStack
+                        accounts={accounts}
+                        fallbackChar={(c.displayName || c.email || 'C').charAt(0).toUpperCase()}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-content truncate">{c.displayName}</p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm font-semibold text-content truncate">{c.displayName}</p>
+                          <CreatorPlatformBubbles items={accounts} max={3} />
+                        </div>
                         <p className="text-xs text-content-muted truncate">{c.email || 'No email'}</p>
                       </div>
                       <p className="text-xs text-content-muted flex items-center gap-1 flex-shrink-0">
@@ -1340,668 +2577,6 @@ function CreateCampaignView({ orgId, projectId, onCreated, onCancel }: {
   );
 }
 
-// ==================== DETAIL VIEW ====================
-
-function CampaignDetailView({ campaign, orgId, projectId, userId, actingUser, payoutsEnabled, onUpdate, onBack }: {
-  campaign: PayoutCampaign; orgId: string; projectId: string; userId: string;
-  /** Identifier (email preferred, uid fallback) written to each audit-log entry. */
-  actingUser: string;
-  /** When false, Pay + bulk-pay buttons are disabled (Stripe Connect not live yet). Approve
-   *  still works — no money moves during approval. */
-  payoutsEnabled: boolean;
-  onUpdate: (
-    u: PayoutCampaign | ((prev: PayoutCampaign) => PayoutCampaign),
-    options?: { skipPersist?: boolean },
-  ) => void;
-  onBack: () => void;
-}) {
-  const [pickerForCreator, setPickerForCreator] = useState<string | null>(null);
-  const [showAddCreator, setShowAddCreator] = useState(false);
-  const [showEditCampaign, setShowEditCampaign] = useState(false);
-  // Which Pay flow is active (single-creator confirmation vs bulk confirmation). Null = no modal.
-  const [payConfirmFor, setPayConfirmFor] = useState<string | null>(null);
-  const [showBulkPayConfirm, setShowBulkPayConfirm] = useState(false);
-
-  const totalEarnings = campaign.creators.reduce((s, c) => s + (c.payoutResult?.totalPayout || 0), 0);
-  const totalViews = campaign.creators.reduce(
-    (s, c) => s + videosInDateWindow(c, campaign).reduce((s2, v) => s2 + v.views, 0),
-    0,
-  );
-  const cpm = totalViews > 0 ? (totalEarnings / totalViews) * 1000 : 0;
-  const approvedCount = campaign.creators.filter(c => c.payoutStatus === 'approved' || c.payoutStatus === 'paid').length;
-  const pendingCount = campaign.creators.filter(c => c.payoutStatus === 'pending').length;
-  const withStructure = campaign.creators.filter(c => c.structure).length;
-  const calculable = campaign.creators.some(c => c.structure && c.videos.length > 0);
-
-  const loadCreatorVideos = useCallback(async (creatorId: string) => {
-    if (!orgId || !projectId) return;
-    // Functional updater form — when N creator cards mount at once they each end up running this
-    // in parallel. Reading from `prev` (the ref-backed latest state) means each update composes on
-    // top of the previous creator's load rather than clobbering it. `skipPersist` also keeps these
-    // transient loading/loaded/videos fields out of Firestore — they aren't persisted by the save
-    // function anyway, so writing would only generate stale-write-guard errors.
-    let shouldLoad = false;
-    onUpdate(prev => {
-      const cr = prev.creators.find(c => c.id === creatorId);
-      if (!cr || cr.videosLoaded || cr.videosLoading) return prev;
-      shouldLoad = true;
-      return { ...prev, creators: prev.creators.map(c => c.id === creatorId ? { ...c, videosLoading: true } : c) };
-    }, { skipPersist: true });
-    if (!shouldLoad) return;
-    try {
-      const videos = await fetchCreatorVideos(orgId, projectId, creatorId);
-      onUpdate(prev => ({
-        ...prev,
-        creators: prev.creators.map(c =>
-          c.id === creatorId
-            ? recalcCreator({ ...c, videos, videosLoaded: true, videosLoading: false }, prev)
-            : c,
-        ),
-      }), { skipPersist: true });
-    } catch {
-      onUpdate(prev => ({
-        ...prev,
-        creators: prev.creators.map(c =>
-          c.id === creatorId ? { ...c, videosLoaded: true, videosLoading: false } : c,
-        ),
-      }), { skipPersist: true });
-    }
-  }, [orgId, projectId, onUpdate]);
-
-  const calculatePayouts = () => {
-    onUpdate({ ...campaign, creators: campaign.creators.map(c => recalcCreator(c, campaign)) });
-  };
-
-  // Mutation helpers now double as audit loggers — every change writes a one-line history entry.
-  // `actingUser` arrives from the parent (email preferred, uid fallback).
-  const approveCreator = (id: string) => onUpdate({
-    ...campaign,
-    creators: campaign.creators.map(c => c.id === id ? logAction({ ...c, payoutStatus: 'approved' as const }, 'Approved', actingUser) : c),
-  });
-  const approveAll = () => onUpdate({
-    ...campaign,
-    creators: campaign.creators.map(c => c.payoutStatus === 'pending' ? logAction({ ...c, payoutStatus: 'approved' as const }, 'Approved (bulk)', actingUser) : c),
-  });
-  /** Final dollar amount a creator will actually be paid — the NET they're owed after subtracting
-   *  any prior off-platform payouts (Venmo/bank/etc.) AND any already-settled on-platform payments.
-   *  Manual override wins over the engine result, but even the override is still net-adjusted so
-   *  an admin who sets `override=200` on a creator who's already received $50 externally only
-   *  transfers $150. This keeps the Pay button, the PayConfirmModal, the paidSnapshot.amount,
-   *  the minimum-payout check, and the actual Stripe transfer all in lockstep — no path where
-   *  the UI promises "$150 net" but Stripe moves $200. */
-  const finalAmountFor = (c: CampaignCreator): number => {
-    return netOwed(c);
-  };
-
-  /** Build an immutable payment record. Captures amount, currency, actor, timestamp, and an
-   *  idempotency key that will later be forwarded to Stripe so a retry can't double-charge. */
-  const buildPaidSnapshot = (c: CampaignCreator): NonNullable<CampaignCreator['paidSnapshot']> => ({
-    amount: finalAmountFor(c),
-    currency: campaignCurrency(campaign),
-    paidAt: new Date(),
-    paidBy: actingUser,
-    idempotencyKey: buildIdempotencyKey(campaign.id, c.id),
-  });
-
-  const markCreatorPaid = async (id: string) => {
-    const creator = campaign.creators.find(c => c.id === id);
-    if (!creator) return;
-    // Idempotency guard against same-tab double-clicks — only 'approved' rows can advance.
-    if (creator.payoutStatus !== 'approved') {
-      alert(`This payout is ${creator.payoutStatus}, not approved. Nothing to pay.`);
-      return;
-    }
-    const amount = finalAmountFor(creator);
-    const minimum = campaignMinimumPayout(campaign);
-    const currency = campaignCurrency(campaign);
-    if (amount < minimum) {
-      alert(`Cannot mark paid — amount ${fmtMoneyCurrency(amount, currency)} is below the minimum payout of ${fmtMoneyCurrency(minimum, currency)} for this campaign.`);
-      return;
-    }
-    // Stripe gate — block mark-paid until the creator has finished Connect onboarding. Phase 2
-    // will actually trigger a Stripe Transfer here; for now we just verify the creator is ready
-    // so we don't pile up paid-snapshots for creators who can't actually receive money.
-    try {
-      const stripeStatus = await AdminStripeService.fetchCreatorStatus({ orgId, projectId, creatorId: id });
-      if (stripeStatus.status !== 'complete') {
-        const reason = stripeStatus.status === 'none' ? 'has not started Stripe onboarding'
-                     : stripeStatus.status === 'pending' ? 'has not finished Stripe onboarding'
-                     : 'has an issue with their Stripe account (action required)';
-        alert(`Cannot mark paid — ${creator.name} ${reason}. Ask them to complete setup in their creator portal.`);
-        return;
-      }
-    } catch (err: any) {
-      alert(`Stripe status check failed: ${err?.message || 'unknown error'}. Try again.`);
-      return;
-    }
-
-    // 1. Build + persist the snapshot with stripeTransferStatus='pending'. We flip the primary
-    //    status to 'paid' up front so the state machine stays simple — the transfer outcome
-    //    lives on the snapshot sub-field, not a fourth top-level status value. If the transfer
-    //    fails, the row shows "Transfer failed · Retry"; status stays 'paid' so revert-paid is
-    //    the escape hatch if the admin gives up.
-    const baseSnapshot = buildPaidSnapshot(creator);
-    const pendingSnapshot = { ...baseSnapshot, stripeTransferStatus: 'pending' as const };
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === id
-        ? logAction(
-            { ...c, payoutStatus: 'paid' as const, paidSnapshot: pendingSnapshot },
-            'Marked paid', actingUser,
-            `${fmtMoneyCurrency(baseSnapshot.amount, baseSnapshot.currency)} · ${baseSnapshot.idempotencyKey}`,
-          )
-        : c),
-    });
-
-    // 2. Fire the Stripe Transfer. The snapshot's idempotencyKey is forwarded as Stripe's
-    //    `Idempotency-Key` header inside /api/stripe/transfer, so any retry returns the
-    //    original transfer — can't double-charge.
-    try {
-      const result = await AdminStripeService.transferToCreator({ orgId, projectId, campaignId: campaign.id, creatorId: id });
-      onUpdate({
-        ...campaign,
-        creators: campaign.creators.map(c => c.id === id
-          ? logAction(
-              { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferId: result.transferId, stripeTransferStatus: 'paid', stripeTransferError: undefined } },
-              'Stripe transfer created', actingUser,
-              `${result.transferId}${result.alreadyTransferred ? ' (idempotent — already existed)' : ''}`,
-            )
-          : c),
-      });
-    } catch (err: any) {
-      const errMsg = err?.message || 'Unknown transfer error';
-      onUpdate({
-        ...campaign,
-        creators: campaign.creators.map(c => c.id === id
-          ? logAction(
-              { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferStatus: 'failed', stripeTransferError: errMsg } },
-              'Stripe transfer FAILED', actingUser, errMsg,
-            )
-          : c),
-      });
-    }
-  };
-
-  /** Retry a failed transfer. Safe — reuses the snapshot's idempotencyKey so Stripe will
-   *  return the original transfer if it actually succeeded on a previous attempt (rare but
-   *  possible on network timeouts). If it was a real failure, Stripe runs the logic fresh. */
-  const retryTransferForCreator = async (id: string) => {
-    const creator = campaign.creators.find(c => c.id === id);
-    if (!creator?.paidSnapshot) return;
-    if (creator.paidSnapshot.stripeTransferStatus !== 'failed') {
-      alert('Nothing to retry — this transfer is not in a failed state.');
-      return;
-    }
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === id
-        ? { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferStatus: 'pending' as const, stripeTransferError: undefined } }
-        : c),
-    });
-    try {
-      const result = await AdminStripeService.transferToCreator({ orgId, projectId, campaignId: campaign.id, creatorId: id });
-      onUpdate({
-        ...campaign,
-        creators: campaign.creators.map(c => c.id === id
-          ? logAction(
-              { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferId: result.transferId, stripeTransferStatus: 'paid', stripeTransferError: undefined } },
-              'Stripe transfer retried — OK', actingUser, result.transferId,
-            )
-          : c),
-      });
-    } catch (err: any) {
-      const errMsg = err?.message || 'Unknown transfer error';
-      onUpdate({
-        ...campaign,
-        creators: campaign.creators.map(c => c.id === id
-          ? logAction(
-              { ...c, paidSnapshot: { ...c.paidSnapshot!, stripeTransferStatus: 'failed', stripeTransferError: errMsg } },
-              'Stripe transfer retry FAILED', actingUser, errMsg,
-            )
-          : c),
-      });
-    }
-  };
-
-  const markAllApprovedPaid = async () => {
-    const currency = campaignCurrency(campaign);
-    const minimum = campaignMinimumPayout(campaign);
-
-    // Pre-flight: collect the approved creators, then check Stripe status in parallel. This is
-    // the pre-money checkpoint — we want loud, visible rejection for anyone not ready rather
-    // than silently skipping them.
-    const approved = campaign.creators.filter(c => c.payoutStatus === 'approved');
-    const belowMinimum: string[] = [];
-    const eligibleForStripeCheck: CampaignCreator[] = [];
-    for (const c of approved) {
-      const amt = finalAmountFor(c);
-      if (amt < minimum) {
-        belowMinimum.push(`${c.name}: ${fmtMoneyCurrency(amt, currency)}`);
-      } else {
-        eligibleForStripeCheck.push(c);
-      }
-    }
-
-    // Fan out Stripe status checks in parallel. Phase 2's transfer endpoint re-verifies
-    // server-side so even if this client cache is stale the money path stays safe.
-    let statusByCreatorId = new Map<string, 'none' | 'pending' | 'restricted' | 'complete'>();
-    try {
-      const results = await Promise.all(
-        eligibleForStripeCheck.map(async c => {
-          const r = await AdminStripeService.fetchCreatorStatus({ orgId, projectId, creatorId: c.id });
-          return { id: c.id, name: c.name, status: r.status };
-        }),
-      );
-      statusByCreatorId = new Map(results.map(r => [r.id, r.status]));
-    } catch (err: any) {
-      alert(`Stripe status check failed: ${err?.message || 'unknown error'}. Try again.`);
-      return;
-    }
-    const stripeNotReady = eligibleForStripeCheck
-      .filter(c => statusByCreatorId.get(c.id) !== 'complete')
-      .map(c => `${c.name}: ${statusByCreatorId.get(c.id) ?? 'unknown'}`);
-    const readyIds = new Set(
-      eligibleForStripeCheck
-        .filter(c => statusByCreatorId.get(c.id) === 'complete')
-        .map(c => c.id),
-    );
-
-    if (belowMinimum.length + stripeNotReady.length > 0) {
-      const goAhead = confirm(
-        `${belowMinimum.length + stripeNotReady.length} creator${belowMinimum.length + stripeNotReady.length === 1 ? '' : 's'} will be SKIPPED:\n\n` +
-        (belowMinimum.length > 0 ? `Below ${fmtMoneyCurrency(minimum, currency)} minimum:\n${belowMinimum.join('\n')}\n\n` : '') +
-        (stripeNotReady.length > 0 ? `Stripe not ready:\n${stripeNotReady.join('\n')}\n\n` : '') +
-        `Continue with the ${readyIds.size} that will be paid?`,
-      );
-      if (!goAhead) return;
-    }
-    if (readyIds.size === 0) return;
-
-    // 1. Flip all eligible creators to 'paid' with transferStatus='pending' and snapshot. This
-    //    is one write covering everyone so the UI updates in a single transition.
-    const snapshotsByCreatorId = new Map<string, NonNullable<CampaignCreator['paidSnapshot']>>();
-    const nextCreators = campaign.creators.map(c => {
-      if (!readyIds.has(c.id)) return c;
-      const base = buildPaidSnapshot(c);
-      const snapshot = { ...base, stripeTransferStatus: 'pending' as const };
-      snapshotsByCreatorId.set(c.id, snapshot);
-      return logAction(
-        { ...c, payoutStatus: 'paid' as const, paidSnapshot: snapshot },
-        'Marked paid (bulk)', actingUser,
-        `${fmtMoneyCurrency(base.amount, base.currency)} · ${base.idempotencyKey}`,
-      );
-    });
-    onUpdate({ ...campaign, creators: nextCreators });
-
-    // 2. Fan out Stripe transfers in parallel. Each one resolves independently — one failure
-    //    doesn't block the others. All use their own idempotencyKey baked into the snapshot.
-    const transferResults = await Promise.allSettled(
-      Array.from(readyIds).map(async id => {
-        const r = await AdminStripeService.transferToCreator({ orgId, projectId, campaignId: campaign.id, creatorId: id });
-        return { id, ...r };
-      }),
-    );
-
-    // 3. Merge all transfer outcomes into a single state update so we don't thrash renders.
-    //    Built from THE CURRENT state via the functional setActiveCampaign + onUpdate pattern
-    //    to avoid clobbering concurrent edits.
-    const outcomeById = new Map<string, { transferId?: string; error?: string }>();
-    for (let i = 0; i < transferResults.length; i++) {
-      const id = Array.from(readyIds)[i];
-      const outcome = transferResults[i];
-      if (outcome.status === 'fulfilled') {
-        outcomeById.set(id, { transferId: outcome.value.transferId });
-      } else {
-        outcomeById.set(id, { error: outcome.reason?.message || 'Unknown transfer error' });
-      }
-    }
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => {
-        const outcome = outcomeById.get(c.id);
-        if (!outcome || !c.paidSnapshot) return c;
-        if (outcome.transferId) {
-          return logAction(
-            { ...c, paidSnapshot: { ...c.paidSnapshot, stripeTransferId: outcome.transferId, stripeTransferStatus: 'paid', stripeTransferError: undefined } },
-            'Stripe transfer created (bulk)', actingUser, outcome.transferId,
-          );
-        }
-        return logAction(
-          { ...c, paidSnapshot: { ...c.paidSnapshot, stripeTransferStatus: 'failed', stripeTransferError: outcome.error } },
-          'Stripe transfer FAILED (bulk)', actingUser, outcome.error,
-        );
-      }),
-    });
-  };
-
-  // Reverse transitions — both confirmed since they alter audit-logged state.
-  const unapproveCreator = (id: string) => {
-    if (!confirm('Un-approve this payout and move it back to pending? This is recorded in the audit log.')) return;
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === id ? logAction({ ...c, payoutStatus: 'pending' as const }, 'Un-approved', actingUser) : c),
-    });
-  };
-  const revertPaidCreator = (id: string) => {
-    const creator = campaign.creators.find(c => c.id === id);
-    // Phase 2 will harden this: if `stripeTransferId` is set, the money already left the platform
-    // account and a UI revert would desync reconciliation. For now Stripe isn't wired, so the
-    // snapshot is purely local — we can clear it freely.
-    if (creator?.paidSnapshot?.stripeTransferId) {
-      alert('Cannot revert — a Stripe transfer has already settled for this payout. Use Stripe dashboard to issue a refund/reversal.');
-      return;
-    }
-    if (!confirm('Revert this payout from paid back to approved? The paid-snapshot record will be cleared. Recorded in the audit log.')) return;
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === id ? logAction({ ...c, payoutStatus: 'approved' as const, paidSnapshot: undefined }, 'Reverted from paid', actingUser) : c),
-    });
-  };
-  const assignStructure = (cid: string, s: PayoutStructure) => {
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === cid ? logAction(recalcCreator({ ...c, structure: s }, campaign), 'Structure assigned', actingUser, s.name) : c),
-    });
-    setPickerForCreator(null);
-  };
-  const setOverride = (cid: string, amount: number, note?: string) => {
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === cid
-        ? logAction(recalcCreator({ ...c, payoutOverride: { amount, ...(note ? { note } : {}) } }, campaign), 'Set manual override', actingUser, `$${amount.toFixed(2)}${note ? ` · ${note}` : ''}`)
-        : c),
-    });
-  };
-  const clearOverride = (cid: string) => {
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === cid
-        ? logAction(recalcCreator({ ...c, payoutOverride: undefined }, campaign), 'Cleared manual override', actingUser)
-        : c),
-    });
-  };
-  const setCreatorStartDate = (cid: string, date: Date | undefined) => {
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === cid
-        ? logAction(recalcCreator({ ...c, countVideosFromDate: date }, campaign), date ? 'Set payout start date' : 'Cleared payout start date', actingUser, date ? date.toLocaleDateString() : undefined)
-        : c),
-    });
-  };
-  const toggleExcludeVideo = (cid: string, videoId: string) => {
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => {
-        if (c.id !== cid) return c;
-        const current = c.excludedVideoIds || [];
-        const willExclude = !current.includes(videoId);
-        const next = willExclude ? [...current, videoId] : current.filter(id => id !== videoId);
-        return logAction(recalcCreator({ ...c, excludedVideoIds: next }, campaign), willExclude ? 'Excluded video' : 'Re-included video', actingUser, videoId);
-      }),
-    });
-  };
-  const removeCreator = (id: string) => {
-    if (!confirm('Remove this creator from the campaign? Their tracked videos and payouts in other campaigns are untouched.')) return;
-    onUpdate({ ...campaign, creators: campaign.creators.filter(c => c.id !== id) });
-  };
-  const logPriorPayout = (cid: string, entry: Omit<PriorPayoutEntry, 'id' | 'recordedBy' | 'recordedAt'>) => {
-    const newEntry: PriorPayoutEntry = {
-      ...entry,
-      id: `pp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      recordedBy: actingUser,
-      recordedAt: new Date(),
-    };
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => c.id === cid
-        ? logAction(
-            { ...c, priorPayouts: [...(c.priorPayouts || []), newEntry] },
-            'Logged prior payout',
-            actingUser,
-            `${fmtMoneyCurrency(newEntry.amount, newEntry.currency)} via ${METHOD_LABEL[newEntry.method]} on ${newEntry.paidAt.toLocaleDateString()}${newEntry.reference ? ` · ${newEntry.reference}` : ''}`,
-          )
-        : c),
-    });
-  };
-  const removePriorPayout = (cid: string, entryId: string) => {
-    onUpdate({
-      ...campaign,
-      creators: campaign.creators.map(c => {
-        if (c.id !== cid) return c;
-        const removed = (c.priorPayouts || []).find(p => p.id === entryId);
-        return logAction(
-          { ...c, priorPayouts: (c.priorPayouts || []).filter(p => p.id !== entryId) },
-          'Removed prior payout entry',
-          actingUser,
-          removed ? `${fmtMoneyCurrency(removed.amount, removed.currency)} from ${removed.paidAt.toLocaleDateString()}` : entryId,
-        );
-      }),
-    });
-  };
-  const addCreators = (newOnes: CampaignCreator[]) => {
-    onUpdate({ ...campaign, creators: [...campaign.creators, ...newOnes] });
-    setShowAddCreator(false);
-  };
-  const editCampaignMeta = (patch: Partial<Pick<PayoutCampaign, 'name' | 'description' | 'status' | 'startDate' | 'endDate' | 'currency' | 'minimumPayout'>>) => {
-    const next: PayoutCampaign = { ...campaign, ...patch };
-    // Recalc every creator since date-window changes can move videos in/out of eligibility.
-    onUpdate({ ...next, creators: next.creators.map(c => recalcCreator(c, next)) });
-  };
-
-  const pickerCreator = pickerForCreator ? campaign.creators.find(c => c.id === pickerForCreator) : null;
-
-  return (
-    <div className="space-y-8">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-content-muted hover:text-content transition-colors text-sm group">
-        <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Back to campaigns
-      </button>
-
-      {/* HERO with big total */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-surface-secondary via-surface-secondary to-orange-500/5 border border-border-subtle shadow-theme">
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
-        <div className="relative p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <CampaignStatusBadge status={campaign.status} />
-              <span className="text-xs text-content-muted">Created {campaign.createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              {(campaign.startDate || campaign.endDate) && (
-                <span className="text-xs text-content-muted">· Window: {campaign.startDate?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) || '—'} to {campaign.endDate?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) || '—'}</span>
-              )}
-              <span className="text-xs text-content-muted">· {campaignCurrency(campaign).toUpperCase()} · min {fmtMoneyCurrency(campaignMinimumPayout(campaign), campaignCurrency(campaign))}</span>
-              <button onClick={() => setShowEditCampaign(true)}
-                className="inline-flex items-center gap-1 text-xs text-content-muted hover:text-content transition-colors">
-                <Pencil className="w-3 h-3" /> Edit
-              </button>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-content tracking-tight">{campaign.name}</h1>
-            {campaign.description && <p className="text-sm text-content-muted mt-2 max-w-2xl">{campaign.description}</p>}
-          </div>
-
-          <div className="shrink-0 flex flex-col md:items-end">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Total to pay out</p>
-            <p className="text-5xl md:text-6xl font-bold text-emerald-600 dark:text-emerald-500 leading-none mt-1">
-              {fmtMoney(totalEarnings)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <DetailKPI icon={<Users className="w-5 h-5" />} label="Creators" value={String(campaign.creators.length)} tint="neutral" />
-        <DetailKPI icon={<Eye className="w-5 h-5" />} label="Total Views" value={fmt(totalViews)} tint="neutral" />
-        <DetailKPI icon={<DollarSign className="w-5 h-5" />} label="Effective CPM" value={totalViews > 0 ? fmtMoneyCurrency(cpm, campaignCurrency(campaign)) : '—'} tint="emerald" />
-        <DetailKPI icon={<Settings2 className="w-5 h-5" />} label="With Structure" value={`${withStructure} / ${campaign.creators.length}`} tint="orange" />
-        <DetailKPI icon={<CheckCircle2 className="w-5 h-5" />} label="Approved" value={`${approvedCount} / ${campaign.creators.length}`} tint="emerald" />
-      </div>
-
-      {/* Actions row */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-surface-secondary border border-border-subtle shadow-theme p-4">
-        <Button onClick={calculatePayouts} disabled={!calculable}>
-          <Sparkles className="w-4 h-4 mr-1.5" /> Calculate Payouts
-        </Button>
-        {pendingCount > 0 && (
-          <button onClick={approveAll} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-500 text-white shadow-[0_2px_0_0_#047857] hover:shadow-[0_1px_0_0_#047857] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
-            <CheckCircle2 className="w-4 h-4" /> Approve all ({pendingCount})
-          </button>
-        )}
-        {campaign.creators.filter(c => c.payoutStatus === 'approved').length > 0 && (
-          <button
-            onClick={() => setShowBulkPayConfirm(true)}
-            disabled={!payoutsEnabled}
-            title={payoutsEnabled ? undefined : 'Disabled until Stripe Connect platform is activated'}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-500 text-white shadow-[0_2px_0_0_#047857] hover:shadow-[0_1px_0_0_#047857] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-[0_2px_0_0_#047857] disabled:hover:translate-y-0"
-          >
-            <Wallet className="w-4 h-4" /> Pay all {campaign.creators.filter(c => c.payoutStatus === 'approved').length} approved
-          </button>
-        )}
-        <div className="flex-1" />
-        {!calculable && withStructure < campaign.creators.length && (
-          <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5" />
-            Assign structures to {campaign.creators.length - withStructure} more creator{campaign.creators.length - withStructure === 1 ? '' : 's'} to calculate
-          </p>
-        )}
-      </div>
-
-      {/* Creator rows */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-content">Creators</h2>
-            <p className="text-xs text-content-muted mt-0.5">{campaign.creators.length} total</p>
-          </div>
-          <Button size="sm" onClick={() => setShowAddCreator(true)}>
-            <UserPlus className="w-4 h-4 mr-1.5" /> Add creators
-          </Button>
-        </div>
-        {campaign.creators.length === 0 && (
-          <div className="text-center py-12 rounded-2xl bg-surface-secondary border border-dashed border-border-subtle">
-            <Users className="w-8 h-8 mx-auto text-content-muted mb-2" />
-            <p className="text-sm font-medium text-content">No creators in this campaign yet</p>
-            <p className="text-xs text-content-muted mt-0.5 mb-4">Add creators to start assigning payout structures.</p>
-            <Button size="sm" onClick={() => setShowAddCreator(true)}>
-              <UserPlus className="w-4 h-4 mr-1.5" /> Add creators
-            </Button>
-          </div>
-        )}
-        {campaign.creators.map(creator => (
-          <CreatorCard
-            key={creator.id}
-            creator={creator}
-            orgId={orgId}
-            projectId={projectId}
-            campaign={campaign}
-            onLoadVideos={() => loadCreatorVideos(creator.id)}
-            onApprove={() => approveCreator(creator.id)}
-            onMarkPaid={() => setPayConfirmFor(creator.id)}
-            onUnapprove={() => unapproveCreator(creator.id)}
-            onRevertPaid={() => revertPaidCreator(creator.id)}
-            onRetryTransfer={() => retryTransferForCreator(creator.id)}
-            payoutsEnabled={payoutsEnabled}
-            onOpenPicker={() => setPickerForCreator(creator.id)}
-            onRemove={() => removeCreator(creator.id)}
-            onSetOverride={(amount, note) => setOverride(creator.id, amount, note)}
-            onClearOverride={() => clearOverride(creator.id)}
-            onSetStartDate={(date) => setCreatorStartDate(creator.id, date)}
-            onToggleExcludeVideo={(videoId) => toggleExcludeVideo(creator.id, videoId)}
-            onVideosChange={(videos) => onUpdate({
-              ...campaign,
-              creators: campaign.creators.map(c =>
-                c.id === creator.id ? recalcCreator({ ...c, videos }, campaign) : c
-              ),
-            })}
-            onLogPriorPayout={(entry) => logPriorPayout(creator.id, entry)}
-            onRemovePriorPayout={(id) => removePriorPayout(creator.id, id)}
-          />
-        ))}
-      </div>
-
-      {/* Slide-over structure picker */}
-      {pickerCreator && (
-        <StructurePickerSlideOver
-          creator={pickerCreator}
-          orgId={orgId}
-          projectId={projectId}
-          userId={userId}
-          onClose={() => setPickerForCreator(null)}
-          onAssign={s => assignStructure(pickerCreator.id, s)}
-        />
-      )}
-
-      {/* Slide-over: add creators to existing campaign */}
-      {showAddCreator && (
-        <AddCreatorsSlideOver
-          campaign={campaign}
-          orgId={orgId}
-          projectId={projectId}
-          onClose={() => setShowAddCreator(false)}
-          onAdd={addCreators}
-        />
-      )}
-
-      {/* Edit campaign modal — name, description, status, date window */}
-      {showEditCampaign && (
-        <EditCampaignModal
-          campaign={campaign}
-          onClose={() => setShowEditCampaign(false)}
-          onSave={(patch) => { editCampaignMeta(patch); setShowEditCampaign(false); }}
-        />
-      )}
-
-      {/* Single-creator pay confirmation. Only opened after the Pay button click — the actual
-          transfer fires when the admin clicks Confirm. Pre-flight checks still run inside
-          markCreatorPaid so this modal is purely consent; it can't bypass validation. */}
-      {payConfirmFor && (() => {
-        const c = campaign.creators.find(cr => cr.id === payConfirmFor);
-        if (!c) return null;
-        // Show NET (what we actually transfer), not gross — keeps the modal honest with the
-        // Pay button label and with the amount Stripe will move. Using finalAmountFor here
-        // so any future policy change lives in one place.
-        const amount = finalAmountFor(c);
-        return (
-          <PayConfirmModal
-            title={`Pay ${c.name}`}
-            amount={amount}
-            currency={campaignCurrency(campaign)}
-            bodyLines={[
-              `You're about to send ${c.name} ${fmtMoneyCurrency(amount, campaignCurrency(campaign))} from your Maktub Stripe balance.`,
-              `Stripe will move the funds to their connected account, then release to their bank within 1–2 business days.`,
-              `This is recorded in the audit log and cannot be undone from here once the transfer settles — reversals would require the Stripe dashboard.`,
-            ]}
-            onCancel={() => setPayConfirmFor(null)}
-            onConfirm={() => { setPayConfirmFor(null); markCreatorPaid(c.id); }}
-          />
-        );
-      })()}
-
-      {/* Bulk pay confirmation — same UX but for "Pay all approved". The handler does its own
-          pre-flight filtering so over-minimum / Stripe-not-ready creators get surfaced as
-          skipped AFTER confirmation; this modal just gets consent for the bulk action itself. */}
-      {showBulkPayConfirm && (() => {
-        const approved = campaign.creators.filter(cr => cr.payoutStatus === 'approved');
-        // Bulk total = sum of NET amounts (what we'll actually transfer per creator).
-        // Using finalAmountFor so bulk pay can't drift from single-creator pay — both route
-        // through the same netOwed calculation.
-        const approxTotal = approved.reduce((s, cr) => s + finalAmountFor(cr), 0);
-        return (
-          <PayConfirmModal
-            title={`Pay all ${approved.length} approved creator${approved.length === 1 ? '' : 's'}`}
-            amount={approxTotal}
-            currency={campaignCurrency(campaign)}
-            bodyLines={[
-              `About to pay ${approved.length} creator${approved.length === 1 ? '' : 's'} — total ${fmtMoneyCurrency(approxTotal, campaignCurrency(campaign))} from your Maktub Stripe balance.`,
-              `Each creator's payment is independent. Anyone below the campaign's minimum payout or with incomplete Stripe setup will be skipped and shown in a follow-up screen.`,
-              `Transfers settle to creator banks within 1–2 business days. Reversals would require the Stripe dashboard.`,
-            ]}
-            onCancel={() => setShowBulkPayConfirm(false)}
-            onConfirm={() => { setShowBulkPayConfirm(false); markAllApprovedPaid(); }}
-          />
-        );
-      })()}
-    </div>
-  );
-}
 
 /**
  * Admin-facing confirmation modal for paying one or more creators. Keeps the destructive
@@ -2071,27 +2646,118 @@ function PayConfirmModal({ title, amount, currency, bodyLines, onCancel, onConfi
   );
 }
 
-function DetailKPI({ icon, label, value, tint }: { icon: React.ReactNode; label: string; value: string; tint: 'neutral' | 'orange' | 'emerald' }) {
-  const tints = {
-    neutral: 'bg-surface-tertiary text-content-secondary',
-    orange: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  } as const;
+// ==================== CREATOR ACCOUNT STACK ====================
+
+/**
+ * Stacked-avatar identity for a creator. Replaces the single "creator profile picture"
+ * pattern with one avatar per linked tracked account (TikTok / Instagram / YouTube / X).
+ *
+ * - Accounts are derived from the creator's tracked videos by `(platform, uploaderHandle)`,
+ *   taking the first non-empty `uploaderProfilePicture` we see for that account.
+ * - Up to `max` avatars render overlapped; beyond that, a `+N` chip occupies the last slot.
+ * - When videos haven't loaded yet (or there are no derivable accounts), falls back to a
+ *   single neutral circle with the creator's initial — keeps row height stable.
+ * - Each avatar has a tiny platform-icon corner badge so admins can tell which network
+ *   each handle lives on without hovering.
+ */
+/**
+ * Single account avatar with a built-in `<img>` error fallback.
+ *
+ * The browser's default broken-image glyph is hideous and tends to fire whenever
+ * a CDN-hosted profile picture link expires (TikTok / IG profile pic URLs rotate
+ * frequently). When that happens we swap to a neutral initial circle so the row
+ * stays clean. The platform-icon corner badge still renders either way so the
+ * admin can always tell which network the handle belongs to.
+ */
+function AccountAvatar({ pic, fallbackChar, title }: { pic?: string; fallbackChar: string; title?: string }) {
+  const [failed, setFailed] = useState(false);
+  const showImg = !!pic && !failed;
   return (
-    <div className="rounded-2xl bg-surface-secondary border border-border-subtle shadow-theme p-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tints[tint]}`}>{icon}</div>
-      <p className="text-2xl font-bold text-content mt-3 leading-tight">{value}</p>
-      <p className="text-xs text-content-muted mt-0.5">{label}</p>
+    <div className="w-full h-full" title={title}>
+      {showImg ? (
+        <img
+          src={pic}
+          alt={fallbackChar}
+          className="w-full h-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-content-muted">
+          {fallbackChar}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreatorAccountStack({ creator, max = 3 }: { creator: CampaignCreator; max?: number }) {
+  const accounts = (() => {
+    const seen = new Map<string, { platform: TrackedVideo['platform']; handle: string; pic?: string }>();
+    for (const v of creator.videos) {
+      const handle = v.uploaderHandle || '';
+      const key = `${v.platform}::${handle}`;
+      const existing = seen.get(key);
+      if (!existing) {
+        seen.set(key, { platform: v.platform, handle, pic: v.uploaderProfilePicture });
+      } else if (!existing.pic && v.uploaderProfilePicture) {
+        existing.pic = v.uploaderProfilePicture;
+      }
+    }
+    return Array.from(seen.values());
+  })();
+
+  if (accounts.length === 0) {
+    return (
+      <div className="w-9 h-9 rounded-full bg-surface-tertiary border border-border-subtle flex items-center justify-center text-content-muted text-xs font-semibold flex-shrink-0">
+        {creator.name.charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+
+  const visible = accounts.slice(0, max);
+  const overflow = accounts.length - visible.length;
+
+  return (
+    <div className="flex -space-x-2 flex-shrink-0">
+      {visible.map((a, i) => (
+        // Outer wrapper is `relative` only — NOT `overflow-hidden`. The avatar
+        // image lives in an inner clipped circle; the platform badge is a
+        // sibling so it can hang off the corner without being chopped.
+        <div key={`${a.platform}-${a.handle}-${i}`} className="relative w-9 h-9">
+          <div className="w-full h-full rounded-full overflow-hidden ring-2 ring-surface-secondary bg-surface-tertiary">
+            <AccountAvatar
+              pic={a.pic}
+              fallbackChar={(a.handle || a.platform).charAt(0).toUpperCase()}
+              title={a.handle ? `@${a.handle} · ${a.platform}` : a.platform}
+            />
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full bg-surface-secondary ring-2 ring-surface-secondary flex items-center justify-center">
+            <PlatformIcon platform={a.platform} size="sm" />
+          </div>
+        </div>
+      ))}
+      {overflow > 0 && (
+        <div
+          className="relative w-9 h-9 rounded-full ring-2 ring-surface-secondary bg-surface-tertiary flex items-center justify-center text-[11px] font-semibold text-content-secondary"
+          title={`${overflow} more account${overflow === 1 ? '' : 's'}`}
+        >
+          +{overflow}
+        </div>
+      )}
     </div>
   );
 }
 
 // ==================== CREATOR CARD ====================
 
-function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onApprove, onMarkPaid, onUnapprove, onRevertPaid, onRetryTransfer, payoutsEnabled, onOpenPicker, onRemove, onSetOverride, onClearOverride, onSetStartDate, onToggleExcludeVideo, onVideosChange, onLogPriorPayout, onRemovePriorPayout }: {
+function CreatorCard({ creator, orgId, projectId, campaign, showCampaignColumn = false, onLoadVideos, onApprove, onMarkPaid, onUnapprove, onRevertPaid, onRetryTransfer, payoutsEnabled, onOpenPicker, onRemove, onSetOverride, onClearOverride, onSetStartDate, onToggleExcludeVideo, onVideosChange, onLogPriorPayout, onRemovePriorPayout, onUpdatePeriod }: {
   creator: CampaignCreator;
   orgId: string; projectId: string;
   campaign: PayoutCampaign;
+  /** When true, render a Campaign cell between the sticky-left identity column
+   *  and the Structure column. Used by the flat all-creators-across-campaigns
+   *  view; left off in any single-campaign-context view (would be redundant). */
+  showCampaignColumn?: boolean;
   onLoadVideos: () => void; onApprove: () => void; onMarkPaid: () => void;
   /** Flip status from `approved` → `pending`. Confirm dialog + audit log handled in parent. */
   onUnapprove: () => void;
@@ -2112,6 +2778,10 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
   onLogPriorPayout: (entry: Omit<PriorPayoutEntry, 'id' | 'recordedBy' | 'recordedAt'>) => void;
   /** Remove a prior-payout entry by id (e.g. mis-entry correction). */
   onRemovePriorPayout: (id: string) => void;
+  /** Edit the campaign's billing period (startDate / endDate) inline from
+   *  the row's Billing Period cell. Both args are optional — pass undefined
+   *  on either side to clear that boundary ("open window"). */
+  onUpdatePeriod: (start: Date | undefined, end: Date | undefined) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showCrossPostModal, setShowCrossPostModal] = useState(false);
@@ -2119,6 +2789,7 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
   const [showHistory, setShowHistory] = useState(false);
   const [editingStartDate, setEditingStartDate] = useState(false);
   const [showLogPayoutModal, setShowLogPayoutModal] = useState(false);
+  const [editingPeriod, setEditingPeriod] = useState(false);
 
   // Build cross-post groups map for display — groups videos with the same crossPostGroupId.
   // The admin sees these whether they came from the creator portal (auto-tagged at submit)
@@ -2141,11 +2812,17 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
         combinedViews: videos.reduce((s, v) => s + (v.views || 0), 0),
       }));
   })();
-  const crossPostGroupCount = crossPostGroups.length;
 
+  // Lazy-load videos when the user opens the details drawer. Loading on row
+  // mount used to fire N parallel Firestore queries (one per creator card),
+  // which would overwhelm the connection and leave some creators stuck in
+  // `videosLoading: true` forever. Loading on demand keeps the table fast and
+  // ensures the load only happens when the user actually wants to see videos.
   useEffect(() => {
-    if (!creator.videosLoaded && !creator.videosLoading) onLoadVideos();
-  }, [creator.videosLoaded, creator.videosLoading]);
+    if (!expanded) return;
+    if (creator.videosLoaded || creator.videosLoading) return;
+    onLoadVideos();
+  }, [expanded, creator.videosLoaded, creator.videosLoading]);
 
   // Chip row + expanded slider show only videos inside the active payout window (campaign dates
   // combined with creator.countVideosFromDate). Excluded videos are kept in the slider so the admin
@@ -2156,155 +2833,180 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
   const crossPostedIds = new Set(crossPostGroups.flatMap(g => g.videos.map(v => v.id)));
   const standaloneVideos = windowVideos.filter(v => !crossPostedIds.has(v.id));
   const creatorViews = windowVideos.reduce((s, v) => s + v.views, 0);
-  const creatorLikes = windowVideos.reduce((s, v) => s + v.likes, 0);
   const hasStructure = !!creator.structure;
   const hasPayout = !!creator.payoutResult;
 
-  return (
-    <div className="rounded-2xl bg-surface-secondary border border-border-subtle shadow-theme overflow-hidden transition-all">
-      {/* Main row */}
-      <div className="p-5 flex items-center gap-4">
-        {/* Avatar */}
-        {creator.photoURL
-          ? <img src={creator.photoURL} className="w-12 h-12 rounded-full object-cover ring-2 ring-border-subtle flex-shrink-0" alt="" />
-          : <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0 text-white font-semibold">
-              {creator.name.charAt(0).toUpperCase()}
-            </div>}
+  // Pre-compute the action button label/icon/handler for the current status so
+  // the JSX below stays compact. The amount lives INSIDE the button text — the
+  // row no longer carries a separate "Net owed" column.
+  const amountLabel = hasPayout ? fmtMoneyCurrency(netOwed(creator), campaignCurrency(campaign)) : '';
+  const paidLabel = creator.paidSnapshot
+    ? fmtMoneyCurrency(creator.paidSnapshot.amount, creator.paidSnapshot.currency)
+    : '';
 
-        {/* Identity */}
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-content truncate">{creator.name}</p>
-          <p className="text-xs text-content-muted truncate">{creator.email || 'No email'}</p>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            {/* Structure chip */}
-            {hasStructure ? (
-              <button onClick={onOpenPicker} className="group/chip inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-300/50 dark:border-orange-500/30 hover:bg-orange-500/15 transition-colors">
-                <Settings2 className="w-3 h-3" /> {creator.structure!.name}
-                <span className="text-content-muted group-hover/chip:text-orange-500 transition-colors">• change</span>
-              </button>
-            ) : (
-              <button onClick={onOpenPicker} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-300/60 dark:border-orange-500/30 hover:bg-orange-500/20 transition-colors">
-                <Plus className="w-3 h-3" /> Choose payout structure
-              </button>
-            )}
-            {/* Per-creator payout start-date chip. Useful when a creator posted videos before
-                joining this campaign that were already paid elsewhere. Editing mode swaps the
-                chip for a native date input that commits on change. */}
-            {editingStartDate ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-surface-tertiary border border-border">
-                <CalendarDays className="w-3 h-3 text-content-muted" />
-                <input
-                  type="date"
-                  autoFocus
-                  defaultValue={creator.countVideosFromDate ? creator.countVideosFromDate.toISOString().slice(0, 10) : ''}
-                  onBlur={() => setEditingStartDate(false)}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    onSetStartDate(v ? new Date(v + 'T00:00:00') : undefined);
-                    setEditingStartDate(false);
-                  }}
-                  className="bg-transparent text-content text-[11px] focus:outline-none w-[110px]"
-                />
-              </span>
-            ) : creator.countVideosFromDate ? (
-              <span className="group/chip inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-300/50 dark:border-orange-500/30">
-                <button onClick={() => setEditingStartDate(true)} className="inline-flex items-center gap-1.5 hover:text-orange-700 dark:hover:text-orange-300 transition-colors">
-                  <CalendarDays className="w-3 h-3" /> From {creator.countVideosFromDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </button>
-                <button onClick={() => onSetStartDate(undefined)} className="ml-0.5 text-content-muted hover:text-red-500 transition-colors" title="Clear start date">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ) : (
-              <button onClick={() => setEditingStartDate(true)} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-surface-tertiary text-content-muted border border-border hover:bg-surface-hover hover:text-content transition-colors">
-                <CalendarDays className="w-3 h-3" /> Pay from…
-              </button>
-            )}
-            <span className="text-[11px] text-content-muted flex items-center gap-1"><Eye className="w-3 h-3" /> {fmt(creatorViews)}</span>
-            <span className="text-[11px] text-content-muted flex items-center gap-1"><Heart className="w-3 h-3" /> {fmt(creatorLikes)}</span>
-            <span className="text-[11px] text-content-muted flex items-center gap-1" title={hiddenByDate > 0 ? `${hiddenByDate} video${hiddenByDate === 1 ? '' : 's'} hidden (outside the payout date window)` : undefined}>
-              <Film className="w-3 h-3" /> {windowVideos.length}{hiddenByDate > 0 ? ` of ${creator.videos.length}` : ''}
-            </span>
-            {crossPostGroupCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-300/50 dark:border-orange-500/30 text-[10px] font-bold">
-                <Link2 className="w-2.5 h-2.5" /> {crossPostGroupCount} cross-post{crossPostGroupCount === 1 ? '' : 's'}
-              </span>
-            )}
+  return (
+    <div className="bg-surface-secondary">
+      {/* Collapsed row. Hover + cursor live on this row only (NOT the outer wrapper)
+          so they don't bleed into the expanded panel below. The row uses no outer
+          padding — sticky-left/right cells carry their own pl-5/pr-5 so the sticky
+          backgrounds extend to the card edge cleanly when the table scrolls. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }}
+        className="group/row flex items-center cursor-pointer hover:bg-surface-tertiary/30 transition-colors"
+      >
+        {/* Sticky LEFT — identity (account stack + name + email). Pins to the
+            left edge of the scroll container so the creator stays visible when
+            the table scrolls horizontally. */}
+        <div className="sticky left-0 z-[1] bg-surface-secondary group-hover/row:bg-surface-tertiary/30 transition-colors flex items-center gap-3 pl-5 pr-2 py-3.5 w-[260px] flex-shrink-0">
+          <CreatorAccountStack creator={creator} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-sm font-semibold text-content truncate">{creator.name}</p>
+              <CreatorPlatformBubbles items={creator.videos} max={3} />
+            </div>
+            <p className="text-xs text-content-muted truncate">{creator.email || 'No email'}</p>
           </div>
         </div>
 
-        {/* Payout + status */}
-        <div className="shrink-0 text-right flex items-center gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">
-              {creator.paidSnapshot ? 'Paid' : (creator.priorPayouts?.length ?? 0) > 0 ? 'Net owed' : 'Payout'}
-            </p>
-            {/* Once paid, show the immutable snapshot amount — NOT the live payoutResult, which
-                can drift if videos/structure change after payment. Otherwise show net owed
-                (gross minus prior payouts), which degrades to gross when there are no priors. */}
-            <p className={`text-2xl font-bold leading-tight ${creator.paidSnapshot ? 'text-emerald-600 dark:text-emerald-500' : hasPayout ? 'text-emerald-600 dark:text-emerald-500' : 'text-content-muted'}`}>
-              {creator.paidSnapshot
-                ? fmtMoneyCurrency(creator.paidSnapshot.amount, creator.paidSnapshot.currency)
-                : hasPayout ? fmtMoney(netOwed(creator)) : '—'}
-            </p>
-            {creator.paidSnapshot && (
-              <p className="text-[10px] text-content-muted mt-0.5">
-                {creator.paidSnapshot.paidAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                {' · by '}{creator.paidSnapshot.paidBy.split('@')[0]}
-              </p>
+        {/* Campaign — bold campaign name + structure name (or "Choose structure"
+            CTA) as the cadence-style subtitle. Mirrors viral.app's "Monthly · Fixed
+            Window" subtitle pattern: campaign on top, modifier on bottom. Only
+            rendered in flat all-campaigns view; suppressed otherwise. */}
+        {showCampaignColumn ? (
+          <div className="flex-1 min-w-[200px] px-3 py-3.5 min-w-0">
+            <p className="text-sm font-semibold text-content truncate">{campaign.name}</p>
+            {hasStructure ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenPicker(); }}
+                className="text-xs text-content-muted hover:text-orange-500 transition-colors truncate block max-w-full text-left mt-0.5"
+                title="Change structure"
+              >
+                {creator.structure!.name}
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenPicker(); }}
+                className="text-xs font-semibold text-orange-600 dark:text-orange-400 hover:underline mt-0.5 inline-flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Choose structure
+              </button>
             )}
-            <div className="mt-1 flex justify-end items-center gap-1.5 flex-wrap">
-              {/* Transfer sub-state chip — only shown when there's a snapshot. The primary status
-                  badge ("Paid") still appears next to it so the state machine stays visible; this
-                  just disambiguates WITHIN the paid state. */}
-              {creator.paidSnapshot?.stripeTransferStatus === 'pending' && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-300/50 dark:border-orange-500/30">
-                  <Loader2 className="w-2.5 h-2.5 animate-spin" /> Processing
-                </span>
-              )}
-              {creator.paidSnapshot?.stripeTransferStatus === 'failed' && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-300/50 dark:border-red-500/30">
-                  <AlertCircle className="w-2.5 h-2.5" /> Transfer failed
-                </span>
-              )}
-              <PayoutStatusBadge status={creator.payoutStatus} />
-            </div>
           </div>
-          <button onClick={() => setExpanded(!expanded)}
-            className="w-9 h-9 rounded-xl bg-surface-tertiary hover:bg-surface-hover text-content-muted hover:text-content flex items-center justify-center transition-colors">
-            <ChevronDown className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        ) : (
+          <div className="flex-1 min-w-[200px] px-3 py-3.5 min-w-0">
+            {hasStructure ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenPicker(); }}
+                className="block max-w-full text-left text-sm font-semibold text-content hover:text-orange-500 transition-colors truncate"
+              >
+                {creator.structure!.name}
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenPicker(); }}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 dark:text-orange-400 hover:text-orange-500 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Choose structure
+              </button>
+            )}
+            <p className="text-xs text-content-muted truncate mt-0.5">
+              {windowVideos.length} {windowVideos.length === 1 ? 'video' : 'videos'} · {fmt(creatorViews)} views
+            </p>
+          </div>
+        )}
+
+        {/* Billing Period — campaign date window. Click to edit inline; the
+            change applies to every creator on this campaign (since the
+            window is campaign-level). "All time" = no window set. */}
+        <div className="w-[180px] flex-shrink-0 px-3 py-3.5 min-w-0 relative" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setEditingPeriod(v => !v)}
+            className="text-left w-full text-xs text-content hover:text-orange-600 dark:hover:text-orange-400 transition-colors truncate"
+            title="Edit billing period"
+          >
+            {campaign.startDate || campaign.endDate
+              ? `${campaign.startDate ? campaign.startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'} – ${campaign.endDate ? campaign.endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'open'}`
+              : <span className="text-content-muted">All time</span>}
           </button>
+          {creator.paidSnapshot?.stripeTransferStatus === 'pending' && (
+            <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">Processing transfer…</p>
+          )}
+          {creator.paidSnapshot?.stripeTransferStatus === 'failed' && (
+            <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">Transfer failed</p>
+          )}
+
+          {editingPeriod && (
+            <PeriodEditPopover
+              start={campaign.startDate}
+              end={campaign.endDate}
+              onClose={() => setEditingPeriod(false)}
+              onSave={(s, e) => { onUpdatePeriod(s, e); setEditingPeriod(false); }}
+            />
+          )}
+        </div>
+
+        {/* Amount — net owed in its own column with a small clock icon, mirroring
+            viral.app. The Send button below carries no amount label so it can stay
+            a tight icon-only square. */}
+        <div className="w-[140px] flex-shrink-0 px-3 py-3.5 min-w-0">
+          {hasPayout ? (
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-content">
+              <Clock className="w-3.5 h-3.5 text-content-muted" />
+              {creator.payoutStatus === 'paid' ? paidLabel : amountLabel}
+            </p>
+          ) : (
+            <p className="text-xs text-content-muted">Not calculated</p>
+          )}
+        </div>
+
+        {/* Status pill */}
+        <div className="w-[120px] flex-shrink-0 px-3 py-3.5">
+          <PayoutStatusBadge status={creator.payoutStatus} />
+        </div>
+
+        {/* Sticky RIGHT — small dark Send icon button only. The whole row is
+            clickable to open the details drawer (no separate ⋯). The Send button
+            is icon-only (the amount lives in its own column now), matching
+            viral.app's compact action area exactly. */}
+        <div
+          className="sticky right-0 z-[1] bg-surface-secondary group-hover/row:bg-surface-tertiary/30 transition-colors flex items-center justify-end gap-1 pl-2 pr-5 py-3.5 w-[120px] flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {creator.payoutStatus === 'pending' && hasPayout && (
+            <button
+              onClick={onApprove}
+              title={`Approve ${amountLabel}`}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-content text-surface hover:bg-content/90 transition-all"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+          )}
+          {creator.payoutStatus === 'approved' && (
+            <button
+              onClick={onMarkPaid}
+              disabled={!payoutsEnabled}
+              title={payoutsEnabled ? `Send ${amountLabel}` : 'Disabled until Stripe Connect is activated'}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-content text-surface hover:bg-content/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
+          {creator.payoutStatus === 'paid' && (
+            <div
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+              title={creator.paidSnapshot ? `Paid ${creator.paidSnapshot.paidAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} by ${creator.paidSnapshot.paidBy.split('@')[0]}` : 'Paid'}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          )}
+          {!hasPayout && creator.payoutStatus === 'pending' && (
+            <span className="text-[11px] font-medium text-content-muted px-1">Calc</span>
+          )}
         </div>
       </div>
-
-      {/* Approve CTA when pending */}
-      {creator.payoutStatus === 'pending' && (
-        <div className="px-5 pb-4 -mt-1">
-          <button onClick={onApprove}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500 text-white shadow-[0_2px_0_0_#047857] hover:shadow-[0_1px_0_0_#047857] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Approve this payout
-          </button>
-        </div>
-      )}
-
-      {/* Mark-as-paid CTA when approved (between Approve → Stripe bridge; admin manually settles) */}
-      {creator.payoutStatus === 'approved' && (
-        <div className="px-5 pb-4 -mt-1 space-y-2">
-          <button
-            onClick={onMarkPaid}
-            disabled={!payoutsEnabled}
-            title={payoutsEnabled ? undefined : 'Disabled until Stripe Connect platform is activated'}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500 text-white shadow-[0_2px_0_0_#047857] hover:shadow-[0_1px_0_0_#047857] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-[0_2px_0_0_#047857] disabled:hover:translate-y-0"
-          >
-            <Wallet className="w-3.5 h-3.5" /> Pay {fmtMoneyCurrency(netOwed(creator), campaignCurrency(campaign))}{(creator.priorPayouts?.length ?? 0) > 0 ? ' net' : ''}
-          </button>
-          {/* Reverse transition — deliberately small/ghost to signal this is a meaningful, logged state change. */}
-          <button onClick={onUnapprove}
-            className="w-full text-center text-[11px] font-semibold text-content-secondary hover:text-content transition-colors py-1">
-            Un-approve
-          </button>
-        </div>
-      )}
 
       {/* Failed-transfer remediation — bright so the admin sees it's actionable. Shown as a
           banner above the revert option so "Retry" is the default next action; revert is the
@@ -2319,91 +3021,126 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
               <p className="text-content-secondary">{creator.paidSnapshot.stripeTransferError}</p>
             )}
             <button onClick={onRetryTransfer}
-              className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white shadow-[0_2px_0_0_#991b1b] hover:shadow-[0_1px_0_0_#991b1b] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
+              className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors">
               <RefreshCw className="w-3.5 h-3.5" /> Retry transfer
             </button>
           </div>
         </div>
       )}
 
-      {/* Revert-to-approved escape hatch when paid — in case an admin marked paid by mistake.
-          Blocked in the parent's `revertPaidCreator` handler if a Stripe transfer has already
-          succeeded (stripeTransferId set) — the money is already gone, reversal happens in Stripe. */}
-      {creator.payoutStatus === 'paid' && (
-        <div className="px-5 pb-4 -mt-1">
-          <button onClick={onRevertPaid}
-            className="w-full text-center text-[11px] font-semibold text-content-secondary hover:text-content transition-colors py-1">
-            Revert to approved
-          </button>
-        </div>
-      )}
-
-      {/* Expanded section */}
+      {/* Details drawer — opens when the user clicks the row or hits the
+          "Details" button in the action area. Slides in from the right like our
+          other slide-overs (StructurePicker / AddCreators) so the breakdown,
+          prior payouts, videos, override, and audit log don't crowd the table. */}
       {expanded && (
-        <div className="border-t border-border-subtle bg-surface-tertiary/30">
-          {/* Breakdown */}
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setExpanded(false)} />
+          <div className="w-full max-w-2xl bg-surface border-l border-border shadow-2xl flex flex-col animate-slide-up">
+            {/* Drawer header */}
+            <div className="flex items-center justify-between p-5 border-b border-border-subtle">
+              <div className="flex items-center gap-3 min-w-0">
+                <CreatorAccountStack creator={creator} />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted truncate">{campaign.name}</p>
+                  <p className="font-semibold text-content truncate">{creator.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setExpanded(false)}
+                className="w-9 h-9 rounded-xl text-content-muted hover:text-content hover:bg-surface-hover flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Drawer body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Total payment due — leads the drawer so the user sees the
+              answer first, then scans the breakdown below to understand
+              how it was calculated. */}
           {creator.payoutResult && creator.payoutResult.componentBreakdown.length > 0 && (
-            <div className="p-5 border-b border-border-subtle">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-3">Payout breakdown</p>
-              <div className="space-y-2">
-                {creator.payoutResult.componentBreakdown.map((comp, i) => {
-                  const meta = COMPONENT_META[comp.type as PayoutComponentType] || COMPONENT_META.base;
-                  const Icon = meta.icon;
-                  return (
-                    <div key={i} className="rounded-xl bg-surface border border-border p-3.5 flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">{meta.label}</span>
-                            <span className="text-sm font-semibold text-content">{comp.componentName}</span>
-                          </div>
-                          <p className="text-xs text-content-muted mt-0.5">{comp.details}</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        {comp.wasCapped && <p className="text-[10px] text-content-muted italic">capped from {fmtMoneyExact(comp.originalAmount ?? 0)}</p>}
-                        <p className="text-lg font-bold text-content">{fmtMoneyExact(comp.amount)}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {(creator.payoutResult.componentBreakdown.length > 1 || creator.payoutResult.appliedCap) && (
-                  <div className="flex items-center justify-between pt-3 mt-2 border-t border-border-subtle">
-                    <span className="font-semibold text-content">Total</span>
-                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">{fmtMoneyExact(creator.payoutResult.totalPayout)}</span>
-                  </div>
-                )}
+            <>
+              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Total owed</p>
+                <p className="text-3xl md:text-4xl font-bold text-emerald-600 dark:text-emerald-500 leading-none mt-1.5">
+                  {fmtMoneyExact(creator.payoutResult.totalPayout)}
+                </p>
                 {creator.payoutResult.appliedCap && (
-                  <p className="text-xs text-content-muted italic flex items-center gap-1">
+                  <p className="text-xs text-content-muted italic flex items-center gap-1 mt-2">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Capped at {fmtMoneyExact(creator.payoutResult.appliedCap.maxPayout)} (was {fmtMoneyExact(creator.payoutResult.appliedCap.originalTotal)})
                   </p>
                 )}
               </div>
-            </div>
+
+              {/* Breakdown — supports the headline total above. */}
+              <div>
+                <p className="text-xs font-bold text-content mb-2">Breakdown</p>
+                <div className="space-y-2">
+                  {creator.payoutResult.componentBreakdown.map((comp, i) => {
+                    const meta = COMPONENT_META[comp.type as PayoutComponentType] || COMPONENT_META.base;
+                    const Icon = meta.icon;
+                    return (
+                      <div key={i} className="rounded-xl bg-surface border border-border p-3.5 flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">{meta.label}</span>
+                              <span className="text-sm font-semibold text-content">{comp.componentName}</span>
+                            </div>
+                            <p className="text-xs text-content-muted mt-0.5">{comp.details}</p>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {comp.wasCapped && <p className="text-[10px] text-content-muted italic">capped from {fmtMoneyExact(comp.originalAmount ?? 0)}</p>}
+                          <p className="text-lg font-bold text-content">{fmtMoneyExact(comp.amount)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Reverse-state escape hatches — Un-approve (approved → pending) and
+                      Revert (paid → approved). Tucked at the end so the row stays tight. */}
+                  {(creator.payoutStatus === 'approved' || creator.payoutStatus === 'paid') && (
+                    <div className="pt-3 mt-2 border-t border-border-subtle">
+                      {creator.payoutStatus === 'approved' && (
+                        <button
+                          onClick={onUnapprove}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 active:translate-y-0.5 text-white text-xs font-bold rounded-lg shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] active:shadow-[0_0_0_0_#c2410c] transition-all"
+                        >
+                          ← Un-approve this payout
+                        </button>
+                      )}
+                      {creator.payoutStatus === 'paid' && (
+                        <button
+                          onClick={onRevertPaid}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 active:translate-y-0.5 text-white text-xs font-bold rounded-lg shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] active:shadow-[0_0_0_0_#c2410c] transition-all"
+                        >
+                          ← Revert to approved
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           {/* Prior payouts — off-platform payments already made. Shown above cross-posts so the
                admin sees the "already paid" context before diving into video detail. */}
-          <div className="p-5 border-b border-border-subtle">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Prior payouts</p>
-                <p className="text-xs text-content-muted mt-0.5">Log payouts already made outside the platform (Venmo, bank, etc.)</p>
-              </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-content">Prior payouts</p>
               <button onClick={() => setShowLogPayoutModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-500 text-white shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all">
-                <Plus className="w-3.5 h-3.5" /> Log payout
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400 hover:underline">
+                <Plus className="w-3 h-3" /> Log payout
               </button>
             </div>
 
             {(creator.priorPayouts?.length ?? 0) === 0 ? (
-              <div className="rounded-xl bg-surface border border-border-subtle border-dashed p-4 text-center text-xs text-content-muted">
-                No prior payouts logged. Click "Log payout" to record money you've already paid this creator.
-              </div>
+              <p className="text-xs text-content-muted">None logged yet — record off-platform payments (Venmo, bank, etc.) so net owed stays accurate.</p>
             ) : (
               <div className="space-y-2">
                 {creator.priorPayouts!.map(p => (
@@ -2476,7 +3213,7 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
           {/* Cross-post groups — compact, one row per group. Renders above the videos slider so
                linked content is shown once (not duplicated in the slider below). */}
           {crossPostGroups.length > 0 && (
-            <div className="px-5 pt-5">
+            <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
                   <Link2 className="w-3 h-3" /> Cross-posted ({crossPostGroups.length} {crossPostGroups.length === 1 ? 'group' : 'groups'})
@@ -2528,15 +3265,27 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
           )}
 
           {/* Videos */}
-          <div className="p-5">
+          <div className="min-w-0">
             <div className="flex items-center justify-between mb-3 gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Videos</p>
-              {creator.videos.length >= 2 && crossPostGroups.length === 0 && (
-                <button onClick={() => setShowCrossPostModal(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-content-secondary hover:text-content bg-surface-tertiary hover:bg-surface-hover rounded-lg border border-border transition-colors">
-                  <Link2 className="w-3.5 h-3.5" /> Manage cross-posts
-                </button>
-              )}
+              <p className="text-xs font-bold text-content">Videos</p>
+              <div className="flex items-center gap-2">
+                {/* Retry — only meaningful after a finished load (loaded=true).
+                    Manually re-triggers fetchCreatorVideos so a transient
+                    Firestore failure can be recovered without closing/reopening
+                    the drawer. */}
+                {creator.videosLoaded && !creator.videosLoading && (
+                  <button onClick={onLoadVideos}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-content-muted hover:text-content bg-surface-tertiary hover:bg-surface-hover rounded-lg border border-border transition-colors">
+                    <RefreshCw className="w-3.5 h-3.5" /> Reload
+                  </button>
+                )}
+                {creator.videos.length >= 2 && crossPostGroups.length === 0 && (
+                  <button onClick={() => setShowCrossPostModal(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-content-secondary hover:text-content bg-surface-tertiary hover:bg-surface-hover rounded-lg border border-border transition-colors">
+                    <Link2 className="w-3.5 h-3.5" /> Manage cross-posts
+                  </button>
+                )}
+              </div>
             </div>
             {creator.videosLoading ? (
               <div className="flex items-center gap-3 py-6">
@@ -2569,43 +3318,78 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
             ) : null}
           </div>
 
-          {/* Manual override — admin can bypass the engine and set a custom total */}
-          <div className="border-t border-border-subtle px-5 py-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Manual override</p>
-              {creator.payoutOverride ? (
-                <button onClick={onClearOverride}
-                  className="text-[11px] font-semibold text-content-muted hover:text-red-500 transition-colors">
-                  Clear override
-                </button>
-              ) : !showOverrideForm ? (
-                <button onClick={() => setShowOverrideForm(true)}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400 hover:underline">
-                  <Pencil className="w-3 h-3" /> Set custom amount
-                </button>
-              ) : null}
-            </div>
-            {creator.payoutOverride ? (
-              <div className="text-xs text-content-secondary">
-                Fixed at <span className="font-semibold text-emerald-600 dark:text-emerald-500">{fmtMoneyExact(creator.payoutOverride.amount)}</span>
-                {creator.payoutOverride.note && <span className="text-content-muted"> — {creator.payoutOverride.note}</span>}
+          {/* Adjustments group — pay-from-date and manual override. Both are
+              "tweak the engine output" controls; grouping them under one header
+              cuts the chrome in half. */}
+          <div>
+            <p className="text-xs font-bold text-content mb-2">Adjustments</p>
+            <div className="rounded-xl bg-surface border border-border-subtle divide-y divide-border-subtle">
+              {/* Pay from date */}
+              <div className="px-3 py-2.5 flex items-center justify-between gap-3">
+                <span className="text-xs text-content-muted shrink-0">Pay from</span>
+                {editingStartDate ? (
+                  <input
+                    type="date"
+                    autoFocus
+                    defaultValue={creator.countVideosFromDate ? creator.countVideosFromDate.toISOString().slice(0, 10) : ''}
+                    onBlur={() => setEditingStartDate(false)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onSetStartDate(v ? new Date(v + 'T00:00:00') : undefined);
+                      setEditingStartDate(false);
+                    }}
+                    className="bg-transparent text-xs text-content focus:outline-none ml-auto w-[120px]"
+                  />
+                ) : creator.countVideosFromDate ? (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button onClick={() => setEditingStartDate(true)}
+                      className="text-xs font-semibold text-content hover:text-orange-500 transition-colors">
+                      {creator.countVideosFromDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </button>
+                    <button onClick={() => onSetStartDate(undefined)}
+                      className="text-[11px] text-content-muted hover:text-red-500 transition-colors">Clear</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setEditingStartDate(true)}
+                    className="ml-auto text-xs font-semibold text-orange-600 dark:text-orange-400 hover:underline">
+                    Set date
+                  </button>
+                )}
               </div>
-            ) : showOverrideForm ? (
-              <OverrideForm
-                onCancel={() => setShowOverrideForm(false)}
-                onSubmit={(amount, note) => { onSetOverride(amount, note); setShowOverrideForm(false); }}
-              />
-            ) : (
-              <p className="text-xs text-content-muted">Ignore the template calculation and set a custom payout amount for this creator.</p>
-            )}
+              {/* Manual override */}
+              <div className="px-3 py-2.5 flex items-center justify-between gap-3">
+                <span className="text-xs text-content-muted shrink-0">Override</span>
+                {creator.payoutOverride ? (
+                  <div className="flex items-center gap-2 ml-auto min-w-0">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-500 truncate">
+                      {fmtMoneyExact(creator.payoutOverride.amount)}{creator.payoutOverride.note ? ` — ${creator.payoutOverride.note}` : ''}
+                    </span>
+                    <button onClick={onClearOverride}
+                      className="text-[11px] text-content-muted hover:text-red-500 transition-colors shrink-0">Clear</button>
+                  </div>
+                ) : showOverrideForm ? (
+                  <div className="ml-auto">
+                    <OverrideForm
+                      onCancel={() => setShowOverrideForm(false)}
+                      onSubmit={(amount, note) => { onSetOverride(amount, note); setShowOverrideForm(false); }}
+                    />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowOverrideForm(true)}
+                    className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:underline">
+                    <Pencil className="w-3 h-3" /> Set custom amount
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Activity / audit log */}
           {creator.history && creator.history.length > 0 && (
-            <div className="border-t border-border-subtle px-5 py-3">
+            <div>
               <button onClick={() => setShowHistory(!showHistory)}
-                className="w-full flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-content-muted hover:text-content transition-colors">
-                <span>Activity ({creator.history.length})</span>
+                className="w-full flex items-center justify-between text-xs font-bold text-content hover:text-orange-500 transition-colors">
+                <span>Activity <span className="text-content-muted font-normal">({creator.history.length})</span></span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
               </button>
               {showHistory && (
@@ -2622,11 +3406,13 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
           )}
 
           {/* Danger zone */}
-          <div className="border-t border-border-subtle px-5 py-3 flex justify-end">
+          <div className="flex justify-end pt-1">
             <button onClick={onRemove}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
               <Trash2 className="w-3.5 h-3.5" /> Remove from campaign
             </button>
+          </div>
+            </div>
           </div>
         </div>
       )}
@@ -2650,6 +3436,74 @@ function CreatorCard({ creator, orgId, projectId, campaign, onLoadVideos, onAppr
 // ==================== OVERRIDE FORM ====================
 
 /** Inline form for setting a manual payout override on a creator. */
+/** Inline editor for the campaign-level billing period. Anchored to the
+ *  Billing Period cell on a payout row; closes on outside-click. Either
+ *  date can be left blank to leave that side of the window open. */
+function PeriodEditPopover({ start, end, onClose, onSave }: {
+  start: Date | undefined;
+  end: Date | undefined;
+  onClose: () => void;
+  onSave: (start: Date | undefined, end: Date | undefined) => void;
+}) {
+  const toInput = (d: Date | undefined) => d ? d.toISOString().slice(0, 10) : '';
+  const fromInput = (s: string): Date | undefined => s ? new Date(s + 'T00:00:00') : undefined;
+
+  const [startStr, setStartStr] = useState(toInput(start));
+  const [endStr, setEndStr] = useState(toInput(end));
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [onClose]);
+
+  const inp = 'w-full px-2 py-1.5 bg-surface-tertiary border border-border rounded-lg text-content text-xs focus:outline-none focus:ring-2 focus:ring-orange-500';
+
+  return (
+    <div
+      ref={ref}
+      className="absolute left-0 top-full mt-1 z-30 w-[260px] rounded-xl bg-surface-secondary border border-border shadow-2xl p-3"
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wider text-content-muted mb-2">Billing period</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[10px] text-content-muted mb-1">Start</label>
+          <input type="date" value={startStr} onChange={e => setStartStr(e.target.value)} className={inp} />
+        </div>
+        <div>
+          <label className="block text-[10px] text-content-muted mb-1">End</label>
+          <input type="date" value={endStr} onChange={e => setEndStr(e.target.value)} className={inp} />
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-3 gap-2">
+        <button
+          onClick={() => { setStartStr(''); setEndStr(''); }}
+          className="text-[11px] text-content-muted hover:text-content"
+        >
+          Clear (all time)
+        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="px-2.5 py-1 text-xs text-content-muted hover:text-content"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(fromInput(startStr), fromInput(endStr))}
+            className="px-3 py-1 text-xs font-bold text-white bg-orange-500 rounded-lg border-2 border-black shadow-[2px_2px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[1px] hover:translate-y-[1px] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OverrideForm({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (amount: number, note?: string) => void }) {
   const [amount, setAmount] = useState<number | undefined>(undefined);
   const [note, setNote] = useState('');
@@ -3020,160 +3874,6 @@ function LogPriorPayoutModal({ creator, campaign, onCancel, onSubmit }: {
   );
 }
 
-// ==================== EDIT CAMPAIGN MODAL ====================
-
-/** Modal for editing campaign meta: name, description, status, start/end dates.
- *  Date window changes trigger a full recalc since videos can move in/out of eligibility. */
-function EditCampaignModal({ campaign, onClose, onSave }: {
-  campaign: PayoutCampaign;
-  onClose: () => void;
-  onSave: (patch: Partial<Pick<PayoutCampaign, 'name' | 'description' | 'status' | 'startDate' | 'endDate' | 'currency' | 'minimumPayout'>>) => void;
-}) {
-  const [name, setName] = useState(campaign.name);
-  const [description, setDescription] = useState(campaign.description);
-  const [status, setStatus] = useState<PayoutCampaign['status']>(campaign.status);
-  const toDateInput = (d?: Date) => d ? d.toISOString().slice(0, 10) : '';
-  const [startStr, setStartStr] = useState(toDateInput(campaign.startDate));
-  const [endStr, setEndStr] = useState(toDateInput(campaign.endDate));
-  const [currency, setCurrency] = useState<string>(campaignCurrency(campaign));
-  const [minimumPayoutStr, setMinimumPayoutStr] = useState<string>(
-    campaign.minimumPayout !== undefined ? String(campaign.minimumPayout) : '',
-  );
-  // If any creator has already been paid, the currency is locked — changing it would corrupt
-  // the paid-snapshot records which froze their currency at paid-time.
-  const hasPaidCreators = campaign.creators.some(c => !!c.paidSnapshot);
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [onClose]);
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  const inp = 'w-full px-3.5 py-2.5 bg-surface-tertiary border border-border rounded-xl text-content text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder:text-content-muted';
-  const lbl = 'block text-[11px] font-semibold uppercase tracking-wider text-content-secondary mb-1.5';
-
-  const handleSave = () => {
-    const minParsed = minimumPayoutStr.trim() === '' ? undefined : Number(minimumPayoutStr);
-    if (minParsed !== undefined && (Number.isNaN(minParsed) || minParsed < 0)) {
-      alert('Minimum payout must be a non-negative number.');
-      return;
-    }
-    onSave({
-      name: name.trim() || campaign.name,
-      description: description.trim(),
-      status,
-      startDate: startStr ? new Date(startStr + 'T00:00:00') : undefined,
-      endDate: endStr ? new Date(endStr + 'T23:59:59') : undefined,
-      currency: currency.toLowerCase(),
-      minimumPayout: minParsed,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="relative bg-surface rounded-2xl shadow-2xl border border-border max-w-lg w-full animate-slide-up" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-border-subtle">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
-              <Pencil className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Edit campaign</p>
-              <p className="font-semibold text-content truncate">{campaign.name}</p>
-            </div>
-          </div>
-          <button onClick={onClose}
-            className="w-9 h-9 rounded-xl text-content-muted hover:text-content hover:bg-surface-hover flex items-center justify-center transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          <div>
-            <label className={lbl}>Campaign name</label>
-            <input value={name} onChange={e => setName(e.target.value)} className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className={`${inp} resize-none`} />
-          </div>
-          <div>
-            <label className={lbl}>Status</label>
-            <select value={status} onChange={e => setStatus(e.target.value as PayoutCampaign['status'])} className={inp}>
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <Calendar className="w-3.5 h-3.5 text-content-muted" />
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-content-secondary">Campaign window (optional)</label>
-            </div>
-            <p className="text-[11px] text-content-muted mb-2">Only videos posted in this range contribute to payouts. Leave empty for no filter.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-content-muted mb-1">Start</label>
-                <input type="date" value={startStr} onChange={e => setStartStr(e.target.value)} className={inp} />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-content-muted mb-1">End</label>
-                <input type="date" value={endStr} onChange={e => setEndStr(e.target.value)} className={inp} />
-              </div>
-            </div>
-          </div>
-
-          {/* Payment settings — currency is frozen on paid-snapshots so we lock it once anyone's been paid. */}
-          <div className="pt-3 border-t border-border-subtle">
-            <div className="flex items-center gap-2 mb-1.5">
-              <CircleDollarSign className="w-3.5 h-3.5 text-content-muted" />
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-content-secondary">Payment settings</label>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-content-muted mb-1">Currency</label>
-                <select value={currency} onChange={e => setCurrency(e.target.value)} className={inp} disabled={hasPaidCreators}>
-                  <option value="usd">USD ($)</option>
-                  <option value="eur">EUR (€)</option>
-                  <option value="gbp">GBP (£)</option>
-                  <option value="cad">CAD ($)</option>
-                  <option value="aud">AUD ($)</option>
-                  <option value="mxn">MXN ($)</option>
-                </select>
-                {hasPaidCreators && (
-                  <p className="text-[10px] text-content-muted mt-1">Locked — at least one creator has been paid in this campaign.</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-content-muted mb-1">
-                  Minimum payout <span className="text-content-muted lowercase">(default {fmtMoneyCurrency(DEFAULT_MINIMUM_PAYOUT_BY_CURRENCY[currency] ?? 1, currency)})</span>
-                </label>
-                <input
-                  type="number" min="0" step="0.01"
-                  value={minimumPayoutStr}
-                  onChange={e => setMinimumPayoutStr(e.target.value)}
-                  placeholder="Use default"
-                  className={inp}
-                />
-                <p className="text-[10px] text-content-muted mt-1">Creators below this amount can't be marked paid.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-border-subtle flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}><Check className="w-4 h-4 mr-1.5" /> Save</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ==================== CROSS-POST VIDEO CARD (with hover preview) ====================
 
@@ -3659,11 +4359,60 @@ function StructurePickerSlideOver({ creator, orgId, projectId, userId, onClose, 
 
 // ==================== ADD CREATORS SLIDE-OVER ====================
 
+/**
+ * Stacked-avatar identity for the AddCreators slide-over rows. Different shape
+ * than `CreatorAccountStack` (which derives accounts from videos in a campaign
+ * context); here we already have the resolved `TrackedAccount[]` from the link
+ * join. Keeps the same visual treatment (3 max, +N overflow, platform corner
+ * badge sitting outside the rounded clip) so the whole app feels consistent.
+ */
+function AddCreatorsAccountStack({ accounts, fallbackChar, max = 3 }: {
+  accounts: TrackedAccount[]; fallbackChar: string; max?: number;
+}) {
+  if (accounts.length === 0) {
+    return (
+      <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center ring-2 ring-border-subtle text-content-muted text-sm font-semibold flex-shrink-0">
+        {fallbackChar}
+      </div>
+    );
+  }
+  const visible = accounts.slice(0, max);
+  const overflow = accounts.length - visible.length;
+  return (
+    <div className="flex -space-x-2 flex-shrink-0">
+      {visible.map((a, i) => (
+        <div key={`${a.id}-${i}`} className="relative w-10 h-10" title={`@${a.username} · ${a.platform}`}>
+          <div className="w-full h-full rounded-full ring-2 ring-border-subtle bg-surface-tertiary overflow-hidden">
+            <AccountAvatar
+              pic={a.profilePicture}
+              fallbackChar={(a.username || a.platform).charAt(0).toUpperCase()}
+            />
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full bg-surface ring-2 ring-surface flex items-center justify-center">
+            <PlatformIcon platform={a.platform as any} size="sm" />
+          </div>
+        </div>
+      ))}
+      {overflow > 0 && (
+        <div
+          className="relative w-10 h-10 rounded-full ring-2 ring-border-subtle bg-surface-tertiary flex items-center justify-center text-xs font-semibold text-content-secondary"
+          title={`${overflow} more account${overflow === 1 ? '' : 's'}`}
+        >
+          +{overflow}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddCreatorsSlideOver({ campaign, orgId, projectId, onClose, onAdd }: {
   campaign: PayoutCampaign; orgId: string; projectId: string;
   onClose: () => void; onAdd: (creators: CampaignCreator[]) => void;
 }) {
   const [allCreators, setAllCreators] = useState<Creator[]>([]);
+  // creatorId → list of linked tracked-account objects, used to render the
+  // stacked-avatar identity in each row (matching the rest of the app).
+  const [creatorAccounts, setCreatorAccounts] = useState<Map<string, TrackedAccount[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -3675,11 +4424,33 @@ function AddCreatorsSlideOver({ campaign, orgId, projectId, onClose, onAdd }: {
   }, [onClose]);
 
   useEffect(() => {
-    if (orgId && projectId) {
-      setLoading(true);
-      CreatorLinksService.getAllCreators(orgId, projectId)
-        .then(setAllCreators).catch(console.error).finally(() => setLoading(false));
-    }
+    if (!orgId || !projectId) return;
+    setLoading(true);
+    // Fan out the three reads in parallel: creator profiles, the creator↔account
+    // join table, and all tracked accounts. Then build the
+    // creatorId → TrackedAccount[] map locally so the row UI can render the
+    // same stacked-avatar identity it shows everywhere else.
+    Promise.all([
+      CreatorLinksService.getAllCreators(orgId, projectId),
+      getDocs(collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks')),
+      AccountsDataService.getTrackedAccounts(orgId, projectId).catch(() => [] as TrackedAccount[]),
+    ])
+      .then(([creators, linksSnap, accounts]) => {
+        setAllCreators(creators);
+        const accById = new Map(accounts.map(a => [a.id, a]));
+        const map = new Map<string, TrackedAccount[]>();
+        linksSnap.docs.forEach(d => {
+          const link = d.data() as { creatorId: string; accountId: string };
+          const acc = accById.get(link.accountId);
+          if (!acc) return;
+          const arr = map.get(link.creatorId) || [];
+          arr.push(acc);
+          map.set(link.creatorId, arr);
+        });
+        setCreatorAccounts(map);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [orgId, projectId]);
 
   const existingIds = new Set(campaign.creators.map(c => c.id));
@@ -3764,11 +4535,15 @@ function AddCreatorsSlideOver({ campaign, orgId, projectId, onClose, onAdd }: {
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${sel ? 'bg-orange-500 border-orange-500 scale-105' : 'border-border-strong'}`}>
                       {sel && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                     </div>
-                    {c.photoURL
-                      ? <img src={c.photoURL} className="w-10 h-10 rounded-full object-cover ring-2 ring-border-subtle" alt="" />
-                      : <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center ring-2 ring-border-subtle"><Users className="w-5 h-5 text-content-muted" /></div>}
+                    <AddCreatorsAccountStack
+                      accounts={creatorAccounts.get(c.id) || []}
+                      fallbackChar={(c.displayName || c.email || 'C').charAt(0).toUpperCase()}
+                    />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-content truncate">{c.displayName}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="text-sm font-semibold text-content truncate">{c.displayName}</p>
+                        <CreatorPlatformBubbles items={creatorAccounts.get(c.id) || []} max={3} />
+                      </div>
                       <p className="text-xs text-content-muted truncate">{c.email || 'No email'}</p>
                     </div>
                     <p className="text-xs text-content-muted flex items-center gap-1 flex-shrink-0">
@@ -3804,30 +4579,17 @@ function AddCreatorsSlideOver({ campaign, orgId, projectId, onClose, onAdd }: {
 
 // ==================== BADGES ====================
 
-function CampaignStatusBadge({ status }: { status: string }) {
-  const m: Record<string, { cls: string; icon: React.ReactNode }> = {
-    draft:     { cls: 'bg-surface-tertiary text-content-muted border border-border',                                                                                icon: <Clock className="w-3 h-3" /> },
-    active:    { cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30',                              icon: <Sparkles className="w-3 h-3" /> },
-    completed: { cls: 'bg-emerald-500 text-white border border-emerald-500',                                                                                        icon: <CheckCircle2 className="w-3 h-3" /> },
-  };
-  const v = m[status] || m.draft;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${v.cls}`}>
-      {v.icon}{status}
-    </span>
-  );
-}
 
 function PayoutStatusBadge({ status }: { status: string }) {
   const m: Record<string, { cls: string; label: string; icon: React.ReactNode }> = {
-    not_calculated: { cls: 'bg-surface-tertiary text-content-muted border border-border',                                                                                 label: 'Not calculated', icon: <DollarSign className="w-3 h-3" /> },
-    pending:        { cls: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30',                                    label: 'Pending',        icon: <Clock className="w-3 h-3" /> },
-    approved:       { cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30',                               label: 'Approved',       icon: <CheckCircle2 className="w-3 h-3" /> },
-    paid:           { cls: 'bg-emerald-500 text-white border border-emerald-500',                                                                                         label: 'Paid',           icon: <Wallet className="w-3 h-3" /> },
+    not_calculated: { cls: 'bg-surface-tertiary text-content border border-border-strong shadow-[0_2px_0_0_var(--border-strong,#475569)]', label: 'Not calculated', icon: <DollarSign className="w-3 h-3" /> },
+    pending:        { cls: 'bg-orange-500 text-white border border-orange-700 shadow-[0_2px_0_0_#c2410c]',                                label: 'Pending',        icon: <Clock className="w-3 h-3" /> },
+    approved:       { cls: 'bg-emerald-500 text-white border border-emerald-700 shadow-[0_2px_0_0_#047857]',                              label: 'Approved',       icon: <CheckCircle2 className="w-3 h-3" /> },
+    paid:           { cls: 'bg-content text-surface border border-content shadow-[0_2px_0_0_#000]',                                       label: 'Paid',           icon: <Wallet className="w-3 h-3" /> },
   };
   const v = m[status] || m.not_calculated;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${v.cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold whitespace-nowrap ${v.cls}`}>
       {v.icon}{v.label}
     </span>
   );

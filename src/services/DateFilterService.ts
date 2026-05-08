@@ -1,5 +1,6 @@
 import { VideoSubmission } from '../types';
 import { DateFilterType } from '../components/DateRangeFilter';
+import { estToday } from '../utils/estTime';
 
 interface DateRange {
   startDate: Date;
@@ -11,8 +12,11 @@ class DateFilterService {
    * Get date range based on filter type
    */
   static getDateRange(filterType: DateFilterType, customRange?: DateRange, submissions?: VideoSubmission[]): DateRange {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // EST-pinned today so date ranges line up with the EST calendar day
+    // regardless of where the user's browser is. `now` mirrors today for
+    // the existing month-based math below (mtd / lastmonth / ytd).
+    const today = estToday();
+    const now = today;
     
     switch (filterType) {
       case 'today':

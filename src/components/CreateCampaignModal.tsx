@@ -143,10 +143,16 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     try {
       const members = await OrganizationService.getOrgMembers(currentOrgId);
       console.log('✅ Loaded all members:', members.length);
-      
-      // Filter to only show creators (not admin/owner team members)
-      const creators = members.filter(m => m.role === 'creator');
-      console.log('📊 Filtered creators:', creators.length);
+
+      // Project-scoped: only show creators explicitly assigned to the current
+      // project via member.creatorProjectIds. Without this scope check the
+      // picker leaks every creator from every project in the org.
+      const creators = members.filter(m =>
+        m.role === 'creator' &&
+        Array.isArray(m.creatorProjectIds) &&
+        m.creatorProjectIds.includes(currentProjectId)
+      );
+      console.log('📊 Filtered creators (this project):', creators.length);
       
       if (creators.length > 0) {
         console.log('👥 Creator details:', creators.map(m => ({ 

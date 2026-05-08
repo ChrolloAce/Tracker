@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Flame, ExternalLink } from 'lucide-react';
+import { Clock, Flame } from 'lucide-react';
 import { VideoSubmission } from '../../types';
 
 interface VideoSidebarProps {
@@ -140,16 +140,8 @@ export const VideoSidebar: React.FC<VideoSidebarProps> = ({
           )}
         </div>
 
-        {/* View on Platform Button */}
-        <a
-          href={video.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-surface-hover hover:bg-surface-active border border-border hover:border-border-strong transition-all text-sm font-medium text-content"
-        >
-          <ExternalLink className="w-4 h-4" />
-          View on Platform
-        </a>
+        {/* "View on Platform" removed — the brutalism `Go to video` button at
+            the top of the analytics modal already covers this. */}
       </div>
     </div>
   );

@@ -2,18 +2,51 @@ import React, { useState, useMemo } from 'react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { ChevronDown, TrendingUp, Eye, Heart, MessageCircle, Share2, Users } from 'lucide-react';
+import { DateFilterType } from './DateRangeFilter';
+import DateFilterService from '../services/DateFilterService';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
 
 interface TopCreatorsListProps {
   submissions: VideoSubmission[];
   onCreatorClick?: (username: string) => void;
+  /** Optional explicit date range. Takes precedence over dateFilter/customRange. */
+  dateRangeStart?: Date | null;
+  dateRangeEnd?: Date;
+  /** Falls back to deriving the range from these when explicit dates aren't supplied. */
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos' | 'followers';
 
-const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreatorClick }) => {
+const TopCreatorsList: React.FC<TopCreatorsListProps> = ({
+  submissions,
+  onCreatorClick,
+  dateRangeStart,
+  dateRangeEnd,
+  dateFilter,
+  customRange,
+}) => {
   const [topCount, setTopCount] = useState(10);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Resolve the effective date range. Explicit dateRangeStart/dateRangeEnd
+  // win; otherwise derive from dateFilter/customRange via DateFilterService
+  // (matches how the rest of the dashboard converts a filter enum to dates).
+  // When no range info is provided at all we fall back to lifetime sums so
+  // existing callers that don't pass any of these props don't regress.
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    if (dateRangeEnd !== undefined) {
+      return { rangeStart: dateRangeStart ?? null, rangeEnd: dateRangeEnd };
+    }
+    if (dateFilter && dateFilter !== 'all') {
+      const r = DateFilterService.getDateRange(dateFilter, customRange);
+      return { rangeStart: r.startDate, rangeEnd: r.endDate };
+    }
+    // No date scoping supplied — use lifetime by passing a null start and now.
+    return { rangeStart: null, rangeEnd: new Date() };
+  }, [dateRangeStart, dateRangeEnd, dateFilter, customRange]);
 
   // Calculate aggregated creator stats
   const creatorStats = useMemo(() => {
@@ -67,10 +100,12 @@ const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreato
       }
 
       const creator = creatorMap.get(accountKey)!;
-      creator.totalViews += video.views || 0;
-      creator.totalLikes += video.likes || 0;
-      creator.totalComments += video.comments || 0;
-      creator.totalShares += video.shares || 0;
+      // Snapshot-aware, date-range-clamped sums. Only `views` carries spark
+      // (paid-ad) attribution — the other metrics pass excludeSparked: false.
+      creator.totalViews += computePerVideoMetricInRange(video, 'views', rangeStart, rangeEnd, { excludeSparked: true });
+      creator.totalLikes += computePerVideoMetricInRange(video, 'likes', rangeStart, rangeEnd, { excludeSparked: false });
+      creator.totalComments += computePerVideoMetricInRange(video, 'comments', rangeStart, rangeEnd, { excludeSparked: false });
+      creator.totalShares += computePerVideoMetricInRange(video, 'shares', rangeStart, rangeEnd, { excludeSparked: false });
       creator.videoCount += 1;
     });
 
@@ -83,7 +118,7 @@ const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreato
     });
 
     return Array.from(creatorMap.values());
-  }, [submissions]);
+  }, [submissions, rangeStart, rangeEnd]);
 
   // Sort creators by selected metric
   const sortedCreators = useMemo(() => {

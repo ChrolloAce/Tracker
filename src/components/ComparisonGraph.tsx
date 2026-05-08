@@ -4,18 +4,30 @@ import { TrendingUp, BarChart2, Activity, Info } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import DataAggregationService, { IntervalType } from '../services/DataAggregationService';
 import DayVideosModal from './DayVideosModal';
+import { generateSparklineData } from './kpi/kpiDataProcessing';
+import { DateFilterType } from './DateRangeFilter';
 
 interface ComparisonGraphProps {
   submissions: VideoSubmission[];
   granularity?: 'hour' | 'day' | 'week' | 'month' | 'year';
   dateRange?: { startDate: Date; endDate: Date }; // Optional: use filter's date range instead of deriving from submissions
+  dateFilter?: DateFilterType; // Date filter type, used by generateSparklineData for PP comparisons
   onVideoClick?: (video: VideoSubmission) => void;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 type ChartType = 'line' | 'area' | 'bar';
 
-const ComparisonGraph = React.memo<ComparisonGraphProps>(({ submissions, granularity = 'week', dateRange, onVideoClick }) => {
+// Metrics natively supported by generateSparklineData. 'engagement' is derived
+// from per-interval likes/comments/views (matching UnifiedMetricsChart).
+type SparkMetric = 'views' | 'likes' | 'comments' | 'shares' | 'videos';
+
+const toSparkMetric = (m: MetricType): SparkMetric | null => {
+  if (m === 'engagement') return null;
+  return m;
+};
+
+const ComparisonGraph = React.memo<ComparisonGraphProps>(({ submissions, granularity = 'week', dateRange, dateFilter = 'all', onVideoClick }) => {
   const [metric1, setMetric1] = useState<MetricType>('views');
   const [metric2, setMetric2] = useState<MetricType>('likes');
   const [chartType, setChartType] = useState<ChartType>('bar');
@@ -31,27 +43,6 @@ const ComparisonGraph = React.memo<ComparisonGraphProps>(({ submissions, granula
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toFixed(0);
-  }, []);
-
-  // Get metric value from video
-  const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
-    switch (metric) {
-      case 'views':
-        return video.views || 0;
-      case 'likes':
-        return video.likes || 0;
-      case 'comments':
-        return video.comments || 0;
-      case 'shares':
-        return video.shares || 0;
-      case 'engagement':
-        const totalEngagement = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
-        return video.views > 0 ? (totalEngagement / video.views) * 100 : 0;
-      case 'videos':
-        return 1;
-      default:
-        return 0;
-    }
   }, []);
 
   // Get metric label
@@ -93,85 +84,91 @@ const ComparisonGraph = React.memo<ComparisonGraphProps>(({ submissions, granula
     setIsDayModalOpen(true);
   }, [submissions]);
 
-  // Aggregate data by selected granularity
+  // Aggregate data by selected granularity using the SAME pipeline as the
+  // unified chart / KPI cards (generateSparklineData). This handles snapshot-
+  // delta growth per interval, new uploads in the period, and per-video caps —
+  // far more accurate than summing lifetime video.views.
   const chartData = useMemo(() => {
     if (submissions.length === 0 && !dateRange) return [];
-    
-    // Determine date range: use provided dateRange or derive from submissions
-    let startDate: Date;
-    let endDate: Date;
-    
-    if (dateRange) {
-      // Use the filter's date range to show full range even if no data
-      startDate = new Date(dateRange.startDate);
-      endDate = new Date(dateRange.endDate);
-    } else {
-      // Fallback: derive from submissions (old behavior)
-      if (submissions.length === 0) return [];
-      const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
-      startDate = new Date(Math.min(...dates));
-      endDate = new Date(Math.max(...dates));
-    }
-    
-    console.log(`📊 [ComparisonGraph] Generating chart for ${submissions.length} videos from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()} with ${granularity} granularity`);
-    
-    // Use granularity as interval type
+
+    const dateRangeStart = dateRange ? new Date(dateRange.startDate) : null;
+    const dateRangeEnd = dateRange ? new Date(dateRange.endDate) : new Date();
     const intervalType = granularity as IntervalType;
-    
-    // Generate intervals using DataAggregationService
-    const intervals = DataAggregationService.generateIntervals(
-      { startDate, endDate },
-      intervalType
-    );
-    
-    console.log(`📊 [ComparisonGraph] Generated ${intervals.length} intervals`);
-    
-    // Aggregate data for each interval
-    const data = intervals.map(interval => {
-      let metric1Value = 0;
-      let metric2Value = 0;
-      
-      submissions.forEach(video => {
-        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
-        
-        // Check if video is in this interval
-        if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
-          metric1Value += getMetricValue(video, metric1);
-          metric2Value += getMetricValue(video, metric2);
-        }
-      });
-      
-      // Format date label based on granularity
-      const dateLabel = DataAggregationService.formatIntervalLabel(interval.startDate, intervalType);
-      
+
+    // Determine which underlying spark metrics we need. 'engagement' is derived
+    // from likes+comments / views (matching UnifiedMetricsChart's formula).
+    const needed = new Set<SparkMetric>();
+    [metric1, metric2].forEach(m => {
+      const sm = toSparkMetric(m);
+      if (sm) needed.add(sm);
+    });
+    if (metric1 === 'engagement' || metric2 === 'engagement') {
+      needed.add('views');
+      needed.add('likes');
+      needed.add('comments');
+    }
+    // Need *something* to provide the interval skeleton.
+    if (needed.size === 0) needed.add('videos');
+
+    const sparkResults: Partial<Record<SparkMetric, ReturnType<typeof generateSparklineData>>> = {};
+    needed.forEach(metric => {
+      sparkResults[metric] = generateSparklineData(
+        metric,
+        submissions,
+        undefined,
+        dateRangeStart,
+        dateRangeEnd,
+        dateFilter,
+        intervalType
+      );
+    });
+
+    const reference =
+      sparkResults.views ||
+      sparkResults.likes ||
+      sparkResults.comments ||
+      sparkResults.shares ||
+      sparkResults.videos;
+    if (!reference) return [];
+
+    // Build a per-timestamp lookup for each metric so we can merge into the
+    // recharts row shape. Match by timestamp (intervals share the same
+    // skeleton, so this is a straight join).
+    const valueAt = (m: MetricType, idx: number): number => {
+      if (m === 'engagement') {
+        const v = sparkResults.views?.data[idx]?.value || 0;
+        const e = (sparkResults.likes?.data[idx]?.value || 0) + (sparkResults.comments?.data[idx]?.value || 0);
+        return v > 0 ? (e / v) * 100 : 0;
+      }
+      const sm = toSparkMetric(m);
+      if (!sm) return 0;
+      return sparkResults[sm]?.data[idx]?.value || 0;
+    };
+
+    const data = reference.data.map((point, idx) => {
+      const dateLabel = DataAggregationService.formatIntervalLabel(point.interval.startDate, intervalType);
       return {
         date: dateLabel,
-        metric1: metric1Value,
-        metric2: metric2Value,
-        timestamp: interval.timestamp,
-        interval: interval // Include interval for filtering videos
+        metric1: valueAt(metric1, idx),
+        metric2: valueAt(metric2, idx),
+        timestamp: point.timestamp,
+        interval: point.interval,
       };
     });
-    
+
     // For large date ranges (like "all time" or "ytd"), trim leading and trailing empty intervals
     // but keep empty intervals in between to show gaps in data
     if (data.length > 12) { // Only trim if we have more than 12 intervals (e.g., 12+ months)
-      // Find first non-zero interval
-      let firstDataIndex = data.findIndex(d => d.metric1 > 0 || d.metric2 > 0);
-      // Find last non-zero interval
-      let lastDataIndex = data.length - 1 - [...data].reverse().findIndex(d => d.metric1 > 0 || d.metric2 > 0);
-      
+      const firstDataIndex = data.findIndex(d => d.metric1 > 0 || d.metric2 > 0);
+      const lastDataIndex = data.length - 1 - [...data].reverse().findIndex(d => d.metric1 > 0 || d.metric2 > 0);
+
       if (firstDataIndex !== -1 && lastDataIndex !== -1) {
-        // Trim leading and trailing empty intervals
-        const trimmedData = data.slice(firstDataIndex, lastDataIndex + 1);
-        console.log(`📊 [ComparisonGraph] Trimmed ${data.length - trimmedData.length} empty intervals (${firstDataIndex} leading, ${data.length - lastDataIndex - 1} trailing)`);
-        return trimmedData;
+        return data.slice(firstDataIndex, lastDataIndex + 1);
       }
     }
-    
-    console.log(`📊 [ComparisonGraph] Returning ${data.length} data points`);
+
     return data;
-  }, [submissions, metric1, metric2, granularity, dateRange]);
+  }, [submissions, metric1, metric2, granularity, dateRange, dateFilter]);
 
   // Metric colors - matching your theme
   const metric1Color = '#10b981'; // Emerald green for metric 1 (matches activity theme)

@@ -218,15 +218,34 @@ export class VideoStorageService {
       const existingData = existingDocs.get(videoDocId);
 
       if (existingData) {
-        // VIDEO EXISTS - Update metrics only
+        // VIDEO EXISTS - Update metrics only.
+        // Lifetime metrics are clamped monotone-non-decreasing against the
+        // current doc value so a bad scrape (apify returning a stale or
+        // glitched recount) cannot regress the headline. The snapshot below
+        // still records the raw scraped value as historical truth.
         const updateData: any = {
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0,
-          saves: video.saves || 0,
+          views: Math.max(existingData.views || 0, video.views || 0),
+          likes: Math.max(existingData.likes || 0, video.likes || 0),
+          comments: Math.max(existingData.comments || 0, video.comments || 0),
+          shares: Math.max(existingData.shares || 0, video.shares || 0),
+          saves: Math.max(existingData.saves || 0, video.saves || 0),
           lastRefreshed: snapshotTime
         };
+
+        // Duplicate-snapshot guard: if the scrape returned the same five
+        // metrics the doc already holds AND the previous refresh was less
+        // than 10 minutes ago, this is a same-cycle re-run (client+server
+        // races, queue retries, or cron overlap). Skip writing a redundant
+        // snapshot so the chart doesn't get adjacent +0 points.
+        const lastRefreshedMs = existingData.lastRefreshed?.toMillis?.() ?? 0;
+        const sameMetrics =
+          (existingData.views || 0) === (video.views || 0) &&
+          (existingData.likes || 0) === (video.likes || 0) &&
+          (existingData.comments || 0) === (video.comments || 0) &&
+          (existingData.shares || 0) === (video.shares || 0) &&
+          (existingData.saves || 0) === (video.saves || 0);
+        const recentlyRefreshed = Date.now() - lastRefreshedMs < 10 * 60 * 1000;
+        const skipSnapshot = sameMetrics && recentlyRefreshed;
 
         if (!existingData.uploaderHandle) {
           updateData.uploaderHandle = video.accountUsername || account.username;
@@ -248,21 +267,25 @@ export class VideoStorageService {
 
         batch.update(videoRef, updateData);
 
-        const snapshotRef = videoRef.collection('snapshots').doc();
-        batch.set(snapshotRef, {
-          id: snapshotRef.id,
-          videoId: video.videoId,
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0,
-          saves: video.saves || 0,
-          capturedAt: snapshotTime,
-          timestamp: snapshotTime,
-          capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
-          isInitialSnapshot: false
-        });
-        console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
+        if (skipSnapshot) {
+          console.log(`    ⏭️  Skipped duplicate snapshot for ${video.videoId} (unchanged metrics within 10min)`);
+        } else {
+          const snapshotRef = videoRef.collection('snapshots').doc();
+          batch.set(snapshotRef, {
+            id: snapshotRef.id,
+            videoId: video.videoId,
+            views: video.views || 0,
+            likes: video.likes || 0,
+            comments: video.comments || 0,
+            shares: video.shares || 0,
+            saves: video.saves || 0,
+            capturedAt: snapshotTime,
+            timestamp: snapshotTime,
+            capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
+            isInitialSnapshot: false
+          });
+          console.log(`    🔄 Updated video ${video.videoId} + created refresh snapshot`);
+        }
       } else {
         // Video doesn't exist
         if (isRefreshOnly) {

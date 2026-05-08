@@ -94,6 +94,9 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
     }
   };
 
+  // `campaign.leaderboard` is recomputed by `CampaignService.updateLeaderboard`
+  // using snapshot-bounded scores (see service for math). Score values shown
+  // here therefore already respect the campaign's start/end window.
   const topPerformers = campaign.leaderboard?.slice(0, 3) || [];
   const myParticipant = campaign.participants.find(p => p.creatorId === user?.uid);
   const isActive = campaign.status === 'active';
@@ -209,6 +212,11 @@ const CampaignProgressCard: React.FC<CampaignProgressCardProps> = ({
               <TrendingUp className="w-3 h-3" />
               Views
             </div>
+            {/* `campaign.totalViews` is the lifetime / denormalized rollup
+                stored on the campaign doc — this card doesn't load videos so
+                it can't recompute snapshot-bounded math. May differ slightly
+                from the dashboard or campaign details page (which DO recompute
+                live against the campaign's start/end window). */}
             <div className="text-white font-bold">{formatNumber(campaign.totalViews)}</div>
           </div>
           <div className="bg-orange-500/10 rounded-lg p-3 text-center border border-orange-500/20">

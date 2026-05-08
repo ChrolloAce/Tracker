@@ -81,6 +81,54 @@ service cloud.firestore {
     function getUserRole(orgId) {
       return getOrgMember(orgId).role;
     }
+
+    // ==================== PROJECT-SCOPED ACCESS ====================
+    //
+    // Enforces per-project membership for restricted accounts:
+    //  - Owners / admins: full access to every project in their org.
+    //  - Creators: only projects in their `members/{uid}.creatorProjectIds`.
+    //  - Plain `member` role: if `assignedProjects` is set and non-empty, only
+    //    those projects are reachable. If unset/empty, treat as full access
+    //    (backwards-compatible with existing org members who pre-date this gate).
+    //  - Demo org: bypass (public read access stays open).
+    //
+    // Use this in place of `canReadOrg(orgId)` inside project subcollections so
+    // a member who shouldn't see project X can't read its tracked accounts,
+    // videos, snapshots, creators, payouts, etc. The top-level
+    // `match /projects/{projectId}` doc itself stays permissive so the project
+    // switcher's list query continues to function (UI filters client-side).
+    function canReadProject(orgId, projectId) {
+      return isDemoOrg(orgId) || (
+        isOrgMember(orgId) && (
+          // admins and owners always pass
+          getOrgMember(orgId).role in ['admin', 'owner'] ||
+          // creators: must have project in creatorProjectIds
+          (
+            getOrgMember(orgId).role == 'creator' &&
+            'creatorProjectIds' in getOrgMember(orgId) &&
+            projectId in getOrgMember(orgId).creatorProjectIds
+          ) ||
+          // restricted members: assignedProjects must include this project,
+          // OR the member has no restriction set (legacy behavior).
+          (
+            getOrgMember(orgId).role == 'member' &&
+            (
+              !('assignedProjects' in getOrgMember(orgId)) ||
+              getOrgMember(orgId).assignedProjects.size() == 0 ||
+              projectId in getOrgMember(orgId).assignedProjects
+            )
+          )
+        )
+      );
+    }
+
+    function canWriteProject(orgId, projectId) {
+      return canReadProject(orgId, projectId) && canWriteOrg(orgId);
+    }
+
+    function canManageProject(orgId, projectId) {
+      return canReadProject(orgId, projectId) && canManageOrg(orgId);
+    }
     
     // ==================== USER ACCOUNTS ====================
     
@@ -264,27 +312,35 @@ service cloud.firestore {
       // ==================== PROJECTS ====================
       
       match /projects/{projectId} {
-        // Members can read their org's projects
+        // Members can read their org's project list. Kept at org-level (not
+        // project-level) on purpose: the project switcher loads ALL project
+        // docs and filters client-side via filterByAssignedProjects. Per-doc
+        // gating here would fail the list query for restricted members. The
+        // assignedProjects gate is enforced on every SUBCOLLECTION read so
+        // restricted members can see the project name in the switcher but
+        // can't actually load its data.
         allow read: if canReadOrg(orgId);
-        
-        // Members can create projects
-        allow create: if canWriteOrg(orgId) 
+
+        // Members (admins in practice) can create projects. The new project
+        // doesn't exist in any member.creatorProjectIds yet, so we keep this
+        // at org-level write.
+        allow create: if canWriteOrg(orgId)
           && request.resource.data.orgId == orgId
           && request.resource.data.createdBy == request.auth.uid;
         
         // Admins can update any project fields
         // Members can only update stat counters (linkCount, videoCount, etc.) when creating resources
-        allow update: if canManageOrg(orgId)
-          || (canWriteOrg(orgId) && onlyUpdatingCounters());
+        allow update: if canManageProject(orgId, projectId)
+          || (canWriteProject(orgId, projectId) && onlyUpdatingCounters());
         
         // Only admins can delete projects
-        allow delete: if canManageOrg(orgId);
+        allow delete: if canManageProject(orgId, projectId);
         
         // ==================== PROJECT STATS ====================
         
         match /stats/{statId} {
-          allow read: if canReadOrg(orgId);
-          allow write: if canManageOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
+          allow write: if canManageProject(orgId, projectId);
         }
         
         // ==================== PROJECT TRACKED ACCOUNTS ====================
@@ -292,26 +348,26 @@ service cloud.firestore {
         match /trackedAccounts/{accountId} {
           // All org members can read tracked accounts
           // App logic filters accounts for creators based on creatorLinks
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // All members can create accounts
           // Creators can also create accounts (for linking their own social accounts)
-          allow create: if canWriteOrg(orgId) 
+          allow create: if canWriteProject(orgId, projectId) 
             && request.resource.data.addedBy == request.auth.uid;
           
           // Only admins can update/delete accounts
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
           
           match /videos/{videoId} {
             // All org members can read videos
             // App logic filters videos for creators based on linked accounts
-            allow read: if canReadOrg(orgId);
+            allow read: if canReadProject(orgId, projectId);
             
             // All members can create videos (but not creators)
-            allow create: if canWriteOrg(orgId) && getUserRole(orgId) != 'creator';
+            allow create: if canWriteProject(orgId, projectId) && getUserRole(orgId) != 'creator';
             
             // Only admins can update/delete videos
-            allow update, delete: if canManageOrg(orgId);
+            allow update, delete: if canManageProject(orgId, projectId);
           }
         }
         
@@ -319,18 +375,18 @@ service cloud.firestore {
         
         match /links/{linkId} {
           // All members can read
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // All members can create links
-          allow create: if canWriteOrg(orgId) 
+          allow create: if canWriteProject(orgId, projectId) 
             && request.resource.data.createdBy == request.auth.uid;
           
           // Only admins can update/delete links
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
           
           match /clicks/{clickId} {
             // All members can read analytics
-            allow read: if canReadOrg(orgId);
+            allow read: if canReadProject(orgId, projectId);
             
             // Public API can create click events (via redirect handler)
             allow create: if true;
@@ -344,28 +400,28 @@ service cloud.firestore {
         
         match /videos/{videoId} {
           // All members can read
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // All members can create videos
-          allow create: if canWriteOrg(orgId);
+          allow create: if canWriteProject(orgId, projectId);
           
           // Only admins can update/delete videos
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
           
           // ==================== VIDEO SNAPSHOTS ====================
           
           match /snapshots/{snapshotId} {
             // All members can read snapshots
-            allow read: if canReadOrg(orgId);
+            allow read: if canReadProject(orgId, projectId);
             
             // All members can create snapshots (for manual refresh)
             // Cloud Functions can also create (via Admin SDK, bypasses rules)
-            allow create: if canWriteOrg(orgId);
+            allow create: if canWriteProject(orgId, projectId);
             
             // Only admins can delete snapshots (when deleting parent video)
             // Snapshots cannot be updated (immutable after creation)
             allow update: if false;
-            allow delete: if canManageOrg(orgId);
+            allow delete: if canManageProject(orgId, projectId);
           }
         }
         
@@ -373,92 +429,92 @@ service cloud.firestore {
         
         match /trackingRules/{ruleId} {
           // All members can read rules
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // All members can create rules
-          allow create: if canWriteOrg(orgId) 
+          allow create: if canWriteProject(orgId, projectId) 
             && request.resource.data.organizationId == orgId
             && request.resource.data.projectId == projectId
             && request.resource.data.createdBy == request.auth.uid;
           
           // Only admins can update/delete rules
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
         }
         
         // Alternative path for rules (same as trackingRules)
         match /rules/{ruleId} {
           // All members can read rules
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // All members can create rules
-          allow create: if canWriteOrg(orgId);
+          allow create: if canWriteProject(orgId, projectId);
           
           // Only admins can update/delete rules
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
         }
         
         // ==================== USER PREFERENCES (PER PROJECT) ====================
         
         match /userPreferences/{userId} {
           // Users can read their own preferences
-          allow read: if isOwner(userId) && canReadOrg(orgId);
+          allow read: if isOwner(userId) && canReadProject(orgId, projectId);
           
           // Users can write their own preferences
-          allow write: if isOwner(userId) && canWriteOrg(orgId);
+          allow write: if isOwner(userId) && canWriteProject(orgId, projectId);
         }
         
         // ==================== CAMPAIGNS ====================
         
         match /campaigns/{campaignId} {
           // All members can read campaigns
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // Only admins/managers can create campaigns
-          allow create: if canManageOrg(orgId) 
+          allow create: if canManageProject(orgId, projectId) 
             && request.resource.data.organizationId == orgId
             && request.resource.data.projectId == projectId
             && request.resource.data.createdBy == request.auth.uid;
           
           // Only admins/managers can update/delete campaigns
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
           
           // ==================== CAMPAIGN RESOURCES ====================
           
           match /resources/{resourceId} {
             // All members can read resources
-            allow read: if canReadOrg(orgId);
+            allow read: if canReadProject(orgId, projectId);
             
             // Admins can create resources
-            allow create: if canManageOrg(orgId) 
+            allow create: if canManageProject(orgId, projectId) 
               && request.resource.data.uploadedBy == request.auth.uid;
             
             // Admins can update resources (for download count tracking)
             // Also allow anyone to increment downloadCount
-            allow update: if canManageOrg(orgId)
-              || (canReadOrg(orgId) && 
+            allow update: if canManageProject(orgId, projectId)
+              || (canReadProject(orgId, projectId) && 
                   request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount']));
             
             // Only admins can delete resources
-            allow delete: if canManageOrg(orgId);
+            allow delete: if canManageProject(orgId, projectId);
           }
           
           // ==================== CAMPAIGN VIDEO SUBMISSIONS ====================
           
           match /videoSubmissions/{submissionId} {
             // All members can read video submissions
-            allow read: if canReadOrg(orgId);
+            allow read: if canReadProject(orgId, projectId);
             
             // Campaign participants can create submissions
             // Admins can also create submissions
-            allow create: if canWriteOrg(orgId) 
+            allow create: if canWriteProject(orgId, projectId) 
               && request.resource.data.submittedBy == request.auth.uid;
             
             // Only admins or the submitter can update their submissions
-            allow update: if canManageOrg(orgId) 
+            allow update: if canManageProject(orgId, projectId) 
               || (isSignedIn() && resource.data.submittedBy == request.auth.uid);
             
             // Only admins can delete submissions
-            allow delete: if canManageOrg(orgId);
+            allow delete: if canManageProject(orgId, projectId);
           }
         }
         
@@ -466,7 +522,7 @@ service cloud.firestore {
         
         match /linkClicks/{clickId} {
           // All members can read aggregated click data
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // Public API or system can create clicks
           allow create: if true;
@@ -480,75 +536,86 @@ service cloud.firestore {
         match /creatorLinks/{linkId} {
           // All org members can read creator links (for viewing who's linked to accounts)
           // Note: resource.data check only works for get, not list queries
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // Admins can create/manage creator links
           // Creators can create links for themselves (linking their own accounts)
-          allow create: if canManageOrg(orgId) 
+          allow create: if canManageProject(orgId, projectId) 
             || (isSignedIn() && request.resource.data.creatorId == request.auth.uid);
           
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
         }
         
         // ==================== PROJECT PAYOUT STRUCTURES ====================
 
         match /payoutStructures/{structureId} {
           // All org members can read payout structures
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
 
           // Only admins can create/update/delete payout structures
-          allow write: if canManageOrg(orgId);
+          allow write: if canManageProject(orgId, projectId);
         }
 
         // ==================== PROJECT PAYOUT CAMPAIGNS ====================
 
         match /payoutCampaigns/{campaignId} {
           // All org members can read payout campaigns
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
 
           // Only admins can create/update/delete payout campaigns
-          allow write: if canManageOrg(orgId);
+          allow write: if canManageProject(orgId, projectId);
         }
         
         // ==================== DELETED VIDEOS BLACKLIST ====================
         
         match /deletedVideos/{platformVideoId} {
           // All org members can read blacklist (for UI checks)
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // Admins can write to blacklist (when deleting videos)
           // Also allow system/cron to check blacklist
-          allow create: if canManageOrg(orgId);
-          allow delete: if canManageOrg(orgId);
+          allow create: if canManageProject(orgId, projectId);
+          allow delete: if canManageProject(orgId, projectId);
         }
         
+        // ==================== PROJECT CREATOR LABELS ====================
+        //
+        // Per-project taxonomy for tagging creators (UGC / Influencer / Faceless
+        // and any custom label the admin defines). Read by all members so the
+        // dashboard Labels filter and CreatorsTable badges can render; only
+        // admins can mutate.
+        match /creatorLabels/{labelId} {
+          allow read: if canReadProject(orgId, projectId);
+          allow create, update, delete: if canManageProject(orgId, projectId);
+        }
+
         // ==================== PROJECT CREATOR PROFILES ====================
-        
+
         match /creators/{creatorId} {
           // Admins can read all creator profiles in this project
           // All org members can read creator profiles (for viewing creator info)
           // Creators can read their own profile in this project
-          allow read: if canReadOrg(orgId);
+          allow read: if canReadProject(orgId, projectId);
           
           // Admins can write any creator profile
           // Users can create their own creator profile (during invitation acceptance)
-          allow create: if canManageOrg(orgId) || (isSignedIn() && request.auth.uid == creatorId);
+          allow create: if canManageProject(orgId, projectId) || (isSignedIn() && request.auth.uid == creatorId);
           
           // Only admins can update/delete creator profiles
-          allow update, delete: if canManageOrg(orgId);
+          allow update, delete: if canManageProject(orgId, projectId);
           
           // ==================== PROJECT CREATOR PAYOUTS ====================
           
           match /payouts/{payoutId} {
             // Admins can read all payouts
             // Creators can read their own payouts (using resource.data for individual reads)
-            allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && resource != null && resource.data.creatorId == request.auth.uid);
+            allow read: if canManageProject(orgId, projectId) || (isOrgMember(orgId) && resource != null && resource.data.creatorId == request.auth.uid);
             
             // Allow list operations for all org members (filtered by app logic)
-            allow list: if canReadOrg(orgId);
+            allow list: if canReadProject(orgId, projectId);
             
             // Only admins can write payouts
-            allow write: if canManageOrg(orgId);
+            allow write: if canManageProject(orgId, projectId);
           }
         }
       }

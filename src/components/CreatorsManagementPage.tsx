@@ -1,8 +1,9 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, memo } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, memo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember } from '../types/firestore';
+import { OrgMember, CreatorLabel } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
+import CreatorLabelService from '../services/CreatorLabelService';
 import CreatorShareLinkService from '../services/CreatorShareLinkService';
 import { DateFilterType } from './DateRangeFilter';
 import { useCreatorsData } from '../hooks/useCreatorsData';
@@ -20,6 +21,8 @@ import CreatorPaymentPlanModal from './CreatorPaymentPlanModal';
 import CreatorActivitySection from './CreatorActivitySection';
 import { CreatorDirectVideoSubmission } from './CreatorDirectVideoSubmission';
 import CreatorsTable from './creators/CreatorsTable';
+import ManageCreatorLabelsModal from './creators/ManageCreatorLabelsModal';
+import AssignCreatorProjectsModal from './creators/AssignCreatorProjectsModal';
 
 export interface CreatorsManagementPageRef {
   openInviteModal: () => void;
@@ -28,6 +31,9 @@ export interface CreatorsManagementPageRef {
 
 interface CreatorsManagementPageProps {
   dateFilter?: DateFilterType;
+  /** Header-level search query (rendered by the parent dashboard header,
+   *  next to the date filter). Filters by display name, email, or handle. */
+  searchQuery?: string;
   organizationId?: string;
   projectId?: string;
   onRequiresPaidPlan?: (context: string) => boolean;
@@ -38,7 +44,7 @@ interface CreatorsManagementPageProps {
  * Admin interface to manage creators, link accounts, and track payouts
  */
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
-  const { dateFilter = 'all', organizationId, projectId, onRequiresPaidPlan } = props;
+  const { dateFilter = 'all', searchQuery = '', organizationId, projectId, onRequiresPaidPlan } = props;
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   const currentOrgId = organizationId || authOrgId;
@@ -57,6 +63,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     calculatedEarnings,
     creatorTotalViews,
     videoCounts,
+    creatorAccounts,
     isAdmin,
     loading,
     loadData,
@@ -77,6 +84,26 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [paymentPlanCreator, setPaymentPlanCreator] = useState<OrgMember | null>(null);
   const [editingProfileCreator, setEditingProfileCreator] = useState<OrgMember | null>(null);
   const [addVideosForCreator, setAddVideosForCreator] = useState<OrgMember | null>(null);
+  const [labelingCreator, setLabelingCreator] = useState<OrgMember | null>(null);
+  const [assigningProjectsCreator, setAssigningProjectsCreator] = useState<OrgMember | null>(null);
+  const [labels, setLabels] = useState<CreatorLabel[]>([]);
+
+  // Reset to page 1 whenever the header search query changes so results from
+  // the new query don't land on a stale page index.
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+
+  // Load labels for the project (seeds UGC/Influencer/Faceless on first read).
+  const loadLabels = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || !user?.uid) return;
+    try {
+      const list = await CreatorLabelService.listLabels(currentOrgId, currentProjectId, user.uid);
+      setLabels(list);
+    } catch (err) {
+      console.error('Failed to load creator labels:', err);
+    }
+  }, [currentOrgId, currentProjectId, user?.uid]);
+
+  useEffect(() => { loadLabels(); }, [loadLabels]);
 
   // Keyboard shortcut - Press Space to add creator
   useEffect(() => {
@@ -220,10 +247,24 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     return sum + (calculatedEarnings.get(p.id) || 0);
   }, 0);
   
-  // Pagination calculations
-  const totalPages = Math.ceil(creators.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCreators = creators.slice(startIndex, startIndex + itemsPerPage);
+  // Apply search filter against display name + email + linked-account handles.
+  // Including handles makes "@username" lookups work even when the creator's
+  // display name doesn't contain the term.
+  const q = searchQuery.trim().toLowerCase();
+  const filteredCreators = q
+    ? creators.filter(c => {
+        if ((c.displayName || '').toLowerCase().includes(q)) return true;
+        if ((c.email || '').toLowerCase().includes(q)) return true;
+        const accs = creatorAccounts.get(c.userId) || [];
+        return accs.some(a => (a.username || '').toLowerCase().includes(q));
+      })
+    : creators;
+
+  // Pagination calculations (against the filtered list)
+  const totalPages = Math.max(1, Math.ceil(filteredCreators.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
+  const paginatedCreators = filteredCreators.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -307,16 +348,18 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         />
       ) : (
         <CreatorsTable
-          creators={creators}
+          creators={filteredCreators}
           paginatedCreators={paginatedCreators}
           creatorProfiles={creatorProfiles}
+          creatorAccounts={creatorAccounts}
+          labels={labels}
           calculatedEarnings={calculatedEarnings}
           creatorTotalViews={creatorTotalViews}
           videoCounts={videoCounts}
           totalEarnings={totalEarnings}
           selectedCreatorIds={selectedCreatorIds}
           isAdmin={isAdmin}
-          currentPage={currentPage}
+          currentPage={safePage}
           totalPages={totalPages}
           itemsPerPage={itemsPerPage}
           bulkActionLoading={bulkActionLoading}
@@ -352,6 +395,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
               alert('Failed to update setting. Check console for details.');
             }
           }}
+          onManageLabels={(creator) => setLabelingCreator(creator)}
+          onManageProjects={(creator) => setAssigningProjectsCreator(creator)}
           onPageChange={setCurrentPage}
           onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
         />
@@ -457,6 +502,34 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
             loadData();
           }}
           creator={paymentPlanCreator}
+        />
+      )}
+
+      {/* Manage Labels Modal — assign UGC/Influencer/Faceless or any custom tag
+          to this creator. Modal also lets the admin create/delete labels inline. */}
+      {labelingCreator && currentOrgId && currentProjectId && user?.uid && (
+        <ManageCreatorLabelsModal
+          orgId={currentOrgId}
+          projectId={currentProjectId}
+          userId={user.uid}
+          creator={labelingCreator}
+          initialLabelIds={creatorProfiles.get(labelingCreator.userId)?.labelIds || []}
+          onClose={() => setLabelingCreator(null)}
+          onSaved={async () => {
+            await loadLabels();
+            await loadData();
+          }}
+        />
+      )}
+
+      {/* Assign Creator to Projects Modal — choose which projects this creator
+          appears in (member.creatorProjectIds is the source of truth). */}
+      {assigningProjectsCreator && currentOrgId && (
+        <AssignCreatorProjectsModal
+          orgId={currentOrgId}
+          creator={assigningProjectsCreator}
+          onClose={() => setAssigningProjectsCreator(null)}
+          onSaved={async () => { await loadData(); }}
         />
       )}
 

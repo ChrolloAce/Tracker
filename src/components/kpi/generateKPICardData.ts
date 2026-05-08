@@ -5,7 +5,7 @@ import { TrackedLink } from '../../types/firestore';
 import { DateFilterType } from '../DateRangeFilter';
 import { KPICardData } from './kpiTypes';
 import { formatNumber } from './kpiHelpers';
-import { generateSparklineData } from './kpiDataProcessing';
+import { generateSparklineData, computeKPITotals } from './kpiDataProcessing';
 import DataAggregationService from '../../services/DataAggregationService';
 
 export interface GenerateKPICardDataParams {
@@ -16,6 +16,13 @@ export interface GenerateKPICardDataParams {
   dateFilter: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
   granularity: 'day' | 'week' | 'month' | 'year';
+  /**
+   * Reporting view from org settings — controls whether sparked
+   * (paid) views are subtracted from headline totals. Mirrors what
+   * the unified chart already does per-bar so the headline KPI and
+   * the chart agree. Defaults to 'organic' (the dashboard default).
+   */
+  reportingView?: 'organic' | 'total' | 'split';
 }
 
 /**
@@ -35,6 +42,7 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     dateFilter,
     customRange,
     granularity,
+    reportingView = 'organic',
   } = params;
 
   const startTime = performance.now();
@@ -131,113 +139,17 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
     }
   }
   
-  // Calculate metrics based on date filter
-  let totalViews = 0;
-  let totalLikes = 0;
-  let totalComments = 0;
-  let totalShares = 0;
-  let totalSaves = 0;
-  
-  if (dateRangeStart) {
-    // For specific date ranges, calculate growth during the period from ALL videos
-    submissions.forEach(video => {
-      const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
-      
-      if (video.snapshots && video.snapshots.length > 0) {
-        const snapshotBeforeOrAtStart = video.snapshots
-          .filter(s => new Date(s.capturedAt) <= dateRangeStart!)
-          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-        
-        const snapshotBeforeOrAtEnd = video.snapshots
-          .filter(s => new Date(s.capturedAt) <= dateRangeEnd)
-          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-        
-        const snapshotsInRange = video.snapshots.filter(s => {
-          const capturedDate = new Date(s.capturedAt);
-          return capturedDate >= dateRangeStart! && capturedDate <= dateRangeEnd;
-        });
-        
-        if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart !== snapshotBeforeOrAtEnd) {
-          totalViews += Math.max(0, (snapshotBeforeOrAtEnd.views || 0) - (snapshotBeforeOrAtStart.views || 0));
-          totalLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
-          totalComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
-          totalShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
-          totalSaves += Math.max(0, (snapshotBeforeOrAtEnd.saves || 0) - (snapshotBeforeOrAtStart.saves || 0));
-        } else if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart === snapshotBeforeOrAtEnd && snapshotsInRange.length > 0) {
-          const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
-            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-          );
-          
-          const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
-          
-          totalViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeOrAtStart.views || 0));
-          totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
-          totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
-          totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
-          totalSaves += Math.max(0, (lastSnapshotInRange.saves || 0) - (snapshotBeforeOrAtStart.saves || 0));
-        } else if (!snapshotBeforeOrAtStart && snapshotsInRange.length > 0) {
-          const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
-            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-          );
-          
-          const firstSnapshotInRange = sortedSnapshotsInRange[0];
-          const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
-          
-          if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
-            totalViews += lastSnapshotInRange.views || 0;
-            totalLikes += lastSnapshotInRange.likes || 0;
-            totalComments += lastSnapshotInRange.comments || 0;
-            totalShares += lastSnapshotInRange.shares || 0;
-            totalSaves += lastSnapshotInRange.saves || 0;
-          } else {
-            totalViews += Math.max(0, (lastSnapshotInRange.views || 0) - (firstSnapshotInRange.views || 0));
-            totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (firstSnapshotInRange.likes || 0));
-            totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (firstSnapshotInRange.comments || 0));
-            totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (firstSnapshotInRange.shares || 0));
-            totalSaves += Math.max(0, (lastSnapshotInRange.saves || 0) - (firstSnapshotInRange.saves || 0));
-          }
-        } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
-          if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
-            totalViews += video.views || 0;
-            totalLikes += video.likes || 0;
-            totalComments += video.comments || 0;
-            totalShares += video.shares || 0;
-            totalSaves += video.saves || 0;
-          }
-        }
-      } else {
-        if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
-          totalViews += video.views || 0;
-          totalLikes += video.likes || 0;
-          totalComments += video.comments || 0;
-          totalShares += video.shares || 0;
-          totalSaves += video.saves || 0;
-        }
-      }
-    });
-  } else {
-    // For 'all' time filter, use current metrics
-    totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
-    totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-    totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-    totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
-    totalSaves = submissions.reduce((sum, v) => sum + (v.saves || 0), 0);
-  }
-  
-  // Filter videos by date range for counts
-  let videosInRange = submissions;
-  if (dateRangeStart) {
-    videosInRange = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
-      return uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd;
-    });
-  }
-  
-  const activeAccounts = new Set(videosInRange.map(v => v.uploaderHandle)).size;
-  const publishedVideos = videosInRange.length;
-  
-  const totalEngagement = totalLikes + totalComments;
-  const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
+  // Single source of truth for the period totals — shared with the unified
+  // chart's totals strip via `computeKPITotals`. Keeping the math in one place
+  // prevents the two views from disagreeing on headline numbers.
+  const cpTotals = computeKPITotals(submissions, dateRangeStart, dateRangeEnd, reportingView);
+  const totalViews = cpTotals.views;
+  const totalLikes = cpTotals.likes;
+  const totalComments = cpTotals.comments;
+  const totalShares = cpTotals.shares;
+  const activeAccounts = cpTotals.accounts;
+  const publishedVideos = cpTotals.videos;
+  const engagementRate = cpTotals.engagement;
 
   // Calculate Previous Period (PP) metrics
   let ppDateRangeStart: Date | null = null;

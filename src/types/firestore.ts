@@ -168,6 +168,10 @@ export interface Organization {
   settings?: {
     timezone?: string;
     currency?: string;
+    /** Video URLs the org has explicitly blacklisted. The auto-sync skips
+     *  any incoming video whose URL (after normalization) matches an entry
+     *  here, so deleted videos don't keep getting re-imported. */
+    blacklistedVideoUrls?: string[];
   };
 }
 
@@ -372,6 +376,27 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   // Engagement rate (computed)
   engagementRate?: number;
 
+  // ─── Spark ads ─────────────────────────────────────────────────────
+  /** When the video was marked as Sparked (TikTok Spark ads / boosted /
+   *  Reels promoted etc.). Snapshot deltas after this point are treated
+   *  as ad-driven views, not organic. Unset = video has never been Sparked. */
+  sparkedAt?: Timestamp;
+  /** Manual ad-view log entries. Use when the in-app view count drifts
+   *  from the actual ad reach reported by the ad platform — admin can
+   *  log the platform-reported ad-view total for a given day, and the
+   *  organic/ad split prefers these over snapshot-delta inference. */
+  sparkViewLogs?: Array<{
+    id: string;
+    /** YYYY-MM-DD that the ad-view total covers. */
+    date: string;
+    /** Total ad views for that day, as reported by the ad platform. */
+    views: number;
+    /** Optional admin note (campaign name, ad set, etc.). */
+    note?: string;
+    loggedBy?: string;
+    loggedAt?: Timestamp;
+  }>;
+
   // Transcription (populated on-demand via API)
   transcript?: VideoTranscript | null;
   transcriptStatus?: 'none' | 'pending' | 'processing' | 'completed' | 'failed' | 'unavailable';
@@ -551,9 +576,39 @@ export interface OrganizationSettings {
     superwall?: { apiKey: string; applicationId: string; applicationLabel?: string };
     revenuecat?: { apiKey: string; projectId: string; projectLabel?: string };
   };
+
+  /** Default reporting view across dashboards. Controls whether Spark
+   *  (paid-ad) views are included in headline numbers and chart series.
+   *   - 'organic' → exclude sparked views; show organic-only as the default
+   *   - 'total'   → include everything (legacy behavior, the default)
+   *   - 'split'   → render organic + sparked as separate series
+   *  Charts can override this per-session via an inline pill, but the
+   *  org default is what new users / shared screenshots will see. */
+  defaultReportingView?: 'organic' | 'total' | 'split';
 }
 
 // ==================== CREATORS & PAYOUTS ====================
+
+/**
+ * Creator label / tag (e.g. UGC, Influencer, Faceless, or any custom
+ * tag the admin defines). Project-scoped so different projects can
+ * keep their own taxonomy.
+ *
+ * Path: /organizations/{orgId}/projects/{projectId}/creatorLabels/{labelId}
+ */
+export interface CreatorLabel {
+  id: string;
+  orgId: string;
+  projectId: string;
+  name: string;
+  /** Tailwind color slug (e.g. 'orange', 'emerald') — drives the badge color. */
+  color: string;
+  /** True for the seeded UGC/Influencer/Faceless triplet so the UI can mark
+   *  them as built-in (still removable, but distinct from custom labels). */
+  isDefault?: boolean;
+  createdAt: Timestamp;
+  createdBy: string; // admin userId
+}
 
 /**
  * Creator-Account Link (mapping) - PROJECT SCOPED
@@ -594,6 +649,10 @@ export interface Creator {
    *  docs is treated as false. Intentionally separate from `payoutsEnabled` (always-true dead
    *  field) so we don't break any code that wrote the old field. */
   payoutPortalEnabled?: boolean;
+  /** IDs of CreatorLabel docs assigned to this creator (e.g. UGC,
+   *  Influencer, Faceless, custom). Filtered on dashboard via the
+   *  Labels filter pill. Empty / missing = no labels. */
+  labelIds?: string[];
   createdAt: Timestamp;
   lastPayoutAt?: Timestamp;
   status?: string; // Status of the creator (e.g., 'pending', 'active')

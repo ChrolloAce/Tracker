@@ -6,15 +6,38 @@ import { Creator, CreatorLink } from '../types/firestore';
 import { VideoSubmission } from '../types';
 import { ChevronDown, Users, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { DateFilterType } from './DateRangeFilter';
+import DateFilterService from '../services/DateFilterService';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
 
 interface TopTeamCreatorsListProps {
   submissions: VideoSubmission[];
   onCreatorClick?: (username: string) => void;
+  /** Fired when a creator row is clicked. Receives every linked tracked-account
+   *  username for that creator so the day/period modal can filter videos across
+   *  all platforms (Instagram + TikTok + YouTube + X) at once. When omitted,
+   *  falls back to onCreatorClick(displayName) — which is what the legacy code
+   *  did and is why nothing showed up: displayName rarely matches a uploaderHandle. */
+  onCreatorRowClick?: (info: { creatorId: string; displayName: string; usernames: string[] }) => void;
+  /** Optional explicit date range. Takes precedence over dateFilter/customRange. */
+  dateRangeStart?: Date | null;
+  dateRangeEnd?: Date;
+  /** Falls back to deriving the range from these when explicit dates aren't supplied. */
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 
-const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, onCreatorClick }) => {
+const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({
+  submissions,
+  onCreatorClick,
+  onCreatorRowClick,
+  dateRangeStart,
+  dateRangeEnd,
+  dateFilter,
+  customRange,
+}) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [topCount, setTopCount] = useState(5);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
@@ -53,7 +76,11 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
         const accountsSnapshot = await getDocs(accountsRef);
         const accountsData = accountsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         
-        // Enrich creators missing photoURL by looking up their user account
+        // Slow path only — async users/{id} lookup for any creator missing a
+        // photoURL. Result is cached on the creator object; in-memory
+        // fallbacks (linked-account picture, video uploader picture) run in a
+        // separate useMemo below so they react to fresh submissions without
+        // re-firing Firestore reads.
         const enrichedCreators = await Promise.all(
           creatorsData.map(async (creator) => {
             if (creator.photoURL) return creator;
@@ -82,6 +109,48 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
 
     fetchData();
   }, [currentOrgId, currentProjectId]);
+
+  // creatorId → { photoFallback, usernames[] }. Pure in-memory derivation so
+  // it reacts to submissions/accounts/links changes without re-firing the
+  // Firestore reads above.
+  const creatorAuxiliary = useMemo(() => {
+    const accountById = new Map(accounts.map((a: any) => [a.id, a]));
+    const handleToVideoPic = new Map<string, string>();
+    submissions.forEach(v => {
+      const h = (v.uploaderHandle || '').toLowerCase();
+      const pic = (v as any).uploaderProfilePicture;
+      if (h && pic && !handleToVideoPic.has(h)) handleToVideoPic.set(h, pic);
+    });
+    const aux = new Map<string, { photoFallback?: string; usernames: string[] }>();
+    creatorLinks.forEach(link => {
+      if (!link.creatorId || !link.accountId) return;
+      const acct: any = accountById.get(link.accountId);
+      const entry = aux.get(link.creatorId) || { usernames: [] };
+      const handle: string | undefined = acct?.username;
+      if (handle && !entry.usernames.includes(handle)) entry.usernames.push(handle);
+      if (!entry.photoFallback) {
+        entry.photoFallback = acct?.profilePicture
+          || (handle && handleToVideoPic.get(handle.toLowerCase()))
+          || undefined;
+      }
+      aux.set(link.creatorId, entry);
+    });
+    return aux;
+  }, [accounts, creatorLinks, submissions]);
+
+  // Resolve the effective date range. Explicit dateRangeStart/dateRangeEnd
+  // win; otherwise derive from dateFilter/customRange via DateFilterService.
+  // When no range info is provided we fall back to lifetime sums.
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    if (dateRangeEnd !== undefined) {
+      return { rangeStart: dateRangeStart ?? null, rangeEnd: dateRangeEnd };
+    }
+    if (dateFilter && dateFilter !== 'all') {
+      const r = DateFilterService.getDateRange(dateFilter, customRange);
+      return { rangeStart: r.startDate, rangeEnd: r.endDate };
+    }
+    return { rangeStart: null, rangeEnd: new Date() };
+  }, [dateRangeStart, dateRangeEnd, dateFilter, customRange]);
 
   // Calculate aggregated creator stats
   const creatorStats = useMemo(() => {
@@ -147,13 +216,15 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
       
       if (accountId) {
         const creatorId = accountToCreator.get(accountId);
-        
+
         if (creatorId && creatorMap.has(creatorId)) {
           const stats = creatorMap.get(creatorId)!;
-          stats.totalViews += video.views || 0;
-          stats.totalLikes += video.likes || 0;
-          stats.totalComments += video.comments || 0;
-          stats.totalShares += video.shares || 0;
+          // Snapshot-aware, date-range-clamped sums. Only `views` carries
+          // spark (paid-ad) attribution.
+          stats.totalViews += computePerVideoMetricInRange(video, 'views', rangeStart, rangeEnd, { excludeSparked: true });
+          stats.totalLikes += computePerVideoMetricInRange(video, 'likes', rangeStart, rangeEnd, { excludeSparked: false });
+          stats.totalComments += computePerVideoMetricInRange(video, 'comments', rangeStart, rangeEnd, { excludeSparked: false });
+          stats.totalShares += computePerVideoMetricInRange(video, 'shares', rangeStart, rangeEnd, { excludeSparked: false });
           stats.videoCount += 1;
           stats.linkedAccounts.add(accountId);
         }
@@ -169,7 +240,7 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
     });
 
     return Array.from(creatorMap.values()).filter(stats => stats.videoCount > 0);
-  }, [submissions, creators, creatorLinks, accounts]);
+  }, [submissions, creators, creatorLinks, accounts, rangeStart, rangeEnd]);
 
   // Sort creators by selected metric
   const sortedCreators = useMemo(() => {
@@ -337,15 +408,32 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
             {sortedCreators.map((stats, index) => {
               const value = getDisplayValue(stats);
               const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
-              
+              const aux = creatorAuxiliary.get(stats.creator.id);
+              const effectivePhotoURL = stats.creator.photoURL || aux?.photoFallback;
+              const linkedUsernames = aux?.usernames || [];
+
               return (
-                <div 
-                  key={stats.creator.id} 
+                <div
+                  key={stats.creator.id}
                   className={`group relative cursor-pointer py-2 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
                   style={{
                     animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                   }}
-                  onClick={() => onCreatorClick?.(stats.creator.displayName)}
+                  onClick={() => {
+                    // Prefer the rich callback (passes all linked usernames so
+                    // the modal filters across every platform). Fall back to
+                    // legacy onCreatorClick(displayName) only when the parent
+                    // didn't wire onCreatorRowClick.
+                    if (onCreatorRowClick) {
+                      onCreatorRowClick({
+                        creatorId: stats.creator.id,
+                        displayName: stats.creator.displayName || '',
+                        usernames: linkedUsernames,
+                      });
+                    } else {
+                      onCreatorClick?.(stats.creator.displayName);
+                    }
+                  }}
                   onMouseEnter={(e) => {
                     // Only update if not already hovering this creator
                     if (hoveredCreator?.creator?.creator?.id !== stats.creator.id) {
@@ -376,9 +464,9 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                     {/* Profile Icon (Spearhead) */}
                     <div className="absolute left-0 z-10 flex-shrink-0">
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-surface-hover backdrop-blur-sm relative flex items-center justify-center">
-                        {stats.creator.photoURL && !imageErrors.has(stats.creator.id) ? (
-                          <img 
-                            src={stats.creator.photoURL} 
+                        {effectivePhotoURL && !imageErrors.has(stats.creator.id) ? (
+                          <img
+                            src={effectivePhotoURL}
                             alt={stats.creator.displayName}
                             className="w-full h-full object-cover"
                             onError={() => {

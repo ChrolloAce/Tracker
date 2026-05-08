@@ -5,19 +5,29 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { ChevronDown, Play, Info } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import DateFilterService from '../services/DateFilterService';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
 
 interface TopPlatformsRaceChartProps {
   submissions: VideoSubmission[];
   dateFilter?: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
+  /** When true (default), subtract Spark (paid-ad) views from per-video
+   *  contributions so the leaderboard matches the dashboard's `organic`
+   *  reporting view and agrees with the unified chart and KPI cards. */
+  excludeSparked?: boolean;
+  /** Fired when a platform row is clicked. Opens the Day-Videos modal pre-filtered
+   *  to videos on that platform within the active date range. */
+  onPlatformClick?: (platform: VideoSubmission['platform']) => void;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 
-const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ 
+const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
   submissions,
   dateFilter = 'all',
-  customRange
+  customRange,
+  excludeSparked = true,
+  onPlatformClick,
 }) => {
   const [topCount, setTopCount] = useState(5);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
@@ -36,89 +46,32 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
     return DateFilterService.getDateRange(dateFilter, customRange);
   }, [dateFilter, customRange]);
 
-  // Calculate metric value within the date range
+  // Calculate metric value within the date range.
+  // Delegates the snapshot-clamped, optionally spark-excluded math to the
+  // shared `computePerVideoMetricInRange` so platform totals agree with the
+  // unified chart and KPI cards. `engagement` is derived from the core
+  // metrics inside the same window; `videos` is a count and stays per-call
+  // (each unique video contributes 1).
   const getMetricValueInDateRange = (video: VideoSubmission, metric: MetricType): number => {
-    // If no date range, use full video metrics
-    if (!dateRange) {
-      return getVideoMetric(video, metric);
-    }
+    const start = dateRange?.startDate ?? null;
+    const end = dateRange?.endDate ?? new Date();
+    const opts = { excludeSparked };
 
-    const uploadDate = video.uploadDate
-      ? new Date(video.uploadDate)
-      : video.timestamp
-      ? new Date(video.timestamp)
-      : video.dateSubmitted
-      ? new Date(video.dateSubmitted)
-      : new Date();
-
-    // If video was uploaded within the date range, use its full metrics
-    if (uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate) {
-      return getVideoMetric(video, metric);
-    }
-
-    // Video was uploaded BEFORE the date range - calculate delta from snapshots
-    if (!video.snapshots || video.snapshots.length === 0) {
-      return 0; // No snapshot data, can't calculate what happened in period
-    }
-
-    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-
-    const startSnapshot = sortedSnapshots
-      .filter(s => new Date(s.capturedAt) <= dateRange.startDate)
-      .pop();
-
-    const endSnapshot = sortedSnapshots
-      .filter(s => new Date(s.capturedAt) <= dateRange.endDate)
-      .pop();
-
-    if (!startSnapshot || !endSnapshot || startSnapshot === endSnapshot) {
-      return 0;
-    }
-
-    const getSnapshotMetric = (snapshot: any, metric: MetricType): number => {
-      switch (metric) {
-        case 'views':
-          return snapshot.views || 0;
-        case 'likes':
-          return snapshot.likes || 0;
-        case 'comments':
-          return snapshot.comments || 0;
-        case 'shares':
-          return snapshot.shares || 0;
-        case 'engagement':
-          const totalEng = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
-          return snapshot.views > 0 ? (totalEng / snapshot.views) * 100 : 0;
-        case 'videos':
-          return 0; // Can't calculate video count from snapshots
-        default:
-          return 0;
-      }
-    };
-
-    const startValue = getSnapshotMetric(startSnapshot, metric);
-    const endValue = getSnapshotMetric(endSnapshot, metric);
-    
-    return Math.max(0, endValue - startValue);
-  };
-
-  // Helper to get video metric
-  const getVideoMetric = (video: VideoSubmission, metric: MetricType): number => {
     switch (metric) {
       case 'views':
-        return video.views || 0;
       case 'likes':
-        return video.likes || 0;
       case 'comments':
-        return video.comments || 0;
       case 'shares':
-        return video.shares || 0;
-      case 'engagement':
-        const totalEngagement = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
-        return video.views > 0 ? (totalEngagement / video.views) * 100 : 0;
+        return computePerVideoMetricInRange(video, metric, start, end, opts);
+      case 'engagement': {
+        const v = computePerVideoMetricInRange(video, 'views', start, end, opts);
+        const l = computePerVideoMetricInRange(video, 'likes', start, end, opts);
+        const c = computePerVideoMetricInRange(video, 'comments', start, end, opts);
+        const s = computePerVideoMetricInRange(video, 'shares', start, end, opts);
+        return v > 0 ? ((l + c + s) / v) * 100 : 0;
+      }
       case 'videos':
-        return 1; // Each video counts as 1
+        return 1;
       default:
         return 0;
     }
@@ -171,7 +124,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
     });
 
     return Array.from(platformMap.values());
-  }, [submissions, dateRange]);
+  }, [submissions, dateRange, excludeSparked]);
 
   // Calculate metric value for a platform
   const getMetricValue = (platform: typeof platformData[0], metric: MetricType): number => {
@@ -340,6 +293,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                 }}
+                onClick={() => onPlatformClick?.(platform.platform)}
                 onMouseEnter={(e) => {
                   // Only update if not already hovering this platform
                   if (hoveredPlatform?.platform !== platform.platform) {

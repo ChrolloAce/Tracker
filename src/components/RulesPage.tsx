@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Plus, Filter, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Filter, Trash2, Edit2, CheckCircle, XCircle, BarChart3, Zap, Layers } from 'lucide-react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import RulesService from '../services/RulesService';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { Modal } from './ui/Modal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
+
+type ReportingView = 'organic' | 'total' | 'split';
 
 export interface RulesPageRef {
   openCreateModal: () => void;
@@ -23,11 +27,18 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
   const [conditions, setConditions] = useState<RuleCondition[]>([]);
   const [isActive, setIsActive] = useState(true);
 
+  // Org-wide "Default reporting view" — controls whether sparked (paid-ad)
+  // views are included in headline numbers and chart series across the
+  // app. Persists to organizations/{orgId}/settings/general so all users
+  // in the org see the same default. Charts can override per-session.
+  const [reportingView, setReportingView] = useState<ReportingView>('total');
+  const [savingReportingView, setSavingReportingView] = useState(false);
+
   // Load rules
   useEffect(() => {
     const loadData = async () => {
       if (!currentOrgId || !currentProjectId) return;
-      
+
       setLoading(true);
       try {
         const loadedRules = await RulesService.getRules(currentOrgId, currentProjectId);
@@ -41,6 +52,42 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
 
     loadData();
   }, [currentOrgId, currentProjectId]);
+
+  // Load the org's default reporting view from settings/general.
+  useEffect(() => {
+    if (!currentOrgId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'organizations', currentOrgId, 'settings', 'general'));
+        const v = (snap.data()?.defaultReportingView as ReportingView | undefined) || 'total';
+        if (!cancelled) setReportingView(v);
+      } catch (err) {
+        console.warn('[RulesPage] Failed to load default reporting view:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentOrgId]);
+
+  const updateReportingView = useCallback(async (next: ReportingView) => {
+    if (!currentOrgId || next === reportingView) return;
+    const prev = reportingView;
+    setReportingView(next); // optimistic
+    setSavingReportingView(true);
+    try {
+      await setDoc(
+        doc(db, 'organizations', currentOrgId, 'settings', 'general'),
+        { defaultReportingView: next },
+        { merge: true },
+      );
+    } catch (err) {
+      console.error('[RulesPage] Failed to save default reporting view:', err);
+      setReportingView(prev);
+      alert('Failed to save reporting setting');
+    } finally {
+      setSavingReportingView(false);
+    }
+  }, [currentOrgId, reportingView]);
 
   const handleOpenCreate = useCallback(() => {
     setEditingRule(null);
@@ -153,8 +200,59 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
     return <PageLoadingSkeleton type="dashboard" />;
   }
 
+  const reportingViewOptions: { value: ReportingView; label: string; icon: any; desc: string }[] = [
+    { value: 'organic', label: 'Organic only', icon: BarChart3, desc: 'Headline numbers and charts exclude paid Spark views.' },
+    { value: 'total',   label: 'Total',        icon: Layers,    desc: 'Show everything combined — organic + Spark in one number.' },
+    { value: 'split',   label: 'Split',        icon: Zap,       desc: 'Break out organic vs Spark side by side wherever it’s supported.' },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Reporting defaults — org-wide preference for how Spark (paid-ad)
+          views are surfaced across dashboards. Saved to OrganizationSettings
+          so it applies for everyone in the org. Charts can still override
+          per-session via their inline pill toggle. */}
+      <div className="rounded-xl border border-white/10 bg-zinc-900/60 p-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-white">Default reporting view</h3>
+            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+              How Spark (paid-ad) views show up across the app by default. This is an org-wide preference — anyone on the team will see this view first when they open a dashboard. Individual charts can still flip the view per-session.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {reportingViewOptions.map(opt => {
+            const Icon = opt.icon;
+            const active = reportingView === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => updateReportingView(opt.value)}
+                disabled={savingReportingView}
+                className={clsx(
+                  'flex items-start gap-3 p-3 rounded-lg border transition-all text-left',
+                  active
+                    ? 'bg-orange-500/10 border-orange-500/50 ring-1 ring-orange-500/30'
+                    : 'bg-zinc-800/40 border-white/10 hover:bg-zinc-800/70 hover:border-white/20',
+                  savingReportingView && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                <Icon className={clsx('w-4 h-4 mt-0.5 flex-shrink-0', active ? 'text-orange-400' : 'text-gray-400')} />
+                <div className="min-w-0">
+                  <div className={clsx('text-sm font-semibold', active ? 'text-white' : 'text-gray-200')}>
+                    {opt.label}
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+                    {opt.desc}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Rules Table - Matching Accounts Style */}
       {rules.length === 0 ? (
         <div className="text-center py-12 bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl border border-white/10">

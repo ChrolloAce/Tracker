@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -28,6 +28,8 @@ import CampaignVideoSubmissionModal from './CampaignVideoSubmissionModal';
 import CampaignResourcesManager from './CampaignResourcesManager';
 import FirebaseStorageService from '../services/FirebaseStorageService';
 import CampaignLeaderboard from './CampaignLeaderboard';
+import { computeKPITotals } from './kpi/kpiDataProcessing';
+import type { VideoSubmission } from '../types';
 
 const CampaignDetailsPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -58,6 +60,12 @@ const CampaignDetailsPage: React.FC = () => {
   const [editedParticipantIds, setEditedParticipantIds] = useState<string[]>([]);
   const [allMembers, setAllMembers] = useState<OrgMember[]>([]);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Snapshot-aware live videos for the campaign window. Used to recompute the
+  // headline "Total Views" so it matches the dashboard's snapshot-bounded math
+  // instead of the stored lifetime `campaign.totalViews` (which leaks pre/post-
+  // campaign growth into the displayed total).
+  const [campaignVideos, setCampaignVideos] = useState<VideoSubmission[]>([]);
 
   useEffect(() => {
     loadCampaign();
@@ -143,6 +151,7 @@ const CampaignDetailsPage: React.FC = () => {
   useEffect(() => {
     if (campaign) {
       loadCreators();
+      loadCampaignVideos();
       // Initialize edit states
       setEditedStartDate(campaign.startDate instanceof Date ? campaign.startDate.toISOString().split('T')[0] : new Date(campaign.startDate.toDate()).toISOString().split('T')[0]);
       setEditedEndDate(campaign.endDate ? (campaign.endDate instanceof Date ? campaign.endDate.toISOString().split('T')[0] : new Date(campaign.endDate.toDate()).toISOString().split('T')[0]) : '');
@@ -153,6 +162,37 @@ const CampaignDetailsPage: React.FC = () => {
       setEditedParticipantIds(campaign.participantIds || []);
     }
   }, [campaign]);
+
+  const loadCampaignVideos = async () => {
+    if (!campaign || !currentOrgId || !currentProjectId) return;
+    try {
+      const byCreator = await CampaignService.loadCampaignCreatorVideos(
+        currentOrgId,
+        currentProjectId,
+        campaign,
+      );
+      const flat: VideoSubmission[] = [];
+      for (const list of byCreator.values()) flat.push(...list);
+      setCampaignVideos(flat);
+    } catch (error) {
+      console.error('Failed to load campaign videos for live totals:', error);
+      setCampaignVideos([]);
+    }
+  };
+
+  // Snapshot-bounded total views for the campaign window. Replaces the stored
+  // `campaign.totalViews` (lifetime / denormalized) on the headline strip so
+  // the number lines up with the dashboard's per-period math.
+  const liveTotals = useMemo(() => {
+    if (!campaign) return null;
+    const start = campaign.startDate
+      ? (campaign.startDate instanceof Date ? campaign.startDate : campaign.startDate.toDate())
+      : null;
+    const end = campaign.endDate
+      ? (campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate())
+      : new Date();
+    return computeKPITotals(campaignVideos, start, end, 'organic');
+  }, [campaign, campaignVideos]);
 
   const handleSaveTimeline = async () => {
     if (!campaignId || !currentOrgId || !currentProjectId) return;
@@ -493,7 +533,12 @@ const CampaignDetailsPage: React.FC = () => {
 
                 <div>
                   <div className="text-xs text-white/40 mb-1">Total Views</div>
-                  <div className="text-lg sm:text-xl font-bold text-white">{campaign.totalViews.toLocaleString()}</div>
+                  {/* Snapshot-bounded views for the campaign window. Falls back
+                      to the stored lifetime `campaign.totalViews` only while
+                      the live videos are still loading. */}
+                  <div className="text-lg sm:text-xl font-bold text-white">
+                    {(liveTotals?.views ?? campaign.totalViews).toLocaleString()}
+                  </div>
                 </div>
 
                 <div>

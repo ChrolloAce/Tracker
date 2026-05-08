@@ -17,6 +17,7 @@ import {
   ActivityTable,
   PerformanceTable
 } from './CreatorActivityTables';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
 
 // ─── Props ──────────────────────────────────────────────────
 
@@ -50,6 +51,17 @@ export default function CreatorActivitySection({
 
   // Toggle between activity / performance
   const [activeView, setActiveView] = useState<'activity' | 'performance'>('activity');
+
+  // Bounded date range for snapshot-aware per-row sums. `null` start means
+  // 'all time' — matches `computePerVideoMetricInRange`'s lifetime fallback.
+  // Mirrors the same derivation `loadCreatorData` uses to filter videos.
+  const { dateRangeStart, dateRangeEnd } = useMemo(() => {
+    if (dateFilter === 'all') {
+      return { dateRangeStart: null as Date | null, dateRangeEnd: new Date() };
+    }
+    const range = DateFilterService.getDateRange(dateFilter);
+    return { dateRangeStart: range.startDate, dateRangeEnd: range.endDate };
+  }, [dateFilter]);
 
   // ─── Data Loading ─────────────────────────────────────────
 
@@ -152,28 +164,61 @@ export default function CreatorActivitySection({
           bv = b.videos.length;
           break;
         case 'views':
-          av = a.videos.reduce((s, v) => s + (v.views || 0), 0);
-          bv = b.videos.reduce((s, v) => s + (v.views || 0), 0);
+          // Snapshot-aware so sort order matches the per-row totals shown
+          // in the tables (otherwise rows could re-order vs. their displayed
+          // numbers).
+          av = a.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+            0,
+          );
+          bv = b.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+            0,
+          );
           break;
         case 'likes':
-          av = a.videos.reduce((s, v) => s + (v.likes || 0), 0);
-          bv = b.videos.reduce((s, v) => s + (v.likes || 0), 0);
+          av = a.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'likes', dateRangeStart, dateRangeEnd),
+            0,
+          );
+          bv = b.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'likes', dateRangeStart, dateRangeEnd),
+            0,
+          );
           break;
         case 'comments':
-          av = a.videos.reduce((s, v) => s + (v.comments || 0), 0);
-          bv = b.videos.reduce((s, v) => s + (v.comments || 0), 0);
+          av = a.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'comments', dateRangeStart, dateRangeEnd),
+            0,
+          );
+          bv = b.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'comments', dateRangeStart, dateRangeEnd),
+            0,
+          );
           break;
         case 'shares':
-          av = a.videos.reduce((s, v) => s + (v.shares || 0), 0);
-          bv = b.videos.reduce((s, v) => s + (v.shares || 0), 0);
+          av = a.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'shares', dateRangeStart, dateRangeEnd),
+            0,
+          );
+          bv = b.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'shares', dateRangeStart, dateRangeEnd),
+            0,
+          );
           break;
         case 'saves':
-          av = a.videos.reduce((s, v) => s + (v.saves || 0), 0);
-          bv = b.videos.reduce((s, v) => s + (v.saves || 0), 0);
+          av = a.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'saves', dateRangeStart, dateRangeEnd),
+            0,
+          );
+          bv = b.videos.reduce(
+            (s, v) => s + computePerVideoMetricInRange(v as any, 'saves', dateRangeStart, dateRangeEnd),
+            0,
+          );
           break;
         case 'engagement':
-          av = getEngagementRate(a.videos);
-          bv = getEngagementRate(b.videos);
+          av = getEngagementRate(a.videos, dateRangeStart, dateRangeEnd);
+          bv = getEngagementRate(b.videos, dateRangeStart, dateRangeEnd);
           break;
       }
       if (typeof av === 'string' && typeof bv === 'string') {
@@ -182,7 +227,7 @@ export default function CreatorActivitySection({
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
     });
     return arr;
-  }, [rows, sortField, sortDir]);
+  }, [rows, sortField, sortDir, dateRangeStart, dateRangeEnd]);
 
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -269,9 +314,21 @@ export default function CreatorActivitySection({
       </div>
 
       {activeView === 'activity' ? (
-        <ActivityTable rows={paginated} toggleSort={toggleSort} SortIcon={SortIcon} />
+        <ActivityTable
+          rows={paginated}
+          toggleSort={toggleSort}
+          SortIcon={SortIcon}
+          dateRangeStart={dateRangeStart}
+          dateRangeEnd={dateRangeEnd}
+        />
       ) : (
-        <PerformanceTable rows={paginated} toggleSort={toggleSort} SortIcon={SortIcon} />
+        <PerformanceTable
+          rows={paginated}
+          toggleSort={toggleSort}
+          SortIcon={SortIcon}
+          dateRangeStart={dateRangeStart}
+          dateRangeEnd={dateRangeEnd}
+        />
       )}
 
       {/* Pagination */}

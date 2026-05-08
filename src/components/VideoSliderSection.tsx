@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Heart, MessageCircle, Play, Loader2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Eye, Heart, MessageCircle, Play, Loader2, ArrowUpDown, Check } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ProxiedImage } from './ProxiedImage';
 
@@ -11,8 +11,25 @@ import xLogo from '/twitter-x-logo.png';
 
 interface VideoSliderSectionProps {
   videos: VideoSubmission[];
+  /** Hard ceiling on how many videos can be rendered. Defaults to all
+   *  (no cap) — set to a finite number when a caller wants a fixed top-N
+   *  slider. */
   maxVideos?: number;
+  /** Initial batch size + how many cards to reveal per lazy-load tick when
+   *  the user scrolls near the right edge. Defaults to 20. */
+  pageSize?: number;
   onVideoClick?: (video: VideoSubmission) => void;
+  /** Skip the built-in views/likes sort and render videos in the order given. */
+  preserveOrder?: boolean;
+  /** Optional sort dropdown rendered inside the slider header. Lets the
+   *  parent control the sort state (so the underlying video list is sorted
+   *  upstream, then handed to the slider with `preserveOrder`). */
+  sortControl?: {
+    value: string;
+    label: string;
+    options: Array<{ value: string; label: string }>;
+    onChange: (value: string) => void;
+  };
   /** Number of skeleton "processing" cards to render after real videos */
   pendingCount?: number;
 }
@@ -23,35 +40,88 @@ interface VideoSliderSectionProps {
  */
 const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
   videos,
-  maxVideos = 20,
+  maxVideos = Infinity,
+  pageSize = 20,
   onVideoClick,
+  preserveOrder = false,
+  sortControl,
   pendingCount = 0
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
-  const [isBlurred, setIsBlurred] = useState(() => {
-    try {
-      const saved = localStorage.getItem('videoSliderBlurred');
-      return saved === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [isHovered, setIsHovered] = useState(false);
+  // Blur/sensor toggle removed per user request — videos render unblurred
+  // unconditionally now. The `isBlurred` flag is kept as a const-false so
+  // VideoCard's per-card `isBlurred` prop continues to compile cleanly.
+  const isBlurred = false;
 
-  const toggleBlur = () => {
-    setIsBlurred(prev => {
-      const newVal = !prev;
-      localStorage.setItem('videoSliderBlurred', String(newVal));
-      return newVal;
-    });
+  // Internal sort state — used when the parent doesn't supply an external
+  // `sortControl` and `preserveOrder` is false. Default 'views' preserves
+  // the prior "most viewed first" behavior of the slider so existing call
+  // sites don't change shape.
+  type SortKey = 'views' | 'recent' | 'likes' | 'comments' | 'engagement';
+  const [internalSort, setInternalSort] = useState<SortKey>('views');
+  const INTERNAL_SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+    { value: 'views', label: 'Most viewed' },
+    { value: 'recent', label: 'Most recent' },
+    { value: 'likes', label: 'Most liked' },
+    { value: 'comments', label: 'Most commented' },
+    { value: 'engagement', label: 'Highest engagement' },
+  ];
+
+  // Effective sort control: parent-supplied wins (existing API), otherwise
+  // wire the InlineSortButton up to the internal state. Hidden entirely when
+  // `preserveOrder` is true since the parent has explicitly asked the slider
+  // not to reorder.
+  const effectiveSortControl = sortControl ?? (preserveOrder ? null : {
+    value: internalSort,
+    label: INTERNAL_SORT_OPTIONS.find(o => o.value === internalSort)?.label || 'Most viewed',
+    options: INTERNAL_SORT_OPTIONS as Array<{ value: string; label: string }>,
+    onChange: (v: string) => setInternalSort(v as SortKey),
+  });
+
+  // Build the displayed list. When the parent has externally sorted (sortControl
+  // provided OR preserveOrder true), we don't re-sort. Otherwise we apply the
+  // internal sort key.
+  const applyInternalSort = (list: VideoSubmission[]): VideoSubmission[] => {
+    const cmp: Record<SortKey, (a: VideoSubmission, b: VideoSubmission) => number> = {
+      views: (a, b) => (b.views || 0) - (a.views || 0),
+      likes: (a, b) => (b.likes || 0) - (a.likes || 0),
+      comments: (a, b) => (b.comments || 0) - (a.comments || 0),
+      engagement: (a, b) => {
+        const er = (v: VideoSubmission) => (v.views || 0) > 0
+          ? (((v.likes || 0) + (v.comments || 0)) / (v.views || 1))
+          : 0;
+        return er(b) - er(a);
+      },
+      recent: (a, b) => {
+        const t = (v: VideoSubmission) => new Date(v.uploadDate || v.dateSubmitted || 0).getTime();
+        return t(b) - t(a);
+      },
+    };
+    return [...list].sort(cmp[internalSort]);
   };
 
-  // Sort videos by views (highest first) and limit
-  const sortedVideos = [...videos]
-    .sort((a, b) => (b.views || 0) - (a.views || 0))
-    .slice(0, maxVideos);
+  const fullSorted = preserveOrder
+    ? [...videos]
+    : sortControl
+      ? [...videos] // parent already sorted upstream — preserve order
+      : applyInternalSort(videos);
+
+  const totalAvailable = Math.min(fullSorted.length, maxVideos);
+
+  // Lazy-load: render the first `pageSize` cards, reveal more as the user
+  // scrolls near the right edge. Reset whenever the source list changes
+  // (filter swap) or the sort key changes — both of those mean the user is
+  // looking at a different ranked sequence and should start fresh from the
+  // beginning.
+  const [visibleCount, setVisibleCount] = useState(() => Math.min(pageSize, totalAvailable));
+  const sortKey = sortControl ? `ext:${sortControl.value}` : `int:${internalSort}`;
+  useEffect(() => {
+    setVisibleCount(Math.min(pageSize, totalAvailable));
+  }, [videos, sortKey, pageSize, totalAvailable]);
+
+  const sortedVideos = fullSorted.slice(0, Math.min(visibleCount, maxVideos));
 
   // Debug: Log what videos the slider is receiving
   console.log('🎬 VideoSlider received:', videos.length, 'videos, showing top', sortedVideos.length);
@@ -74,21 +144,67 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
     }
   };
 
+  // "Posted Xd ago" — short relative-time label shown on every card. Mirrors
+  // the TikTok/IG mental model: today / 1d / 5d / 3w / 2mo / 1y. Falls back
+  // gracefully when the video has no upload date (returns null → pill hides).
+  const formatRelativeTime = (input?: Date | string | { toDate?: () => Date }): string | null => {
+    if (!input) return null;
+    let d: Date;
+    if (input instanceof Date) d = input;
+    else if (typeof input === 'object' && typeof (input as any).toDate === 'function') d = (input as any).toDate();
+    else d = new Date(input as any);
+    if (isNaN(d.getTime())) return null;
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 0) return 'just now';
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 1) return 'today';
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    const years = Math.floor(days / 365);
+    return `${years}y ago`;
+  };
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
 
+  // Reveal the next batch of cards when the user is within ~600px of the
+  // right edge. 600px ≈ 3 cards at the current 200px width — enough lead
+  // time that the new cards are mounted before the user catches up to them,
+  // so the experience feels like one continuous list, not paginated.
+  const NEAR_END_PX = 600;
+  const maybeLoadMore = () => {
+    if (visibleCount >= totalAvailable) return;
+    if (!scrollContainerRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+    if (scrollLeft + clientWidth >= scrollWidth - NEAR_END_PX) {
+      setVisibleCount(c => Math.min(c + pageSize, totalAvailable));
+    }
+  };
+
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
     const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
     setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    setCanScrollRight(
+      scrollLeft < scrollWidth - clientWidth - 10 || visibleCount < totalAvailable,
+    );
+    maybeLoadMore();
   };
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollContainerRef.current) return;
+    if (direction === 'right') maybeLoadMore();
     const scrollAmount = 300;
     scrollContainerRef.current.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
@@ -107,27 +223,14 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
   }
 
   return (
-    <div
-      className="relative group"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Blur Toggle Button - always visible when blurred, hover-only otherwise */}
-      {(isHovered || isBlurred) && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleBlur();
-          }}
-          className="absolute top-3 right-3 z-30 p-2 bg-black/60 hover:bg-black/80 rounded-lg transition-all duration-200 border border-border"
-          title={isBlurred ? 'Show videos' : 'Blur videos'}
-        >
-          {isBlurred ? (
-            <EyeOff className="w-5 h-5 text-content-muted hover:text-content" />
-          ) : (
-            <Eye className="w-5 h-5 text-content-muted hover:text-content" />
-          )}
-        </button>
+    <div className="relative group">
+      {/* Top-right control cluster — Sort. Renders whenever the slider is
+          ordering its own content (i.e. not in `preserveOrder` mode), with
+          either the parent-supplied control or the slider's internal state. */}
+      {effectiveSortControl && (
+        <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+          <InlineSortButton sort={effectiveSortControl} />
+        </div>
       )}
 
       {/* Left Arrow */}
@@ -163,6 +266,7 @@ const VideoSliderSection: React.FC<VideoSliderSectionProps> = ({
             video={video}
             platformIcon={getPlatformIcon(video.platform)}
             formatNumber={formatNumber}
+            postedLabel={formatRelativeTime(video.uploadDate || video.dateSubmitted)}
             onClick={() => onVideoClick?.(video)}
             isBlurred={isBlurred}
           />
@@ -193,23 +297,26 @@ const VideoCard: React.FC<{
   video: VideoSubmission;
   platformIcon: string | null;
   formatNumber: (num: number) => string;
+  /** Short relative-time string (e.g. "5d ago", "2w ago"). Null when the
+   *  video has no usable upload date — the pill simply hides in that case. */
+  postedLabel?: string | null;
   onClick?: () => void;
   isBlurred?: boolean;
-}> = ({ video, platformIcon, formatNumber, onClick, isBlurred }) => {
+}> = ({ video, platformIcon, formatNumber, postedLabel, onClick, isBlurred }) => {
   const [imageError, setImageError] = useState(false);
   const isProcessing = !video.thumbnail || imageError;
 
   return (
     <div
-      onClick={isProcessing ? undefined : onClick}
-      className={`flex-shrink-0 w-[200px] group/card ${isProcessing ? '' : 'cursor-pointer'}`}
+      className={`flex-shrink-0 w-[200px] group/card`}
     >
       {/* Video Container - 9:16 Aspect Ratio */}
       <div
+        onClick={isProcessing ? undefined : onClick}
         className={`relative rounded-2xl overflow-hidden bg-surface-tertiary border transition-all duration-300 ${
           isProcessing
             ? 'border-border'
-            : 'border-border hover:border-border-strong hover:scale-[1.02] hover:shadow-2xl'
+            : `border-border ${onClick ? 'cursor-pointer' : ''} hover:border-border-strong hover:scale-[1.02] hover:shadow-2xl`
         }`}
         style={{ aspectRatio: '9/16' }}
       >
@@ -242,6 +349,17 @@ const VideoCard: React.FC<{
         {platformIcon && (
           <div className="absolute top-3 left-3">
             <img src={platformIcon} alt={video.platform} className="w-6 h-6 object-contain drop-shadow-lg" />
+          </div>
+        )}
+
+        {/* Posted-time pill — top right. Mirrors the TikTok/IG date label
+            position so admins can scan recency without opening the modal.
+            Hidden when the video has no usable upload date. */}
+        {!isProcessing && postedLabel && (
+          <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-sm">
+            <span className="text-[10px] font-semibold text-white drop-shadow-sm whitespace-nowrap">
+              {postedLabel}
+            </span>
           </div>
         )}
 
@@ -281,13 +399,10 @@ const VideoCard: React.FC<{
           )}
         </div>
 
-        {/* Play Button Overlay — hidden during processing */}
+        {/* Hover affordance: subtle dim only — no overlay pill (the whole
+            card is clickable; the dim signals interactivity). */}
         {!isProcessing && (
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
-              <Play className="w-6 h-6 text-white fill-white ml-1" />
-            </div>
-          </div>
+          <div className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity bg-black/15 pointer-events-none" />
         )}
 
         {/* Bottom Info */}
@@ -342,6 +457,59 @@ const VideoCard: React.FC<{
           <div className="absolute inset-0 z-10 rounded-2xl" style={{ backdropFilter: 'blur(6px) saturate(1.2)' }} />
         )}
       </div>
+    </div>
+  );
+};
+
+/**
+ * Compact white-pill sort button rendered inside the slider's top-right
+ * control cluster. Always visible (not hover-gated) so it's discoverable.
+ */
+const InlineSortButton: React.FC<{
+  sort: NonNullable<VideoSliderSectionProps['sortControl']>;
+}> = ({ sort }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    if (open) document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+  const activeLabel = sort.options.find(o => o.value === sort.value)?.label || sort.label;
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(o => !o);
+        }}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg bg-white text-black border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+        title="Sort videos"
+      >
+        <ArrowUpDown className="w-3.5 h-3.5" />
+        Sort: {activeLabel}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-44 rounded-lg bg-white border border-gray-200 shadow-xl z-50 overflow-hidden">
+          {sort.options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                sort.onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left ${
+                sort.value === opt.value ? 'bg-gray-100 text-black' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span>{opt.label}</span>
+              {sort.value === opt.value && <Check className="w-3.5 h-3.5 text-black" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -13,6 +13,7 @@ import { VideoSubmission } from '../types';
 import { ProxiedImage } from './ProxiedImage';
 import CreatorPaymentPlanCard from './CreatorPaymentPlanCard';
 import CreatorPaymentPlanModal from './CreatorPaymentPlanModal';
+import { computeKPITotals } from './kpi/kpiDataProcessing';
 
 interface CreatorDetailModalProps {
   isOpen: boolean;
@@ -22,6 +23,15 @@ interface CreatorDetailModalProps {
   earnings: number;
   videoCount: number;
   onProfileUpdated?: () => void;
+  /**
+   * Optional date range. When provided, headline view/like totals are
+   * computed via `computeKPITotals` over this range so the admin modal
+   * matches the public share portal's snapshot-bounded numbers. Pass
+   * `null` start for all-time (the helper sums lifetime then subtracts
+   * sparked views in 'organic' mode — same path the share portal uses).
+   */
+  dateRangeStart?: Date | null;
+  dateRangeEnd?: Date;
 }
 
 // Platform icons
@@ -67,7 +77,8 @@ const getPlatformUrl = (platform: string, username: string) => {
 };
 
 const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
-  isOpen, onClose, creator, profile, earnings, onProfileUpdated
+  isOpen, onClose, creator, profile, earnings, onProfileUpdated,
+  dateRangeStart = null, dateRangeEnd
 }) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
@@ -244,8 +255,17 @@ const CreatorDetailModal: React.FC<CreatorDetailModalProps> = ({
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const totalViews = videos.reduce((s, v) => s + (v.views || 0), 0);
-  const totalLikes = videos.reduce((s, v) => s + (v.likes || 0), 0);
+  // Use the central KPI helper so the admin headline matches the
+  // public share portal's snapshot-bounded math (which goes through
+  // KPICards → computeKPITotals). Without this, admin saw a lifetime
+  // sum of `video.views` while the creator saw a snapshot-derived
+  // total — same creator, different numbers depending on which UI.
+  const kpiTotals = useMemo(
+    () => computeKPITotals(videoSubmissions, dateRangeStart, dateRangeEnd ?? new Date(), 'organic'),
+    [videoSubmissions, dateRangeStart, dateRangeEnd],
+  );
+  const totalViews = kpiTotals.views;
+  const totalLikes = kpiTotals.likes;
 
   if (!isOpen) return null;
 

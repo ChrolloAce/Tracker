@@ -18,6 +18,13 @@ interface TopPerformersSectionProps {
   submissions: VideoSubmission[];
   onVideoClick?: (video: VideoSubmission) => void;
   onAccountClick?: (username: string) => void;
+  /** Optional richer callback for creator-row clicks (e.g. Top Performers'
+   *  creators list) — receives the creator's id, displayName, and the full
+   *  list of usernames linked to them. Falls back to onAccountClick when not
+   *  provided (legacy behavior). */
+  onCreatorRowClick?: (info: { creatorId: string; displayName: string; usernames: string[] }) => void;
+  /** Fired when a row in the Top Platforms race chart is clicked. */
+  onPlatformClick?: (platform: VideoSubmission['platform']) => void;
   onHeatmapCellClick?: (params: {
     dayIndex: number;
     hour: number;
@@ -61,6 +68,8 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
   submissions,
   onVideoClick,
   onAccountClick,
+  onCreatorRowClick,
+  onPlatformClick,
   onHeatmapCellClick,
   subsectionVisibility,
   isEditMode = false,
@@ -325,6 +334,9 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
             <TopTeamCreatorsList
               submissions={submissions}
               onCreatorClick={onAccountClick}
+              onCreatorRowClick={onCreatorRowClick}
+              dateFilter={dateFilter}
+              customRange={customRange}
             />
           </div>
         );
@@ -366,6 +378,7 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
                 submissions={submissions}
                 dateFilter={dateFilter}
                 customRange={customRange}
+                onPlatformClick={onPlatformClick}
               />
             </div>
           </div>
@@ -382,6 +395,7 @@ const TopPerformersSection = React.memo<TopPerformersSectionProps>(({
               submissions={submissions}
               granularity={granularity}
               dateRange={dateRange}
+              dateFilter={dateFilter}
             />
           </div>
         );

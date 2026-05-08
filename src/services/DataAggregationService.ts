@@ -108,7 +108,12 @@ export class DataAggregationService {
         end.setMilliseconds(end.getMilliseconds() - 1);
         break;
       case 'month':
-        end.setMonth(end.getMonth() + 1);
+        // End of the calendar month containing startDate so each bucket
+        // matches a real month (Apr 1 → Apr 30) instead of "+1 month from
+        // startDate" — that produced two April buckets when the range
+        // start wasn't the 1st.
+        end.setMonth(end.getMonth() + 1, 1);
+        end.setHours(0, 0, 0, 0);
         end.setMilliseconds(end.getMilliseconds() - 1);
         break;
       case 'year':
@@ -134,7 +139,11 @@ export class DataAggregationService {
         next.setDate(next.getDate() + 7);
         break;
       case 'month':
-        next.setMonth(next.getMonth() + 1);
+        // Snap to the 1st of the NEXT calendar month so subsequent buckets
+        // align to month boundaries — prevents the pinhead trailing
+        // interval (Apr 28 → Apr 28) that duplicated the month label.
+        next.setMonth(next.getMonth() + 1, 1);
+        next.setHours(0, 0, 0, 0);
         break;
       case 'year':
         next.setFullYear(next.getFullYear() + 1);

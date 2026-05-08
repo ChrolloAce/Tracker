@@ -153,11 +153,18 @@ const CreateCampaignPage: React.FC = () => {
 
   const loadCreators = async () => {
     if (!currentOrgId || !currentProjectId) return;
-    
+
     setLoadingCreators(true);
     try {
       const members = await OrganizationService.getOrgMembers(currentOrgId);
-      const creators = members.filter(m => m.role === 'creator');
+      // Project-scoped: only show creators that have been explicitly assigned
+      // to the current project via member.creatorProjectIds. Without this, the
+      // picker leaks every creator from every project in the org.
+      const creators = members.filter(m =>
+        m.role === 'creator' &&
+        Array.isArray(m.creatorProjectIds) &&
+        m.creatorProjectIds.includes(currentProjectId)
+      );
       setAvailableCreators(creators);
     } catch (error) {
       console.error('Failed to load creators:', error);

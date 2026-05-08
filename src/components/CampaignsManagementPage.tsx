@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign, CampaignStatus } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
 import OrganizationService from '../services/OrganizationService';
+import { computeKPITotals } from './kpi/kpiDataProcessing';
+import type { VideoSubmission } from '../types';
 import { 
   Trophy, 
   DollarSign,
@@ -99,6 +101,13 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 
   // Calculate overall stats
   const totalParticipants = new Set(campaigns.flatMap(c => c.participantIds)).size;
+  // Org-wide rollup uses each campaign's stored lifetime `totalViews` (a
+  // denormalized sum maintained by metric updates). We deliberately do NOT
+  // load per-campaign videos+snapshots here — that would be N campaigns ×
+  // M creators × videos, which is too expensive for a management page that
+  // already paginates through every campaign in the project. May differ
+  // slightly from per-campaign detail views, which DO recompute snapshot-
+  // bounded totals against each campaign's start/end window.
   const totalViews = campaigns.reduce((sum, c) => sum + c.totalViews, 0);
   const totalPaidOut = campaigns.reduce((sum, c) => sum + c.totalEarnings, 0);
 
@@ -225,6 +234,39 @@ const CampaignManagementCard: React.FC<{
   const menuRef = useRef<HTMLDivElement>(null);
   const { currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
+
+  // Live snapshot-bounded videos for this campaign — used to recompute the
+  // displayed "Views" stat against the campaign window instead of using the
+  // stored lifetime `campaign.totalViews`. Loaded per card; cheap enough at
+  // a single campaign's footprint. Falls back to the stored value while
+  // loading or on error.
+  const [campaignVideos, setCampaignVideos] = useState<VideoSubmission[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentOrgId || !currentProjectId) return;
+    CampaignService.loadCampaignCreatorVideos(currentOrgId, currentProjectId, campaign)
+      .then(byCreator => {
+        if (cancelled) return;
+        const flat: VideoSubmission[] = [];
+        for (const list of byCreator.values()) flat.push(...list);
+        setCampaignVideos(flat);
+      })
+      .catch(err => {
+        console.warn('CampaignManagementCard: failed to load videos for live totals:', err);
+      });
+    return () => { cancelled = true; };
+  }, [currentOrgId, currentProjectId, campaign.id]);
+
+  const liveViews = useMemo(() => {
+    if (campaignVideos.length === 0) return null;
+    const start = campaign.startDate
+      ? (campaign.startDate instanceof Date ? campaign.startDate : campaign.startDate.toDate())
+      : null;
+    const end = campaign.endDate
+      ? (campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate())
+      : new Date();
+    return computeKPITotals(campaignVideos, start, end, 'organic').views;
+  }, [campaignVideos, campaign.startDate, campaign.endDate]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -428,10 +470,13 @@ const CampaignManagementCard: React.FC<{
                 <div className="text-sm text-gray-300">{getCampaignType()}</div>
               </div>
 
-              {/* Views */}
+              {/* Views — snapshot-bounded for the campaign window when live
+                  videos are available; falls back to stored lifetime
+                  `campaign.totalViews` while loading or if we can't reach the
+                  underlying data. */}
               <div>
                 <div className="text-[10px] text-gray-500 uppercase mb-1">Views</div>
-                <div className="text-sm text-white font-semibold">{campaign.totalViews.toLocaleString()}</div>
+                <div className="text-sm text-white font-semibold">{(liveViews ?? campaign.totalViews).toLocaleString()}</div>
               </div>
             </div>
           </div>

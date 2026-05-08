@@ -24,6 +24,10 @@ import type {
   CreateVideoSubmissionInput,
   VideoSubmissionStatus,
 } from '../types/campaigns';
+import type { VideoSubmission } from '../types';
+import FirestoreDataService from './FirestoreDataService';
+import CreatorLinksService from './CreatorLinksService';
+import { computePerVideoMetricInRange } from '../components/kpi/kpiDataProcessing';
 
 /**
  * Campaign Service - Handles all campaign-related operations
@@ -400,7 +404,134 @@ class CampaignService {
   }
 
   /**
-   * Calculate and update leaderboard
+   * Load videos (with snapshots attached) for every participant in a campaign,
+   * keyed by `creatorId`. Used by the leaderboard ranking path and by display
+   * surfaces (CampaignLeaderboard, CampaignDetailsPage, management cards) that
+   * need snapshot-aware totals bounded by the campaign's start/end window.
+   *
+   * Goes via CreatorLinksService → tracked accounts → videos, then attaches
+   * snapshots in a single batch. Returns an empty map for any creator with no
+   * linked accounts or no videos.
+   */
+  static async loadCampaignCreatorVideos(
+    orgId: string,
+    projectId: string,
+    campaign: Campaign,
+  ): Promise<Map<string, VideoSubmission[]>> {
+    const result = new Map<string, VideoSubmission[]>();
+    if (!campaign.participantIds || campaign.participantIds.length === 0) {
+      return result;
+    }
+
+    const allAccounts = await FirestoreDataService.getTrackedAccounts(orgId, projectId);
+    const accountById = new Map(allAccounts.map(a => [a.id, a]));
+
+    // Resolve creator → linked tracked account ids in parallel.
+    const creatorAccountLinks = await Promise.all(
+      campaign.participantIds.map(async creatorId => {
+        try {
+          const links = await CreatorLinksService.getCreatorLinkedAccounts(orgId, projectId, creatorId);
+          return { creatorId, accountIds: links.map(l => l.accountId) };
+        } catch (e) {
+          console.warn(`Failed to load linked accounts for creator ${creatorId}:`, e);
+          return { creatorId, accountIds: [] as string[] };
+        }
+      }),
+    );
+
+    // Pull videos per tracked account. We can't query "all videos for these
+    // accounts" in one shot without an `in` query (>10 limit), so fan out per
+    // account and dedupe later. Bounded by campaign size; fine for display.
+    const allVideoDocs: Array<{ creatorId: string; videoDoc: any }> = [];
+    for (const { creatorId, accountIds } of creatorAccountLinks) {
+      if (accountIds.length === 0) {
+        result.set(creatorId, []);
+        continue;
+      }
+      const perAccount = await Promise.all(
+        accountIds.map(accId =>
+          FirestoreDataService.getVideos(orgId, projectId, { trackedAccountId: accId }).catch(err => {
+            console.warn(`Failed to load videos for account ${accId}:`, err);
+            return [] as any[];
+          }),
+        ),
+      );
+      const seen = new Set<string>();
+      for (const docs of perAccount) {
+        for (const v of docs) {
+          if (seen.has(v.id)) continue;
+          seen.add(v.id);
+          allVideoDocs.push({ creatorId, videoDoc: v });
+        }
+      }
+    }
+
+    // Batch-load snapshots for every collected video at once.
+    const allVideoIds = Array.from(new Set(allVideoDocs.map(({ videoDoc }) => videoDoc.id)));
+    const snapshotsMap = allVideoIds.length > 0
+      ? await FirestoreDataService.getVideoSnapshotsBatch(orgId, projectId, allVideoIds)
+      : new Map();
+
+    // Convert VideoDoc → VideoSubmission with snapshots attached, grouped by creator.
+    for (const { creatorId, videoDoc } of allVideoDocs) {
+      const account = videoDoc.trackedAccountId ? accountById.get(videoDoc.trackedAccountId) : null;
+      const submission: VideoSubmission = {
+        id: videoDoc.id,
+        url: videoDoc.url || videoDoc.videoUrl || '',
+        platform: videoDoc.platform,
+        thumbnail: videoDoc.thumbnail || '',
+        title: videoDoc.title || videoDoc.videoTitle || '',
+        caption: videoDoc.description || videoDoc.caption || '',
+        uploader: account?.displayName || account?.username || '',
+        uploaderHandle: account?.username || '',
+        uploaderProfilePicture: account?.profilePicture,
+        followerCount: account?.followerCount,
+        trackedAccountId: videoDoc.trackedAccountId,
+        status: videoDoc.status === 'archived' ? 'rejected' : videoDoc.status === 'processing' ? 'pending' : 'approved',
+        views: videoDoc.views || 0,
+        likes: videoDoc.likes || 0,
+        comments: videoDoc.comments || 0,
+        shares: videoDoc.shares || 0,
+        saves: videoDoc.saves || 0,
+        duration: videoDoc.duration || 0,
+        dateSubmitted: videoDoc.dateAdded?.toDate?.() || new Date(),
+        uploadDate: videoDoc.uploadDate?.toDate?.() || new Date(),
+        lastRefreshed: videoDoc.lastRefreshed?.toDate?.(),
+        snapshots: snapshotsMap.get(videoDoc.id) || [],
+        sparkedAt: videoDoc.sparkedAt?.toDate?.(),
+        sparkViewLogs: videoDoc.sparkViewLogs,
+      };
+      const list = result.get(creatorId) || [];
+      list.push(submission);
+      result.set(creatorId, list);
+    }
+
+    // Ensure every participant has an entry, even if empty.
+    for (const creatorId of campaign.participantIds) {
+      if (!result.has(creatorId)) result.set(creatorId, []);
+    }
+
+    return result;
+  }
+
+  /**
+   * Coerce a Firestore Timestamp/Date to a plain Date, or null if absent.
+   */
+  private static toDateOrNull(d: any): Date | null {
+    if (!d) return null;
+    if (d instanceof Date) return d;
+    if (typeof d.toDate === 'function') return d.toDate();
+    return new Date(d);
+  }
+
+  /**
+   * Calculate and update leaderboard.
+   *
+   * Ranking and scoring use snapshot-bounded per-video metrics over the
+   * campaign's [startDate, endDate] window — NOT the participant's lifetime
+   * `totalViews`/`totalLikes`/etc. Lifetime totals leak views from before the
+   * campaign started or after it ended into the score, which is the bug this
+   * pass exists to fix.
    */
   static async updateLeaderboard(
     orgId: string,
@@ -410,64 +541,84 @@ class CampaignService {
     const campaign = await this.getCampaign(orgId, projectId, campaignId);
     if (!campaign) return;
 
-    // Sort participants by their score (based on goal type)
-    const sortedParticipants = [...campaign.participants].sort((a, b) => {
-      switch (campaign.goalType) {
-        case 'total_views':
-          return b.totalViews - a.totalViews;
-        case 'total_engagement':
-          return b.totalEngagement - a.totalEngagement;
-        case 'avg_engagement_rate':
-          return b.engagementRate - a.engagementRate;
-        case 'total_likes':
-          return b.totalLikes - a.totalLikes;
-        case 'total_comments':
-          return b.totalComments - a.totalComments;
-        case 'video_count':
-          return b.videoCount - a.videoCount;
-        default:
-          return 0;
-      }
-    });
+    // Resolve campaign window (Firestore Timestamps → Date, end defaults to now).
+    const campaignStart = this.toDateOrNull(campaign.startDate);
+    const campaignEnd = this.toDateOrNull(campaign.endDate) ?? new Date();
 
-    // Create leaderboard with ranks
-    const leaderboard = sortedParticipants.map((participant, index) => {
-      const previousRank = participant.currentRank || index + 1;
+    // Load each participant's videos+snapshots once, then derive per-creator
+    // snapshot-bounded scores. Falls back to stored participant totals if the
+    // load fails (better stale-but-consistent than blank leaderboard).
+    let creatorVideos: Map<string, VideoSubmission[]>;
+    try {
+      creatorVideos = await this.loadCampaignCreatorVideos(orgId, projectId, campaign);
+    } catch (e) {
+      console.warn('updateLeaderboard: failed to load campaign videos, falling back to stored totals:', e);
+      creatorVideos = new Map();
+    }
+
+    // Compute per-creator snapshot-bounded score for the campaign's goal metric.
+    const scoreFor = (participant: CampaignParticipant): number => {
+      const videos = creatorVideos.get(participant.creatorId);
+      if (!videos || videos.length === 0) {
+        // Fallback: stored lifetime totals (pre-snapshot-aware). Better than
+        // dropping the participant from the leaderboard entirely.
+        switch (campaign.goalType) {
+          case 'total_views': return participant.totalViews;
+          case 'total_engagement': return participant.totalEngagement;
+          case 'avg_engagement_rate': return participant.engagementRate;
+          case 'total_likes': return participant.totalLikes;
+          case 'total_comments': return participant.totalComments;
+          case 'video_count': return participant.videoCount;
+          default: return 0;
+        }
+      }
+      const sumMetric = (m: 'views' | 'likes' | 'comments' | 'shares') =>
+        videos.reduce(
+          (s, v) => s + computePerVideoMetricInRange(v, m, campaignStart, campaignEnd, { excludeSparked: m === 'views' }),
+          0,
+        );
+
+      switch (campaign.goalType) {
+        case 'total_views': return sumMetric('views');
+        case 'total_likes': return sumMetric('likes');
+        case 'total_comments': return sumMetric('comments');
+        case 'total_engagement': return sumMetric('likes') + sumMetric('comments') + sumMetric('shares');
+        case 'avg_engagement_rate': {
+          const v = sumMetric('views');
+          if (v <= 0) return 0;
+          return ((sumMetric('likes') + sumMetric('comments')) / v) * 100;
+        }
+        case 'video_count': {
+          // Count videos uploaded inside the campaign window.
+          if (!campaignStart) return videos.length;
+          return videos.filter(vid => {
+            const up = vid.uploadDate ? new Date(vid.uploadDate) : new Date(vid.dateSubmitted);
+            return up >= campaignStart && up <= campaignEnd;
+          }).length;
+        }
+        default: return 0;
+      }
+    };
+
+    // Sort participants by snapshot-bounded score (descending).
+    const scored = campaign.participants.map(p => ({ participant: p, score: scoreFor(p) }));
+    scored.sort((a, b) => b.score - a.score);
+
+    // Create leaderboard with ranks + delta vs previous rank.
+    const leaderboard = scored.map((entry, index) => {
+      const previousRank = entry.participant.currentRank || index + 1;
       const newRank = index + 1;
-      
-      let score = 0;
-      switch (campaign.goalType) {
-        case 'total_views':
-          score = participant.totalViews;
-          break;
-        case 'total_engagement':
-          score = participant.totalEngagement;
-          break;
-        case 'avg_engagement_rate':
-          score = participant.engagementRate;
-          break;
-        case 'total_likes':
-          score = participant.totalLikes;
-          break;
-        case 'total_comments':
-          score = participant.totalComments;
-          break;
-        case 'video_count':
-          score = participant.videoCount;
-          break;
-      }
-
       return {
-        creatorId: participant.creatorId,
+        creatorId: entry.participant.creatorId,
         rank: newRank,
-        score,
+        score: entry.score,
         delta: previousRank - newRank, // Positive = moved up, negative = moved down
       };
     });
 
     // Update campaign with new leaderboard and participant ranks
-    const updatedParticipants = sortedParticipants.map((p, index) => ({
-      ...p,
+    const updatedParticipants = scored.map((entry, index) => ({
+      ...entry.participant,
       currentRank: index + 1,
     }));
 

@@ -4,7 +4,7 @@ import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
 import { AccountVideo, AccountWithFilteredStats } from '../types/accounts';
-import { VideoSnapshot } from '../types';
+import { VideoSnapshot, VideoSubmission } from '../types';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
 import RulesService from '../services/RulesService';
@@ -12,8 +12,10 @@ import UsageTrackingService from '../services/UsageTrackingService';
 import AdminService from '../services/AdminService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
+import DateFilterService from '../services/DateFilterService';
 import { TrackingRule } from '../types/rules';
 import { DateFilterType } from '../components/DateRangeFilter';
+import { computePerVideoMetricInRange } from '../components/kpi/kpiDataProcessing';
 
 interface UseAccountsProps {
   organizationId?: string;
@@ -392,6 +394,10 @@ export const useAccounts = ({
 
         // Fetch all account videos in parallel (single Promise.all instead of sequential)
         const allVideosMap = new Map<string, AccountVideo[]>();
+        // Snapshots (per videoId) — needed so the per-account totals can use the
+        // snapshot-aware central helper (`computePerVideoMetricInRange`) instead
+        // of the lifetime aggregate stored on `account.totalViews`.
+        let snapshotsMap: Map<string, VideoSnapshot[]> = new Map();
         if (!isDemoMode && currentOrgId && currentProjectId) {
           const videoResults = await Promise.all(
             accounts.map(async (account) => {
@@ -408,15 +414,72 @@ export const useAccounts = ({
           for (const { accountId, videos } of videoResults) {
             allVideosMap.set(accountId, videos);
           }
+
+          // Batch-fetch snapshots for every video across every account so the
+          // per-account snapshot-delta math has the data it needs.
+          const allVideoIds: string[] = [];
+          for (const videos of allVideosMap.values()) {
+            for (const v of videos) {
+              const vid = v.id || v.videoId || '';
+              if (vid) allVideoIds.push(vid);
+            }
+          }
+          if (allVideoIds.length > 0) {
+            try {
+              snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(currentOrgId!, currentProjectId!, allVideoIds);
+            } catch (error) {
+              console.error('Failed to batch-fetch snapshots for accounts table:', error);
+            }
+          }
         }
 
         if (cancelled) return;
 
+        // Resolve the dashboard's date range once. `dateFilter === 'all'` maps
+        // to `dateRangeStart = null` (helper convention for lifetime).
+        let dateRangeStart: Date | null = null;
+        let dateRangeEnd: Date = new Date();
+        if (dateFilter !== 'all') {
+          const range = DateFilterService.getDateRange(dateFilter);
+          dateRangeStart = range.startDate;
+          dateRangeEnd = range.endDate;
+        }
+
+        // Convert AccountVideo + snapshots into the VideoSubmission shape
+        // the central helper expects (it only reads upload date, snapshots,
+        // metric fields, and spark fields — all present here).
+        const toSubmission = (v: AccountVideo): VideoSubmission => {
+          const vid = v.id || v.videoId || '';
+          return {
+            ...v,
+            id: vid,
+            snapshots: snapshotsMap.get(vid) || [],
+          } as unknown as VideoSubmission;
+        };
+
         const results = accounts.map((account) => {
-            const totalViews = account.totalViews || 0;
-            const totalLikes = account.totalLikes || 0;
-            const totalComments = account.totalComments || 0;
-            const totalShares = account.totalShares || 0;
+            const videosForThisAccount = (allVideosMap.get(account.id) || []).map(toSubmission);
+
+            // Snapshot-aware per-account totals scoped to the dashboard's
+            // date filter. `views` excludes sparked (paid) views to match
+            // the dashboard's organic-mode reporting; the other metrics
+            // pass through as-is (sparks only apply to views).
+            const totalViews = videosForThisAccount.reduce(
+              (s, v) => s + computePerVideoMetricInRange(v, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+              0,
+            );
+            const totalLikes = videosForThisAccount.reduce(
+              (s, v) => s + computePerVideoMetricInRange(v, 'likes', dateRangeStart, dateRangeEnd),
+              0,
+            );
+            const totalComments = videosForThisAccount.reduce(
+              (s, v) => s + computePerVideoMetricInRange(v, 'comments', dateRangeStart, dateRangeEnd),
+              0,
+            );
+            const totalShares = videosForThisAccount.reduce(
+              (s, v) => s + computePerVideoMetricInRange(v, 'shares', dateRangeStart, dateRangeEnd),
+              0,
+            );
             const totalVideos = account.totalVideos || 0;
 
             const avgEngagementRate = totalViews > 0

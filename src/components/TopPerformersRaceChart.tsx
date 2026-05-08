@@ -5,6 +5,7 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { ChevronDown, ChevronRight, Play, Info } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import DateFilterService from '../services/DateFilterService';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
 
 interface TopPerformersRaceChartProps {
   submissions: VideoSubmission[];
@@ -13,18 +14,28 @@ interface TopPerformersRaceChartProps {
   type?: 'videos' | 'accounts' | 'gainers' | 'both'; // Control which section to render
   dateFilter?: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
+  /** Org's reporting setting from settings/general. When 'organic',
+   *  Spark (paid-ad) views are subtracted from leaderboard gain so
+   *  videos riding ad spend don't crowd out organic performers. */
+  orgDefaultReportingView?: 'organic' | 'total' | 'split';
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'bookmarks' | 'virality' | 'followersGained';
 
-const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ 
-  submissions, 
-  onVideoClick, 
-  onAccountClick, 
+const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
+  submissions,
+  onVideoClick,
+  onAccountClick,
   type = 'both',
   dateFilter = 'all',
-  customRange
+  customRange,
+  orgDefaultReportingView,
 }) => {
+  // Default to excluding sparked views — matches the org-wide default
+  // ('organic'). Only flip to including them when the org explicitly
+  // chose 'total'. 'split' falls back to organic here since the
+  // leaderboard can't render two competing series.
+  const excludeSparked = orgDefaultReportingView !== 'total';
   const [topVideosCount, setTopVideosCount] = useState(5);
   const [topAccountsCount, setTopAccountsCount] = useState(5);
   const [videosMetric, setVideosMetric] = useState<MetricType>('views');
@@ -55,186 +66,45 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
     return range;
   }, [dateFilter, customRange]);
 
-  // Calculate metric value within the date range
+  // Calculate metric value within the date range.
+  // Delegates the core snapshot-clamped, optionally spark-excluded math to the
+  // shared `computePerVideoMetricInRange` so this leaderboard agrees with the
+  // unified chart and KPI cards. Derived metrics (engagement / virality) are
+  // computed from the core metrics returned by the helper; followersGained
+  // has no per-range definition so it stays 0 (matches prior behavior).
   const getMetricValueInDateRange = (video: VideoSubmission, metric: MetricType): number => {
-    // If no date range, use full video metrics
-    if (!dateRange) {
-      return getMetricValue(video, metric);
-    }
+    const start = dateRange?.startDate ?? null;
+    const end = dateRange?.endDate ?? new Date();
+    const opts = { excludeSparked };
 
-    const uploadDate = video.uploadDate
-      ? new Date(video.uploadDate)
-      : video.timestamp
-      ? new Date(video.timestamp)
-      : video.dateSubmitted
-      ? new Date(video.dateSubmitted)
-      : new Date();
-
-    // If video was uploaded within the date range, use its full metrics
-    if (uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate) {
-      return getMetricValue(video, metric);
-    }
-
-    // Video was uploaded BEFORE the date range - calculate delta from snapshots
-    if (!video.snapshots || video.snapshots.length === 0) {
-      return 0; // No snapshot data, can't calculate what happened in period
-    }
-
-    // Find snapshots at/before range start and at/before range end
-    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-
-    // Find the last snapshot before or at range start
-    const startSnapshot = sortedSnapshots
-      .filter(s => new Date(s.capturedAt) <= dateRange.startDate)
-      .pop();
-
-    // Find the last snapshot before or at range end (within the range)
-    const endSnapshot = sortedSnapshots
-      .filter(s => new Date(s.capturedAt) <= dateRange.endDate)
-      .pop();
-
-    if (!startSnapshot || !endSnapshot || startSnapshot === endSnapshot) {
-      return 0; // Not enough snapshot data
-    }
-
-    const getSnapshotMetric = (snapshot: any, metric: MetricType): number => {
-      switch (metric) {
-        case 'views':
-          return snapshot.views || 0;
-        case 'likes':
-          return snapshot.likes || 0;
-        case 'comments':
-          return snapshot.comments || 0;
-        case 'shares':
-          return snapshot.shares || 0;
-        case 'bookmarks':
-          return snapshot.saves || 0;
-        case 'engagement':
-          const totalEng = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
-          return snapshot.views > 0 ? (totalEng / snapshot.views) * 100 : 0;
-        case 'virality':
-          const followerCount = video.followerCount || 1;
-          const totalInteractions = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
-          return (totalInteractions / followerCount) * 1000;
-        case 'followersGained':
-          return 0; // Can't calculate followers gained from snapshots
-        default:
-          return 0;
+    switch (metric) {
+      case 'views':
+      case 'likes':
+      case 'comments':
+      case 'shares':
+        return computePerVideoMetricInRange(video, metric, start, end, opts);
+      case 'bookmarks':
+        return computePerVideoMetricInRange(video, 'saves', start, end, opts);
+      case 'engagement': {
+        const v = computePerVideoMetricInRange(video, 'views', start, end, opts);
+        const l = computePerVideoMetricInRange(video, 'likes', start, end, opts);
+        const c = computePerVideoMetricInRange(video, 'comments', start, end, opts);
+        const s = computePerVideoMetricInRange(video, 'shares', start, end, opts);
+        return v > 0 ? ((l + c + s) / v) * 100 : 0;
       }
-    };
-
-    const startValue = getSnapshotMetric(startSnapshot, metric);
-    const endValue = getSnapshotMetric(endSnapshot, metric);
-    
-    // Return the delta (growth during the period)
-    return Math.max(0, endValue - startValue);
-  };
-
-  // Calculate gain from snapshots (all time)
-  const calculateSnapshotGain = (video: VideoSubmission, metric: MetricType): number => {
-    if (!video.snapshots || video.snapshots.length === 0) return 0;
-    
-    // Sort snapshots by date
-    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-    
-    const firstSnapshot = sortedSnapshots[0];
-    const lastSnapshot = sortedSnapshots[sortedSnapshots.length - 1];
-    
-    const getSnapshotValue = (snapshot: any, metric: MetricType): number => {
-      switch (metric) {
-        case 'views':
-          return snapshot.views || 0;
-        case 'likes':
-          return snapshot.likes || 0;
-        case 'comments':
-          return snapshot.comments || 0;
-        case 'shares':
-          return snapshot.shares || 0;
-        case 'bookmarks':
-          return snapshot.saves || 0;
-        case 'engagement':
-          const totalEng = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
-          return snapshot.views > 0 ? (totalEng / snapshot.views) * 100 : 0;
-        default:
-          return 0;
+      case 'virality': {
+        const followerCount = video.followerCount || 1;
+        const l = computePerVideoMetricInRange(video, 'likes', start, end, opts);
+        const c = computePerVideoMetricInRange(video, 'comments', start, end, opts);
+        const s = computePerVideoMetricInRange(video, 'shares', start, end, opts);
+        return ((l + c + s) / followerCount) * 1000;
       }
-    };
-    
-    const startValue = getSnapshotValue(firstSnapshot, metric);
-    const endValue = getSnapshotValue(lastSnapshot, metric);
-    
-    return endValue - startValue;
-  };
-
-  // Calculate gain from snapshots ONLY within the date range
-  const calculateSnapshotGainInDateRange = (video: VideoSubmission, metric: MetricType): number => {
-    if (!video.snapshots || video.snapshots.length === 0) return 0;
-    if (!dateRange) return calculateSnapshotGain(video, metric); // Fallback to all-time if no range
-    
-    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-    
-    // Find snapshots within the date range
-    const snapshotsInRange = sortedSnapshots.filter(s => {
-      const capturedDate = new Date(s.capturedAt);
-      return capturedDate >= dateRange.startDate && capturedDate <= dateRange.endDate;
-    });
-    
-    // Find snapshot at or before range start (baseline)
-    let startSnapshot = sortedSnapshots
-      .filter(s => new Date(s.capturedAt) <= dateRange.startDate)
-      .pop();
-    
-    // If no baseline snapshot before range, use the first snapshot IN the range as baseline
-    if (!startSnapshot && snapshotsInRange.length > 0) {
-      startSnapshot = snapshotsInRange[0];
+      case 'followersGained':
+        // No per-range followers-gained semantic; matches prior snapshot-delta path.
+        return 0;
+      default:
+        return 0;
     }
-    
-    // Find the latest snapshot in or before the range end
-    const endSnapshot = sortedSnapshots
-      .filter(s => new Date(s.capturedAt) <= dateRange.endDate)
-      .pop();
-    
-    // Need at least 2 different snapshots to calculate growth
-    if (!startSnapshot || !endSnapshot || startSnapshot === endSnapshot) {
-      return 0; // Not enough snapshot data for this period
-    }
-    
-    const getSnapshotValue = (snapshot: any, metric: MetricType): number => {
-      switch (metric) {
-        case 'views':
-          return snapshot.views || 0;
-        case 'likes':
-          return snapshot.likes || 0;
-        case 'comments':
-          return snapshot.comments || 0;
-        case 'shares':
-          return snapshot.shares || 0;
-        case 'bookmarks':
-          return snapshot.saves || 0;
-        case 'engagement':
-          const totalEng = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
-          return snapshot.views > 0 ? (totalEng / snapshot.views) * 100 : 0;
-        case 'virality':
-          const followerCount = video.followerCount || 1;
-          const totalInteractions = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
-          return (totalInteractions / followerCount) * 1000;
-        case 'followersGained':
-          return 0;
-        default:
-          return 0;
-      }
-    };
-    
-    const startValue = getSnapshotValue(startSnapshot, metric);
-    const endValue = getSnapshotValue(endSnapshot, metric);
-    
-    return Math.max(0, endValue - startValue); // Only positive gains
   };
 
   // Calculate metric value for a video
@@ -265,7 +135,48 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
     }
   };
 
-  // Get top videos sorted by selected metric
+  // Get top videos sorted by selected metric.
+  // Spark-adjusted gain in the visible window. Routes through the shared
+  // `computePerVideoMetricInRange` so the leaderboard agrees with the unified
+  // chart and KPI cards (snapshot-clamped, optional spark exclusion).
+  // For non-core metrics (engagement / virality / followersGained) we fall
+  // back to the in-range derivation already implemented in
+  // `getMetricValueInDateRange`.
+  const adjustedGain = (video: VideoSubmission, metric: MetricType): number => {
+    const end = dateRange?.endDate ?? new Date();
+    const opts = { excludeSparked };
+    switch (metric) {
+      case 'views':
+      case 'likes':
+      case 'comments':
+      case 'shares':
+        return computePerVideoMetricInRange(video, metric, dateRange?.startDate ?? null, end, opts);
+      case 'bookmarks':
+        return computePerVideoMetricInRange(video, 'saves', dateRange?.startDate ?? null, end, opts);
+      default:
+        return getMetricValueInDateRange(video, metric);
+    }
+  };
+  // Same idea but for cumulative metric values (used by Top New Videos
+  // which scores by lifetime metric, not period gain). For videos uploaded
+  // in the period, all-time spark IS the period spark — pass `null` as the
+  // start so the helper folds in every spark event.
+  const adjustedValue = (video: VideoSubmission, metric: MetricType): number => {
+    const end = dateRange?.endDate ?? new Date();
+    const opts = { excludeSparked };
+    switch (metric) {
+      case 'views':
+      case 'likes':
+      case 'comments':
+      case 'shares':
+        return computePerVideoMetricInRange(video, metric, null, end, opts);
+      case 'bookmarks':
+        return computePerVideoMetricInRange(video, 'saves', null, end, opts);
+      default:
+        return getMetricValue(video, metric);
+    }
+  };
+
   const topVideos = useMemo(() => {
     // Deduplicate videos by ID first
     const uniqueVideos = new Map<string, VideoSubmission>();
@@ -275,7 +186,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
         uniqueVideos.set(key, video);
       }
     });
-    
+
     const videosArray = Array.from(uniqueVideos.values());
     
     // For 'gainers' (Top Refreshed Videos): Only OLD videos with snapshot growth during period
@@ -315,8 +226,12 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
             }
           }
           
-          // Only show videos with actual positive growth during the period
-          const gain = calculateSnapshotGainInDateRange(video, videosMetric);
+          // Only show videos with actual positive growth during the period.
+          // When the org's reporting view is 'organic', subtract sparked
+          // views so videos riding ad spend don't dominate the leaderboard
+          // — a video whose entire gain came from ads will floor at 0 and
+          // drop off naturally.
+          const gain = adjustedGain(video, videosMetric);
           if (gain > 0) {
             hasGrowthCount++;
             console.log(`  ✅ HAS GROWTH (+${Math.round(gain).toLocaleString()}): "${video.title?.substring(0, 30)}" (${video.snapshots.length} snapshots)`);
@@ -325,7 +240,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
           }
           return gain > 0;
         })
-        .sort((a, b) => calculateSnapshotGainInDateRange(b, videosMetric) - calculateSnapshotGainInDateRange(a, videosMetric))
+        .sort((a, b) => adjustedGain(b, videosMetric) - adjustedGain(a, videosMetric))
         .slice(0, topVideosCount);
       
       console.log(`🔥 [TOP REFRESHED VIDEOS] SUMMARY:`);
@@ -383,13 +298,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
     return filtered
       .map(video => ({
         video,
-        metricValue: getMetricValue(video, videosMetric) // Use full video metrics
+        metricValue: adjustedValue(video, videosMetric) // Spark-aware lifetime metric
       }))
       .filter(item => item.metricValue > 0)
       .sort((a, b) => b.metricValue - a.metricValue)
       .slice(0, topVideosCount)
       .map(item => item.video);
-  }, [submissions, videosMetric, topVideosCount, type, dateRange]);
+  }, [submissions, videosMetric, topVideosCount, type, dateRange, excludeSparked]);
 
   // Get top accounts (aggregate by uploader handle + platform)
   const topAccounts = useMemo(() => {
@@ -497,10 +412,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
       .slice(0, topAccountsCount);
     
     return sortedAccounts;
-  }, [submissions, accountsMetric, topAccountsCount, dateRange]);
+  }, [submissions, accountsMetric, topAccountsCount, dateRange, excludeSparked]);
 
-  const maxVideoValue = topVideos.length > 0 
-    ? (type === 'gainers' ? calculateSnapshotGainInDateRange(topVideos[0], videosMetric) : getMetricValue(topVideos[0], videosMetric))
+  const maxVideoValue = topVideos.length > 0
+    ? (type === 'gainers' ? adjustedGain(topVideos[0], videosMetric) : adjustedValue(topVideos[0], videosMetric))
     : 1;
   const maxAccountValue = topAccounts.length > 0 
     ? (accountsMetric === 'views' ? topAccounts[0].totalViews
@@ -729,8 +644,8 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
         <div className="space-y-3">
           {topVideos.map((video, index) => {
             const value = type === 'gainers'
-              ? calculateSnapshotGainInDateRange(video, videosMetric)
-              : getMetricValue(video, videosMetric);
+              ? adjustedGain(video, videosMetric)
+              : adjustedValue(video, videosMetric);
             const percentage = maxVideoValue > 0 ? (value / maxVideoValue) * 100 : 0;
 
             return (
@@ -1041,9 +956,9 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
               };
 
               // Use the SAME value that's displayed in the bar chart
-              const displayValue = type === 'gainers' 
-                ? calculateSnapshotGainInDateRange(hoveredVideo.video, videosMetric)
-                : getMetricValue(hoveredVideo.video, videosMetric);
+              const displayValue = type === 'gainers'
+                ? adjustedGain(hoveredVideo.video, videosMetric)
+                : adjustedValue(hoveredVideo.video, videosMetric);
               
               // Get upload date from video
               const uploadDate = hoveredVideo.video.uploadDate 
@@ -1073,23 +988,23 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
               return (
                 <>
                   {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 min-w-0">
+                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider truncate min-w-0">
                       Posted: {dateStr}
                     </p>
-                    <div className="flex flex-col items-end">
+                    <div className="flex flex-col items-end flex-shrink-0">
                       <div className="flex items-baseline gap-2">
-                      <p className="text-2xl font-bold text-content">
+                        <p className="text-2xl font-bold text-content tabular-nums whitespace-nowrap">
                           {type === 'gainers' ? '+' : ''}{formatNum(displayValue)}
-                      </p>
+                        </p>
                         {type !== 'gainers' && 'viewChange' in stats && stats.viewChange !== 0 && (
-                        <span className={`text-xs font-semibold ${stats.viewChange > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {stats.viewChange > 0 ? '↑' : '↓'} {Math.abs(stats.viewChangePercentage).toFixed(0)}%
-                        </span>
+                          <span className={`text-xs font-semibold whitespace-nowrap ${stats.viewChange > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {stats.viewChange > 0 ? '↑' : '↓'} {Math.abs(stats.viewChangePercentage).toFixed(0)}%
+                          </span>
                         )}
                       </div>
                       {type === 'gainers' && (
-                        <p className="text-[10px] text-content-muted mt-0.5">
+                        <p className="text-[10px] text-content-muted mt-0.5 whitespace-nowrap">
                           growth in period
                         </p>
                       )}
@@ -1204,16 +1119,16 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
               return (
                 <>
                   {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 min-w-0">
+                    <p className="text-xs text-content-muted font-medium uppercase tracking-wider truncate min-w-0">
                       @{hoveredAccount.handle}
                     </p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-content">
+                    <div className="flex items-baseline gap-3 flex-shrink-0">
+                      <p className="text-2xl font-bold text-content tabular-nums whitespace-nowrap">
                         {formatNum(totalViews)}
                       </p>
                       {hasGrowthData && avgGrowth !== 0 && (
-                        <span className={`text-xs font-semibold ${avgGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        <span className={`text-xs font-semibold whitespace-nowrap ${avgGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                           {avgGrowth >= 0 ? '↑' : '↓'} {Math.abs(avgGrowth).toFixed(0)}%
                         </span>
                       )}

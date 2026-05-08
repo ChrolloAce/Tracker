@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { OrgMember, Creator } from '../types/firestore';
+import { OrgMember, Creator, TrackedAccount } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
+import { AccountsDataService } from '../services/firestore/AccountsDataService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import { DateFilterType } from '../components/DateRangeFilter';
+import { computePerVideoMetricInRange } from '../components/kpi/kpiDataProcessing';
 
 interface CreatorsDataResult {
   creators: OrgMember[];
@@ -14,6 +16,10 @@ interface CreatorsDataResult {
   calculatedEarnings: Map<string, number>;
   creatorTotalViews: Map<string, number>;
   videoCounts: Map<string, number>;
+  /** creatorId → list of tracked-account objects this creator is linked to. Used by
+   *  the creators-table row to render a stacked-avatar identity (one circle per
+   *  linked account) instead of a single creator profile picture. */
+  creatorAccounts: Map<string, TrackedAccount[]>;
   isAdmin: boolean;
   loading: boolean;
   loadData: () => Promise<void>;
@@ -33,6 +39,7 @@ export function useCreatorsData(
   const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
   const [creatorTotalViews, setCreatorTotalViews] = useState<Map<string, number>>(new Map());
   const [videoCounts, setVideoCounts] = useState<Map<string, number>>(new Map());
+  const [creatorAccounts, setCreatorAccounts] = useState<Map<string, TrackedAccount[]>>(new Map());
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -63,9 +70,15 @@ export function useCreatorsData(
 
     let allVideos = Array.from(videoMap.values());
 
+    // Resolve the active date window. For 'all', dateRangeStart is null so the
+    // snapshot-aware helper returns lifetime values (no separate code path).
+    let dateRangeStart: Date | null = null;
+    let dateRangeEnd: Date = new Date();
     if (dateFilter !== 'all') {
       const dateRange = DateFilterService.getDateRange(dateFilter);
       if (dateRange) {
+        dateRangeStart = dateRange.startDate;
+        dateRangeEnd = dateRange.endDate;
         allVideos = allVideos.filter((video: any) => {
           const uploadDate = video.uploadDate?.toDate ? video.uploadDate.toDate() : new Date(video.uploadDate);
           return uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
@@ -74,7 +87,10 @@ export function useCreatorsData(
     }
 
     const videoCount = allVideos.length;
-    const totalViews = allVideos.reduce((s: number, v: any) => s + (v.views || 0), 0);
+    const totalViews = allVideos.reduce(
+      (s, v) => s + computePerVideoMetricInRange(v, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+      0,
+    );
 
     if (!profile.customPaymentTerms || allVideos.length === 0) {
       return { earnings: 0, videoCount, totalViews };
@@ -195,12 +211,14 @@ export function useCreatorsData(
         creatorMembersSnapshot,
         allCreatorLinksSnapshot,
         allProjectVideosCache,
+        allTrackedAccounts,
       ] = await Promise.all([
         userId ? OrganizationService.getUserRole(orgId, userId) : Promise.resolve('admin'),
         CreatorLinksService.getAllCreators(orgId, projectId),
         getDocs(query(membersRef, where('status', '==', 'active'), where('role', '==', 'creator'))),
         getDocs(collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks')),
         FirestoreDataService.getVideos(orgId, projectId, { limitCount: 10000 }).catch(() => [] as any[]),
+        AccountsDataService.getTrackedAccounts(orgId, projectId).catch(() => [] as TrackedAccount[]),
       ]);
 
       setIsAdmin(role === 'owner' || role === 'admin');
@@ -239,8 +257,25 @@ export function useCreatorsData(
         });
       }
 
-      // ── Step 2: Combine creators list ──────────────────────────
-      const creatorMembers = membersData.filter((m) => creatorProfilesList.some((p) => p.id === m.userId));
+      // ── Step 2: Combine creators list (PROJECT-SCOPED) ────────
+      // Source of truth for "is this creator in this project" is the
+      // org member's `creatorProjectIds` array (written by
+      // CreatorLinksService.addCreatorProfile / linkCreatorToAccounts and
+      // managed via the AssignCreatorProjectsModal). A creator-role member
+      // who exists at the org level but isn't assigned to the current
+      // project must NOT appear in this project's Creators tab — without
+      // this filter, switching projects shows creators that belong to a
+      // different project.
+      const isInThisProject = (m: { creatorProjectIds?: string[] }) =>
+        Array.isArray(m.creatorProjectIds) && m.creatorProjectIds.includes(projectId);
+
+      const creatorMembers = membersData.filter(
+        (m) => creatorProfilesList.some((p) => p.id === m.userId) && isInThisProject(m),
+      );
+      // `pendingCreators` is built from creatorProfilesList which is already
+      // a project-scoped read (CreatorLinksService.getAllCreators reads from
+      // /organizations/{orgId}/projects/{projectId}/creators), so no extra
+      // filter needed here.
       const pendingCreators = creatorProfilesList
         .filter((profile) => !membersData.some((m) => m.userId === profile.id))
         .map((profile) => ({
@@ -252,8 +287,19 @@ export function useCreatorsData(
           role: 'creator' as const,
           status: 'invited' as const,
         }));
+      // Members who are creator-role in the org and assigned to this project
+      // but whose project-scoped Creator profile hasn't materialized yet
+      // (e.g. assigned via AssignCreatorProjectsModal but no creatorLinks /
+      // direct profile yet). The previous version of this filter omitted
+      // the project-membership check, leaking every org-wide creator into
+      // every project's list.
       const creatorsWithoutProfile = membersData
-        .filter((m) => m.role === 'creator' && !creatorProfilesList.some((p) => p.id === m.userId))
+        .filter(
+          (m) =>
+            m.role === 'creator' &&
+            !creatorProfilesList.some((p) => p.id === m.userId) &&
+            isInThisProject(m),
+        )
         .map((member) => ({ ...member, role: 'creator' as const }));
 
       setCreators([...creatorMembers, ...pendingCreators, ...creatorsWithoutProfile]);
@@ -271,6 +317,22 @@ export function useCreatorsData(
         if (!creatorLinksMap.has(cId)) creatorLinksMap.set(cId, []);
         creatorLinksMap.get(cId)!.push(link);
       });
+
+      // ── Step 3b: Build creator→tracked-accounts map ────────────
+      // Joins the creatorLinks (creatorId ↔ accountId) with the loaded TrackedAccount
+      // documents so the row UI can render one avatar per linked account.
+      const accountsById = new Map<string, TrackedAccount>();
+      for (const a of allTrackedAccounts) accountsById.set(a.id, a);
+      const creatorAccountsMap = new Map<string, TrackedAccount[]>();
+      for (const [cId, links] of creatorLinksMap.entries()) {
+        const accounts: TrackedAccount[] = [];
+        for (const link of links) {
+          const acc = accountsById.get((link as any).accountId);
+          if (acc) accounts.push(acc);
+        }
+        if (accounts.length > 0) creatorAccountsMap.set(cId, accounts);
+      }
+      setCreatorAccounts(creatorAccountsMap);
 
       // ── Step 4: Calculate earnings from cache (zero extra reads) ─
       const earningsMap = new Map<string, number>();
@@ -310,6 +372,7 @@ export function useCreatorsData(
     calculatedEarnings,
     creatorTotalViews,
     videoCounts,
+    creatorAccounts,
     isAdmin,
     loading,
     loadData,

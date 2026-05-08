@@ -183,7 +183,7 @@ export class FirestoreService {
   
   /**
    * Create snapshot for a video
-   * With deduplication to prevent duplicate snapshots within 1 minute
+   * With deduplication to prevent duplicate snapshots within 10 minutes
    * Returns true if snapshot was created, false if skipped
    */
   static async createSnapshot(
@@ -198,19 +198,27 @@ export class FirestoreService {
     capturedBy: 'manual_refresh' | 'scheduled_refresh' | 'initial_add' = 'scheduled_refresh'
   ): Promise<boolean> {
     const snapshotsRef = videoRef.collection('snapshots');
-    
-    // Check for recent duplicate snapshots (within 1 minute)
-    const oneMinuteAgo = Timestamp.fromMillis(Date.now() - 60000);
+
+    // Pull recent snapshots (last 10 minutes) and dedupe in-memory across
+    // all five metrics. Doing the views/likes/comments equality in the
+    // query and shares/saves in code avoids needing a 5-field composite
+    // index while still catching same-cycle re-runs (client+server sync
+    // races, queue retries, cron overlap).
+    const cutoff = Timestamp.fromMillis(Date.now() - 10 * 60 * 1000);
     const recentSnapshots = await snapshotsRef
-      .where('capturedAt', '>=', oneMinuteAgo)
+      .where('capturedAt', '>=', cutoff)
       .where('views', '==', metrics.views)
       .where('likes', '==', metrics.likes)
       .where('comments', '==', metrics.comments)
-      .limit(1)
+      .limit(5)
       .get();
-    
-    if (!recentSnapshots.empty) {
-      console.log(`    ⏭️  Skipping duplicate snapshot (identical metrics within 1 minute)`);
+
+    const dup = recentSnapshots.docs.find(d => {
+      const s = d.data();
+      return (s.shares || 0) === metrics.shares && (s.saves || 0) === metrics.saves;
+    });
+    if (dup) {
+      console.log(`    ⏭️  Skipping duplicate snapshot (identical metrics within 10 minutes)`);
       return false;
     }
     

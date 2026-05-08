@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, TrendingUp, TrendingDown, Minus, Eye, Video, DollarSign, Medal } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign } from '../types/campaigns';
 import { OrgMember } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
+import CampaignService from '../services/CampaignService';
 import { ProxiedImage } from './ProxiedImage';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
+import type { VideoSubmission } from '../types';
 
 interface LeaderboardEntry {
   rank: number;
@@ -39,14 +42,26 @@ const CampaignLeaderboard: React.FC<CampaignLeaderboardProps> = ({
   compact = false,
   className = ''
 }) => {
-  const { user, currentOrgId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [, setMemberMap] = useState<Map<string, OrgMember>>(new Map());
 
+  // Resolved campaign window (Firestore Timestamp → Date). End defaults to
+  // "now" so an in-progress campaign caps at the current moment.
+  const { campaignStart, campaignEnd } = useMemo(() => {
+    const start = campaign.startDate
+      ? (campaign.startDate instanceof Date ? campaign.startDate : campaign.startDate.toDate())
+      : null;
+    const end = campaign.endDate
+      ? (campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate())
+      : new Date();
+    return { campaignStart: start, campaignEnd: end };
+  }, [campaign.startDate, campaign.endDate]);
+
   useEffect(() => {
     loadLeaderboardData();
-  }, [campaign, currentOrgId]);
+  }, [campaign, currentOrgId, currentProjectId]);
 
   const loadLeaderboardData = async () => {
     if (!currentOrgId || !campaign.participants) {
@@ -61,35 +76,98 @@ const CampaignLeaderboard: React.FC<CampaignLeaderboardProps> = ({
       const membersById = new Map(members.map(m => [m.userId, m]));
       setMemberMap(membersById);
 
-      // Build leaderboard entries from campaign participants
-      const leaderboardData = campaign.leaderboard || [];
-      const participantsMap = new Map(
-        campaign.participants.map(p => [p.creatorId, p])
-      );
+      // Load each participant's videos+snapshots so we can score them by
+      // snapshot-bounded views inside the campaign window — not by their
+      // stored lifetime `participant.totalViews`, which leaks pre/post-
+      // campaign growth into the ranking.
+      let creatorVideos = new Map<string, VideoSubmission[]>();
+      if (currentProjectId) {
+        try {
+          creatorVideos = await CampaignService.loadCampaignCreatorVideos(
+            currentOrgId,
+            currentProjectId,
+            campaign,
+          );
+        } catch (e) {
+          console.warn('CampaignLeaderboard: failed to load videos, using stored totals:', e);
+        }
+      }
 
-      const sortedEntries: LeaderboardEntry[] = leaderboardData
-        .slice(0, maxEntries)
-        .map((entry) => {
-          const participant = participantsMap.get(entry.creatorId);
-          const member = membersById.get(entry.creatorId);
+      // Build entries — one per participant — with snapshot-bounded views
+      // both as the displayed `views` AND as the sort/score key. The
+      // `campaign.leaderboard` array is ignored for ordering here because
+      // its stored ranks were derived from lifetime participant totals.
+      const computed: LeaderboardEntry[] = campaign.participants.map(participant => {
+        const member = membersById.get(participant.creatorId);
+        const videos = creatorVideos.get(participant.creatorId) || [];
 
-          return {
-            rank: entry.rank,
-            previousRank: entry.delta !== 0 ? entry.rank + entry.delta : undefined,
-            creatorId: entry.creatorId,
-            creatorName: member?.displayName || participant?.creatorName || 'Unknown Creator',
-            creatorEmail: member?.email || participant?.creatorEmail || '',
-            photoURL: member?.photoURL,
-            score: entry.score,
-            views: participant?.totalViews || 0,
-            videoCount: participant?.videoCount || 0,
-            earnings: participant?.totalEarnings || 0,
-            contributionPercent: participant?.contributionPercent || 0,
-            isCurrentUser: entry.creatorId === user?.uid
-          };
-        });
+        // Per-video snapshot-bounded views, organic-only (matches dashboard
+        // 'organic' reporting view used elsewhere — keeps headline numbers
+        // and leaderboard scores consistent).
+        const creatorViews = videos.reduce(
+          (s, v) => s + computePerVideoMetricInRange(v, 'views', campaignStart, campaignEnd, { excludeSparked: true }),
+          0,
+        );
 
-      setEntries(sortedEntries);
+        // Per-video snapshot-bounded other metrics for goal types other than views.
+        const sumMetric = (m: 'likes' | 'comments' | 'shares') =>
+          videos.reduce((s, v) => s + computePerVideoMetricInRange(v, m, campaignStart, campaignEnd), 0);
+
+        let score = creatorViews;
+        switch (campaign.goalType) {
+          case 'total_views': score = creatorViews; break;
+          case 'total_likes': score = sumMetric('likes'); break;
+          case 'total_comments': score = sumMetric('comments'); break;
+          case 'total_engagement': score = sumMetric('likes') + sumMetric('comments') + sumMetric('shares'); break;
+          case 'avg_engagement_rate': score = creatorViews > 0 ? ((sumMetric('likes') + sumMetric('comments')) / creatorViews) * 100 : 0; break;
+          case 'video_count': {
+            if (!campaignStart) { score = videos.length; break; }
+            score = videos.filter(v => {
+              const up = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+              return up >= campaignStart && up <= campaignEnd;
+            }).length;
+            break;
+          }
+          default: score = creatorViews;
+        }
+
+        const videoCountInRange = campaignStart
+          ? videos.filter(v => {
+              const up = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+              return up >= campaignStart && up <= campaignEnd;
+            }).length
+          : videos.length;
+
+        return {
+          rank: 0, // assigned after sort
+          previousRank: undefined,
+          creatorId: participant.creatorId,
+          creatorName: member?.displayName || participant.creatorName || 'Unknown Creator',
+          creatorEmail: member?.email || participant.creatorEmail || '',
+          photoURL: member?.photoURL,
+          score,
+          views: creatorViews,
+          videoCount: videos.length > 0 ? videoCountInRange : (participant.videoCount || 0),
+          earnings: participant.totalEarnings || 0,
+          contributionPercent: participant.contributionPercent || 0,
+          isCurrentUser: participant.creatorId === user?.uid,
+        };
+      });
+
+      // Sort by snapshot-bounded score (desc), assign 1-indexed ranks, and
+      // overlay the stored leaderboard's `delta` so the up/down arrows still
+      // reflect movement vs the last persisted ranking.
+      computed.sort((a, b) => b.score - a.score);
+      const storedDeltaById = new Map((campaign.leaderboard || []).map(e => [e.creatorId, e.delta]));
+      computed.forEach((entry, i) => {
+        entry.rank = i + 1;
+        const delta = storedDeltaById.get(entry.creatorId);
+        if (typeof delta === 'number' && delta !== 0) {
+          entry.previousRank = entry.rank + delta;
+        }
+      });
+
+      setEntries(computed.slice(0, maxEntries));
     } catch (error) {
       console.error('Failed to load leaderboard data:', error);
     } finally {

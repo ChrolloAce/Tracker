@@ -27,6 +27,59 @@ import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { TieredPaymentStructure } from '../types/payments';
 import { HeicImage } from './HeicImage';
+import { computeKPITotals } from './kpi/kpiDataProcessing';
+import { VideoSubmission } from '../types';
+
+// Convert the period selector to an explicit date range so we can hand
+// it to `computeKPITotals` (the same helper KPICards uses on the
+// public share portal). Without this, the admin OverviewTab summed
+// lifetime `video.views` for videos whose UPLOAD date fell in the
+// window — which double-counted post-window growth and disagreed
+// with the snapshot-bounded total the creator sees on the share view.
+function getPeriodRange(
+  timePeriod: 'payment_period' | 'last_30' | 'last_7' | 'all_time',
+): { dateRangeStart: Date | null; dateRangeEnd: Date } {
+  const now = new Date();
+  const dateRangeEnd = now;
+  switch (timePeriod) {
+    case 'last_7':
+      return { dateRangeStart: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), dateRangeEnd };
+    case 'last_30':
+    case 'payment_period':
+      return { dateRangeStart: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), dateRangeEnd };
+    case 'all_time':
+    default:
+      return { dateRangeStart: null, dateRangeEnd };
+  }
+}
+
+// `recentVideos` come from getVideos() as raw VideoDoc-ish objects
+// with Firestore Timestamps and no inline snapshots subcollection.
+// computeKPITotals reads `video.uploadDate || video.dateSubmitted` via
+// `new Date(...)`, which chokes on a Timestamp object. Normalize once
+// to a VideoSubmission-shaped record so the helper sees real Dates.
+function toVideoSubmissions(rawVideos: any[]): VideoSubmission[] {
+  return rawVideos.map(v => ({
+    id: v.id,
+    url: v.url || v.videoUrl || '',
+    platform: v.platform,
+    thumbnail: v.thumbnail || '',
+    title: v.title || v.videoTitle || '',
+    caption: v.description || v.caption || '',
+    uploader: v.accountInfo?.displayName || v.accountInfo?.username || '',
+    uploaderHandle: v.accountInfo?.username || '',
+    status: 'approved',
+    views: v.views || 0,
+    likes: v.likes || 0,
+    comments: v.comments || 0,
+    shares: v.shares || 0,
+    dateSubmitted: v.dateAdded?.toDate?.() || new Date(),
+    uploadDate: v.uploadDate?.toDate?.() || new Date(0),
+    snapshots: v.snapshots || [],
+    sparkedAt: v.sparkedAt?.toDate?.() || v.sparkedAt,
+    sparkViewLogs: v.sparkViewLogs,
+  }));
+}
 
 interface CreatorDetailsPageProps {
   creator: OrgMember;
@@ -122,8 +175,19 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
     // Use TieredPaymentService to calculate earnings
     const totalVideos = filteredVideos.length;
-    const totalViews = filteredVideos.reduce((sum: number, video: any) => sum + (video.views || 0), 0);
-    const totalEngagement = filteredVideos.reduce((sum: number, video: any) => 
+    // Headline view total — go through the central helper so this
+    // matches the public share portal (KPICards → computeKPITotals).
+    // Was a lifetime sum of `video.views`, which credited post-window
+    // growth to this period and disagreed with the snapshot-bounded
+    // total the creator sees on the share view.
+    const { dateRangeStart, dateRangeEnd } = getPeriodRange(timePeriod);
+    const totalViews = computeKPITotals(
+      toVideoSubmissions(filteredVideos),
+      dateRangeStart,
+      dateRangeEnd,
+      'organic',
+    ).views;
+    const totalEngagement = filteredVideos.reduce((sum: number, video: any) =>
       sum + (video.likes || 0) + (video.comments || 0) + (video.shares || 0), 0
     );
     const daysElapsed = Math.floor((now.getTime() - (creatorProfile?.createdAt?.toDate?.()?.getTime() || now.getTime())) / (1000 * 60 * 60 * 24));

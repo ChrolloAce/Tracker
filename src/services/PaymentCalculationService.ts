@@ -1,4 +1,5 @@
 import { VideoSubmission } from '../types';
+import { computePerVideoMetricInRange } from '../components/kpi/kpiDataProcessing';
 
 /**
  * Payment Rule Types that can be calculated
@@ -69,13 +70,35 @@ export interface PaymentCalculationResult {
  */
 class PaymentCalculationService {
   /**
-   * Calculate total earnings for a creator based on their payment rules
+   * Calculate total earnings for a creator based on their payment rules.
+   *
+   * `dateRange` (optional) bounds the math to snapshot-aware deltas inside
+   * [start, end] — matching what the dashboard's KPI cards show. When passed:
+   *   - Each video's `views` is replaced by `computePerVideoMetricInRange(...,
+   *     'views', { excludeSparked: true })` so creators are paid on ORGANIC
+   *     views only (sparked/paid views are subtracted, mirroring the
+   *     dashboard's `organic` reporting mode).
+   *   - likes/comments/shares are replaced with their snapshot-aware in-range
+   *     values (no spark exclusion — only views are inflated by paid promotion).
+   *
+   * Without `dateRange` the function falls back to the OLD lifetime behavior
+   * so any caller that hasn't been migrated yet still compiles and runs. New
+   * callers should always pass `dateRange` — the lifetime fallback over-pays
+   * creators when a campaign window is set.
+   *
+   * `start: null` inside `dateRange` means "all time" — still routes through
+   * the snapshot-aware path so spark subtraction works.
+   *
+   * TODO: every caller that displays a $ amount tied to a campaign window
+   * should pass `dateRange`. Audit call sites and remove the lifetime fallback
+   * once the migration is complete.
    */
   static calculateEarnings(
     videos: VideoSubmission[],
     rules: PaymentRule[],
     linkClicks: number = 0,
-    totalRevenue: number = 0
+    totalRevenue: number = 0,
+    dateRange?: { start: Date | null; end: Date }
   ): PaymentCalculationResult {
     const result: PaymentCalculationResult = {
       totalEarnings: 0,
@@ -83,17 +106,32 @@ class PaymentCalculationService {
       videoEarnings: []
     };
 
+    // Project each video onto its in-range, organic-only metrics BEFORE the
+    // per-rule loop. The per-video rules (cpm, per_view, per_like, etc.) all
+    // read `video.views`/`video.likes`/etc. directly — without this projection
+    // they'd silently use lifetime values even when a date window is set.
+    const scaledVideos: VideoSubmission[] = dateRange
+      ? videos.map(v => ({
+          ...v,
+          views: computePerVideoMetricInRange(v, 'views', dateRange.start, dateRange.end, { excludeSparked: true }),
+          likes: computePerVideoMetricInRange(v, 'likes', dateRange.start, dateRange.end),
+          comments: computePerVideoMetricInRange(v, 'comments', dateRange.start, dateRange.end),
+          shares: computePerVideoMetricInRange(v, 'shares', dateRange.start, dateRange.end),
+          saves: computePerVideoMetricInRange(v, 'saves', dateRange.start, dateRange.end),
+        }))
+      : videos;
+
     // Filter enabled rules
     const enabledRules = rules.filter(r => r.enabled);
 
     // Calculate per-video earnings
-    videos.forEach(video => {
+    scaledVideos.forEach(video => {
       let videoTotal = 0;
       const videoBreakdown: string[] = [];
 
       enabledRules.forEach(rule => {
-        const earnings = this.calculateRuleEarnings(rule, video, videos, linkClicks, totalRevenue);
-        
+        const earnings = this.calculateRuleEarnings(rule, video, scaledVideos, linkClicks, totalRevenue);
+
         if (earnings > 0) {
           videoTotal += earnings;
           videoBreakdown.push(`${rule.description}: $${earnings.toFixed(2)}`);
@@ -112,14 +150,14 @@ class PaymentCalculationService {
 
     // Calculate non-per-video earnings (upfront, retainer, milestones)
     enabledRules.forEach(rule => {
-      const earnings = this.calculateNonVideoEarnings(rule, videos, linkClicks, totalRevenue);
-      
+      const earnings = this.calculateNonVideoEarnings(rule, scaledVideos, linkClicks, totalRevenue);
+
       if (earnings > 0) {
         result.breakdown.push({
           ruleId: rule.id,
           ruleDescription: rule.description,
           amount: earnings,
-          details: this.getEarningsDetails(rule, videos, earnings)
+          details: this.getEarningsDetails(rule, scaledVideos, earnings)
         });
         result.totalEarnings += earnings;
       }

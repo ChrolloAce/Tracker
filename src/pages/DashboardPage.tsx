@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
   Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, Link as LinkIcon, Edit2,
@@ -28,6 +29,8 @@ import HeatmapByHour from '../components/HeatmapByHour';
 import TopTeamCreatorsList from '../components/TopTeamCreatorsList';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import ComparisonGraph from '../components/ComparisonGraph';
+import UnifiedMetricsChart from '../components/UnifiedMetricsChart';
+import SuperwallService, { SUPERWALL_METRICS, type SuperwallMetricKey } from '../services/SuperwallService';
 import VideoSliderSection from '../components/VideoSliderSection';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
@@ -61,6 +64,7 @@ import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission, InstagramVideoData } from '../types';
 import DateFilterService from '../services/DateFilterService';
+import { computeKPITotals, computePerVideoMetricInRange } from '../components/kpi/kpiDataProcessing';
 import ThemeService from '../services/ThemeService';
 // Lottie animation JSON loaded lazily to reduce initial bundle size
 let _profileAnimation: any = null;
@@ -77,7 +81,9 @@ import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, doc,
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
-import { TrackedAccount, TrackedLink, Creator, CreatorLink, OrgMember } from '../types/firestore';
+import { TrackedAccount, TrackedLink, Creator, CreatorLink, OrgMember, CreatorLabel } from '../types/firestore';
+import CreatorLabelService from '../services/CreatorLabelService';
+import { getLabelColorClass } from '../components/creators/CreatorLabelBadges';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { Toast } from '../components/ui/Toast';
 
@@ -371,6 +377,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [creatorLinks, setCreatorLinks] = useState<CreatorLink[]>([]);
   const [creatorMembers, setCreatorMembers] = useState<OrgMember[]>([]);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
+  // Project-scoped CreatorLabel taxonomy + the admin's current selection.
+  // Driven by the Labels filter pill in the dashboard header. When at least
+  // one label is selected the video stream is filtered to videos whose creator
+  // (resolved through accountId → creatorLink → creator) carries that label.
+  const [creatorLabels, setCreatorLabels] = useState<CreatorLabel[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
   
   // Total counts (unfiltered) - for empty state check
   const [totalAccountsInOrg, setTotalAccountsInOrg] = useState(0);
@@ -431,6 +444,46 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [bulkAddToast, setBulkAddToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isShareProjectModalOpen, setIsShareProjectModalOpen] = useState(false);
   const [manualGranularity, setManualGranularity] = useState<'day' | 'week' | 'month' | 'year' | null>(null);
+
+  // Unified vs Classic graph view
+  const [dashboardViewMode, setDashboardViewMode] = useState<'classic' | 'unified'>(() => {
+    const saved = localStorage.getItem('dashboardViewMode');
+    return saved === 'unified' ? 'unified' : 'classic';
+  });
+  // Marks a fresh classic→unified transition so the unified chart plays its
+  // bigger merge-in entrance instead of a plain mount fade.
+  const [isMergingToUnified, setIsMergingToUnified] = useState(false);
+
+  // Superwall revenue (per-day map keyed by YYYY-MM-DD). Only populated when
+  // the org has a Superwall integration configured. Powers the Revenue metric
+  // in the unified chart picker.
+  const [superwallAppId, setSuperwallAppId] = useState<string | null>(null);
+  // Hard-coded to 'organic' — the dashboard always excludes Spark
+  // (paid-ad) views from headline KPIs and chart bars. Setter retained
+  // as a no-op so other code paths (settings page persistence, etc.)
+  // don't break, but the value never changes.
+  const [orgDefaultReportingView] = useState<'organic'>('organic');
+  const setOrgDefaultReportingView = (_: any) => {};
+  const [revenueByDate, setRevenueByDate] = useState<Record<string, number> | undefined>(undefined);
+  // Active revenue metric on the unified chart. Drives the Superwall fetch
+  // below + flows into UnifiedMetricsChart's hover submenu so the user can
+  // swap revenue type without leaving the Dashboard.
+  const [selectedRevenueMetric, setSelectedRevenueMetric] = useState<SuperwallMetricKey>('grossRevenue');
+  // Multi-select: which revenue types render simultaneously on the chart.
+  // First entry mirrors `selectedRevenueMetric` so the existing single-fetch
+  // path (KPI summaries / etc.) keeps working unchanged.
+  const [selectedRevenueMetrics, setSelectedRevenueMetrics] = useState<SuperwallMetricKey[]>(['grossRevenue']);
+  // Per-revenue-option daily series — populated by the parallel multi-fetch
+  // and forwarded to UnifiedMetricsChart so each toggled option becomes a
+  // distinct series.
+  const [revenueByDateByOption, setRevenueByDateByOption] = useState<Record<string, Record<string, number>>>({});
+  // Which revenue keys are currently being fetched. Drives chip shimmer +
+  // chart skeleton so newly-toggled options don't show $0 until data lands.
+  const [pendingRevenueKeys, setPendingRevenueKeys] = useState<string[]>([]);
+  // True while the Superwall fetch for the active revenue metric is in flight.
+  // Drives the chart's skeleton so swapping revenue type shows the loading
+  // animation immediately (without waiting for `dataFullyLoaded` to flip).
+  const [revenueLoading, setRevenueLoading] = useState(false);
   
   // Auto-calculate granularity based on date filter (updates in same render!)
   const granularity = useMemo<'day' | 'week' | 'month' | 'year'>(() => {
@@ -500,9 +553,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return autoGranularity;
   }, [dateFilter, customDateRange, manualGranularity, submissions]);
   
-  // Day Videos Modal state (for account clicks from race chart)
+  // Day Videos Modal state (for account clicks from race chart). Filter is
+  // either one username (single-account click) or an array (creator-row click,
+  // where every linked account on every platform should be included).
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
-  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | string[] | undefined>();
+  const [selectedCreatorDisplayName, setSelectedCreatorDisplayName] = useState<string | undefined>();
+  const [selectedPlatformFilter, setSelectedPlatformFilter] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
   const activeTab = initialTab || 'dashboard';
   const [isEditingLayout, setIsEditingLayout] = useState(false);
@@ -586,8 +643,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         setCreatorMembers(members);
       })
       .catch(err => console.error('Failed to load creators for accounts filter:', err));
+
+    // Load project label taxonomy in parallel for the Labels filter pill.
+    // Pass user.uid as `seedingUserId` so the UGC/Influencer/Faceless triplet
+    // is materialized on first read for new projects.
+    CreatorLabelService.listLabels(currentOrgId, currentProjectId, user?.uid)
+      .then(list => { if (!cancelled) setCreatorLabels(list); })
+      .catch(err => console.error('Failed to load creator labels:', err));
+
     return () => { cancelled = true; };
-  }, [currentOrgId, currentProjectId]);
+  }, [currentOrgId, currentProjectId, user?.uid]);
 
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
@@ -885,6 +950,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const saved = localStorage.getItem('creatorsDateFilter');
     return (saved as DateFilterType) || 'all';
   });
+  // Header search query for the Creators tab. Lives at the dashboard level
+  // so it can sit in the sticky header next to the date filter (matching the
+  // Tracked Accounts tab) and gets passed down to CreatorsManagementPage.
+  const [creatorsSearchQuery, setCreatorsSearchQuery] = useState('');
 
   // Mark tab data as ready when it finishes loading
   useEffect(() => {
@@ -920,6 +989,143 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   useEffect(() => {
     localStorage.setItem('dashboardGranularity', granularity);
   }, [granularity]);
+
+  // ── Detect Superwall integration on the org ─────────────────────────
+  useEffect(() => {
+    if (!currentOrgId) {
+      setSuperwallAppId(null);
+      setRevenueByDate(undefined);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const settingsSnap = await getDocs(
+          query(collection(db, 'organizations', currentOrgId, 'settings'))
+        );
+        const general = settingsSnap.docs.find(d => d.id === 'general');
+        const swAppId = general?.data()?.integrations?.superwall?.applicationId || null;
+        const reportingView = general?.data()?.defaultReportingView as 'organic' | 'total' | 'split' | undefined;
+        if (!cancelled) {
+          setSuperwallAppId(swAppId);
+          setOrgDefaultReportingView(reportingView);
+          if (!swAppId) setRevenueByDate(undefined);
+        }
+      } catch (err) {
+        console.warn('[Dashboard] Failed to read superwall integration:', err);
+        if (!cancelled) setSuperwallAppId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentOrgId]);
+
+  // ── Fetch Superwall revenue series for the active date range ────────
+  useEffect(() => {
+    if (!currentOrgId || !superwallAppId) return;
+    if (dashboardViewMode !== 'unified') return; // Don't pay for the call when classic view is showing
+    let cancelled = false;
+    setRevenueLoading(true);
+    (async () => {
+      try {
+        const dr = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
+        if (!dr) return;
+        // The right xAxis (`purchaseDate` vs `installDate` etc.) varies by
+        // metric — getMetricAxis maps it for us so non-revenue metrics like
+        // newUsers also work correctly.
+        const { xAxis, dimension } = SuperwallService.getMetricAxis(selectedRevenueMetric);
+        const dateFilterObj: any = {
+          dimension,
+          preset: 'custom',
+          range: {
+            from: new Date(dr.startDate).toISOString().split('.')[0],
+            to: new Date(dr.endDate).toISOString().split('.')[0],
+          },
+        };
+        const res = await SuperwallService.fetchChartData({
+          orgId: currentOrgId,
+          applicationId: superwallAppId,
+          yAxis: selectedRevenueMetric,
+          xAxis,
+          dateFilter: dateFilterObj,
+          dateInterval: 'day',
+        });
+        const map: Record<string, number> = {};
+        (res.data || []).forEach(point => {
+          const dateKey = (point.x || '').split('T')[0];
+          if (!dateKey) return;
+          // Read the active metric's value out of the response — Superwall
+          // keys the values bag by yAxis name.
+          const entry = (point.values as any)?.[selectedRevenueMetric];
+          const value = (entry && typeof entry === 'object' && 'y' in entry) ? (entry as any).y : 0;
+          map[dateKey] = (map[dateKey] || 0) + value;
+        });
+        if (!cancelled) setRevenueByDate(map);
+      } catch (err) {
+        console.warn('[Dashboard] Failed to fetch superwall revenue:', err);
+        if (!cancelled) setRevenueByDate({});
+      } finally {
+        if (!cancelled) setRevenueLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentOrgId, superwallAppId, dashboardViewMode, dateFilter, customDateRange, submissions, selectedRevenueMetric]);
+
+  // ── Fetch ALL toggled-on revenue options in parallel ──────────────
+  // Powers the multi-revenue overlay on the Dashboard chart. Skips work
+  // when only the primary metric is selected (single-fetch effect above
+  // already covers that case via revenueByDate).
+  useEffect(() => {
+    if (!currentOrgId || !superwallAppId) return;
+    if (dashboardViewMode !== 'unified') return;
+    if (selectedRevenueMetrics.length === 0) return;
+    let cancelled = false;
+    setPendingRevenueKeys([...selectedRevenueMetrics]);
+    (async () => {
+      try {
+        const dr = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
+        if (!dr) return;
+        const fromIso = new Date(dr.startDate).toISOString().split('.')[0];
+        const toIso = new Date(dr.endDate).toISOString().split('.')[0];
+
+        const results = await Promise.all(selectedRevenueMetrics.map(async (key) => {
+          const { xAxis, dimension } = SuperwallService.getMetricAxis(key);
+          const res = await SuperwallService.fetchChartData({
+            orgId: currentOrgId,
+            applicationId: superwallAppId,
+            yAxis: key,
+            xAxis,
+            dateFilter: { dimension, preset: 'custom', range: { from: fromIso, to: toIso } } as any,
+            dateInterval: 'day',
+          });
+          return { key, data: res.data || [] };
+        }));
+
+        if (cancelled) return;
+        const next: Record<string, Record<string, number>> = {};
+        for (const { key, data } of results) {
+          const map: Record<string, number> = {};
+          data.forEach(point => {
+            const dateKey = (point.x || '').split('T')[0];
+            if (!dateKey) return;
+            const entry = (point.values as any)?.[key];
+            const v = (entry && typeof entry === 'object' && 'y' in entry) ? (entry as any).y : 0;
+            map[dateKey] = (map[dateKey] || 0) + v;
+          });
+          next[key] = map;
+        }
+        setRevenueByDateByOption(next);
+      } catch (err) {
+        console.warn('[Dashboard] Failed to fetch multi-revenue series:', err);
+      } finally {
+        if (!cancelled) setPendingRevenueKeys([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentOrgId, superwallAppId, dashboardViewMode, dateFilter, customDateRange, submissions, selectedRevenueMetrics]);
 
   useEffect(() => {
     localStorage.setItem('dashboardPlatformFilter', JSON.stringify(dashboardPlatformFilter));
@@ -1445,6 +1651,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           uploadDate: video.uploadDate?.toDate?.() || new Date(),
           lastRefreshed: video.lastRefreshed?.toDate?.(),
           isStale: video.isStale || false,
+          // Spark fields — without these the modal sees the video as
+          // never-sparked on every reopen and the chart's organic/total
+          // toggle has no spark events to subtract.
+          sparkedAt: (video as any).sparkedAt?.toDate?.() || undefined,
+          sparkViewLogs: (video as any).sparkViewLogs || undefined,
           snapshots: snapshots
         };
       });
@@ -1577,10 +1788,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
               uploadDate: video.uploadDate?.toDate?.() || new Date(),
               lastRefreshed: video.lastRefreshed?.toDate?.(),
+              isStale: (video as any).isStale || false,
+              sparkedAt: (video as any).sparkedAt?.toDate?.() || undefined,
+              sparkViewLogs: (video as any).sparkViewLogs || undefined,
               snapshots: snapshots
             };
           });
-          
+
           setSubmissions(allSubmissions);
           setDataFullyLoaded(true);
         } catch (error) {
@@ -1692,6 +1906,43 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       console.log(`📱 After platform filter (${dashboardPlatformFilter.join(', ')}):`, filtered.length, `(removed ${initialCount - filtered.length})`);
     }
     
+    // Apply Labels filter (creators carrying the selected labels). We resolve
+    // each video → its tracked account → the linked creator → the creator's
+    // labelIds. A video matches if its creator has at least one of the
+    // selected labels (OR logic, mirroring how rules behave).
+    if (selectedLabelIds.length > 0) {
+      const beforeLabelFilter = filtered.length;
+      const labelSet = new Set(selectedLabelIds);
+
+      // accountId → creatorId
+      const accountToCreator = new Map<string, string>();
+      for (const link of creatorLinks) {
+        if (!accountToCreator.has(link.accountId)) {
+          accountToCreator.set(link.accountId, link.creatorId);
+        }
+      }
+      // creatorId → labelIds
+      const creatorLabelIds = new Map<string, string[]>();
+      for (const c of creators) creatorLabelIds.set(c.id, c.labelIds || []);
+
+      // (platform, lowercased uploaderHandle) → accountId for the video → account match
+      const accountKeyToId = new Map<string, string>();
+      for (const acc of trackedAccounts) {
+        accountKeyToId.set(`${acc.platform}_${acc.username.toLowerCase()}`, acc.id);
+      }
+
+      filtered = filtered.filter(video => {
+        if (!video.uploaderHandle) return false;
+        const accId = accountKeyToId.get(`${video.platform}_${video.uploaderHandle.toLowerCase()}`);
+        if (!accId) return false;
+        const creatorId = accountToCreator.get(accId);
+        if (!creatorId) return false;
+        const ids = creatorLabelIds.get(creatorId) || [];
+        return ids.some(id => labelSet.has(id));
+      });
+      console.log(`🏷️ After labels filter (${selectedLabelIds.length} labels):`, filtered.length, `(removed ${beforeLabelFilter - filtered.length})`);
+    }
+
     // Apply accounts filter
     if (selectedAccountIds.length > 0) {
       const beforeAccountFilter = filtered.length;
@@ -1773,7 +2024,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     console.log('─'.repeat(50));
     
     return filtered;
-  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint, userRole]);
+  }, [submissions, dashboardPlatformFilter, selectedAccountIds, selectedLabelIds, creators, creatorLinks, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint, userRole]);
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
@@ -2067,8 +2318,43 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const targetDate = customDateRange?.endDate || new Date();
     setDayVideosDate(targetDate);
     setSelectedAccountFilter(username);
+    setSelectedCreatorDisplayName(undefined);
+    setSelectedPlatformFilter(undefined);
     setIsDayVideosModalOpen(true);
   }, [customDateRange]);
+
+  // Top-platform row click: opens the day-videos modal pre-filtered to all
+  // videos on that platform within the active date range.
+  const handlePlatformClick = useCallback(
+    (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter') => {
+      const targetDate = customDateRange?.endDate || new Date();
+      setDayVideosDate(targetDate);
+      setSelectedAccountFilter(undefined);
+      setSelectedCreatorDisplayName(undefined);
+      setSelectedPlatformFilter(platform);
+      setIsDayVideosModalOpen(true);
+    },
+    [customDateRange]
+  );
+
+  // Creator-row click in the Top Performers list: opens the same Day-Videos
+  // modal but pre-filtered to ALL of the creator's linked tracked-account
+  // usernames so the videos and KPI cards aggregate across every platform
+  // that creator posts to.
+  const handleCreatorRowClick = useCallback(
+    (info: { creatorId: string; displayName: string; usernames: string[] }) => {
+      const targetDate = customDateRange?.endDate || new Date();
+      setDayVideosDate(targetDate);
+      // Pass the array straight through; an empty array would silently match
+      // nothing, so fall back to displayName so the modal at least opens with
+      // a recognizable filter (rare edge case — a creator with zero links).
+      setSelectedAccountFilter(info.usernames.length ? info.usernames : info.displayName);
+      setSelectedCreatorDisplayName(info.displayName);
+      setSelectedPlatformFilter(undefined);
+      setIsDayVideosModalOpen(true);
+    },
+    [customDateRange]
+  );
 
   // Legacy function - kept for reference but replaced by handleAddVideosWithAccounts
   // const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => { ... }
@@ -2532,15 +2818,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       }));
     };
 
-    // Calculate basic metrics from filtered submissions
-    const totalViews = filteredSubmissions.reduce((sum, v) => sum + (v.views || 0), 0);
-    const totalLikes = filteredSubmissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const totalComments = filteredSubmissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const totalShares = filteredSubmissions.reduce((sum, v) => sum + (v.shares || 0), 0);
-    const totalVideos = filteredSubmissions.length;
-    const totalAccounts = new Set(filteredSubmissions.map(v => v.uploaderHandle)).size;
+    // Period-bound totals via the same helper the live KPI cards and
+    // the unified chart use — keeps the editor preview in sync with
+    // what the user sees on the dashboard. Lifetime sums (the prior
+    // implementation) over-counted because they ignored the date
+    // filter and double-counted post-period growth.
+    const dr = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
+    const totals = computeKPITotals(filteredSubmissions, dr.startDate, dr.endDate, orgDefaultReportingView);
+    const totalViews = totals.views;
+    const totalLikes = totals.likes;
+    const totalComments = totals.comments;
+    const totalShares = totals.shares;
+    const totalVideos = totals.videos;
+    const totalAccounts = totals.accounts;
     const totalEngagement = totalLikes + totalComments + totalShares;
-    const engagementRate = totalViews > 0 ? ((totalEngagement / totalViews) * 100) : 0;
+    const engagementRate = totals.engagement;
     
     // Count total link clicks (already filtered to existing links only)
     const totalLinkClicks = linkClicks.length;
@@ -2602,7 +2894,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         delta: totalLinkClicks > 0 ? { value: 14.8, isPositive: true } : undefined
       }
     };
-  }, [filteredSubmissions, filteredLinkClicks]);
+  }, [filteredSubmissions, filteredLinkClicks, dateFilter, customDateRange, submissions, orgDefaultReportingView]);
 
   // Define Top Performers subsection options
   const topPerformersSubsectionOptions = useMemo(() => [
@@ -3044,7 +3336,72 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     );
                   })()}
                   </div>
-                  
+
+                  {/* Labels Filter — multi-select pill. Filters videos to those whose
+                      creator carries one of the selected labels (UGC/Influencer/Faceless
+                      or any custom label). Hidden when the project has no labels yet. */}
+                  {creatorLabels.length > 0 && (
+                    <div className="relative hidden sm:block">
+                      <button
+                        onClick={() => setLabelDropdownOpen(o => !o)}
+                        onBlur={() => setTimeout(() => setLabelDropdownOpen(false), 200)}
+                        className="flex items-center gap-2 pl-3 pr-8 py-2 bg-surface-secondary text-content rounded-lg text-xs sm:text-sm font-medium border border-border hover:border-border-strong focus:outline-none focus:ring-2 focus:ring-border-strong transition-all cursor-pointer min-w-[110px] sm:min-w-[140px]"
+                        title={selectedLabelIds.length === 0
+                          ? 'All Labels'
+                          : creatorLabels.filter(l => selectedLabelIds.includes(l.id)).map(l => l.name).join(', ')}
+                      >
+                        {selectedLabelIds.length === 0 ? (
+                          <span>All Labels</span>
+                        ) : selectedLabelIds.length === 1 ? (
+                          (() => {
+                            const l = creatorLabels.find(x => x.id === selectedLabelIds[0]);
+                            return l
+                              ? <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${getLabelColorClass(l.color)}`}>{l.name}</span>
+                              : <span>1 Label</span>;
+                          })()
+                        ) : (
+                          <span>{selectedLabelIds.length} Labels</span>
+                        )}
+                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted" />
+                      </button>
+
+                      {labelDropdownOpen && (
+                        <div className="absolute top-full mt-1 w-56 bg-surface-tertiary border border-border rounded-lg shadow-xl overflow-hidden z-50">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedLabelIds([]); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-content-muted hover:text-content hover:bg-surface-hover transition-colors border-b border-border-subtle"
+                          >
+                            <span>Clear All</span>
+                          </button>
+                          {creatorLabels.map(label => {
+                            const isSelected = selectedLabelIds.includes(label.id);
+                            return (
+                              <button
+                                key={label.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedLabelIds(prev =>
+                                    isSelected ? prev.filter(id => id !== label.id) : [...prev, label.id]
+                                  );
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-content hover:bg-surface-hover transition-colors"
+                              >
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                                  isSelected ? 'bg-content border-content' : 'border-border-strong'
+                                }`}>
+                                  {isSelected && <Check className="w-3 h-3 text-content-inverse" strokeWidth={3} />}
+                                </div>
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${getLabelColorClass(label.color)}`}>
+                                  {label.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Platform Filter - Multi-select - Hide text on mobile */}
                   <div className="relative hidden sm:block">
                     <button
@@ -3135,7 +3492,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     </select>
                     <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-content-muted pointer-events-none" />
                   </div>
-                  
+
                   <div className="hidden sm:block">
                   <DateRangeFilter
                     selectedFilter={dateFilter}
@@ -3514,7 +3871,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
           )}
           {activeTab === 'creators' && (
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Search bar — mirrors the Accounts tab header. Filters the
+                  creators list by display name, email, or any linked @handle. */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-muted w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={creatorsSearchQuery}
+                  onChange={(e) => setCreatorsSearchQuery(e.target.value)}
+                  className="pl-10 pr-2 sm:pr-4 py-2 w-24 sm:w-40 md:w-64 border border-border-strong rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-border-strong focus:border-transparent bg-surface-tertiary text-content"
+                />
+              </div>
               <DateRangeFilter
                 selectedFilter={creatorsDateFilter}
                 onFilterChange={(filter) => setCreatorsDateFilter(filter)}
@@ -3569,9 +3938,105 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {(totalAccountsInOrg > 0 || totalVideosInOrg > 0) && (
               <div>
               {/* Render dashboard sections in order */}
-              {dashboardSectionOrder
-                .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
-                .map((sectionId, index) => {
+              {(() => {
+                const baseVisible = dashboardSectionOrder.filter(
+                  sectionId => dashboardSectionVisibility[sectionId] !== false
+                );
+                // Only the KPI cards section is replaced by the unified chart.
+                // Posting-activity and top-performers are separate components and
+                // stay visible in both modes.
+                const HIDE_IN_UNIFIED = new Set(['kpi-cards']);
+                const finalOrder =
+                  dashboardViewMode === 'unified'
+                    ? (() => {
+                        // Unified mode: drop the breakdown graphs and SWAP the
+                        // KPI-cards slot for the unified chart so other sections
+                        // (video slider, tables, etc.) keep their relative
+                        // position. Fall back to the top if KPI cards aren't in
+                        // the order for some reason.
+                        const kpiIdx = baseVisible.indexOf('kpi-cards');
+                        const result: string[] = [];
+                        baseVisible.forEach((id) => {
+                          if (id === 'kpi-cards') {
+                            result.push('unified-metrics');
+                            return;
+                          }
+                          if (HIDE_IN_UNIFIED.has(id)) return;
+                          result.push(id);
+                        });
+                        if (kpiIdx === -1 && !result.includes('unified-metrics')) {
+                          result.unshift('unified-metrics');
+                        }
+                        return result;
+                      })()
+                    : baseVisible;
+                // The view-mode toggle. Stable key so it doesn't unmount when
+                // the chart slot swaps between kpi-cards and unified-metrics.
+                // Sleek full-width hairline with the centered pill sitting on top.
+                const viewToggle = (
+                  <motion.div
+                    key="view-toggle"
+                    layout
+                    className="relative mt-6 mb-3"
+                  >
+                    {/* Full-width hairline */}
+                    <div
+                      aria-hidden
+                      className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2"
+                      style={{
+                        background:
+                          'linear-gradient(to right, transparent 0%, var(--border) 12%, var(--border) 88%, transparent 100%)',
+                      }}
+                    />
+                    {/* Pill sits on the line */}
+                    <div className="relative flex items-center justify-center">
+                      <div
+                        className="inline-flex items-center gap-1 rounded-full p-1 bg-surface border border-border-subtle shadow-sm"
+                        style={{ backdropFilter: 'blur(6px)' }}
+                      >
+                        {(
+                          [
+                            { id: 'classic' as const, label: 'KPI Cards' },
+                            { id: 'unified' as const, label: 'Unified Chart' },
+                          ]
+                        ).map(opt => {
+                          const active = dashboardViewMode === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => {
+                                if (opt.id === dashboardViewMode) return;
+                                if (opt.id === 'unified') {
+                                  setIsMergingToUnified(true);
+                                  setTimeout(() => setIsMergingToUnified(false), 1500);
+                                }
+                                setDashboardViewMode(opt.id);
+                                localStorage.setItem('dashboardViewMode', opt.id);
+                              }}
+                              className={clsx(
+                                'relative px-4 py-1.5 text-xs font-semibold rounded-full transition-colors',
+                                active ? 'text-white' : 'text-content-muted hover:text-content'
+                              )}
+                            >
+                              {active && (
+                                <motion.span
+                                  layoutId="dashboard-view-toggle-pill"
+                                  className="absolute inset-0 rounded-full"
+                                  style={{ backgroundColor: '#fb8a4a' }}
+                                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                                />
+                              )}
+                              <span className="relative z-10">{opt.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+
+                const rendered: React.ReactNode[] = [];
+                finalOrder.forEach((sectionId, index) => {
                   const handleSectionDragStart = () => {
                     if (isEditingLayout) setDraggedSection(sectionId);
                   };
@@ -3638,6 +4103,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           return <ChartSkeleton height="h-96" />;
                         case 'posting-activity':
                           return <ChartSkeleton height="h-80" />;
+                        case 'unified-metrics':
+                          return <ChartSkeleton height="h-96" />;
                         case 'videos-table':
                           return <VideoTableSkeleton />;
                         default:
@@ -3660,6 +4127,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             customRange={customDateRange}
                             timePeriod="days"
                             granularity={granularity}
+                            orgDefaultReportingView={orgDefaultReportingView}
                             onVideoClick={handleVideoClick}
                             isEditMode={isEditingLayout}
                             cardOrder={kpiCardOrder}
@@ -3684,7 +4152,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           <div data-spotlight="video-slider">
                           <VideoSliderSection
                             videos={combinedSubmissions}
-                            maxVideos={20}
                             onVideoClick={handleVideoClick}
                           />
                           </div>
@@ -3697,6 +4164,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                               submissions={filteredSubmissions}
                               onVideoClick={handleVideoClick}
                               onAccountClick={handleAccountClick}
+                              onCreatorRowClick={handleCreatorRowClick}
+                              onPlatformClick={handlePlatformClick}
                               onHeatmapCellClick={({ dayIndex, hour, range }) => {
                                 console.log('🎯 Heatmap cell clicked:', { dayIndex, hour, range });
                                 setDayVideosDate(range.start);
@@ -3729,6 +4198,36 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             customDateRange={customDateRange}
                           />
                         );
+                      case 'unified-metrics': {
+                        const unifiedDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
+                        return (
+                          <UnifiedMetricsChart
+                            submissions={filteredSubmissions}
+                            allSubmissions={submissionsWithoutDateFilter}
+                            linkClicks={filteredLinkClicks}
+                            revenueByDate={revenueByDate}
+                            revenueByDateByOption={revenueByDateByOption}
+                            pendingRevenueKeys={pendingRevenueKeys}
+                            revenueOptions={SUPERWALL_METRICS.map(m => ({ key: m.key, label: m.label, valueType: m.valueType }))}
+                            selectedRevenueOptions={selectedRevenueMetrics}
+                            onRevenueOptionsChange={(keys) => {
+                              const next = (keys.length > 0 ? keys : ['grossRevenue']) as SuperwallMetricKey[];
+                              setSelectedRevenueMetrics(next);
+                              // First option drives the single-fetch effect
+                              // (which feeds revenueByDate / KPI summaries) so
+                              // the rest of the page stays consistent.
+                              setSelectedRevenueMetric(next[0]);
+                            }}
+                            dateFilter={dateFilter}
+                            granularity={granularity}
+                            dateRange={unifiedDateRange}
+                            onVideoClick={handleVideoClick}
+                            isMerging={isMergingToUnified}
+                            isLoading={!dataFullyLoaded || revenueLoading}
+                            orgDefaultReportingView={orgDefaultReportingView}
+                          />
+                        );
+                      }
                       case 'tracked-accounts':
                         return (
                           <AccountsPage 
@@ -3792,8 +4291,39 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     }
                   };
                   
-                  return (
-                    <div key={sectionId} className={index > 0 ? 'mt-6' : ''}>
+                  // Only sections that can actually toggle visibility need the
+                  // overflow-clip wrapper for the height-collapse exit. Always-on
+                  // sections (like the video slider) stay with overflow:visible
+                  // so their carousel/peek thumbs don't get clipped.
+                  const canCollapse = HIDE_IN_UNIFIED.has(sectionId) || sectionId === 'unified-metrics';
+                  const isChartSlot = sectionId === 'kpi-cards' || sectionId === 'unified-metrics';
+
+                  // Render the view toggle directly above whichever slot
+                  // the chart occupies, so it always sits with the graph.
+                  if (isChartSlot) rendered.push(viewToggle);
+
+                  rendered.push(
+                    <motion.div
+                      key={sectionId}
+                      layout
+                      initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={canCollapse ? {
+                        opacity: 0,
+                        scale: 0.85,
+                        height: 0,
+                        marginTop: 0,
+                        filter: 'blur(4px)',
+                      } : { opacity: 0 }}
+                      transition={{
+                        duration: 0.45,
+                        ease: [0.22, 1, 0.36, 1],
+                        opacity: { duration: 0.3 },
+                      }}
+                      style={canCollapse ? { overflow: 'hidden' } : undefined}
+                      // No top margin if the toggle was just rendered above us.
+                      className={index > 0 && !isChartSlot ? 'mt-6' : ''}
+                    >
                       <DraggableSection
                         id={sectionId}
                         title={getSectionTitle(sectionId)}
@@ -3808,10 +4338,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       >
                         {renderSectionContent()}
                       </DraggableSection>
-                    </div>
+                    </motion.div>
                   );
-                })}
-              
+                });
+                return <AnimatePresence mode="popLayout" initial={false}>{rendered}</AnimatePresence>;
+              })()}
+
               {/* Section Trash Drop Zone - Only visible when dragging a section */}
               {isEditingLayout && draggedSection && (
                 <div
@@ -3995,7 +4527,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Creators Tab */}
           {activeTab === 'creators' && (
             <div data-spotlight="content-creators">
-              <CreatorsManagementPage dateFilter={creatorsDateFilter} organizationId={currentOrgId || undefined} projectId={currentProjectId || undefined} onRequiresPaidPlan={requiresPaidPlan} />
+              <CreatorsManagementPage dateFilter={creatorsDateFilter} searchQuery={creatorsSearchQuery} organizationId={currentOrgId || undefined} projectId={currentProjectId || undefined} onRequiresPaidPlan={requiresPaidPlan} />
             </div>
           )}
 
@@ -4082,6 +4614,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           totalCreatorVideos={totalCreatorVideos}
           orgId={currentOrgId}
           projectId={currentProjectId}
+          onVideoUpdate={(videoId, patch) => {
+            // Merge spark/freeze patches into the cached submissions
+            // array so a subsequent reopen of this video sees the
+            // updated state without a full Firestore reload.
+            setSubmissions(prev =>
+              prev.map(s => (s.id === videoId ? { ...s, ...patch } : s))
+            );
+          }}
         />
       )}
 
@@ -4192,6 +4732,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   customRange={customDateRange}
                   timePeriod="days"
                   granularity={granularity}
+                  orgDefaultReportingView={orgDefaultReportingView}
                   onVideoClick={handleVideoClick}
                   isEditMode={false}
                   cardOrder={kpiCardOrder}
@@ -4205,7 +4746,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               return (
                 <VideoSliderSection
                   videos={combinedSubmissions}
-                  maxVideos={10}
                   onVideoClick={handleVideoClick}
                 />
               );
@@ -4217,6 +4757,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     submissions={filteredSubmissions}
                     onVideoClick={handleVideoClick}
                     onAccountClick={handleAccountClick}
+                    onCreatorRowClick={handleCreatorRowClick}
+                    onPlatformClick={handlePlatformClick}
                     onHeatmapCellClick={() => {}}
                     subsectionVisibility={topPerformersSubsectionVisibility}
                     isEditMode={false}
@@ -4321,9 +4863,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   type="videos"
                   dateFilter={dateFilter}
                   customRange={customDateRange}
+                  orgDefaultReportingView={orgDefaultReportingView}
                 />
               );
-            
+
             case 'top-accounts':
               return (
                 <TopPerformersRaceChart
@@ -4333,9 +4876,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   type="accounts"
                   dateFilter={dateFilter}
                   customRange={customDateRange}
+                  orgDefaultReportingView={orgDefaultReportingView}
                 />
               );
-            
+
             case 'top-gainers':
               return (
                 <TopPerformersRaceChart
@@ -4345,38 +4889,57 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   type="gainers"
                   dateFilter={dateFilter}
                   customRange={customDateRange}
+                  orgDefaultReportingView={orgDefaultReportingView}
                 />
               );
             
-            case 'posting-times':
+            case 'posting-times': {
+              // Snapshot-aware per-video metrics for the selected period — the
+              // raw `video.views/likes/...` fields are LIFETIME totals and would
+              // overstate every cell. `computePerVideoMetricInRange` returns the
+              // delta credited to this period (matching the KPI cards / unified
+              // chart). `excludeSparked: true` drops paid views from the views
+              // metric to match the dashboard's organic reporting mode.
+              const heatmapDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
               return (
                 <div className="rounded-2xl bg-surface-secondary/60 backdrop-blur border border-border-subtle p-6">
                   <h3 className="text-xl font-bold text-content mb-1">Best Posting Times</h3>
                   <p className="text-sm text-content-muted mb-4">Engagement by day & hour</p>
                   <HeatmapByHour
-                    data={filteredSubmissions.map(video => ({
-                      timestamp: video.uploadDate || video.dateSubmitted,
-                      views: video.views,
-                      likes: video.likes,
-                      comments: video.comments,
-                      shares: video.shares,
-                      videos: [{
-                        id: video.id,
-                        title: video.title || video.caption || 'Untitled',
-                        thumbnailUrl: video.thumbnail
-                      }]
-                    }))}
+                    data={filteredSubmissions.map(video => {
+                      const periodViews = computePerVideoMetricInRange(video, 'views', heatmapDateRange.startDate, heatmapDateRange.endDate, { excludeSparked: true });
+                      const periodLikes = computePerVideoMetricInRange(video, 'likes', heatmapDateRange.startDate, heatmapDateRange.endDate, { excludeSparked: true });
+                      const periodComments = computePerVideoMetricInRange(video, 'comments', heatmapDateRange.startDate, heatmapDateRange.endDate, { excludeSparked: true });
+                      const periodShares = computePerVideoMetricInRange(video, 'shares', heatmapDateRange.startDate, heatmapDateRange.endDate, { excludeSparked: true });
+                      return {
+                        timestamp: video.uploadDate || video.dateSubmitted,
+                        views: periodViews,
+                        likes: periodLikes,
+                        comments: periodComments,
+                        shares: periodShares,
+                        videos: [{
+                          id: video.id,
+                          title: video.title || video.caption || 'Untitled',
+                          thumbnailUrl: video.thumbnail,
+                          views: periodViews,
+                        }]
+                      };
+                    })}
                     metric="views"
                     onCellClick={() => {}}
                   />
                 </div>
               );
+            }
             
             case 'top-creators':
               return (
                 <TopTeamCreatorsList
                   submissions={filteredSubmissions}
                   onCreatorClick={handleAccountClick}
+                  onCreatorRowClick={handleCreatorRowClick}
+                  dateFilter={dateFilter}
+                  customRange={customDateRange}
                 />
               );
             
@@ -4387,6 +4950,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     submissions={filteredSubmissions}
                     dateFilter={dateFilter}
                     customRange={customDateRange}
+                    onPlatformClick={handlePlatformClick}
                   />
                 </div>
               );
@@ -4399,6 +4963,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   submissions={filteredSubmissions}
                   granularity={granularity}
                   dateRange={currentDateRange}
+                  dateFilter={dateFilter}
                   onVideoClick={handleVideoClick}
                 />
               );
@@ -4422,12 +4987,24 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         videos={combinedSubmissions}
         metricLabel="Videos"
         accountFilter={selectedAccountFilter}
+        creatorDisplayName={selectedCreatorDisplayName}
+        platformFilter={selectedPlatformFilter}
         dateRangeLabel={getDateFilterLabel(dateFilter)}
         dayOfWeek={(window as any).__heatmapDayOfWeek}
         hourRange={(window as any).__heatmapHourRange}
         onVideoClick={handleVideoClick}
         onDelete={handleDelete}
-        selectedPeriodRange={dateFilter !== 'all' && customDateRange ? customDateRange : undefined}
+        selectedPeriodRange={(() => {
+          // Always resolve the broader period for the modal — without this,
+          // the modal's cap collapses to "interval.endDate" (= the clicked
+          // bucket's end) and credits in-bucket uploads only with their
+          // first-day snapshot value, not their full at-period-end value.
+          // Used to be a conditional that only fired for custom ranges, so
+          // 'last7days' / 'last30days' etc. silently broke the cap math.
+          const r = DateFilterService.getDateRange(dateFilter, customDateRange, combinedSubmissions);
+          return r.startDate ? { startDate: r.startDate, endDate: r.endDate } : undefined;
+        })()}
+        revenueByDate={revenueByDate}
       />
 
       {/* Rule Filter Modal */}
@@ -4571,14 +5148,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             <div className="flex gap-3 pt-4 border-t border-border-strong">
               <button
                 onClick={() => setShowCreateRuleForm(false)}
-                className="flex-1 px-4 py-2 bg-surface-secondary text-content border border-border rounded-lg shadow-[0_2px_0_0_var(--border)] hover:shadow-[0_1px_0_0_var(--border)] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all"
+                className="flex-1 px-4 py-2 bg-orange-500 text-white font-bold rounded-lg border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all"
               >
                 Back
               </button>
               <button
                 onClick={handleSaveRule}
                 disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
-                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg shadow-[0_2px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[1px] active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-orange-500 text-white font-bold rounded-lg border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_0_#000]"
               >
                 Create Rule
               </button>
@@ -4677,7 +5254,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             <div className="pt-4 border-t border-border-strong flex items-center justify-between">
               <button
                 onClick={handleShowCreateForm}
-                className="text-sm text-content-muted hover:text-content transition-colors"
+                className="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-lg border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all"
               >
                 Create New Rule →
               </button>

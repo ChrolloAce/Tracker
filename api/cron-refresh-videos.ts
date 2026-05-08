@@ -1071,12 +1071,16 @@ async function refreshTikTokVideosBulk(
       console.log(`    ✓ [TIKTOK] Matched videoId ${videoId}, updating metrics...`);
 
       const now = Timestamp.now();
+      const existing = videoDoc.data();
+      // Lifetime metrics are clamped monotone-non-decreasing against the
+      // current doc value so a bad scrape can't regress the headline. The
+      // raw scraped value is still recorded in the snapshot below.
       const metrics = {
-        views: video.views || 0,
-        likes: video.likes || 0,
-        comments: video.comments || 0,
-        shares: video.shares || 0,
-        saves: video.bookmarks || 0, // ✅ BOOKMARKS
+        views: Math.max(existing.views || 0, video.views || 0),
+        likes: Math.max(existing.likes || 0, video.likes || 0),
+        comments: Math.max(existing.comments || 0, video.comments || 0),
+        shares: Math.max(existing.shares || 0, video.shares || 0),
+        saves: Math.max(existing.saves || 0, video.bookmarks || 0), // ✅ BOOKMARKS
         lastRefreshed: now
       };
 
@@ -1226,12 +1230,13 @@ async function refreshInstagramVideosSequential(
       matchedVideoIds.add(videoCode);
       
       const now = Timestamp.now();
+      const existing = videoDoc.data();
       const metrics = {
-        views: video.play_count || video.video_view_count || 0,
-        likes: video.like_count || 0,
-        comments: video.comment_count || 0,
-        shares: video.share_count || 0,
-        saves: video.save_count || 0,
+        views: Math.max(existing.views || 0, video.play_count || video.video_view_count || 0),
+        likes: Math.max(existing.likes || 0, video.like_count || 0),
+        comments: Math.max(existing.comments || 0, video.comment_count || 0),
+        shares: Math.max(existing.shares || 0, video.share_count || 0),
+        saves: Math.max(existing.saves || 0, video.save_count || 0),
         lastRefreshed: now
       };
 
@@ -1366,12 +1371,13 @@ async function refreshTwitterVideosBatch(
       matchedVideoIds.add(tweetId);
 
       const now = Timestamp.now();
+      const existing = videoDoc.data();
       const metrics = {
-        views: tweet.viewCount || 0,
-        likes: tweet.likeCount || 0,
-        comments: tweet.replyCount || 0,
-        shares: tweet.retweetCount || 0,
-        saves: tweet.bookmarkCount || 0, // ✅ BOOKMARKS
+        views: Math.max(existing.views || 0, tweet.viewCount || 0),
+        likes: Math.max(existing.likes || 0, tweet.likeCount || 0),
+        comments: Math.max(existing.comments || 0, tweet.replyCount || 0),
+        shares: Math.max(existing.shares || 0, tweet.retweetCount || 0),
+        saves: Math.max(existing.saves || 0, tweet.bookmarkCount || 0), // ✅ BOOKMARKS
         lastRefreshed: now
       };
 
@@ -1505,12 +1511,13 @@ async function refreshYouTubeVideosBulk(
         matchedVideoIds.add(videoId);
 
         const now = Timestamp.now();
+        const existing = videoDoc.data();
         const metrics = {
-          views: video.statistics?.viewCount ? Number(video.statistics.viewCount) : 0,
-          likes: video.statistics?.likeCount ? Number(video.statistics.likeCount) : 0,
-          comments: video.statistics?.commentCount ? Number(video.statistics.commentCount) : 0,
-          shares: 0, // YouTube API doesn't provide share count
-          saves: video.statistics?.favoriteCount ? Number(video.statistics.favoriteCount) : 0, // ✅ YouTube favoriteCount = saves/bookmarks
+          views: Math.max(existing.views || 0, video.statistics?.viewCount ? Number(video.statistics.viewCount) : 0),
+          likes: Math.max(existing.likes || 0, video.statistics?.likeCount ? Number(video.statistics.likeCount) : 0),
+          comments: Math.max(existing.comments || 0, video.statistics?.commentCount ? Number(video.statistics.commentCount) : 0),
+          shares: existing.shares || 0, // YouTube API doesn't provide share count
+          saves: Math.max(existing.saves || 0, video.statistics?.favoriteCount ? Number(video.statistics.favoriteCount) : 0), // ✅ YouTube favoriteCount = saves/bookmarks
           lastRefreshed: now
         };
 

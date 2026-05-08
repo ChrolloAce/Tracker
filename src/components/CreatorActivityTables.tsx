@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { VideoDoc } from '../types/firestore';
 import { ProxiedImage } from './ProxiedImage';
+import { computePerVideoMetricInRange } from './kpi/kpiDataProcessing';
 import {
   Info,
   Settings2,
@@ -45,14 +46,30 @@ export function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
-export function getEngagementRate(videos: VideoDoc[]): number {
-  const totalViews = videos.reduce((s, v) => s + (v.views || 0), 0);
-  if (totalViews === 0) return 0;
-  const totalEngagement = videos.reduce(
-    (s, v) => s + (v.likes || 0) + (v.comments || 0) + (v.shares || 0),
-    0
+export function getEngagementRate(
+  videos: VideoDoc[],
+  dateRangeStart: Date | null,
+  dateRangeEnd: Date,
+): number {
+  // Snapshot-aware: views denominator must match the bounded period (and
+  // exclude sparked/paid views in 'organic' mode), and likes/comments/shares
+  // numerator must be the per-period contribution per video. Without this
+  // both pieces would be lifetime totals, inflating the rate against what
+  // the dashboard headline shows.
+  const totalViews = videos.reduce(
+    (s, v) => s + computePerVideoMetricInRange(v as any, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+    0,
   );
-  return (totalEngagement / totalViews) * 100;
+  if (totalViews === 0) return 0;
+  const totalLikes = videos.reduce(
+    (s, v) => s + computePerVideoMetricInRange(v as any, 'likes', dateRangeStart, dateRangeEnd),
+    0,
+  );
+  const totalComments = videos.reduce(
+    (s, v) => s + computePerVideoMetricInRange(v as any, 'comments', dateRangeStart, dateRangeEnd),
+    0,
+  );
+  return ((totalLikes + totalComments) / totalViews) * 100;
 }
 
 /** Day cell data for the heatmap squares */
@@ -216,11 +233,15 @@ function PostActivityHeatmapInline({ videos }: { videos: VideoDoc[] }) {
 export function ActivityTable({
   rows,
   toggleSort,
-  SortIcon
+  SortIcon,
+  dateRangeStart,
+  dateRangeEnd,
 }: {
   rows: CreatorRow[];
   toggleSort: (f: SortField) => void;
   SortIcon: React.FC<{ field: SortField }>;
+  dateRangeStart: Date | null;
+  dateRangeEnd: Date;
 }) {
   return (
     <div className="bg-surface-secondary backdrop-blur rounded-2xl border border-border overflow-hidden">
@@ -256,8 +277,15 @@ export function ActivityTable({
           </thead>
           <tbody className="divide-y divide-border-subtle">
             {rows.map(row => {
-              const totalViews = row.videos.reduce((s, v) => s + (v.views || 0), 0);
-              const engagement = getEngagementRate(row.videos);
+              // Snapshot-aware per-period sum (excluding sparked/paid views in
+              // 'organic' mode) so this row matches the headline KPI for the
+              // same date range — instead of summing each video's lifetime
+              // views.
+              const totalViews = row.videos.reduce(
+                (s, v) => s + computePerVideoMetricInRange(v as any, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+                0,
+              );
+              const engagement = getEngagementRate(row.videos, dateRangeStart, dateRangeEnd);
 
               return (
                 <tr key={row.creatorId} className="hover:bg-surface-hover transition-colors">
@@ -288,11 +316,15 @@ export function ActivityTable({
 export function PerformanceTable({
   rows,
   toggleSort,
-  SortIcon
+  SortIcon,
+  dateRangeStart,
+  dateRangeEnd,
 }: {
   rows: CreatorRow[];
   toggleSort: (f: SortField) => void;
   SortIcon: React.FC<{ field: SortField }>;
+  dateRangeStart: Date | null;
+  dateRangeEnd: Date;
 }) {
   return (
     <div className="bg-surface-secondary backdrop-blur rounded-2xl border border-border overflow-hidden">
@@ -345,12 +377,31 @@ export function PerformanceTable({
           </thead>
           <tbody className="divide-y divide-border-subtle">
             {rows.map(row => {
-              const totalViews = row.videos.reduce((s, v) => s + (v.views || 0), 0);
-              const totalLikes = row.videos.reduce((s, v) => s + (v.likes || 0), 0);
-              const totalComments = row.videos.reduce((s, v) => s + (v.comments || 0), 0);
-              const totalShares = row.videos.reduce((s, v) => s + (v.shares || 0), 0);
-              const totalSaves = row.videos.reduce((s, v) => s + (v.saves || 0), 0);
-              const engagement = getEngagementRate(row.videos);
+              // Snapshot-aware per-period sums so each row matches the
+              // dashboard's headline numbers for the same range. Views
+              // exclude sparked/paid in 'organic' mode; the other metrics
+              // have no spark concept.
+              const totalViews = row.videos.reduce(
+                (s, v) => s + computePerVideoMetricInRange(v as any, 'views', dateRangeStart, dateRangeEnd, { excludeSparked: true }),
+                0,
+              );
+              const totalLikes = row.videos.reduce(
+                (s, v) => s + computePerVideoMetricInRange(v as any, 'likes', dateRangeStart, dateRangeEnd),
+                0,
+              );
+              const totalComments = row.videos.reduce(
+                (s, v) => s + computePerVideoMetricInRange(v as any, 'comments', dateRangeStart, dateRangeEnd),
+                0,
+              );
+              const totalShares = row.videos.reduce(
+                (s, v) => s + computePerVideoMetricInRange(v as any, 'shares', dateRangeStart, dateRangeEnd),
+                0,
+              );
+              const totalSaves = row.videos.reduce(
+                (s, v) => s + computePerVideoMetricInRange(v as any, 'saves', dateRangeStart, dateRangeEnd),
+                0,
+              );
+              const engagement = getEngagementRate(row.videos, dateRangeStart, dateRangeEnd);
 
               return (
                 <tr key={row.creatorId} className="hover:bg-surface-hover transition-colors">

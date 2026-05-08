@@ -10,6 +10,7 @@ import type {
 } from '../types/payouts';
 import type { VideoSubmission } from '../types';
 import { Timestamp } from 'firebase/firestore';
+import { computePerVideoMetricInRange } from '../components/kpi/kpiDataProcessing';
 
 /**
  * Performance metrics for a creator in a campaign
@@ -652,19 +653,75 @@ export class PayoutCalculationEngine {
 
   // ===================== PUBLIC HELPERS =====================
 
-  static calculatePerformance(creatorId: string, videos: VideoSubmission[]): CreatorPerformance {
-    const totalViews = videos.reduce((s, v) => s + (v.views || 0), 0);
-    const totalLikes = videos.reduce((s, v) => s + (v.likes || 0), 0);
-    const totalComments = videos.reduce((s, v) => s + (v.comments || 0), 0);
-    const totalShares = videos.reduce((s, v) => s + ((v as any).shares || 0), 0);
-    const totalSaves = videos.reduce((s, v) => s + ((v as any).saves || 0), 0);
+  /**
+   * Aggregate per-video metrics into a `CreatorPerformance` for the engine.
+   *
+   * `dateRange` (optional) bounds the math to snapshot-aware deltas inside
+   * [start, end] — matching what the dashboard's KPI cards show. When passed:
+   *   - views are computed via `computePerVideoMetricInRange(..., 'views', { excludeSparked: true })`
+   *     so creators are paid on ORGANIC views only (sparked/paid views are
+   *     subtracted, mirroring the dashboard's `organic` reporting mode).
+   *   - likes/comments/shares/saves use the same snapshot-aware path WITHOUT
+   *     spark exclusion (those metrics aren't inflated by paid promotion the
+   *     same way).
+   *
+   * Without `dateRange` the function falls back to the OLD lifetime-sum
+   * behavior so any caller that hasn't been migrated yet still compiles and
+   * runs. New callers should always pass `dateRange` — the lifetime fallback
+   * over-pays creators when a campaign window is set.
+   *
+   * `start: null` inside `dateRange` means "all time" (no lower bound) — this
+   * still routes through the snapshot-aware path so spark subtraction works.
+   */
+  static calculatePerformance(
+    creatorId: string,
+    videos: VideoSubmission[],
+    dateRange?: { start: Date | null; end: Date },
+  ): CreatorPerformance {
+    let totalViews: number;
+    let totalLikes: number;
+    let totalComments: number;
+    let totalShares: number;
+    let totalSaves: number;
+
+    // When dateRange is provided we project each video onto its in-range values
+    // BEFORE the per-video pass runs. The engine's per-video components (CPM,
+    // per_video, bonuses, cross-post grouping) all read `video[metric]` directly
+    // — without this projection they'd silently fall back to lifetime values
+    // even though the aggregate totals on `performance` were date-bounded.
+    let scaledVideos: VideoSubmission[] = videos;
+
+    if (dateRange) {
+      const { start, end } = dateRange;
+      scaledVideos = videos.map(v => ({
+        ...v,
+        views: computePerVideoMetricInRange(v, 'views', start, end, { excludeSparked: true }),
+        likes: computePerVideoMetricInRange(v, 'likes', start, end),
+        comments: computePerVideoMetricInRange(v, 'comments', start, end),
+        shares: computePerVideoMetricInRange(v, 'shares', start, end),
+        saves: computePerVideoMetricInRange(v, 'saves', start, end),
+      }));
+      totalViews = scaledVideos.reduce((s, v) => s + (v.views || 0), 0);
+      totalLikes = scaledVideos.reduce((s, v) => s + (v.likes || 0), 0);
+      totalComments = scaledVideos.reduce((s, v) => s + (v.comments || 0), 0);
+      totalShares = scaledVideos.reduce((s, v) => s + ((v as any).shares || 0), 0);
+      totalSaves = scaledVideos.reduce((s, v) => s + ((v as any).saves || 0), 0);
+    } else {
+      // Lifetime fallback for legacy callers. New callers should pass `dateRange`.
+      totalViews = videos.reduce((s, v) => s + (v.views || 0), 0);
+      totalLikes = videos.reduce((s, v) => s + (v.likes || 0), 0);
+      totalComments = videos.reduce((s, v) => s + (v.comments || 0), 0);
+      totalShares = videos.reduce((s, v) => s + ((v as any).shares || 0), 0);
+      totalSaves = videos.reduce((s, v) => s + ((v as any).saves || 0), 0);
+    }
+
     const totalEngagement = totalLikes + totalComments + totalShares + totalSaves;
     const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
 
     return {
-      creatorId, videoCount: videos.length,
+      creatorId, videoCount: scaledVideos.length,
       totalViews, totalLikes, totalComments, totalShares, totalSaves,
-      totalEngagement, engagementRate, videos,
+      totalEngagement, engagementRate, videos: scaledVideos,
     };
   }
 

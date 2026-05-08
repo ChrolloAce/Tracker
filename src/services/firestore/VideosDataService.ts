@@ -20,6 +20,7 @@ import {
 } from '../../types/firestore';
 import { VideoSnapshot } from '../../types/index';
 import AdminService from '../AdminService';
+import BlacklistService from './BlacklistService';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../../types/subscription';
 
 // In-memory cache for org video counts to avoid redundant Firestore queries
@@ -302,7 +303,19 @@ export class VideosDataService {
   ): Promise<void> {
     try {
       console.log(`💾 Syncing ${videos.length} videos to project ${projectId} for account ${accountId}`);
-      
+
+      // Filter out any video the org has blacklisted. Loaded once per
+      // sync run and Set.has-checked in the per-video loop below.
+      const blacklist = await BlacklistService.loadBlacklist(orgId);
+      if (blacklist.size > 0) {
+        const before = videos.length;
+        videos = videos.filter(v => !BlacklistService.isBlacklisted(blacklist, v.url));
+        const skipped = before - videos.length;
+        if (skipped > 0) {
+          console.log(`🚫 Skipped ${skipped} blacklisted video${skipped === 1 ? '' : 's'} (${videos.length} remaining)`);
+        }
+      }
+
       // ✅ CHECK VIDEO LIMITS
       const subDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'subscription'));
       const syncPlanTier: PlanTier = (subDoc.data()?.planTier as PlanTier) || 'free';

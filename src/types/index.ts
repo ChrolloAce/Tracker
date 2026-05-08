@@ -47,6 +47,19 @@ export interface VideoSubmission {
   isStale?: boolean; // If true, cron skips refreshing this video
   /** Cross-post group ID (see VideoDoc.crossPostGroupId). */
   crossPostGroupId?: string;
+
+  // ─── Spark ads ─────────────────────────────────────────────────────
+  /** When the video was marked as Sparked. See VideoDoc.sparkedAt. */
+  sparkedAt?: Date;
+  /** Manual ad-view log entries. See VideoDoc.sparkViewLogs. */
+  sparkViewLogs?: Array<{
+    id: string;
+    date: string;
+    views: number;
+    note?: string;
+    loggedBy?: string;
+    loggedAt?: Date;
+  }>;
 }
 
 export interface InstagramVideoData {

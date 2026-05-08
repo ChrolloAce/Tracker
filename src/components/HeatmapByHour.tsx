@@ -72,18 +72,25 @@ const formatDay = (idx: 0 | 1 | 2 | 3 | 4 | 5 | 6, short = false): string => {
   return short ? shortDays[idx] : days[idx];
 };
 
+interface MatrixCell {
+  metricTotal: number;
+  videoCount: number;
+}
+
 const aggregateToMatrix = (
   data: HourStat[],
   metric: HeatmapMetric,
   timezone?: string
 ): {
-  matrix: number[][];
+  matrix: MatrixCell[][];
   cellsMeta: CellMeta[][];
   globalMin: number;
   globalMax: number;
 } => {
   // Initialize 24x7 matrix (rows=hours, cols=days)
-  const matrix: number[][] = Array(24).fill(0).map(() => Array(7).fill(0));
+  const matrix: MatrixCell[][] = Array(24).fill(0).map(() =>
+    Array(7).fill(0).map(() => ({ metricTotal: 0, videoCount: 0 }))
+  );
   const cellsMeta: CellMeta[][] = Array(24).fill(0).map(() =>
     Array(7).fill(0).map(() => ({
       metricTotal: 0,
@@ -101,14 +108,17 @@ const aggregateToMatrix = (
 
     const metricValue = stat[metric] || 0;
     const videoCount = stat.videos?.length || 0;
-    
-    // Use video count for heatmap intensity (brightness), not metric value
-    matrix[hour][dayIndex] += videoCount;
-    
+
+    // Cell stores BOTH the per-metric sum and the raw video count.
+    // The active `metric` decides which one drives intensity/tooltip.
+    const matrixCell = matrix[hour][dayIndex];
+    matrixCell.metricTotal += metricValue;
+    matrixCell.videoCount += videoCount;
+
     const cell = cellsMeta[hour][dayIndex];
     cell.metricTotal += metricValue;
     cell.countVideos += videoCount;
-    
+
     // Keep top 3 videos by views
     if (stat.videos) {
       cell.videos.push(...stat.videos);
@@ -127,12 +137,13 @@ const aggregateToMatrix = (
     cell.range = { start: rangeStart, end: rangeEnd };
   });
 
-  // Calculate global min/max
+  // Calculate global min/max from whichever field drives this metric
   let globalMin = Infinity;
   let globalMax = -Infinity;
 
   matrix.forEach(row => {
-    row.forEach(value => {
+    row.forEach(cell => {
+      const value = cell.metricTotal;
       if (value > 0) {
         globalMin = Math.min(globalMin, value);
         globalMax = Math.max(globalMax, value);
@@ -296,10 +307,13 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
 
             {/* Cells for each day */}
             {Array.from({ length: 7 }, (_, day) => {
-              const value = matrix[hour][day];
+              const matrixCell = matrix[hour][day];
+              // Intensity is driven by the SAME field the tooltip displays
+              // (the active metric's total) so brightness and label agree.
+              const value = matrixCell.metricTotal;
               const intensity = getIntensity(value);
               const cell = cellsMeta[hour][day];
-              const isEmpty = value === 0;
+              const isEmpty = matrixCell.videoCount === 0;
 
               return (
                 <button
@@ -340,7 +354,7 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
           }}
         >
           <div className="bg-surface-secondary backdrop-blur-xl text-content rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-border" style={{ width: '400px', maxWidth: '400px' }}>
-            {matrix[tooltipData.hour][tooltipData.day] === 0 ? (
+            {matrix[tooltipData.hour][tooltipData.day].videoCount === 0 ? (
               <div className="px-5 py-4">
                 <div className="text-xs text-content-muted font-medium uppercase tracking-wider mb-2">
                   All {formatDay(tooltipData.day as 0 | 1 | 2 | 3 | 4 | 5 | 6)}s · {formatHourRange(tooltipData.hour)}
@@ -356,7 +370,7 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                   </p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold text-content">
-                      {formatMetricValue(matrix[tooltipData.hour][tooltipData.day])}
+                      {formatMetricValue(matrix[tooltipData.hour][tooltipData.day].metricTotal)}
                     </p>
                   </div>
                 </div>

@@ -23,6 +23,12 @@ export interface KPICardsProps {
   cardVisibility?: Record<string, boolean>;
   onReorder?: (newOrder: string[]) => void;
   onToggleCard?: (cardId: string) => void;
+  /**
+   * Org-level reporting view ('organic' subtracts sparked views from
+   * headline KPI totals, matching the unified chart). Threaded down
+   * to `generateKPICardData` → `computeKPITotals`.
+   */
+  orgDefaultReportingView?: 'organic' | 'total' | 'split';
 }
 
 export interface KPICardData {

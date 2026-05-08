@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Bookmark, Trash2, Link2, Copy, Check } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Bookmark, Trash2, Link2, Copy, Check, Zap } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -9,6 +9,8 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { Button } from './ui/Button';
 import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
 import { VideoDeleteModal } from './video-modal/VideoDeleteModal';
+import { SparkPopover } from './video-modal/SparkPopover';
+import SparkService from '../services/firestore/SparkService';
 import { VideoSidebar } from './video-modal/VideoSidebar';
 import { VideoSnapshotsHistory } from './video-modal/VideoSnapshotsHistory';
 import LandingCTABanner from './marketing/LandingCTABanner';
@@ -41,6 +43,14 @@ interface VideoAnalyticsModalProps {
    * to convert viewers. Defaults to false.
    */
   showLandingCTA?: boolean;
+  /**
+   * Notify the parent when the video doc was patched in-modal (Spark
+   * mark / unmark / freeze toggle / manual ad-view total). Lets the
+   * parent merge the patch into its `submissions` cache so the next
+   * open of this video sees the new state without a full reload.
+   * Patch shape mirrors what SparkPopover writes.
+   */
+  onVideoUpdate?: (videoId: string, patch: { sparkedAt?: Date | undefined; sparkViewLogs?: any[]; isStale?: boolean }) => void;
 }
 
 interface ChartDataPoint {
@@ -55,7 +65,7 @@ interface ChartDataPoint {
   snapshotIndex: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true, showAiAnalysis = true, showLandingCTA = false }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId, updateUrlOnOpen = true, showAiAnalysis = true, showLandingCTA = false, onVideoUpdate }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Tooltip state for smooth custom tooltips
@@ -172,6 +182,21 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Spark ads UI state. The Spark fields are written to Firestore via
+  // SparkService; we mirror them locally so the chart + headline update
+  // immediately on toggle, without waiting for a parent reload.
+  const [showSparkPopover, setShowSparkPopover] = useState(false);
+  const [localSparkedAt, setLocalSparkedAt] = useState<Date | undefined>((video as any)?.sparkedAt);
+  const [localSparkLogs, setLocalSparkLogs] = useState<any[] | undefined>((video as any)?.sparkViewLogs);
+  const [localIsStale, setLocalIsStale] = useState<boolean | undefined>((video as any)?.isStale);
+
+  // Reset local Spark state when the modal opens for a new video.
+  useEffect(() => {
+    setLocalSparkedAt((video as any)?.sparkedAt);
+    setLocalSparkLogs((video as any)?.sparkViewLogs);
+    setLocalIsStale((video as any)?.isStale);
+  }, [video?.id]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -359,16 +384,26 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         });
       }
 
-    // Create data points - each point shows CUMULATIVE totals at that snapshot time
-    // This ensures the chart line accurately reflects the actual metric values over time
+    // Create data points - each point shows CUMULATIVE totals at that snapshot time.
+    // Cumulative metrics are clamped monotone-non-decreasing: a snapshot whose
+    // value is lower than the running max is treated as a bad scrape and the
+    // previous max is carried forward, so a single bad-data point can't make
+    // the chart cliff-drop or contaminate the headline total.
+    let runViews = 0, runLikes = 0, runComments = 0, runShares = 0, runSaves = 0;
     const data: ChartDataPoint[] = allSnapshots.map((snapshot, index) => {
       const timestamp = new Date(snapshot.capturedAt);
 
-      const cumulativeViews = snapshot.views || 0;
-      const cumulativeLikes = snapshot.likes || 0;
-      const cumulativeComments = snapshot.comments || 0;
-      const cumulativeShares = snapshot.shares || 0;
-      const cumulativeSaves = snapshot.saves || 0;
+      runViews = Math.max(runViews, snapshot.views || 0);
+      runLikes = Math.max(runLikes, snapshot.likes || 0);
+      runComments = Math.max(runComments, snapshot.comments || 0);
+      runShares = Math.max(runShares, snapshot.shares || 0);
+      runSaves = Math.max(runSaves, snapshot.saves || 0);
+
+      const cumulativeViews = runViews;
+      const cumulativeLikes = runLikes;
+      const cumulativeComments = runComments;
+      const cumulativeShares = runShares;
+      const cumulativeSaves = runSaves;
 
       // Calculate engagement rate from cumulative values
       const totalEngagement = cumulativeLikes + cumulativeComments + cumulativeShares;
@@ -420,6 +455,19 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       engagementRate: lastPoint.engagementRate,
     };
   }, [chartData]);
+
+  // Organic vs ad split for views — drives the "Current Views" tile so it
+  // shows organic-only as the primary number with ad-views as a secondary
+  // stat. Uses snapshot deltas after sparkedAt unless the user has logged
+  // ad-view totals manually (in which case those win).
+  const sparkSplit = useMemo(() => {
+    return SparkService.splitViewsBySpark(
+      video?.snapshots,
+      localSparkedAt,
+      cumulativeTotals.views,
+      localSparkLogs as any,
+    );
+  }, [video?.snapshots, localSparkedAt, cumulativeTotals.views, localSparkLogs]);
 
   // Calculate growth since last snapshot and time elapsed
   const metricGrowthWithTime = useMemo(() => {
@@ -595,12 +643,15 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     setShowDeleteModal(true);
   };
 
-  const confirmDeleteVideo = async () => {
+  const confirmDeleteVideo = async ({ blacklist }: { blacklist: boolean } = { blacklist: false }) => {
     if (!video) return;
 
     const videoId = video.id;
     const videoTitle = video.title || video.caption || 'Video';
-    console.log(`🗑️ [UI] Starting INSTANT video deletion: ${videoTitle}`);
+    // Capture URL before closing the modal — `video` may go stale after
+    // the parent re-renders post-deletion.
+    const videoUrl = (video as any).videoUrl || (video as any).url || '';
+    console.log(`🗑️ [UI] Starting INSTANT video deletion: ${videoTitle}${blacklist ? ' (+ blacklist)' : ''}`);
 
     // ✅ IMMEDIATELY close both modals (optimistic update)
     setShowDeleteModal(false);
@@ -611,7 +662,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     (async () => {
       try {
         console.log(`🔄 [BACKGROUND] Processing video deletion...`);
-        
+
+        // Fire blacklist write in parallel with the delete — both target
+        // org-scoped Firestore docs, no ordering dependency between them.
+        if (blacklist && orgId && videoUrl) {
+          const { default: BlacklistService } = await import('../services/firestore/BlacklistService');
+          BlacklistService.addToBlacklist(orgId, videoUrl).catch(err => {
+            console.warn('[Blacklist] Failed to add URL:', err);
+          });
+        }
+
         // If we have orgId and projectId, this is a tracked account video
         if (orgId && projectId) {
           await FirestoreDataService.deleteVideo(orgId, projectId, videoId);
@@ -713,64 +773,38 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-4 lg:flex-shrink-0">
-          {/* Left: Quick Actions */}
+          {/* Left: Quick Actions — brand brutalism (matches Add Account button).
+              Orange = brand action, Blue = navigation, Red = destructive. */}
           <div className="flex items-center gap-2">
-            {/* Trash - Delete Video */}
-            <button
-              onClick={handleDeleteVideo}
-              className="p-2 text-content-secondary hover:text-red-400 bg-surface-hover hover:bg-red-500/10 rounded-lg transition-all border border-border-subtle hover:border-red-500/20"
-              title="Delete video"
-            >
-              <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-            </button>
-
-            {/* Link - Go to Video */}
-            <button
-              onClick={handleGoToVideo}
-              className="p-2 text-content-secondary hover:text-blue-400 bg-surface-hover hover:bg-blue-500/10 rounded-lg transition-all border border-border-subtle hover:border-blue-500/20"
-              title="Go to video"
-            >
-              <Link2 className="w-4 h-4" strokeWidth={1.5} />
-            </button>
-
-            {/* Copy - Dropdown */}
+            {/* Copy — orange */}
             <div className="relative" ref={copyDropdownRef}>
               <button
                 onClick={() => setShowCopyDropdown(!showCopyDropdown)}
-                className="p-2 text-content-secondary hover:text-content bg-surface-hover hover:bg-surface-active rounded-lg transition-all border border-border-subtle hover:border-border-strong"
                 title="Copy options"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold bg-orange-500 text-white rounded-xl shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_1px_0_0_#c2410c] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition-all"
               >
-                <Copy className="w-4 h-4" strokeWidth={1.5} />
+                <Copy className="w-3.5 h-3.5" strokeWidth={2.5} />
+                Copy
               </button>
 
-              {/* Dropdown Menu */}
               {showCopyDropdown && (
-                <div className="absolute left-0 top-full mt-2 w-48 bg-surface-secondary border border-border rounded-lg shadow-xl overflow-hidden z-50">
+                <div className="absolute left-0 top-full mt-2 w-48 bg-surface-secondary border border-border rounded-xl shadow-xl overflow-hidden z-50">
                   <button
-                    onClick={() => {
-                      handleCopy('link');
-                      setShowCopyDropdown(false);
-                    }}
+                    onClick={() => { handleCopy('link'); setShowCopyDropdown(false); }}
                     className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors flex items-center justify-between gap-2"
                   >
                     <span>Copy link</span>
                     {copiedItem === 'link' && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                   <button
-                    onClick={() => {
-                      handleCopy('videoId');
-                      setShowCopyDropdown(false);
-                    }}
+                    onClick={() => { handleCopy('videoId'); setShowCopyDropdown(false); }}
                     className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
                   >
                     <span>Copy video ID</span>
                     {copiedItem === 'videoId' && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                   <button
-                    onClick={() => {
-                      handleCopy('accountLink');
-                      setShowCopyDropdown(false);
-                    }}
+                    onClick={() => { handleCopy('accountLink'); setShowCopyDropdown(false); }}
                     className="w-full px-4 py-2.5 text-left text-sm text-content hover:bg-surface-hover transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
                   >
                     <span>Copy account link</span>
@@ -779,7 +813,69 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </div>
               )}
             </div>
-                </div>
+
+            {/* Go to video — blue */}
+            <button
+              onClick={handleGoToVideo}
+              title="Go to video"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold bg-blue-500 text-white rounded-xl shadow-[0_3px_0_0_#1d4ed8] hover:shadow-[0_1px_0_0_#1d4ed8] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition-all"
+            >
+              <Link2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Go to video
+            </button>
+
+            {/* Spark — pink. Toggles ad mode for the video and (when on)
+                shows the date / manual ad-view log entries. */}
+            {orgId && projectId && video?.id && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSparkPopover(v => !v)}
+                  title={localSparkedAt ? `Sparked since ${localSparkedAt.toLocaleDateString()}` : 'Mark as Sparked'}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold text-white rounded-xl transition-all ${
+                    localSparkedAt
+                      ? 'bg-pink-500 shadow-[0_3px_0_0_#9d174d] hover:shadow-[0_1px_0_0_#9d174d] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px]'
+                      : 'bg-pink-500/60 shadow-[0_3px_0_0_rgba(0,0,0,0.15)] hover:shadow-[0_1px_0_0_rgba(0,0,0,0.15)] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px]'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  {localSparkedAt ? 'Sparked' : 'Spark'}
+                </button>
+                <SparkPopover
+                  isOpen={showSparkPopover}
+                  onClose={() => setShowSparkPopover(false)}
+                  orgId={orgId}
+                  projectId={projectId}
+                  videoId={video.id}
+                  sparkedAt={localSparkedAt}
+                  sparkViewLogs={localSparkLogs}
+                  uploadDate={video.uploadDate ? new Date(video.uploadDate) : undefined}
+                  snapshots={video.snapshots}
+                  totalViews={cumulativeTotals.views}
+                  isStale={localIsStale}
+                  onLocalChange={(patch) => {
+                    if ('sparkedAt' in patch) setLocalSparkedAt(patch.sparkedAt);
+                    if ('sparkViewLogs' in patch) setLocalSparkLogs(patch.sparkViewLogs);
+                    if ('isStale' in patch) setLocalIsStale(patch.isStale);
+                    // Bubble the patch to the parent so its submissions
+                    // cache stays in sync — without this, closing and
+                    // reopening this video re-reads stale props and the
+                    // Spark state appears to vanish.
+                    if (video?.id && onVideoUpdate) onVideoUpdate(video.id, patch);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Delete video — red */}
+            <button
+              onClick={handleDeleteVideo}
+              title="Delete video"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold bg-red-500 text-white rounded-xl shadow-[0_3px_0_0_#b91c1c] hover:shadow-[0_1px_0_0_#b91c1c] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Delete video
+            </button>
+          </div>
                 
           {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">
@@ -810,7 +906,21 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           {/* Right: Scrollable content (chart, AI analysis, creator cards…) */}
           <div className="space-y-4 min-w-0 overflow-hidden lg:overflow-y-auto lg:overflow-x-hidden lg:pr-2">
             {/* Historical Metrics Chart - Replace KPI Cards */}
-            <VideoHistoricalMetricsChart data={chartData} cumulativeTotals={cumulativeTotals} />
+            <VideoHistoricalMetricsChart
+              data={chartData}
+              // Headline shows organic-only whenever there's an ad portion.
+              cumulativeTotals={(localSparkedAt || (localSparkLogs && localSparkLogs.length > 0))
+                ? { ...cumulativeTotals, views: sparkSplit.organic }
+                : cumulativeTotals}
+              // Only pass sparkedAt to the chart for the date-split when
+              // we're INFERRING from snapshots (no manual override). With
+              // a manual override the date is meaningless — the line stays
+              // a single colour and the ad total surfaces in the side-stat.
+              sparkedAt={localSparkedAt && (!localSparkLogs || localSparkLogs.length === 0)
+                ? localSparkedAt
+                : undefined}
+              sparkAdViews={sparkSplit.ad > 0 ? sparkSplit.ad : undefined}
+            />
 
             {/* Subtle marketing CTA. Only shown on public share pages where a
                 viewer drilling into a single video's performance is peak intent. */}

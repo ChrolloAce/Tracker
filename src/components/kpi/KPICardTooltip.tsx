@@ -11,8 +11,10 @@ import { VideoSubmission } from '../../types';
 import { LinkClick } from '../../services/LinkClicksService';
 import { PlatformIcon } from '../ui/PlatformIcon';
 import DataAggregationService from '../../services/DataAggregationService';
+import DateFilterService from '../../services/DateFilterService';
 import { HeicImage } from '../HeicImage';
 import { KPICardData } from './kpiTypes';
+import { computeIntervalBreakdown } from './kpiDataProcessing';
 
 interface KPICardTooltipProps {
   tooltipData: { x: number; y: number; point: any; lineX: number };
@@ -48,91 +50,135 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
   // Get counts first to determine layout
   const point = tooltipData.point;
   const interval = point.interval;
-  
+
+  // End of the active date range — used as the per-video cap below so
+  // the breakdown can't credit a video more than its end-of-range
+  // value (which is what the headline KPI uses). Without this cap, a
+  // video that peaked mid-interval and was later corrected down (e.g.
+  // TikTok recount, removed video) would show its peak in this
+  // tooltip while the headline only credits the final value.
+  const dateRange = DateFilterService.getDateRange(dateFilter as any, customRange, submissions);
+  const rangeEndDate = dateRange.endDate;
+
+  // Per-period breakdown is computed by the SAME central helper the chart
+  // and DayVideosModal use, so the tooltip's totals can never disagree with
+  // them. The display-only top-N lists below still need the per-video
+  // values for ranking, but the sums shown in the breakdown headers come
+  // straight from this object.
+  const centralBreakdown = interval ? computeIntervalBreakdown(
+    submissions,
+    interval.startDate,
+    interval.endDate,
+    rangeEndDate,
+    { excludeSparked: true, rangeStartDate: dateRange.startDate },
+  ) : null;
+
   // Calculate new uploads and top gainers counts
   const videosInInterval = interval ? submissions.filter((video: VideoSubmission) => {
     const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
     return DataAggregationService.isDateInInterval(uploadDate, interval);
   }) : [];
-  
-  // Get ALL videos with snapshot activity
+
+  // Refreshed list mirrors the central helper exactly: ONLY videos
+  // uploaded BEFORE the broader period count as refreshed. Videos
+  // uploaded inside the period (this bucket OR another) are credited to
+  // their upload-day's "New" — surfacing them here would disagree with
+  // the badge total above and double-count their views.
+  const periodStartForClassification = dateRange.startDate; // null = all time
   const videosWithSnapshotsInIntervalCheck = interval ? submissions.filter((video: VideoSubmission) => {
     const snapshots = video.snapshots || [];
-    return snapshots.length > 0;
+    if (snapshots.length === 0) return false;
+    const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+    if (periodStartForClassification) {
+      return uploadDate < periodStartForClassification;
+    }
+    // All-time view: anything before THIS bucket counts as refreshed.
+    return uploadDate < interval.startDate;
   }) : [];
   
+  // Per-video cap: latest snapshot value at-or-before the date-range
+  // end. The per-interval refresh gain can't exceed (cap - startValue);
+  // this stops a peak that was later corrected down from inflating
+  // the breakdown total above the headline.
+  const valueAtRangeEnd = (video: VideoSubmission, key: string): number => {
+    const snaps = video.snapshots || [];
+    if (snaps.length === 0) return ((video as any)[key] as number) || 0;
+    const snap = [...snaps]
+      .filter(s => new Date(s.capturedAt) <= rangeEndDate)
+      .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+    return ((snap as any)?.[key] as number) || 0;
+  };
+
   // Calculate refreshed videos (videos with growth)
   const allTopGainers = videosWithSnapshotsInIntervalCheck
     .map((video: VideoSubmission) => {
       const allSnapshots = video.snapshots || [];
-      
+
       const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
         const snapshotDate = new Date(snapshot.capturedAt);
         return snapshotDate <= interval.endDate;
       });
-      
+
       if (snapshotsInOrBeforeInterval.length === 0) return null;
-      
-      const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
+
+      const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) =>
         new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
       );
-      
-      const snapshotAtStart = sortedSnapshots.filter(s => 
+
+      const snapshotAtStart = sortedSnapshots.filter(s =>
         new Date(s.capturedAt) <= interval.startDate
       ).pop();
-      
-      const snapshotAtEnd = sortedSnapshots.filter(s => 
+
+      const snapshotAtEnd = sortedSnapshots.filter(s =>
         new Date(s.capturedAt) <= interval.endDate
       ).pop();
-      
+
       if (!snapshotAtEnd) return null;
-      
-      if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
-        // Fallback: Use initial snapshot or first available snapshot if no start snapshot exists
-        // This handles videos added DURING the interval
-        const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
-        if (!initialSnapshot) return null;
-        
-        // Always use VIEWS as the primary metric for determining if a video should be shown
-        const viewsStartValue = (initialSnapshot as any)['views'] || 0;
-        const viewsEndValue = (snapshotAtEnd as any)['views'] || 0;
-        const viewsGrowth = viewsEndValue - viewsStartValue;
-        
-        // But calculate the display metric based on the current KPI
-        const growthMetricKey = data.id === 'views' ? 'views' 
-          : data.id === 'likes' ? 'likes'
-          : data.id === 'comments' ? 'comments'
-          : data.id === 'shares' ? 'shares'
-          : data.id === 'bookmarks' ? 'bookmarks'
-          : 'views';
-        
-        const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
-        const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
-        const growth = endValue - startValue;
-        const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
-        
-        // Only return if there is actual growth
-        return growth > 0 ? { video, growth, growthPercentage, absoluteGain: growth, viewsGrowth } : null;
-      }
-      
-      // Always use VIEWS as the primary metric for determining if a video should be shown
-      const viewsStartValue = (snapshotAtStart as any)['views'] || 0;
-      const viewsEndValue = (snapshotAtEnd as any)['views'] || 0;
-      const viewsGrowth = viewsEndValue - viewsStartValue;
-      
-      // But calculate the display metric based on the current KPI
-      const growthMetricKey = data.id === 'views' ? 'views' 
+
+      // Display-metric key (matches the rest of the tooltip).
+      const growthMetricKey = data.id === 'views' ? 'views'
         : data.id === 'likes' ? 'likes'
         : data.id === 'comments' ? 'comments'
         : data.id === 'shares' ? 'shares'
         : data.id === 'bookmarks' ? 'bookmarks'
         : 'views';
-      
+
+      // Cap the end value at the video's value at end-of-range so a
+      // mid-interval peak that was later corrected down can't credit
+      // more than the headline total knows about.
+      const cap = valueAtRangeEnd(video, growthMetricKey);
+      const viewsCap = valueAtRangeEnd(video, 'views');
+
+      if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+        // Fallback: Use initial snapshot or first available snapshot if no start snapshot exists
+        // This handles videos added DURING the interval
+        const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
+        if (!initialSnapshot) return null;
+
+        // Always use VIEWS as the primary metric for determining if a video should be shown
+        const viewsStartValue = (initialSnapshot as any)['views'] || 0;
+        const viewsEndValue = Math.min((snapshotAtEnd as any)['views'] || 0, viewsCap);
+        const viewsGrowth = viewsEndValue - viewsStartValue;
+
+        const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
+        const endValue = Math.min((snapshotAtEnd as any)[growthMetricKey] || 0, cap);
+        const growth = endValue - startValue;
+        const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+
+        // Only return if there is actual growth
+        return growth > 0 ? { video, growth, growthPercentage, absoluteGain: growth, viewsGrowth } : null;
+      }
+
+      // Always use VIEWS as the primary metric for determining if a video should be shown
+      const viewsStartValue = (snapshotAtStart as any)['views'] || 0;
+      const viewsEndValue = Math.min((snapshotAtEnd as any)['views'] || 0, viewsCap);
+      const viewsGrowth = viewsEndValue - viewsStartValue;
+
       const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
-      const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+      const endValue = Math.min((snapshotAtEnd as any)[growthMetricKey] || 0, cap);
       const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
       const absoluteGain = endValue - startValue;
-      
+
       return absoluteGain > 0 ? { video, growth, metricValue: endValue, absoluteGain, startValue, snapshotCount: allSnapshots.length, viewsGrowth } : null;
     })
     .filter(item => item !== null);
@@ -197,9 +243,8 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     return num.toLocaleString();
   };
 
-  const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
   const ppDisplayValue = typeof ppValue === 'number' ? formatDisplayNumber(ppValue) : null;
-  
+
   const ppComparison = (typeof ppValue === 'number' && typeof value === 'number') ? (() => {
     const diff = value - ppValue;
     let percentChange: number;
@@ -237,12 +282,46 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
     .sort((a: any, b: any) => (b.absoluteGain || 0) - (a.absoluteGain || 0))
     .slice(0, 5);
   
-  // Calculate total metrics from NEW UPLOADS and REFRESHED VIDEOS (based on current metric)
-  const totalMetricFromNewUploads = videosInInterval.reduce((sum, video) => sum + ((video as any)[metricKey] || 0), 0);
-  const totalMetricFromRefreshedVideos = allTopGainers.reduce((sum: number, item: any) => sum + (item.absoluteGain || 0), 0);
-  
-  // NOTE: sparkline point.value now ALREADY includes both new uploads AND refreshed video deltas
-  // No need to add totalMetricFromRefreshedVideos here (that would be double-counting)
+  // Totals come from the central helper (same source the chart bars and
+  // DayVideosModal use). Previously these were duplicated inline; that
+  // duplication was the bug Ernesto reported — the tooltip didn't
+  // synthesize a current-snapshot at video.lastRefreshed, so a manually-
+  // refreshed video with snapshot=14k but lifetime=300k credited 14k
+  // here. The central helper now handles that synthesis once, so every
+  // surface gets the correct number.
+  const pickFromBreakdown = (key: 'views' | 'likes' | 'comments' | 'shares'): { newTotal: number; refTotal: number } => {
+    if (!centralBreakdown) return { newTotal: 0, refTotal: 0 };
+    if (key === 'views') return { newTotal: centralBreakdown.newViews, refTotal: centralBreakdown.refViews };
+    if (key === 'likes') return { newTotal: centralBreakdown.newLikes, refTotal: centralBreakdown.refLikes };
+    if (key === 'comments') return { newTotal: centralBreakdown.newComments, refTotal: centralBreakdown.refComments };
+    return { newTotal: centralBreakdown.newShares, refTotal: centralBreakdown.refShares };
+  };
+  // Bookmarks/saves don't have a separate breakdown bucket in the central
+  // helper (which only tracks the four core engagement metrics), so the
+  // bookmarks card falls back to shares as a stand-in. Same fallback the
+  // refreshed-list growthMetricKey logic above uses.
+  const _breakdownMetricKey: 'views' | 'likes' | 'comments' | 'shares' =
+    (metricKey as string) === 'bookmarks' ? 'shares' : (metricKey as 'views' | 'likes' | 'comments' | 'shares');
+  const _breakdownPick = pickFromBreakdown(_breakdownMetricKey);
+  const totalMetricFromNewUploads = _breakdownPick.newTotal;
+  const totalMetricFromRefreshedVideos = _breakdownPick.refTotal;
+
+  // The breakdown (new uploads + refreshed) is now the source of truth
+  // for the headline number — the user explicitly wants the top number
+  // to equal the sum below it. Previously we displayed the sparkline's
+  // own `point.value` which used a separate algorithm and could disagree.
+  const breakdownTotal = totalMetricFromNewUploads + totalMetricFromRefreshedVideos;
+
+  // Cards that surface the New Uploads / Refreshed Videos breakdown
+  // drive the headline number from that breakdown — the top-right total
+  // becomes literally `newUploads + refreshed`, so the math the user
+  // sees in the body always sums to the headline.
+  const isBreakdownCard =
+    data.id !== 'published-videos' && data.id !== 'videos' &&
+    data.id !== 'accounts' && data.id !== 'active-accounts' &&
+    data.id !== 'link-clicks';
+  const headlineValue = isBreakdownCard ? breakdownTotal : value;
+  const displayValue = typeof headlineValue === 'number' ? formatDisplayNumber(headlineValue) : headlineValue;
   
   let sortedItems: any[] = [];
   if (data.id === 'accounts' || data.id === 'active-accounts') {
@@ -341,27 +420,58 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
           <p className="text-xl font-bold text-content">{displayValue}</p>
         </div>
 
-        {ppComparison && ppComparison.displayValue && ppDateStr && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
-            <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
-          </div>
-        )}
-        
-        {ppComparison && ppDateStr && ppComparison.percentChange !== Infinity && ppComparison.percentChange !== 0 && (
-          <div className="pt-2 border-t border-border-subtle flex justify-center">
-            <p className="text-xs font-medium text-content-muted text-center">
-              <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
-                {ppComparison.isPositive ? '↑' : '↓'} {(() => {
-                  const percent = Math.abs(ppComparison.percentChange);
-                  if (percent >= 1000000) return `${(percent / 1000000).toFixed(1)}M`;
-                  if (percent >= 1000) return `${(percent / 1000).toFixed(1)}K`;
-                  return percent.toFixed(1);
-                })()}%
+        {/* For breakdown cards (views/likes/comments/shares/bookmarks),
+            replace the legacy current-vs-previous-period rows with the
+            New Video Views / Refresh Views split so the math the user
+            sees here adds up to the headline number above. The previous
+            "+X% from previous period" line is gone — that comparison
+            now belongs on the KPI card itself, not the tooltip. */}
+        {isBreakdownCard ? (
+          <div className="pt-2 border-t border-border-subtle space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Upload className="w-3.5 h-3.5 text-content-muted" />
+                <span className="text-xs text-content-muted font-medium tracking-wider">New Video Views</span>
+              </div>
+              <span className="text-sm font-semibold text-content tabular-nums">
+                {formatDisplayNumber(totalMetricFromNewUploads)}
               </span>
-              {' '}{ppComparison.isPositive ? 'increase' : 'decrease'} from Current Period
-            </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 text-content-muted" />
+                <span className="text-xs text-content-muted font-medium tracking-wider">Refresh Views</span>
+              </div>
+              <span className="text-sm font-semibold text-content tabular-nums">
+                {formatDisplayNumber(totalMetricFromRefreshedVideos)}
+              </span>
+            </div>
           </div>
+        ) : (
+          <>
+            {ppComparison && ppComparison.displayValue && ppDateStr && (
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-content-muted font-medium tracking-wider">{ppDateStr}</p>
+                <p className="text-lg font-semibold text-content-muted">{ppComparison.displayValue}</p>
+              </div>
+            )}
+
+            {ppComparison && ppDateStr && ppComparison.percentChange !== Infinity && ppComparison.percentChange !== 0 && (
+              <div className="pt-2 border-t border-border-subtle flex justify-center">
+                <p className="text-xs font-medium text-content-muted text-center">
+                  <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
+                    {ppComparison.isPositive ? '↑' : '↓'} {(() => {
+                      const percent = Math.abs(ppComparison.percentChange);
+                      if (percent >= 1000000) return `${(percent / 1000000).toFixed(1)}M`;
+                      if (percent >= 1000) return `${(percent / 1000).toFixed(1)}K`;
+                      return percent.toFixed(1);
+                    })()}%
+                  </span>
+                  {' '}{ppComparison.isPositive ? 'increase' : 'decrease'} from Current Period
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
       
@@ -369,13 +479,15 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
 
       {/* Two-Column Layout */}
       {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && (
-        <div className="flex">
+        <div className="flex min-w-0">
           {hasNewUploads && (
-            <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-border' : ''}`}>
-              <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Upload className="w-3.5 h-3.5" />
-                <span>New Uploads ({totalNewUploads})</span>
-                <span className="text-content font-bold ml-auto">{formatDisplayNumber(totalMetricFromNewUploads)} {metricLabel.toLowerCase()}</span>
+            <div className={`flex-1 min-w-0 px-5 py-3 ${hasTopGainers ? 'border-r border-border' : ''}`}>
+              <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3 flex items-center gap-2 min-w-0">
+                <Upload className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">New Uploads ({totalNewUploads})</span>
+                <span className="text-content font-bold ml-auto whitespace-nowrap flex-shrink-0 tabular-nums">
+                  {formatDisplayNumber(totalMetricFromNewUploads)} {metricLabel.toLowerCase()}
+                </span>
               </h3>
               <div className="space-y-2">
                 {newUploads.map((video: VideoSubmission, idx: number) => (
@@ -420,11 +532,13 @@ export const KPICardTooltip: React.FC<KPICardTooltipProps> = ({
           )}
           
           {hasTopGainers && (
-            <div className="flex-1 px-5 py-3">
-              <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refreshed Videos ({totalTopGainers})</span>
-                <span className="text-content font-bold ml-auto">+{formatDisplayNumber(totalMetricFromRefreshedVideos)} {metricLabel.toLowerCase()}</span>
+            <div className="flex-1 min-w-0 px-5 py-3">
+              <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3 flex items-center gap-2 min-w-0">
+                <RefreshCw className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">Refreshed Videos ({totalTopGainers})</span>
+                <span className="text-content font-bold ml-auto whitespace-nowrap flex-shrink-0 tabular-nums">
+                  +{formatDisplayNumber(totalMetricFromRefreshedVideos)} {metricLabel.toLowerCase()}
+                </span>
               </h3>
               {topGainers.length > 0 ? (
                 <div className="space-y-2">

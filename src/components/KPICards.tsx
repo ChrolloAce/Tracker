@@ -32,7 +32,8 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
   cardOrder = [],
   cardVisibility = {},
   onReorder,
-  onToggleCard
+  onToggleCard,
+  orgDefaultReportingView = 'organic',
 }) => {
   const navigate = useNavigate();
   // Day Videos Modal state
@@ -299,11 +300,12 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       dateFilter,
       customRange,
       granularity,
+      reportingView: orgDefaultReportingView,
     });
 
     // Return the generated cards
     return result.cards;
-  }, [submissions, allSubmissions, linkClicks, links, dateFilter, customRange, granularity]);
+  }, [submissions, allSubmissions, linkClicks, links, dateFilter, customRange, granularity, orgDefaultReportingView]);
 
   // Memoize sorted and filtered cards to prevent recalculation
   const sortedCards = useMemo(() => {

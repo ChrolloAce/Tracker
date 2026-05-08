@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus, X, Copy, Trash2, ChevronDown, ChevronUp, Check,
   Coins, Banknote, Sparkles, Gift, Layers, Target, Film,
-  Settings2, Tag, Calculator, Pencil,
+  Settings2, Tag, Calculator, Pencil, Info,
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PayoutStructureService } from '../services/PayoutStructureService';
@@ -19,6 +20,127 @@ const UNIQUE_TYPES: ReadonlySet<PayoutComponentType> = new Set(['base', 'flat', 
 
 /** Money formatter with thousands separators: 1150 → "1,150.00". Pair with leading "$". */
 const fmtUSD = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Compact value summary for one component — used inside TemplateCard so
+ * the user sees what's actually in the structure (rates, caps,
+ * thresholds) before clicking. NO money examples / projections — just
+ * the configured values, mirroring the editor's fields.
+ */
+function summarizeComponent(c: PayoutComponent): string {
+  switch (c.type) {
+    case 'base':
+    case 'flat':
+      return `$${(c as any).amount?.toLocaleString('en-US') ?? '0'}`;
+    case 'cpm': {
+      const rate = (c as any).rate ?? 0;
+      const metric = (c as any).metric ?? 'views';
+      const cap = (c as any).cap;
+      const min = (c as any).minThreshold;
+      const parts = [`$${rate} per 1K ${metric}`];
+      if (cap) parts.push(`cap $${cap.toLocaleString('en-US')}`);
+      if (min) parts.push(`min ${min.toLocaleString('en-US')} ${metric}`);
+      return parts.join(' · ');
+    }
+    case 'per_video': {
+      const v = (c as any).amountPerVideo ?? 0;
+      const max = (c as any).maxVideos;
+      const minQ = (c as any).minQualityThreshold;
+      const parts = [`$${v} per video`];
+      if (max) parts.push(`max ${max}`);
+      if (minQ?.value) parts.push(`min ${minQ.value.toLocaleString('en-US')} ${minQ.metric}`);
+      return parts.join(' · ');
+    }
+    case 'conversion': {
+      const v = (c as any).amountPerConversion ?? 0;
+      const cap = (c as any).cap;
+      const min = (c as any).minConversions;
+      const parts = [`$${v} per conversion`];
+      if (cap) parts.push(`cap $${cap.toLocaleString('en-US')}`);
+      if (min) parts.push(`min ${min} conversions`);
+      return parts.join(' · ');
+    }
+    case 'bonus': {
+      const cond = (c as any).condition || {};
+      const op = cond.operator || '>=';
+      const metric = cond.metric || 'views';
+      const threshold = (cond.value || 0).toLocaleString('en-US');
+      const amount = (c as any).amount ?? 0;
+      const per = (c as any).per;
+      if (per) {
+        // Stacking bonus.
+        return `$${amount} per ${per.toLocaleString('en-US')} ${metric} (after ${threshold})`;
+      }
+      return `${metric} ${op} ${threshold} → $${amount}`;
+    }
+    case 'bonus_tiered': {
+      const tiers = (c as any).tiers || [];
+      const metric = (c as any).metric || 'views';
+      if (tiers.length === 0) return 'No tiers set';
+      const t = tiers
+        .slice(0, 2)
+        .map((tier: any) => `${(tier.threshold || 0).toLocaleString('en-US')} → $${tier.amount || 0}`)
+        .join(', ');
+      const more = tiers.length > 2 ? ` +${tiers.length - 2} more` : '';
+      return `${metric}: ${t}${more}`;
+    }
+    default:
+      return '';
+  }
+}
+
+/**
+ * Field label with a hoverable info icon. The popover renders into
+ * `document.body` via a portal so it's not clipped by parent
+ * `overflow-hidden` (component cards) or trapped by slide-over
+ * z-index. Position is computed off the icon's bounding rect and
+ * flips below if there's not enough room above.
+ */
+function LabelWithInfo({ children, info, className }: { children: React.ReactNode; info: string; className: string }) {
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; placement: 'top' | 'bottom' }>({ top: 0, left: 0, placement: 'top' });
+  const iconRef = useRef<HTMLSpanElement>(null);
+
+  const reposition = () => {
+    const el = iconRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const wantsTop = rect.top > 80; // 80px is roughly the tooltip height + padding
+    setPos({
+      top: wantsTop ? rect.top - 6 : rect.bottom + 6,
+      left: rect.left + rect.width / 2,
+      placement: wantsTop ? 'top' : 'bottom',
+    });
+  };
+
+  return (
+    <label className={`${className} inline-flex items-center gap-1`}>
+      <span>{children}</span>
+      <span
+        ref={iconRef}
+        onMouseEnter={() => { reposition(); setShow(true); }}
+        onMouseLeave={() => setShow(false)}
+        className="cursor-help inline-flex items-center text-content-muted hover:text-content transition-colors"
+      >
+        <Info className="w-3 h-3" />
+      </span>
+      {show && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            left: pos.left,
+            transform: pos.placement === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+          }}
+          className="z-[9999] px-3 py-2 max-w-[260px] bg-gray-900 text-white text-[11px] font-normal normal-case tracking-normal leading-snug rounded-lg shadow-xl pointer-events-none"
+        >
+          {info}
+        </div>,
+        document.body,
+      )}
+    </label>
+  );
+}
 
 /** Numeric input that shows commas as the user types (1000 → 1,000).
  *  HTML `<input type="number">` strips commas, so we use `type="text"` with `inputMode="numeric"`.
@@ -230,12 +352,6 @@ function TemplateCard({ structure, selected, onSelect, onEdit, onDuplicate, onDe
   structure: PayoutStructure; selected: boolean;
   onSelect: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
-  // Preview uses per-video model: 10 videos × 100K views each = 1M total.
-  // Chosen so stacking bonuses (typically pegged at "$X per 100K views/video") actually fire in the estimate.
-  const est = PayoutCalculationEngine.estimatePayout(structure, { totalViews: 1_000_000, videoCount: 10 });
-  // Dedupe component types for the icon strip at-a-glance
-  const uniqueTypes = Array.from(new Set(structure.components.map(c => c.type))) as PayoutComponentType[];
-
   return (
     <div onClick={onSelect}
       className={`group relative rounded-2xl bg-surface-secondary border p-4 cursor-pointer transition-all ${
@@ -249,59 +365,47 @@ function TemplateCard({ structure, selected, onSelect, onEdit, onDuplicate, onDe
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start gap-3 pr-8">
-        <div className="flex -space-x-1.5">
-          {uniqueTypes.slice(0, 4).map(t => {
-            const meta = TYPE_META[t];
-            const Icon = meta.icon;
-            return (
-              <div key={t} className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-500 border border-surface-secondary flex items-center justify-center" title={meta.label}>
-                <Icon className="w-4 h-4" />
-              </div>
-            );
-          })}
-          {uniqueTypes.length > 4 && (
-            <div className="w-9 h-9 rounded-xl bg-surface-tertiary text-content-muted border border-surface-secondary flex items-center justify-center text-[10px] font-semibold">
-              +{uniqueTypes.length - 4}
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-content truncate">{structure.name}</h4>
-          {structure.description && <p className="text-xs text-content-muted line-clamp-1 mt-0.5">{structure.description}</p>}
-        </div>
+      {/* Header — title + description, no left-side icon cluster (per design feedback). */}
+      <div className="pr-8">
+        <h4 className="font-semibold text-content truncate">{structure.name}</h4>
+        {structure.description && <p className="text-xs text-content-muted line-clamp-1 mt-0.5">{structure.description}</p>}
       </div>
 
-      {/* Component pills */}
+      {/* Component summary — one row per component showing the type and
+          its configured values. Lets the picker show WHAT the structure
+          actually pays before the user commits to it. No money
+          projections, just the values the editor would show. */}
       {structure.components.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
+        <div className="mt-3 space-y-1">
           {structure.components.map((c, i) => {
             const meta = TYPE_META[c.type];
-            const Icon = meta.icon;
+            const ItemIcon = meta.icon;
+            const summary = summarizeComponent(c);
             return (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-tertiary text-content-secondary border border-border-subtle">
-                <Icon className="w-3 h-3" /> {c.name || meta.short}
-              </span>
+              <div key={i} className="flex items-start gap-2 text-xs">
+                <div className="w-5 h-5 rounded-md bg-surface-tertiary text-content-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <ItemIcon className="w-3 h-3" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="font-semibold text-content">{c.name || meta.short}</span>
+                  {summary && (
+                    <span className="text-content-muted"> — {summary}</span>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* Footer: estimate + actions */}
-      <div className="flex items-center justify-between pt-3 mt-3 border-t border-border-subtle">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">Est. · 10 videos × 100K views each</p>
-          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-500 leading-tight">${fmtUSD(est)}</p>
-        </div>
-        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-          <button onClick={onEdit} title="Edit"
-            className="p-1.5 text-content-muted hover:text-content hover:bg-surface-hover rounded-lg transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-          <button onClick={onDuplicate} title="Duplicate"
-            className="p-1.5 text-content-muted hover:text-content hover:bg-surface-hover rounded-lg transition-colors"><Copy className="w-3.5 h-3.5" /></button>
-          <button onClick={onDelete} title="Delete"
-            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-        </div>
+      {/* Footer: actions only (estimate row removed per design feedback). */}
+      <div className="flex items-center justify-end gap-1 pt-3 mt-3 border-t border-border-subtle opacity-60 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+        <button onClick={onEdit} title="Edit"
+          className="p-1.5 text-content-muted hover:text-content hover:bg-surface-hover rounded-lg transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+        <button onClick={onDuplicate} title="Duplicate"
+          className="p-1.5 text-content-muted hover:text-content hover:bg-surface-hover rounded-lg transition-colors"><Copy className="w-3.5 h-3.5" /></button>
+        <button onClick={onDelete} title="Delete"
+          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
     </div>
   );
@@ -322,6 +426,12 @@ function Editor({ structure, onSave, onCancel, showCancel = true }: {
   const [viewsPerVideo, setViewsPerVideo] = useState(100_000);
   const [videoCount, setVideoCount] = useState(10);
   const [showAssumptions, setShowAssumptions] = useState(false);
+  // Component picker grid is hidden by default — the "Add new payment
+  // component" button always shows so the flow is consistent whether
+  // the structure already has components or not. Click → grid expands;
+  // pick a type → grid auto-collapses so the new component's editor
+  // takes focus.
+  const [showComponentPicker, setShowComponentPicker] = useState(false);
   const safeCount = Math.max(1, videoCount);
   const safeViews = Math.max(0, viewsPerVideo);
 
@@ -376,11 +486,15 @@ function Editor({ structure, onSave, onCancel, showCancel = true }: {
       <SectionCard title="Basics" icon={<Tag className="w-4 h-4" />}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className={lbl}>Name</label>
+            <LabelWithInfo className={lbl} info="Friendly name for this template, shown when picking a payout structure for a creator.">
+              Name
+            </LabelWithInfo>
             <input value={name} onChange={e => setName(e.target.value)} className={inp} placeholder="e.g. Base + CPM" />
           </div>
           <div>
-            <label className={lbl}>Description</label>
+            <LabelWithInfo className={lbl} info="Optional notes about when to use this template (audience tier, deal type, etc.). Just for your reference.">
+              Description
+            </LabelWithInfo>
             <input value={description} onChange={e => setDescription(e.target.value)} className={inp} placeholder="When to use..." />
           </div>
         </div>
@@ -390,15 +504,21 @@ function Editor({ structure, onSave, onCancel, showCancel = true }: {
       <SectionCard title="Spending caps" icon={<Settings2 className="w-4 h-4" />} subtitle="Optional safety nets to limit payout per creator">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className={lbl}>Max / campaign ($)</label>
+            <LabelWithInfo className={lbl} info="Total dollars this entire structure can pay one creator across the campaign. Hard ceiling — once hit, no more payouts. Leave empty for no cap.">
+              Max / campaign ($)
+            </LabelWithInfo>
             <NumberField allowDecimal min={0} value={caps.perCampaign} onChange={v => setCaps({ ...caps, perCampaign: v })} className={inp} placeholder="No limit" />
           </div>
           <div>
-            <label className={lbl}>Period cap ($)</label>
+            <LabelWithInfo className={lbl} info="Maximum dollars paid out within a single billing period (week or month). Resets each period. Useful for spreading cost smoothly.">
+              Period cap ($)
+            </LabelWithInfo>
             <NumberField allowDecimal min={0} value={caps.perPeriod?.amount} onChange={v => setCaps({ ...caps, perPeriod: v ? { amount: v, period: caps.perPeriod?.period || 'month', alignment: 'calendar' } : undefined })} className={inp} placeholder="No limit" />
           </div>
           <div>
-            <label className={lbl}>Period</label>
+            <LabelWithInfo className={lbl} info="How often the period cap resets — every calendar week or every calendar month.">
+              Period
+            </LabelWithInfo>
             <select value={caps.perPeriod?.period || 'month'} onChange={e => caps.perPeriod && setCaps({ ...caps, perPeriod: { ...caps.perPeriod, period: e.target.value as any } })} className={sel} disabled={!caps.perPeriod}>
               <option value="week">Per Week</option>
               <option value="month">Per Month</option>
@@ -409,45 +529,9 @@ function Editor({ structure, onSave, onCancel, showCancel = true }: {
 
       {/* Components */}
       <SectionCard title="Components" icon={<Layers className="w-4 h-4" />} subtitle="Add as many as you want — they stack together">
-        {/* Type picker tiles — unique types are disabled once used */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {typeOrder.map(t => {
-            const meta = TYPE_META[t];
-            const Icon = meta.icon;
-            const disabled = UNIQUE_TYPES.has(t) && typesInUse.has(t);
-            return (
-              <button key={t} type="button" onClick={() => { if (!disabled) add(t); }} disabled={disabled}
-                title={disabled ? `${meta.label} is already in this template` : undefined}
-                className={`group relative rounded-xl border p-3.5 text-left transition-all ${
-                  disabled
-                    ? 'border-border-subtle bg-surface-tertiary opacity-60 cursor-not-allowed'
-                    : 'border-border bg-surface hover:bg-surface-hover hover:border-orange-300 dark:hover:border-orange-500/40 hover:shadow-theme hover:-translate-y-0.5'
-                }`}>
-                <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    disabled ? 'bg-surface text-content-muted' : 'bg-orange-500/10 text-orange-500'
-                  }`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1 pr-5">
-                    <p className={`text-sm font-semibold leading-tight ${disabled ? 'text-content-muted line-through decoration-content-muted/50' : 'text-content'}`}>{meta.label}</p>
-                    <p className="text-[11px] text-content-muted mt-1 leading-snug">
-                      {disabled ? 'Already added' : meta.description}
-                    </p>
-                  </div>
-                </div>
-                {disabled
-                  ? <Check className="absolute top-3 right-3 w-4 h-4 text-content-muted" />
-                  : <Plus className="absolute top-3 right-3 w-4 h-4 text-content-muted group-hover:text-orange-500 transition-colors" />
-                }
-              </button>
-            );
-          })}
-        </div>
-
         {/* Active components */}
         {components.length > 0 && (
-          <div className="space-y-2 mt-4">
+          <div className="space-y-2">
             {components.map((c, i) => (
               <CompEditor key={c.id || i} component={c} index={i} total={components.length}
                 onUpdate={u => update(i, u)} onRemove={() => remove(i)} onMove={d => move(i, d)}
@@ -455,12 +539,82 @@ function Editor({ structure, onSave, onCancel, showCancel = true }: {
             ))}
           </div>
         )}
-        {components.length === 0 && (
-          <div className="text-center py-10 mt-3 rounded-xl bg-surface-tertiary/50 border border-dashed border-border-subtle">
-            <Layers className="w-8 h-8 mx-auto text-content-muted mb-2" />
-            <p className="text-sm text-content-secondary">Pick a component above to start building</p>
-            <p className="text-xs text-content-muted mt-0.5">You can combine multiple — e.g. Base + CPM + Tiered Bonus</p>
+
+        {/* Type picker tiles — collapsed behind a single CTA by default
+            so the editor isn't visually crowded with type options the
+            user has likely already chosen. Auto-opens when the
+            structure has no components yet (otherwise it'd be a dead
+            empty state). Auto-collapses after a type is picked so the
+            new component's editor immediately takes focus. */}
+        {showComponentPicker ? (
+          <div className={components.length > 0 ? 'mt-4 space-y-2.5' : 'space-y-2.5'}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-content-muted">Pick a component type to add:</p>
+              {components.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowComponentPicker(false)}
+                  className="text-xs text-content-muted hover:text-content transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {typeOrder.map(t => {
+                const meta = TYPE_META[t];
+                const Icon = meta.icon;
+                const disabled = UNIQUE_TYPES.has(t) && typesInUse.has(t);
+                return (
+                  <button key={t} type="button"
+                    onClick={() => {
+                      if (disabled) return;
+                      add(t);
+                      // Collapse so focus shifts to the new component's editor.
+                      setShowComponentPicker(false);
+                    }}
+                    disabled={disabled}
+                    title={disabled ? `${meta.label} is already in this template` : undefined}
+                    className={`group relative rounded-xl border p-3.5 text-left transition-all ${
+                      disabled
+                        ? 'border-border-subtle bg-surface-tertiary opacity-60 cursor-not-allowed'
+                        : 'border-border bg-surface hover:bg-surface-hover hover:border-orange-300 dark:hover:border-orange-500/40 hover:shadow-theme hover:-translate-y-0.5'
+                    }`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        disabled ? 'bg-surface text-content-muted' : 'bg-orange-500/10 text-orange-500'
+                      }`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1 pr-5">
+                        <p className={`text-sm font-semibold leading-tight ${disabled ? 'text-content-muted line-through decoration-content-muted/50' : 'text-content'}`}>{meta.label}</p>
+                        <p className="text-[11px] text-content-muted mt-1 leading-snug">
+                          {disabled ? 'Already added' : meta.description}
+                        </p>
+                      </div>
+                    </div>
+                    {disabled
+                      ? <Check className="absolute top-3 right-3 w-4 h-4 text-content-muted" />
+                      : <Plus className="absolute top-3 right-3 w-4 h-4 text-content-muted group-hover:text-orange-500 transition-colors" />
+                    }
+                  </button>
+                );
+              })}
+            </div>
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowComponentPicker(true)}
+            className={`${components.length > 0 ? 'mt-4' : ''} w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border-subtle bg-surface-tertiary/40 hover:bg-surface-tertiary hover:border-orange-300 dark:hover:border-orange-500/40 px-4 py-5 transition-all group`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors">
+              <Plus className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-semibold text-content">
+              {components.length === 0 ? 'Add your first payment component' : 'Add new payment component'}
+            </span>
+          </button>
         )}
       </SectionCard>
 
@@ -573,22 +727,59 @@ function CompEditor({ component, index, total, onUpdate, onRemove, onMove, inp, 
       {/* Body */}
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-border-subtle pt-4">
-          <div><label className={lbl}>Display name</label><input value={component.name || ''} onChange={e => onUpdate({ name: e.target.value })} className={inp} placeholder={meta.label} /></div>
+          <div>
+            <LabelWithInfo className={lbl} info="Custom label shown for this component in payout breakdowns. Leave blank to use the default name for this component type.">
+              Display name
+            </LabelWithInfo>
+            <input value={component.name || ''} onChange={e => onUpdate({ name: e.target.value })} className={inp} placeholder={meta.label} />
+          </div>
 
           {(component.type === 'base' || component.type === 'flat') && (
-            <div><label className={lbl}>Amount ($)</label><NumberField allowDecimal min={0} value={(component as any).amount} onChange={v => onUpdate({ amount: v ?? 0 } as any)} className={inp} /></div>
+            <div>
+              <LabelWithInfo
+                className={lbl}
+                info={component.type === 'base'
+                  ? 'Flat dollar amount the creator earns just for being on this structure (e.g. a baseline retainer that always pays out).'
+                  : 'One-time upfront payment — paid once when the deal kicks off, separate from any performance-based earnings.'}
+              >
+                Amount ($)
+              </LabelWithInfo>
+              <NumberField allowDecimal min={0} value={(component as any).amount} onChange={v => onUpdate({ amount: v ?? 0 } as any)} className={inp} />
+            </div>
           )}
 
           {component.type === 'cpm' && (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div><label className={lbl}>Rate ($/1K)</label><NumberField allowDecimal min={0} value={(component as any).rate} onChange={v => onUpdate({ rate: v ?? 0 } as any)} className={inp} /></div>
-                <div><label className={lbl}>Metric</label><select value={(component as any).metric || 'views'} onChange={e => onUpdate({ metric: e.target.value } as any)} className={sel}>{METRIC_OPTIONS.filter(m => m !== 'videos_posted').map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                <div><label className={lbl}>Cap ($)</label><NumberField allowDecimal min={0} value={(component as any).cap} onChange={v => onUpdate({ cap: v } as any)} className={inp} placeholder="No limit" /></div>
-                <div><label className={lbl}>Min threshold</label><NumberField min={0} value={(component as any).minThreshold} onChange={v => onUpdate({ minThreshold: v } as any)} className={inp} placeholder="0" /></div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Dollars paid per 1,000 of the chosen metric. Example: $5/1K views means $5 every 1,000 views.">
+                    Rate ($/1K)
+                  </LabelWithInfo>
+                  <NumberField allowDecimal min={0} value={(component as any).rate} onChange={v => onUpdate({ rate: v ?? 0 } as any)} className={inp} />
+                </div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Which metric to count. Views is most common; likes/comments/shares/saves let you reward engagement instead of reach.">
+                    Metric
+                  </LabelWithInfo>
+                  <select value={(component as any).metric || 'views'} onChange={e => onUpdate({ metric: e.target.value } as any)} className={sel}>{METRIC_OPTIONS.filter(m => m !== 'videos_posted').map(m => <option key={m} value={m}>{m}</option>)}</select>
+                </div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Maximum total dollars this component can pay out, no matter how high the metric goes. Leave empty for no cap.">
+                    Cap ($)
+                  </LabelWithInfo>
+                  <NumberField allowDecimal min={0} value={(component as any).cap} onChange={v => onUpdate({ cap: v } as any)} className={inp} placeholder="No limit" />
+                </div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Minimum metric value required before any payment kicks in. Below this number the creator earns $0 from this component.">
+                    Min threshold
+                  </LabelWithInfo>
+                  <NumberField min={0} value={(component as any).minThreshold} onChange={v => onUpdate({ minThreshold: v } as any)} className={inp} placeholder="0" />
+                </div>
               </div>
               <div>
-                <label className={lbl}>Cross-post handling</label>
+                <LabelWithInfo className={lbl} info="When the same content runs on multiple platforms (TikTok + Instagram + YouTube), choose how views count toward this rate. 'Sum all' rewards every cross-post; 'Max only' pays based on the best-performing copy.">
+                  Cross-post handling
+                </LabelWithInfo>
                 <select value={(component as any).crossPostPolicy || 'sum-all'}
                   onChange={e => onUpdate({ crossPostPolicy: e.target.value } as any)} className={sel}>
                   <option value="sum-all">Sum views across all platforms (each view counts)</option>
@@ -604,13 +795,30 @@ function CompEditor({ component, index, total, onUpdate, onRemove, onMove, inp, 
           {component.type === 'per_video' && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div><label className={lbl}>$ / video</label><NumberField allowDecimal min={0} value={(component as any).amountPerVideo} onChange={v => onUpdate({ amountPerVideo: v ?? 0 } as any)} className={inp} /></div>
-                <div><label className={lbl}>Max videos</label><NumberField min={0} value={(component as any).maxVideos} onChange={v => onUpdate({ maxVideos: v } as any)} className={inp} placeholder="Unlimited" /></div>
-                <div><label className={lbl}>Min views / video</label><NumberField min={0} value={(component as any).minQualityThreshold?.value} onChange={v => onUpdate({ minQualityThreshold: v ? { metric: 'views', value: v } : undefined } as any)} className={inp} placeholder="No min" /></div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Flat dollar amount paid for each video the creator posts that meets the requirements (minimum views, etc.).">
+                    $ / video
+                  </LabelWithInfo>
+                  <NumberField allowDecimal min={0} value={(component as any).amountPerVideo} onChange={v => onUpdate({ amountPerVideo: v ?? 0 } as any)} className={inp} />
+                </div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Maximum number of videos this component will pay for. Past this count, additional videos earn $0 from this rule. Leave empty for unlimited.">
+                    Max videos
+                  </LabelWithInfo>
+                  <NumberField min={0} value={(component as any).maxVideos} onChange={v => onUpdate({ maxVideos: v } as any)} className={inp} placeholder="Unlimited" />
+                </div>
+                <div>
+                  <LabelWithInfo className={lbl} info="Minimum view count a video must reach before it counts as a paid video. Anything below this earns $0 from this component.">
+                    Min views / video
+                  </LabelWithInfo>
+                  <NumberField min={0} value={(component as any).minQualityThreshold?.value} onChange={v => onUpdate({ minQualityThreshold: v ? { metric: 'views', value: v } : undefined } as any)} className={inp} placeholder="No min" />
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className={lbl}>Cross-post handling</label>
+                  <LabelWithInfo className={lbl} info="When the same video appears on multiple platforms, choose whether to count it once (one payment per cross-post group), pay each platform copy separately, or cap at N copies per group.">
+                    Cross-post handling
+                  </LabelWithInfo>
                   <select value={(component as any).crossPostPolicy || 'count-as-1'}
                     onChange={e => onUpdate({ crossPostPolicy: e.target.value } as any)} className={sel}>
                     <option value="count-as-1">Count cross-posts as 1 video (pay once per group)</option>
@@ -620,7 +828,9 @@ function CompEditor({ component, index, total, onUpdate, onRemove, onMove, inp, 
                 </div>
                 {(component as any).crossPostPolicy === 'count-with-cap' && (
                   <div>
-                    <label className={lbl}>Max per cross-post group</label>
+                    <LabelWithInfo className={lbl} info="Maximum number of platform copies in one cross-post group that earn the per-video payment. e.g. 2 = pay for the TikTok + Instagram copy, but skip the YouTube one.">
+                      Max per cross-post group
+                    </LabelWithInfo>
                     <NumberField min={1} value={(component as any).crossPostCap} onChange={v => onUpdate({ crossPostCap: v ?? 1 } as any)} className={inp} placeholder="2" />
                   </div>
                 )}
@@ -630,9 +840,24 @@ function CompEditor({ component, index, total, onUpdate, onRemove, onMove, inp, 
 
           {component.type === 'conversion' && (
             <div className="grid gap-3 sm:grid-cols-3">
-              <div><label className={lbl}>$ / conversion</label><NumberField allowDecimal min={0} value={(component as any).amountPerConversion} onChange={v => onUpdate({ amountPerConversion: v ?? 0 } as any)} className={inp} /></div>
-              <div><label className={lbl}>Cap ($)</label><NumberField allowDecimal min={0} value={(component as any).cap} onChange={v => onUpdate({ cap: v } as any)} className={inp} placeholder="No limit" /></div>
-              <div><label className={lbl}>Min conversions</label><NumberField min={0} value={(component as any).minConversions} onChange={v => onUpdate({ minConversions: v } as any)} className={inp} placeholder="0" /></div>
+              <div>
+                <LabelWithInfo className={lbl} info="Dollars paid for each tracked conversion (sale, signup, install, etc.). Conversions are counted from the integration you've connected.">
+                  $ / conversion
+                </LabelWithInfo>
+                <NumberField allowDecimal min={0} value={(component as any).amountPerConversion} onChange={v => onUpdate({ amountPerConversion: v ?? 0 } as any)} className={inp} />
+              </div>
+              <div>
+                <LabelWithInfo className={lbl} info="Maximum total dollars this component can pay out across all conversions. Leave empty for no cap.">
+                  Cap ($)
+                </LabelWithInfo>
+                <NumberField allowDecimal min={0} value={(component as any).cap} onChange={v => onUpdate({ cap: v } as any)} className={inp} placeholder="No limit" />
+              </div>
+              <div>
+                <LabelWithInfo className={lbl} info="Minimum number of conversions required before any payment kicks in. Below this number the creator earns $0 from this component.">
+                  Min conversions
+                </LabelWithInfo>
+                <NumberField min={0} value={(component as any).minConversions} onChange={v => onUpdate({ minConversions: v } as any)} className={inp} placeholder="0" />
+              </div>
             </div>
           )}
         </div>
@@ -701,7 +926,9 @@ function BonusFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: any
     <div className="space-y-4">
       {/* Mode toggle */}
       <div>
-        <label className={lbl}>How does this bonus pay?</label>
+        <LabelWithInfo className={lbl} info="One-time pays a flat amount once when the threshold is hit (e.g. $200 once they cross 500K views). Stacking pays repeatedly per N units (e.g. $100 every 100K views, forever).">
+          How does this bonus pay?
+        </LabelWithInfo>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => onUpdate({ per: undefined, scope: undefined, rateTiers: undefined })}
             className={`px-3 py-2.5 text-xs font-semibold rounded-lg border text-left transition-all ${
@@ -736,7 +963,9 @@ function BonusFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: any
         <>
           {/* Scope toggle */}
           <div>
-            <label className={lbl}>Apply this bonus to...</label>
+            <LabelWithInfo className={lbl} info="Per-video evaluates the bonus on each video on its own (most common — every video earns its own bonus). Creator's total sums all videos before applying the rate (one bonus on aggregate performance).">
+              Apply this bonus to...
+            </LabelWithInfo>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => onUpdate({ scope: 'per_video' })}
                 className={`px-3 py-2.5 text-left rounded-lg border transition-all ${
@@ -760,16 +989,33 @@ function BonusFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: any
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div><label className={lbl}>Amount ($)</label><NumberField allowDecimal min={0} value={c.amount} onChange={v => onUpdate({ amount: v ?? 0 })} className={inp} placeholder="100" /></div>
-            <div><label className={lbl}>Per (units)</label><NumberField min={1} value={c.per} onChange={v => onUpdate({ per: v ?? 1 })} className={inp} placeholder="100,000" /></div>
-            <div><label className={lbl}>Metric</label><select value={cond.metric} onChange={e => onUpdate({ condition: { ...cond, metric: e.target.value } })} className={sel}>{METRIC_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+            <div>
+              <LabelWithInfo className={lbl} info="Dollars paid each time the 'Per' unit count is reached. e.g. $100 with Per=100,000 views means $100 every 100K views.">
+                Amount ($)
+              </LabelWithInfo>
+              <NumberField allowDecimal min={0} value={c.amount} onChange={v => onUpdate({ amount: v ?? 0 })} className={inp} placeholder="100" />
+            </div>
+            <div>
+              <LabelWithInfo className={lbl} info="How many units of the metric earn one Amount payout. e.g. 100,000 means the bonus fires every 100K views.">
+                Per (units)
+              </LabelWithInfo>
+              <NumberField min={1} value={c.per} onChange={v => onUpdate({ per: v ?? 1 })} className={inp} placeholder="100,000" />
+            </div>
+            <div>
+              <LabelWithInfo className={lbl} info="Which metric drives this bonus — views, likes, comments, shares, saves, or videos posted.">
+                Metric
+              </LabelWithInfo>
+              <select value={cond.metric} onChange={e => onUpdate({ condition: { ...cond, metric: e.target.value } })} className={sel}>{METRIC_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select>
+            </div>
           </div>
 
           {/* Rate tiers — higher bands with a different rate. Base tier (above) pays from 0. */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <div>
-                <label className={lbl}>Rate changes at higher thresholds</label>
+                <LabelWithInfo className={lbl} info="Optional escalating or diminishing rates. After the metric crosses each threshold, a different $ / unit rate applies to the band above it. Useful for capping high-performer payouts or boosting top-tier rewards.">
+                  Rate changes at higher thresholds
+                </LabelWithInfo>
                 <p className="text-[10px] text-content-muted -mt-1">Optional. e.g. after 1,000,000 views, drop the rate to $50/100K.</p>
               </div>
               <Button variant="secondary" size="sm" onClick={addRateTier}>
@@ -837,14 +1083,18 @@ function BonusFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: any
           </div>
 
           <div>
-            <label className={lbl}>Minimum threshold (optional)</label>
+            <LabelWithInfo className={lbl} info="Stacking starts paying once the metric crosses this value. Leave at 0 to pay from the very first unit (most common for stacking bonuses).">
+              Minimum threshold (optional)
+            </LabelWithInfo>
             <NumberField min={0} value={cond.value || undefined} onChange={v => onUpdate({ condition: { ...cond, value: v ?? 0 } })} className={inp} placeholder="0 — pays from the start" />
           </div>
 
           {/* Cross-post handling is only meaningful when scope is per_video */}
           {isPerVideo && (
             <div>
-              <label className={lbl}>Cross-post handling</label>
+              <LabelWithInfo className={lbl} info="When a video runs on multiple platforms (TikTok + Instagram + YouTube), choose how to evaluate it. 'Any single platform' fires the bonus from the best copy. 'Combined' sums the metrics. 'Per-platform' pays each copy independently.">
+                Cross-post handling
+              </LabelWithInfo>
               <select value={c.crossPostPolicy || 'max-per-group'}
                 onChange={e => onUpdate({ crossPostPolicy: e.target.value })} className={sel}>
                 <option value="max-per-group">Any single platform must hit threshold (pay once per group)</option>
@@ -856,19 +1106,49 @@ function BonusFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: any
         </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-4">
-          <div><label className={lbl}>Amount ($)</label><NumberField allowDecimal min={0} value={c.amount} onChange={v => onUpdate({ amount: v ?? 0 })} className={inp} /></div>
-          <div><label className={lbl}>Metric</label><select value={cond.metric} onChange={e => onUpdate({ condition: { ...cond, metric: e.target.value } })} className={sel}>{METRIC_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-          <div><label className={lbl}>Operator</label><select value={cond.operator || '>='} onChange={e => onUpdate({ condition: { ...cond, operator: e.target.value } })} className={sel}><option value=">=">≥</option><option value=">">&#62;</option><option value="<=">≤</option><option value="<">&#60;</option><option value="=">=</option></select></div>
-          <div><label className={lbl}>Target</label><NumberField min={0} value={cond.value} onChange={v => onUpdate({ condition: { ...cond, value: v ?? 0 } })} className={inp} /></div>
+          <div>
+            <LabelWithInfo className={lbl} info="Flat dollars paid once when the condition fires. The bonus pays this exact amount, no matter how far past the threshold the creator goes.">
+              Amount ($)
+            </LabelWithInfo>
+            <NumberField allowDecimal min={0} value={c.amount} onChange={v => onUpdate({ amount: v ?? 0 })} className={inp} />
+          </div>
+          <div>
+            <LabelWithInfo className={lbl} info="Which metric the threshold compares against (views, likes, comments, shares, saves, or videos posted).">
+              Metric
+            </LabelWithInfo>
+            <select value={cond.metric} onChange={e => onUpdate({ condition: { ...cond, metric: e.target.value } })} className={sel}>{METRIC_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select>
+          </div>
+          <div>
+            <LabelWithInfo className={lbl} info="Comparison applied to the target. ≥ pays at or above (most common); > pays only strictly above; ≤ / < pay below.">
+              Operator
+            </LabelWithInfo>
+            <select value={cond.operator || '>='} onChange={e => onUpdate({ condition: { ...cond, operator: e.target.value } })} className={sel}><option value=">=">≥</option><option value=">">&#62;</option><option value="<=">≤</option><option value="<">&#60;</option><option value="=">=</option></select>
+          </div>
+          <div>
+            <LabelWithInfo className={lbl} info="The threshold the metric must satisfy for the bonus to fire. e.g. views ≥ 500,000 means the bonus pays as soon as a video hits half a million views.">
+              Target
+            </LabelWithInfo>
+            <NumberField min={0} value={cond.value} onChange={v => onUpdate({ condition: { ...cond, value: v ?? 0 } })} className={inp} />
+          </div>
         </div>
       )}
 
       {/* Caps — perVideo only makes sense for stacking bonuses in per-video scope */}
       <div className="grid gap-3 sm:grid-cols-2">
         {isStacking && isPerVideo && (
-          <div><label className={lbl}>Cap per video ($)</label><NumberField allowDecimal min={0} value={caps.perVideo} onChange={v => onUpdate({ caps: { ...caps, perVideo: v } })} className={inp} placeholder="No limit" /></div>
+          <div>
+            <LabelWithInfo className={lbl} info="Maximum dollars this bonus can pay for a single video, no matter how high the metric goes. Leave empty for no cap.">
+              Cap per video ($)
+            </LabelWithInfo>
+            <NumberField allowDecimal min={0} value={caps.perVideo} onChange={v => onUpdate({ caps: { ...caps, perVideo: v } })} className={inp} placeholder="No limit" />
+          </div>
         )}
-        <div><label className={lbl}>Cap per campaign ($)</label><NumberField allowDecimal min={0} value={caps.perCampaign} onChange={v => onUpdate({ caps: { ...caps, perCampaign: v } })} className={inp} placeholder="No limit" /></div>
+        <div>
+          <LabelWithInfo className={lbl} info="Maximum dollars this bonus can pay one creator across the entire campaign. Leave empty for no cap.">
+            Cap per campaign ($)
+          </LabelWithInfo>
+          <NumberField allowDecimal min={0} value={caps.perCampaign} onChange={v => onUpdate({ caps: { ...caps, perCampaign: v } })} className={inp} placeholder="No limit" />
+        </div>
       </div>
     </div>
   );
@@ -882,13 +1162,17 @@ function TieredFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: an
   return (
     <div className="space-y-3">
       <div>
-        <label className={lbl}>Metric</label>
+        <LabelWithInfo className={lbl} info="Which metric the tier thresholds compare against (views, likes, comments, shares, saves, or videos posted).">
+          Metric
+        </LabelWithInfo>
         <select value={c.metric || 'views'} onChange={e => onUpdate({ metric: e.target.value })} className={sel}>
           {METRIC_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
       <div className="space-y-2">
-        <label className={lbl}>Tiers — each adds to the reward as the threshold is hit</label>
+        <LabelWithInfo className={lbl} info="Each tier rewards a higher payout when its threshold is reached. Tiers stack — hitting a higher tier adds its amount on top of every lower tier already earned.">
+          Tiers — each adds to the reward as the threshold is hit
+        </LabelWithInfo>
         {tiers.map((t: any, i: number) => (
           <div key={i} className="flex items-center gap-2 rounded-xl bg-surface-tertiary border border-border-subtle px-3 py-2">
             <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">{i + 1}</div>
@@ -903,14 +1187,26 @@ function TieredFields({ c, onUpdate, inp, sel, lbl }: { c: any; onUpdate: (u: an
         </Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div><label className={lbl}>Cap per video ($)</label><NumberField allowDecimal min={0} value={caps.perVideo} onChange={v => onUpdate({ caps: { ...caps, perVideo: v } })} className={inp} placeholder="No limit" /></div>
-        <div><label className={lbl}>Cap per campaign ($)</label><NumberField allowDecimal min={0} value={caps.perCampaign} onChange={v => onUpdate({ caps: { ...caps, perCampaign: v } })} className={inp} placeholder="No limit" /></div>
+        <div>
+          <LabelWithInfo className={lbl} info="Maximum dollars this bonus can pay for a single video, no matter which tiers fire. Setting this also switches evaluation to per-video mode (each video earns its own tier rewards).">
+            Cap per video ($)
+          </LabelWithInfo>
+          <NumberField allowDecimal min={0} value={caps.perVideo} onChange={v => onUpdate({ caps: { ...caps, perVideo: v } })} className={inp} placeholder="No limit" />
+        </div>
+        <div>
+          <LabelWithInfo className={lbl} info="Maximum dollars this bonus can pay one creator across the entire campaign. Leave empty for no cap.">
+            Cap per campaign ($)
+          </LabelWithInfo>
+          <NumberField allowDecimal min={0} value={caps.perCampaign} onChange={v => onUpdate({ caps: { ...caps, perCampaign: v } })} className={inp} placeholder="No limit" />
+        </div>
       </div>
 
       {/* Cross-post handling is only meaningful when perVideo cap is set (per-video evaluation mode) */}
       {caps.perVideo !== undefined && (
         <div>
-          <label className={lbl}>Cross-post handling</label>
+          <LabelWithInfo className={lbl} info="When a video runs on multiple platforms, choose how to evaluate tiers. 'Any single platform' fires from the best copy. 'Combined' sums metrics across platforms. 'Per-platform' pays each copy independently.">
+            Cross-post handling
+          </LabelWithInfo>
           <select value={c.crossPostPolicy || 'max-per-group'}
             onChange={e => onUpdate({ crossPostPolicy: e.target.value })} className={sel}>
             <option value="max-per-group">Any single platform must hit tier (pay once per group)</option>

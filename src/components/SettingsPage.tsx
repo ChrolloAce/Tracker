@@ -389,6 +389,11 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Default reporting view — org-wide preference for whether Spark
+  // (paid-ad) views are included in headline numbers and chart series
+  // across the app. Persists to organizations/{orgId}/settings/general.
+  const [reportingView, setReportingView] = useState<'organic' | 'total' | 'split'>('total');
+  const [savingReportingView, setSavingReportingView] = useState(false);
   
   // Organization management
   const [currentOrganization, setCurrentOrganization] = useState<any>(null);
@@ -499,6 +504,9 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
         const settingsRef = doc(db, 'organizations', currentOrgId, 'settings', 'general');
         const snap = await getDoc(settingsRef);
         const data = snap.data();
+        // Pull defaultReportingView off the same general settings doc.
+        const rv = data?.defaultReportingView as 'organic' | 'total' | 'split' | undefined;
+        if (rv) setReportingView(rv);
         const sw = data?.integrations?.superwall;
         if (sw) {
           setSuperwallApiKey(sw.apiKey || '');
@@ -1091,6 +1099,70 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   </div>
                 </div>
               )}
+
+              {/* Default Reporting View — controls whether Spark
+                  (paid-ad) views are included in headline numbers and
+                  chart series across the app. Saved to settings/general
+                  so all org members see the same default. Charts and
+                  the Top Refreshed Videos leaderboard honor this. */}
+              <div className="bg-surface-tertiary rounded-xl border border-border p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-content">Default reporting view</h3>
+                    <p className="text-sm text-content-muted mt-1">
+                      How Spark (paid-ad) views show up across the app by default. Charts and leaderboards inherit this; individual charts can flip the view per-session.
+                    </p>
+                  </div>
+                  {savingReportingView && (
+                    <span className="text-xs text-content-muted">Saving…</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {([
+                    { value: 'organic' as const, label: 'Organic only', desc: 'Exclude paid Spark views from totals.' },
+                    { value: 'total'   as const, label: 'Total',        desc: 'Show everything combined.' },
+                    { value: 'split'   as const, label: 'Split',        desc: 'Break out organic vs Spark where supported.' },
+                  ]).map(opt => {
+                    const active = reportingView === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={async () => {
+                          if (!currentOrgId || opt.value === reportingView) return;
+                          const prev = reportingView;
+                          setReportingView(opt.value);
+                          setSavingReportingView(true);
+                          try {
+                            await setDoc(
+                              doc(db, 'organizations', currentOrgId, 'settings', 'general'),
+                              { defaultReportingView: opt.value },
+                              { merge: true },
+                            );
+                          } catch (err) {
+                            console.error('Failed to save reporting view:', err);
+                            setReportingView(prev);
+                          } finally {
+                            setSavingReportingView(false);
+                          }
+                        }}
+                        disabled={savingReportingView}
+                        className={`flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-all ${
+                          active
+                            ? 'bg-orange-500/10 border-orange-500/50 ring-1 ring-orange-500/30'
+                            : 'bg-surface-secondary border-border hover:bg-surface-hover hover:border-border-strong'
+                        } ${savingReportingView ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        <span className={`text-sm font-semibold ${active ? 'text-content' : 'text-content-secondary'}`}>
+                          {opt.label}
+                        </span>
+                        <span className="text-[11px] text-content-muted leading-snug">
+                          {opt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* Superwall Integration */}
               <div className="bg-surface-tertiary rounded-xl border border-border p-6">
