@@ -24,7 +24,12 @@ export default defineConfig({
     },
   },
   define: {
-    global: 'globalThis',
+    // Was `global: 'globalThis'` — esbuild's identifier replacement was
+    // also rewriting *string literals* containing the bare word `global`,
+    // which silently corrupted motion-utils' `import './global-config.mjs'`
+    // into `'./globalThis-config.mjs'` and broke the production build.
+    // The `global` shim is now provided in `index.html` at runtime so any
+    // CommonJS code in deps (firebase, etc.) that touches `global` still works.
     'process.env': {},
   },
   optimizeDeps: {
