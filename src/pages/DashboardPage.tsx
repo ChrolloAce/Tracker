@@ -2507,6 +2507,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const handleAddAccounts = useCallback(async (
     accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>,
     creatorId?: string,
+    labelIds?: string[],
   ) => {
     if (requiresPaidPlan('to start tracking accounts')) return;
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -2549,6 +2550,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             );
           } catch (linkErr) {
             console.error('Failed to link new accounts to creator', linkErr);
+          }
+        }
+
+        // Attach labels to the creator (additive — preserves any existing
+        // labels). Done in parallel since each call is a single arrayUnion.
+        if (labelIds && labelIds.length > 0) {
+          try {
+            await Promise.all(labelIds.map(lid =>
+              CreatorLabelService.addLabelToCreator(currentOrgId, currentProjectId, creatorId, lid)
+            ));
+          } catch (labelErr) {
+            console.error('Failed to attach labels to creator', labelErr);
           }
         }
       }
@@ -4651,6 +4664,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           photoURL: c.photoURL,
         }))}
         onCreateCreator={handleCreateCreatorInline}
+        existingLabels={creatorLabels.map(l => ({ id: l.id, name: l.name, color: l.color }))}
       />
 
       <TikTokSearchModal

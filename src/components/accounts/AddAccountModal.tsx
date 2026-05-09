@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { X, RefreshCw, AlertCircle, ChevronDown, UserPlus, Check } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, ChevronDown, UserPlus, Check, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PlatformIcon } from '../ui/PlatformIcon';
 import { UrlParserService } from '../../services/UrlParserService';
+import { getLabelColorClass } from '../creators/CreatorLabelBadges';
 
 interface ParsedAccount {
   url: string;
@@ -25,19 +26,25 @@ export interface CreatorOption {
   photoURL?: string;
 }
 
+export interface LabelOption {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   /**
-   * Commit handler. Receives the parsed accounts and an optional `creatorId`
-   * the admin picked (or just created) so the parent can link the new tracked
-   * accounts to that creator in one shot — no second hop through the
-   * AttachCreatorModal. youtubeVideoType is no longer surfaced in the UI and
-   * always commits as 'shorts' for any YouTube row.
+   * Commit handler. Receives the parsed accounts, an optional `creatorId`
+   * the admin picked (or just created), and an optional list of `labelIds`
+   * to attach to that creator. youtubeVideoType is no longer surfaced in
+   * the UI and always commits as 'shorts' for any YouTube row.
    */
   onAdd: (
     accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: YoutubeVideoType}>,
     creatorId?: string,
+    labelIds?: string[],
   ) => void;
   usageLimits: UsageLimits;
   /** Existing creators in the project — populates the inline assignment picker. */
@@ -45,6 +52,10 @@ export interface AddAccountModalProps {
   /** Inline create-creator hook. When provided, the picker shows a "Create new
    *  creator" input at the bottom that resolves to a fresh creatorId. */
   onCreateCreator?: (name: string) => Promise<string>;
+  /** Project labels — when supplied (and a creator is assigned) the modal
+   *  surfaces a dropdown to attach one or more labels to that creator at
+   *  the same time the accounts are linked. */
+  existingLabels?: LabelOption[];
 }
 
 function parseAccountUrlsFromText(text: string): ParsedAccount[] {
@@ -73,6 +84,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   usageLimits,
   existingCreators = [],
   onCreateCreator,
+  existingLabels = [],
 }) => {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<ParsedAccount[]>([]);
@@ -94,6 +106,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   // the picker list — without it the lookup against `existingCreators` would
   // miss and the chip wouldn't render.
   const [freshCreators, setFreshCreators] = useState<CreatorOption[]>([]);
+  // Labels to attach to the assigned creator on commit. Multi-select via the
+  // small dropdown next to the creator pill — only meaningful with a creator
+  // selected, since labels are stored on the creator profile.
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const labelPickerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const presetsRef = useRef<HTMLDivElement>(null);
@@ -109,6 +127,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setShowCreatorPicker(false);
       setNewCreatorName('');
       setFreshCreators([]);
+      setSelectedLabelIds([]);
+      setShowLabelPicker(false);
 
       const checkClipboard = async () => {
         const parsed = await UrlParserService.autoDetectFromClipboard();
@@ -145,6 +165,18 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showCreatorPicker]);
+
+  // Close label picker on outside click
+  useEffect(() => {
+    if (!showLabelPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (labelPickerRef.current && !labelPickerRef.current.contains(e.target as Node)) {
+        setShowLabelPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showLabelPicker]);
 
   // Merged list = parent's existing creators + any inline-created ones from
   // this session. De-duplicates by id so a parent refresh that includes the
@@ -281,7 +313,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     setAccounts([]);
     setInputValue('');
     onClose();
-    onAdd(accountsToAdd, selectedCreatorId || undefined);
+    // Labels only apply when there's a creator to attach them to.
+    onAdd(
+      accountsToAdd,
+      selectedCreatorId || undefined,
+      selectedCreatorId && selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
+    );
   };
 
   if (!isOpen) return null;
@@ -494,6 +531,69 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Label picker — only meaningful with a creator selected, since
+              labels are stored on the creator profile. Hidden otherwise so
+              the row stays uncluttered. Multi-select dropdown with the
+              same colored badges as the rest of the label system. */}
+          {selectedCreator && existingLabels.length > 0 && (
+            <div className="flex items-center gap-2 relative" ref={labelPickerRef}>
+              <span className="text-xs text-content-muted">Labels:</span>
+              <button
+                onClick={() => setShowLabelPicker(s => !s)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-secondary border border-border rounded-full text-xs font-medium text-content hover:border-border-strong transition-colors"
+              >
+                <Tag className="w-3.5 h-3.5 text-content-muted" />
+                {selectedLabelIds.length === 0
+                  ? <span className="text-content-muted">None</span>
+                  : <span className="font-semibold">{selectedLabelIds.length} selected</span>}
+                <ChevronDown className={`w-3.5 h-3.5 text-content-muted transition-transform ${showLabelPicker ? 'rotate-180' : ''}`} />
+              </button>
+              {selectedLabelIds.length > 0 && (
+                <button
+                  onClick={() => setSelectedLabelIds([])}
+                  className="p-0.5 text-content-muted hover:text-content"
+                  aria-label="Clear labels"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+
+              {showLabelPicker && (
+                <div className="absolute left-0 top-full mt-2 w-64 bg-surface border border-border rounded-xl shadow-2xl z-30 overflow-hidden">
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {existingLabels.map(label => {
+                      const active = selectedLabelIds.includes(label.id);
+                      return (
+                        <button
+                          key={label.id}
+                          onClick={() => {
+                            setSelectedLabelIds(prev =>
+                              prev.includes(label.id)
+                                ? prev.filter(id => id !== label.id)
+                                : [...prev, label.id],
+                            );
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-hover"
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                            active
+                              ? 'bg-orange-500 border-orange-500 text-white'
+                              : 'border-border bg-surface-secondary'
+                          }`}>
+                            {active && <Check className="w-3 h-3" />}
+                          </span>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${getLabelColorClass(label.color)}`}>
+                            {label.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Summary bar */}

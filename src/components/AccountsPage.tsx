@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, AlertCircle } from 'lucide-react';
 import { TrackingRule } from '../types/rules';
 import { DateFilterType } from './DateRangeFilter';
-import { TrackedAccount } from '../types/firestore';
+import { TrackedAccount, CreatorLabel } from '../types/firestore';
+import CreatorLabelService from '../services/CreatorLabelService';
 import { VideoSubmission } from '../types';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -151,6 +152,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // Project labels — surfaced in the AddAccountModal label picker so an
+  // admin can tag the assigned creator at the same time as adding accounts.
+  const [projectLabels, setProjectLabels] = useState<CreatorLabel[]>([]);
+  useEffect(() => {
+    if (!currentOrgId || !currentProjectId) return;
+    let cancelled = false;
+    CreatorLabelService.listLabels(currentOrgId, currentProjectId, user?.uid)
+      .then(list => { if (!cancelled) setProjectLabels(list); })
+      .catch(err => console.error('Failed to load creator labels:', err));
+    return () => { cancelled = true; };
+  }, [currentOrgId, currentProjectId, user?.uid]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
@@ -277,6 +289,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     const handleAccountsAdded = useCallback(async (
         accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>,
         creatorId?: string,
+        labelIds?: string[],
     ) => {
         if (!currentOrgId || !currentProjectId || !user) return;
 
@@ -325,6 +338,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               );
             } catch (linkErr) {
               console.error('Failed to link new accounts to creator', linkErr);
+            }
+          }
+
+          // Attach the picked labels to the creator (additive — preserves
+          // any existing labels on the profile).
+          if (labelIds && labelIds.length > 0) {
+            try {
+              await Promise.all(labelIds.map(lid =>
+                CreatorLabelService.addLabelToCreator(currentOrgId, currentProjectId, creatorId, lid)
+              ));
+            } catch (labelErr) {
+              console.error('Failed to attach labels to creator', labelErr);
             }
           }
         }
@@ -594,6 +619,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   photoURL: c.photoURL,
                 }))}
                 onCreateCreator={handleCreateCreatorInline}
+                existingLabels={projectLabels.map(l => ({ id: l.id, name: l.name, color: l.color }))}
             />
             
       {selectedVideoForPlayer && (

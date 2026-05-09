@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, memo, useCallback } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, memo, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, CreatorLabel } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
@@ -7,7 +7,7 @@ import CreatorLabelService from '../services/CreatorLabelService';
 import CreatorShareLinkService from '../services/CreatorShareLinkService';
 import { DateFilterType } from './DateRangeFilter';
 import { useCreatorsData } from '../hooks/useCreatorsData';
-import { User, TrendingUp, Plus, FileText, UserPlus, Link as LinkIcon } from 'lucide-react';
+import { User, TrendingUp, Plus, FileText, UserPlus, Link as LinkIcon, ChevronDown, X as XIcon, Check } from 'lucide-react';
 import CreatorSignupFormModal from './creators/CreatorSignupFormModal';
 import { EmptyState } from './ui/EmptyState';
 import CreateCreatorModal from './CreateCreatorModal';
@@ -96,6 +96,21 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   // how a "show me UGC OR Influencer" mental model usually works for admins
   // segmenting their roster.
   const [selectedFilterLabelIds, setSelectedFilterLabelIds] = useState<Set<string>>(new Set());
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const labelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click — same pattern as the other popovers in
+  // this codebase (AddAccountModal etc.).
+  useEffect(() => {
+    if (!labelDropdownOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (labelDropdownRef.current && !labelDropdownRef.current.contains(e.target as Node)) {
+        setLabelDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [labelDropdownOpen]);
   const [assigningProjectsCreator, setAssigningProjectsCreator] = useState<OrgMember | null>(null);
   const [labels, setLabels] = useState<CreatorLabel[]>([]);
 
@@ -360,50 +375,93 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       {/* Accounts Tab */}
       {activeTab === 'accounts' && (
         <>
-          {/* Label filter chips — only render once at least one label exists.
-              OR semantics: each chip toggles its labelId in/out of the filter
-              set; an empty set shows all creators. The "All" chip clears it. */}
+          {/* Label filter dropdown — multi-select with OR semantics. The
+              previous chip row had legibility issues in light mode (some
+              label colors landed white-on-white when active); a dropdown
+              gives a stable trigger surface and keeps the colored badges
+              for differentiation inside the list, not on the trigger. */}
           {creators.length > 0 && labels.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-muted uppercase tracking-wider mr-1">
-                <Tag className="w-3.5 h-3.5" />
-                Filter
-              </span>
-              <button
-                onClick={() => setSelectedFilterLabelIds(new Set())}
-                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all border ${
-                  selectedFilterLabelIds.size === 0
-                    ? 'bg-content text-content-inverse border-content'
-                    : 'bg-surface-secondary text-content-muted border-border hover:text-content hover:border-border-strong'
-                }`}
-              >
-                All
-              </button>
-              {labels.map(label => {
-                const active = selectedFilterLabelIds.has(label.id);
-                return (
-                  <button
-                    key={label.id}
-                    onClick={() => {
-                      setSelectedFilterLabelIds(prev => {
-                        const next = new Set(prev);
-                        if (next.has(label.id)) next.delete(label.id);
-                        else next.add(label.id);
-                        return next;
-                      });
-                    }}
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all ${getLabelColorClass(label.color)} ${
-                      active
-                        ? 'ring-2 ring-orange-500 ring-offset-1 ring-offset-surface'
-                        : 'opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    {label.name}
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative" ref={labelDropdownRef}>
+                <button
+                  onClick={() => setLabelDropdownOpen(o => !o)}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    labelDropdownOpen
+                      ? 'bg-surface-tertiary border-border-strong text-content'
+                      : 'bg-surface-secondary border-border text-content hover:border-border-strong'
+                  }`}
+                >
+                  <Tag className="w-4 h-4 text-content-muted" />
+                  <span className="text-content-muted">Labels:</span>
+                  <span className="font-semibold">
+                    {selectedFilterLabelIds.size === 0
+                      ? 'All'
+                      : selectedFilterLabelIds.size === 1
+                        ? labels.find(l => selectedFilterLabelIds.has(l.id))?.name || '1 label'
+                        : `${selectedFilterLabelIds.size} labels`}
+                  </span>
+                  {selectedFilterLabelIds.size > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedFilterLabelIds(new Set()); }}
+                      className="p-0.5 rounded hover:bg-surface-hover text-content-muted hover:text-content"
+                      aria-label="Clear filter"
+                    >
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-content-muted transition-transform ${labelDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {labelDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-surface border border-border rounded-xl shadow-2xl z-30 overflow-hidden">
+                    <button
+                      onClick={() => { setSelectedFilterLabelIds(new Set()); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-hover border-b border-border-subtle"
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center ${
+                        selectedFilterLabelIds.size === 0
+                          ? 'bg-orange-500 border-orange-500 text-white'
+                          : 'border-border bg-surface-secondary'
+                      }`}>
+                        {selectedFilterLabelIds.size === 0 && <Check className="w-3 h-3" />}
+                      </span>
+                      <span className="text-content">All creators</span>
+                    </button>
+                    <div className="max-h-64 overflow-y-auto py-1">
+                      {labels.map(label => {
+                        const active = selectedFilterLabelIds.has(label.id);
+                        return (
+                          <button
+                            key={label.id}
+                            onClick={() => {
+                              setSelectedFilterLabelIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(label.id)) next.delete(label.id);
+                                else next.add(label.id);
+                                return next;
+                              });
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-hover"
+                          >
+                            <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                              active
+                                ? 'bg-orange-500 border-orange-500 text-white'
+                                : 'border-border bg-surface-secondary'
+                            }`}>
+                              {active && <Check className="w-3 h-3" />}
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${getLabelColorClass(label.color)}`}>
+                              {label.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
               {selectedFilterLabelIds.size > 0 && (
-                <span className="text-xs text-content-muted ml-1">
+                <span className="text-xs text-content-muted">
                   {filteredCreators.length} of {creators.length}
                 </span>
               )}
