@@ -589,6 +589,14 @@ service cloud.firestore {
           allow create, update, delete: if canManageProject(orgId, projectId);
         }
 
+        // ==================== CREATOR SIGNUP FORM ====================
+        // Per-project public signup form. Reads are admin-gated (the public
+        // /api/creator-signup endpoint uses firebase-admin to bypass these
+        // rules); writes via /api/creator-signup-config require canManage.
+        match /creatorSignupForms/{formId} {
+          allow read, write: if canManageProject(orgId, projectId);
+        }
+
         // ==================== PROJECT CREATOR PROFILES ====================
 
         match /creators/{creatorId} {
@@ -806,6 +814,17 @@ service cloud.firestore {
     // Super-admin-minted (via /api/create-account-share). Same security
     // pattern as creatorShareLinks — token IS the credential.
     match /accountShareLinks/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // ==================== CREATOR SIGNUP TOKENS ====================
+    // Public lookup map: token → { orgId, projectId, enabled }. The public
+    // /api/creator-signup endpoint hits this to resolve which project a
+    // submission belongs to. Token is the credential, list disabled,
+    // mutations only via Admin SDK in /api/creator-signup-config.
+    match /creatorSignupTokens/{token} {
       allow get: if true;
       allow list: if false;
       allow create, update, delete: if false;

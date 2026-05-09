@@ -7,7 +7,8 @@ import CreatorLabelService from '../services/CreatorLabelService';
 import CreatorShareLinkService from '../services/CreatorShareLinkService';
 import { DateFilterType } from './DateRangeFilter';
 import { useCreatorsData } from '../hooks/useCreatorsData';
-import { User, TrendingUp, Plus, FileText, UserPlus } from 'lucide-react';
+import { User, TrendingUp, Plus, FileText, UserPlus, Link as LinkIcon } from 'lucide-react';
+import CreatorSignupFormModal from './creators/CreatorSignupFormModal';
 import { EmptyState } from './ui/EmptyState';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditPortalModal from './EditPortalModal';
@@ -89,6 +90,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [addVideosForCreator, setAddVideosForCreator] = useState<OrgMember | null>(null);
   const [labelingCreator, setLabelingCreator] = useState<OrgMember | null>(null);
   const [showBulkLabelModal, setShowBulkLabelModal] = useState(false);
+  const [showSignupFormModal, setShowSignupFormModal] = useState(false);
   // In-page label filter. Empty set = show all. Multi-select uses OR semantics
   // (creator passes if ANY selected label is on their profile) — that matches
   // how a "show me UGC OR Influencer" mental model usually works for admins
@@ -286,8 +288,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="border-b border-border">
+      {/* Tab Navigation — header row with tabs on the left and a small
+          Signup-form CTA on the right (admins only manage one form per
+          project so a single button is enough; the modal handles the rest). */}
+      <div className="border-b border-border flex items-center justify-between">
         <nav className="flex space-x-8">
         <button
           onClick={() => setActiveTab('accounts')}
@@ -329,6 +333,14 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           Contracts
         </button>
         </nav>
+        <button
+          onClick={() => setShowSignupFormModal(true)}
+          className="hidden sm:inline-flex items-center gap-1.5 mb-2 px-3 py-1.5 rounded-lg border border-border bg-surface-secondary hover:border-border-strong text-content-muted hover:text-content text-xs font-semibold transition-colors"
+          title="Manage the public Creator Signup form"
+        >
+          <LinkIcon className="w-3.5 h-3.5" />
+          Signup form
+        </button>
       </div>
 
       {/* Activity & Performance Tab */}
@@ -610,6 +622,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           }}
         />
       )}
+
+      {/* Creator Signup Form modal — admin-side config for the public form
+          that lets external creators self-onboard via a shared link. */}
+      <CreatorSignupFormModal
+        isOpen={showSignupFormModal}
+        onClose={() => setShowSignupFormModal(false)}
+      />
 
       {/* Assign Creator to Projects Modal — choose which projects this creator
           appears in (member.creatorProjectIds is the source of truth). */}

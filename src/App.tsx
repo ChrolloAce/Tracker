@@ -53,6 +53,7 @@ const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
 const SharedFolderPage = lazy(() => import('./pages/SharedFolderPage'));
 const CreatorShareView = lazy(() => import('./pages/CreatorShareView'));
 const AccountShareView = lazy(() => import('./pages/AccountShareView'));
+const CreatorSignupPage = lazy(() => import('./pages/CreatorSignupPage'));
 
 // SEO Pages (lazy-loaded)
 const PricingPage = lazy(() => import('./pages/seo').then(m => ({ default: m.PricingPage })));
@@ -167,6 +168,9 @@ function App() {
 
         {/* Public account share - per-account dashboard, super-admin-minted, token-gated */}
         <Route path="/a/:token" element={<AccountShareView />} />
+
+        {/* Public creator signup form — admin shares the link, anyone can fill it. */}
+        <Route path="/creator-signup" element={<CreatorSignupPage />} />
         
         {/* SEO Pages - Public */}
         <Route path="/pricing" element={<PricingPage />} />
