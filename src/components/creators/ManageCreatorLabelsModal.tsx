@@ -76,9 +76,10 @@ export function ManageCreatorLabelsModal({
       setLabels(fresh);
       setSelected(prev => new Set(prev).add(id));
       setNewName('');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to create label', e);
-      alert('Failed to create label.');
+      const msg = e?.code || e?.message || String(e);
+      alert(`Failed to create label: ${msg}`);
     } finally {
       setCreating(false);
     }
