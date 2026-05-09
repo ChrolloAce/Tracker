@@ -1442,46 +1442,6 @@ function FlatPayoutsView({
     return () => document.removeEventListener('mousedown', h);
   }, [showCampaignPicker]);
 
-  // Background-load videos for every visible row so the table shows real
-  // amounts on first paint instead of waiting for the admin to expand each
-  // row. Concurrency-capped + dedup-tracked so we don't fan out hundreds of
-  // parallel Firestore reads on big projects, and so re-renders don't
-  // re-queue the same creator twice.
-  const queuedLoadsRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (loading) return;
-    const work = campaigns.flatMap(c => c.creators
-      .filter(cr => !cr.videosLoaded && !cr.videosLoading && !queuedLoadsRef.current.has(`${c.id}:${cr.id}`))
-      .map(cr => ({ campaign: c, creator: cr })));
-    if (work.length === 0) return;
-
-    const CONCURRENCY = 4;
-    let cancelled = false;
-    let cursor = 0;
-
-    const runNext = async (): Promise<void> => {
-      if (cancelled) return;
-      const idx = cursor++;
-      if (idx >= work.length) return;
-      const { campaign, creator } = work[idx];
-      const key = `${campaign.id}:${creator.id}`;
-      queuedLoadsRef.current.add(key);
-      try {
-        await makeHandlers(campaign, creator.id).onLoadVideos();
-      } catch {
-        // Swallow — onLoadVideos already records the failure and surfaces
-        // it on the row; the next runNext keeps the queue moving.
-      }
-      return runNext();
-    };
-    const workers = Array.from({ length: Math.min(CONCURRENCY, work.length) }, runNext);
-    Promise.all(workers).catch(() => { /* ignore */ });
-    return () => { cancelled = true; };
-    // Re-runs when campaigns shape changes (new creators added, etc.) but
-    // queuedLoadsRef gates duplicate work for already-seen IDs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaigns, loading]);
-
   // Apply a structure to every currently-selected row in one pass. Groups by
   // campaign so each campaign gets a single onUpdateCampaign call (not one
   // per creator) — keeps Firestore writes batched and avoids a re-render
