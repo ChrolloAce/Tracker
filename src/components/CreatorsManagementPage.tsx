@@ -534,6 +534,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           projectId={currentProjectId}
           userId={user.uid}
           creatorIds={Array.from(selectedCreatorIds)}
+          labels={labels}
           onClose={() => setShowBulkLabelModal(false)}
           onSaved={async () => {
             setSelectedCreatorIds(new Set());

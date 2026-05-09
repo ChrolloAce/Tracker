@@ -148,7 +148,6 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
   calculatedEarnings,
   creatorTotalViews,
   videoCounts,
-  totalEarnings,
   selectedCreatorIds,
   isAdmin,
   currentPage,
@@ -184,10 +183,6 @@ const CreatorsTable: React.FC<CreatorsTableProps> = ({
         <h2 className="text-lg font-semibold text-content">
           All Creators ({creators.length})
         </h2>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-content-muted">Total Earnings:</span>
-          <span className="text-lg font-bold text-content">${totalEarnings.toFixed(2)}</span>
-        </div>
       </div>
 
       {/* Bulk Action Bar */}

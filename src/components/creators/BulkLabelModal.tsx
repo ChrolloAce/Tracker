@@ -10,6 +10,10 @@ interface Props {
   userId: string;
   /** Creator IDs to apply the labels to. */
   creatorIds: string[];
+  /** Project labels, supplied by the parent (already loaded for the page).
+   *  Avoids a redundant Firestore read on open and keeps the modal usable
+   *  even if a permission glitch hits the listLabels endpoint. */
+  labels: CreatorLabel[];
   onClose: () => void;
   /** Called after a successful save so the parent can refresh data. */
   onSaved: () => void;
@@ -32,12 +36,12 @@ export function BulkLabelModal({
   projectId,
   userId,
   creatorIds,
+  labels: initialLabels,
   onClose,
   onSaved,
 }: Props) {
-  const [labels, setLabels] = useState<CreatorLabel[]>([]);
+  const [labels, setLabels] = useState<CreatorLabel[]>(initialLabels);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -47,18 +51,9 @@ export function BulkLabelModal({
   // that's almost always what someone running a bulk action wants.
   const [mode, setMode] = useState<'add' | 'replace'>('add');
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const list = await CreatorLabelService.listLabels(orgId, projectId, userId);
-      if (!cancelled) {
-        setLabels(list);
-        setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [orgId, projectId, userId]);
+  // Keep in sync if the parent reloads labels (e.g. after creating one inline
+  // we trigger an upstream refresh and the new list streams back down).
+  useEffect(() => { setLabels(initialLabels); }, [initialLabels]);
 
   const toggle = (id: string) => {
     setSelected(prev => {
@@ -78,8 +73,19 @@ export function BulkLabelModal({
         name,
         color: newColor,
       });
-      const fresh = await CreatorLabelService.listLabels(orgId, projectId);
-      setLabels(fresh);
+      // Optimistic insert — don't refetch; the parent reloads on save anyway.
+      setLabels(prev => [
+        ...prev,
+        {
+          id,
+          orgId,
+          projectId,
+          name,
+          color: newColor,
+          createdAt: undefined as any,
+          createdBy: userId,
+        } as CreatorLabel,
+      ]);
       setSelected(prev => new Set(prev).add(id));
       setNewName('');
     } catch (e) {
@@ -174,9 +180,7 @@ export function BulkLabelModal({
         </div>
 
         <div className="px-5 py-4 max-h-[45vh] overflow-y-auto space-y-2">
-          {loading ? (
-            <div className="text-sm text-content-muted py-6 text-center">Loading labels…</div>
-          ) : labels.length === 0 ? (
+          {labels.length === 0 ? (
             <div className="text-sm text-content-muted py-4 text-center">
               No labels yet. Create one below.
             </div>
