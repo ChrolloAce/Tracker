@@ -88,6 +88,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [showCreatorPicker, setShowCreatorPicker] = useState(false);
   const [newCreatorName, setNewCreatorName] = useState('');
   const [creatingCreator, setCreatingCreator] = useState(false);
+  // Inline-created creators live here until the parent's `existingCreators`
+  // prop catches up on its next refresh. We merge this with the prop so the
+  // freshly created creator immediately shows up as the selected chip and in
+  // the picker list — without it the lookup against `existingCreators` would
+  // miss and the chip wouldn't render.
+  const [freshCreators, setFreshCreators] = useState<CreatorOption[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const presetsRef = useRef<HTMLDivElement>(null);
@@ -102,6 +108,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setSelectedCreatorId(null);
       setShowCreatorPicker(false);
       setNewCreatorName('');
+      setFreshCreators([]);
 
       const checkClipboard = async () => {
         const parsed = await UrlParserService.autoDetectFromClipboard();
@@ -139,9 +146,23 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showCreatorPicker]);
 
+  // Merged list = parent's existing creators + any inline-created ones from
+  // this session. De-duplicates by id so a parent refresh that includes the
+  // newly created creator doesn't double-render it.
+  const allCreators = useMemo(() => {
+    const seen = new Set<string>();
+    const out: CreatorOption[] = [];
+    for (const c of [...freshCreators, ...existingCreators]) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(c);
+    }
+    return out;
+  }, [existingCreators, freshCreators]);
+
   const selectedCreator = useMemo(
-    () => existingCreators.find(c => c.id === selectedCreatorId) || null,
-    [existingCreators, selectedCreatorId],
+    () => allCreators.find(c => c.id === selectedCreatorId) || null,
+    [allCreators, selectedCreatorId],
   );
 
   const handleCreateCreatorInline = async () => {
@@ -150,6 +171,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     setCreatingCreator(true);
     try {
       const id = await onCreateCreator(name);
+      // Optimistically add to the local list so the chip renders the new
+      // creator's name immediately — the parent's prop will catch up on its
+      // next refresh and the dedupe keeps things tidy.
+      setFreshCreators(prev => [...prev, { id, displayName: name }]);
       setSelectedCreatorId(id);
       setNewCreatorName('');
       setShowCreatorPicker(false);
@@ -417,9 +442,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               <div
                 className="absolute left-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-2xl z-20 overflow-hidden"
               >
-                {existingCreators.length > 0 && (
+                {allCreators.length > 0 && (
                   <div className="max-h-56 overflow-y-auto py-1">
-                    {existingCreators.map(c => {
+                    {allCreators.map(c => {
                       const isPicked = c.id === selectedCreatorId;
                       return (
                         <button
@@ -444,7 +469,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   </div>
                 )}
                 {onCreateCreator && (
-                  <div className={`p-2 ${existingCreators.length > 0 ? 'border-t border-border-subtle' : ''} bg-surface-secondary`}>
+                  <div className={`p-2 ${allCreators.length > 0 ? 'border-t border-border-subtle' : ''} bg-surface-secondary`}>
                     <div className="text-[10px] font-semibold text-content-muted uppercase tracking-wider mb-1.5">
                       New creator
                     </div>
