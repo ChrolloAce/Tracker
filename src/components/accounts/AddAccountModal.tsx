@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { X, RefreshCw, AlertCircle, ChevronDown } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, ChevronDown, UserPlus, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PlatformIcon } from '../ui/PlatformIcon';
 import { UrlParserService } from '../../services/UrlParserService';
@@ -19,11 +19,32 @@ interface UsageLimits {
 
 export type YoutubeVideoType = 'shorts' | 'long' | 'both';
 
+export interface CreatorOption {
+  id: string;
+  displayName: string;
+  photoURL?: string;
+}
+
 export interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: YoutubeVideoType}>) => void;
+  /**
+   * Commit handler. Receives the parsed accounts and an optional `creatorId`
+   * the admin picked (or just created) so the parent can link the new tracked
+   * accounts to that creator in one shot — no second hop through the
+   * AttachCreatorModal. youtubeVideoType is no longer surfaced in the UI and
+   * always commits as 'shorts' for any YouTube row.
+   */
+  onAdd: (
+    accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: YoutubeVideoType}>,
+    creatorId?: string,
+  ) => void;
   usageLimits: UsageLimits;
+  /** Existing creators in the project — populates the inline assignment picker. */
+  existingCreators?: CreatorOption[];
+  /** Inline create-creator hook. When provided, the picker shows a "Create new
+   *  creator" input at the bottom that resolves to a fresh creatorId. */
+  onCreateCreator?: (name: string) => Promise<string>;
 }
 
 function parseAccountUrlsFromText(text: string): ParsedAccount[] {
@@ -49,7 +70,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   isOpen,
   onClose,
   onAdd,
-  usageLimits
+  usageLimits,
+  existingCreators = [],
+  onCreateCreator,
 }) => {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<ParsedAccount[]>([]);
@@ -57,10 +80,18 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [urlError, setUrlError] = useState<string | null>(null);
   const [videoCount, setVideoCount] = useState(10);
   const [showPresets, setShowPresets] = useState(false);
-  const [youtubeVideoType, setYoutubeVideoType] = useState<YoutubeVideoType>('both');
+  // Inline creator-assignment state. The picker is a popover anchored to the
+  // pill button; when a creator is selected we render a small chip in the
+  // header so the admin can see "for X" at a glance and clear it with one
+  // click.
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
+  const [showCreatorPicker, setShowCreatorPicker] = useState(false);
+  const [newCreatorName, setNewCreatorName] = useState('');
+  const [creatingCreator, setCreatingCreator] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const presetsRef = useRef<HTMLDivElement>(null);
+  const creatorPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -68,7 +99,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setInputValue('');
       setUrlError(null);
       setVideoCount(10);
-      setYoutubeVideoType('both');
+      setSelectedCreatorId(null);
+      setShowCreatorPicker(false);
+      setNewCreatorName('');
 
       const checkClipboard = async () => {
         const parsed = await UrlParserService.autoDetectFromClipboard();
@@ -93,6 +126,40 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showPresets]);
+
+  // Close creator picker on outside click
+  useEffect(() => {
+    if (!showCreatorPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (creatorPickerRef.current && !creatorPickerRef.current.contains(e.target as Node)) {
+        setShowCreatorPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showCreatorPicker]);
+
+  const selectedCreator = useMemo(
+    () => existingCreators.find(c => c.id === selectedCreatorId) || null,
+    [existingCreators, selectedCreatorId],
+  );
+
+  const handleCreateCreatorInline = async () => {
+    const name = newCreatorName.trim();
+    if (!name || !onCreateCreator) return;
+    setCreatingCreator(true);
+    try {
+      const id = await onCreateCreator(name);
+      setSelectedCreatorId(id);
+      setNewCreatorName('');
+      setShowCreatorPicker(false);
+    } catch (e: any) {
+      console.error('Inline creator-create failed', e);
+      alert(`Failed to create creator: ${e?.message || e}`);
+    } finally {
+      setCreatingCreator(false);
+    }
+  };
 
   const processInput = useCallback((text: string) => {
     setUrlError(null);
@@ -180,13 +247,16 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       username: a.username!,
       platform: a.platform!,
       videoCount: clampedVideoCount,
-      ...(a.platform === 'youtube' ? { youtubeVideoType } : {})
+      // YouTube always tracks Shorts now — the long/short/both selector was
+      // removed from the UI because it confused admins. The field is still
+      // populated downstream for backwards compat with the scraper config.
+      ...(a.platform === 'youtube' ? { youtubeVideoType: 'shorts' as const } : {}),
     }));
 
     setAccounts([]);
     setInputValue('');
     onClose();
-    onAdd(accountsToAdd);
+    onAdd(accountsToAdd, selectedCreatorId || undefined);
   };
 
   if (!isOpen) return null;
@@ -302,31 +372,103 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </div>
           </div>
 
-          {/* YouTube video type selector — only visible when YouTube accounts are present */}
-          {(platformCounts['youtube'] > 0 || validAccounts.some(a => a.platform === 'youtube') || inputValue.toLowerCase().includes('youtube')) && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-content-muted">YouTube type:</span>
-              <div className="flex gap-1 bg-surface-secondary border border-border rounded-full p-0.5">
-                {([
-                  { value: 'shorts', label: 'Shorts' },
-                  { value: 'both', label: 'Both' },
-                  { value: 'long', label: 'Long' },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setYoutubeVideoType(opt.value)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      youtubeVideoType === opt.value
-                        ? 'bg-white text-black'
-                        : 'text-content-muted hover:text-content'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+          {/* Inline creator-assignment picker. When set, the new accounts get
+              linked to this creator immediately on commit so the admin doesn't
+              have to bounce through AttachCreatorModal afterwards. */}
+          <div className="flex items-center gap-2 relative" ref={creatorPickerRef}>
+            <span className="text-xs text-content-muted">Creator:</span>
+            {selectedCreator ? (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 border border-orange-500/30 rounded-full">
+                {selectedCreator.photoURL ? (
+                  <img src={selectedCreator.photoURL} alt="" className="w-4 h-4 rounded-full object-cover" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center text-[9px] font-bold text-white">
+                    {(selectedCreator.displayName || '?').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-semibold text-content max-w-[140px] truncate">
+                  {selectedCreator.displayName}
+                </span>
+                <button
+                  onClick={() => setShowCreatorPicker(s => !s)}
+                  className="text-[10px] text-content-muted hover:text-content uppercase tracking-wider"
+                >
+                  change
+                </button>
+                <button
+                  onClick={() => setSelectedCreatorId(null)}
+                  className="p-0.5 text-content-muted hover:text-content"
+                  aria-label="Clear creator"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <button
+                onClick={() => setShowCreatorPicker(s => !s)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-secondary border border-border rounded-full text-xs font-medium text-content-muted hover:text-content hover:border-border-strong transition-colors"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Assign to creator
+              </button>
+            )}
+
+            {showCreatorPicker && (
+              <div
+                className="absolute left-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-2xl z-20 overflow-hidden"
+              >
+                {existingCreators.length > 0 && (
+                  <div className="max-h-56 overflow-y-auto py-1">
+                    {existingCreators.map(c => {
+                      const isPicked = c.id === selectedCreatorId;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => { setSelectedCreatorId(c.id); setShowCreatorPicker(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-hover ${
+                            isPicked ? 'bg-surface-hover' : ''
+                          }`}
+                        >
+                          {c.photoURL ? (
+                            <img src={c.photoURL} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                              {(c.displayName || '?').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="flex-1 text-sm text-content truncate">{c.displayName}</span>
+                          {isPicked && <Check className="w-4 h-4 text-orange-500" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {onCreateCreator && (
+                  <div className={`p-2 ${existingCreators.length > 0 ? 'border-t border-border-subtle' : ''} bg-surface-secondary`}>
+                    <div className="text-[10px] font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+                      New creator
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        value={newCreatorName}
+                        onChange={(e) => setNewCreatorName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateCreatorInline(); } }}
+                        placeholder="Creator name"
+                        className="flex-1 px-2.5 py-1.5 rounded-md bg-surface border border-border text-xs text-content placeholder:text-content-muted focus:outline-none focus:border-border-strong"
+                      />
+                      <button
+                        onClick={handleCreateCreatorInline}
+                        disabled={creatingCreator || !newCreatorName.trim()}
+                        className="px-2.5 py-1.5 rounded-md bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold"
+                      >
+                        {creatingCreator ? '…' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Summary bar */}

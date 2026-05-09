@@ -49,6 +49,11 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
   const [creators, setCreators] = useState<Creator[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string>('');
   const [addAsStale, setAddAsStale] = useState(false);
+  // Inline creator-create state — same UX as AddAccountModal so admins don't
+  // have to bounce out to the Creators page just to make one.
+  const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const [newCreatorName, setNewCreatorName] = useState('');
+  const [creatingCreator, setCreatingCreator] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -92,6 +97,8 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
       }
       setSelectedCreatorId('');
       setAddAsStale(false);
+      setShowInlineCreate(false);
+      setNewCreatorName('');
 
       // Focus the input after a tick
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -145,6 +152,41 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
   }, []);
 
   const validVideos = useMemo(() => videos.filter(v => v.platform !== null), [videos]);
+
+  const handleCreateCreatorInline = async () => {
+    const name = newCreatorName.trim();
+    if (!name || !user || !currentOrgId || !currentProjectId) return;
+    setCreatingCreator(true);
+    try {
+      const id = await CreatorLinksService.addCreatorProfile(
+        currentOrgId,
+        currentProjectId,
+        user.uid,
+        { name },
+      );
+      // Optimistically add to list and select. The list renders from local
+      // state so we don't need to wait for a re-fetch.
+      setCreators(prev => ([...prev, {
+        id,
+        orgId: currentOrgId,
+        projectId: currentProjectId,
+        displayName: name,
+        linkedAccountsCount: 0,
+        totalEarnings: 0,
+        payoutsEnabled: true,
+        addedWithoutInvite: true,
+        createdAt: undefined as any,
+      } as Creator]));
+      setSelectedCreatorId(id);
+      setNewCreatorName('');
+      setShowInlineCreate(false);
+    } catch (e: any) {
+      console.error('Failed to create creator inline', e);
+      alert(`Failed to create creator: ${e?.message || e}`);
+    } finally {
+      setCreatingCreator(false);
+    }
+  };
   const invalidVideos = useMemo(() => videos.filter(v => v.platform === null), [videos]);
 
   const platformCounts = useMemo(() => {
@@ -366,23 +408,58 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
           return null;
         })()}
 
-        {/* Creator assignment dropdown */}
-        {showCreatorSelector && creators.length > 0 && (
-          <div className="mb-4">
-            <label className="flex items-center gap-2 text-xs font-medium text-content-muted mb-2">
-              <UserPlus className="w-3.5 h-3.5" />
-              Assign to Creator (optional)
-            </label>
-            <select
-              value={selectedCreatorId}
-              onChange={(e) => setSelectedCreatorId(e.target.value)}
-              className="w-full px-3 py-2 bg-surface-tertiary border border-border rounded-xl text-sm text-content focus:outline-none focus:ring-1 focus:ring-border-strong"
-            >
-              <option value="">No creator — add to project only</option>
-              {creators.map(c => (
-                <option key={c.id} value={c.id}>{c.displayName}{c.email ? ` (${c.email})` : ''}</option>
-              ))}
-            </select>
+        {/* Creator assignment — dropdown of existing creators + inline-create
+            so admins can spin up a new creator without leaving the modal. */}
+        {showCreatorSelector && (
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs font-medium text-content-muted">
+                <UserPlus className="w-3.5 h-3.5" />
+                Assign to Creator (optional)
+              </label>
+              <button
+                onClick={() => setShowInlineCreate(s => !s)}
+                className="text-[11px] font-semibold text-orange-500 hover:text-orange-400"
+              >
+                {showInlineCreate ? 'Cancel' : '+ New creator'}
+              </button>
+            </div>
+            {creators.length > 0 && !showInlineCreate && (
+              <select
+                value={selectedCreatorId}
+                onChange={(e) => setSelectedCreatorId(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-tertiary border border-border rounded-xl text-sm text-content focus:outline-none focus:ring-1 focus:ring-border-strong"
+              >
+                <option value="">No creator — add to project only</option>
+                {creators.map(c => (
+                  <option key={c.id} value={c.id}>{c.displayName}{c.email ? ` (${c.email})` : ''}</option>
+                ))}
+              </select>
+            )}
+            {creators.length === 0 && !showInlineCreate && (
+              <div className="text-[11px] text-content-muted px-1">
+                No creators in this project yet — click "+ New creator" to add one.
+              </div>
+            )}
+            {showInlineCreate && (
+              <div className="flex items-center gap-2">
+                <input
+                  value={newCreatorName}
+                  onChange={(e) => setNewCreatorName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateCreatorInline(); } }}
+                  placeholder="Creator name"
+                  autoFocus
+                  className="flex-1 px-3 py-2 bg-surface-tertiary border border-border rounded-xl text-sm text-content placeholder:text-content-muted focus:outline-none focus:ring-1 focus:ring-border-strong"
+                />
+                <button
+                  onClick={handleCreateCreatorInline}
+                  disabled={creatingCreator || !newCreatorName.trim()}
+                  className="px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold"
+                >
+                  {creatingCreator ? '…' : 'Create'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

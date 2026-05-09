@@ -274,7 +274,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         }
     }, [processedAccounts, hookHandleSyncAccount, selectedAccount, loadAccountVideos]);
 
-    const handleAccountsAdded = useCallback(async (accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>) => {
+    const handleAccountsAdded = useCallback(async (
+        accountsToAdd: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>,
+        creatorId?: string,
+    ) => {
         if (!currentOrgId || !currentProjectId || !user) return;
 
         setProcessingAccounts(prev => [
@@ -284,6 +287,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
         setIsAddModalOpen(false);
 
+        // Capture each new account ID so we can link them to the creator the
+        // admin picked in the modal (if any). A failed addAccount returns null
+        // so the linking step skips that one.
         const addPromises = accountsToAdd.map(account =>
           AccountTrackingServiceFirebase.addAccount(
             currentOrgId,
@@ -294,17 +300,53 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             'my',
             account.videoCount,
             account.youtubeVideoType
-          ).then(() => ({ success: true, username: account.username }))
+          ).then(accountId => ({ success: true as const, username: account.username, accountId }))
            .catch(error => {
             console.error(`Failed to add account @${account.username}:`, error);
-            return { success: false, username: account.username };
+            return { success: false as const, username: account.username, accountId: null };
           })
         );
-    
-        await Promise.all(addPromises);
-        
+
+        const results = await Promise.all(addPromises);
+
+        if (creatorId) {
+          const newAccountIds = results
+            .filter(r => r.success && r.accountId)
+            .map(r => r.accountId as string);
+          if (newAccountIds.length > 0) {
+            try {
+              const CreatorLinksService = (await import('../services/CreatorLinksService')).default;
+              await CreatorLinksService.linkCreatorToAccounts(
+                currentOrgId,
+                currentProjectId,
+                creatorId,
+                newAccountIds,
+                user.uid,
+              );
+            } catch (linkErr) {
+              console.error('Failed to link new accounts to creator', linkErr);
+            }
+          }
+        }
+
         // Cleanup handled by hook effect
     }, [currentOrgId, currentProjectId, user, setProcessingAccounts]);
+
+    // Inline creator creation from the AddAccountModal picker. Returns the new
+    // creatorId so the modal can immediately mark them as the assigned creator
+    // for the in-flight tracked-account batch.
+    const handleCreateCreatorInline = useCallback(async (name: string) => {
+        if (!currentOrgId || !currentProjectId || !user) {
+          throw new Error('Missing org / project / user context');
+        }
+        const CreatorLinksService = (await import('../services/CreatorLinksService')).default;
+        return CreatorLinksService.addCreatorProfile(
+          currentOrgId,
+          currentProjectId,
+          user.uid,
+          { name },
+        );
+    }, [currentOrgId, currentProjectId, user]);
 
   const handleCopyAccountLinks = useCallback(() => {
     const selected = processedAccounts.filter(a => selectedAccounts.has(a.id));
@@ -546,6 +588,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 onClose={() => setIsAddModalOpen(false)}
                 onAdd={handleAccountsAdded}
                 usageLimits={usageLimits}
+                existingCreators={creators.map((c: any) => ({
+                  id: c.userId || c.id,
+                  displayName: c.displayName || c.email || 'Creator',
+                  photoURL: c.photoURL,
+                }))}
+                onCreateCreator={handleCreateCreatorInline}
             />
             
       {selectedVideoForPlayer && (

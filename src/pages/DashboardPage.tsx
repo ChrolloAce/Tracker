@@ -2498,14 +2498,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [user, currentOrgId, currentProjectId]);
 
-  const handleAddAccounts = useCallback(async (accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>) => {
+  const handleAddAccounts = useCallback(async (
+    accounts: Array<{url: string, username: string, platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoCount: number, youtubeVideoType?: 'shorts' | 'long' | 'both'}>,
+    creatorId?: string,
+  ) => {
     if (requiresPaidPlan('to start tracking accounts')) return;
     if (!currentOrgId || !currentProjectId || !user) return;
 
     setIsAddAccountModalOpen(false);
 
     try {
-      const addPromises = accounts.map(account => 
+      const addPromises = accounts.map(account =>
         AccountTrackingServiceFirebase.addAccount(
           currentOrgId,
           currentProjectId,
@@ -2516,10 +2519,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           account.videoCount,
           account.youtubeVideoType
         )
+          .then(accountId => ({ success: true as const, accountId }))
+          .catch(err => { console.error(`addAccount failed for @${account.username}:`, err); return { success: false as const, accountId: null }; })
       );
 
-      await Promise.all(addPromises);
-      
+      const results = await Promise.all(addPromises);
+
+      // Link to the picked creator (if any) so the admin doesn't need to
+      // re-enter the AttachCreatorModal afterwards.
+      if (creatorId) {
+        const newAccountIds = results
+          .filter(r => r.success && r.accountId)
+          .map(r => r.accountId as string);
+        if (newAccountIds.length > 0) {
+          try {
+            const CreatorLinksService = (await import('../services/CreatorLinksService')).default;
+            await CreatorLinksService.linkCreatorToAccounts(
+              currentOrgId,
+              currentProjectId,
+              creatorId,
+              newAccountIds,
+              user.uid,
+            );
+          } catch (linkErr) {
+            console.error('Failed to link new accounts to creator', linkErr);
+          }
+        }
+      }
+
       // Refresh accounts list
       if (currentOrgId && currentProjectId) {
         const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
@@ -2529,6 +2556,22 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     } catch (error) {
       console.error('Failed to add accounts:', error);
     }
+  }, [currentOrgId, currentProjectId, user]);
+
+  // Inline creator-create from the AddAccountModal / AddVideoModal pickers.
+  // Returns the new creatorId so the modal can immediately mark them as the
+  // assigned creator for the in-flight add batch.
+  const handleCreateCreatorInline = useCallback(async (name: string) => {
+    if (!currentOrgId || !currentProjectId || !user) {
+      throw new Error('Missing org / project / user context');
+    }
+    const CreatorLinksService = (await import('../services/CreatorLinksService')).default;
+    return CreatorLinksService.addCreatorProfile(
+      currentOrgId,
+      currentProjectId,
+      user.uid,
+      { name },
+    );
   }, [currentOrgId, currentProjectId, user]);
 
   const handleDelete = useCallback((id: string) => {
@@ -4595,6 +4638,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         onClose={() => setIsAddAccountModalOpen(false)}
         onAdd={handleAddAccounts}
         usageLimits={usageLimits}
+        existingCreators={creators.map((c: any) => ({
+          id: c.id || c.userId,
+          displayName: c.displayName || c.email || 'Creator',
+          photoURL: c.photoURL,
+        }))}
+        onCreateCreator={handleCreateCreatorInline}
       />
 
       <TikTokSearchModal
