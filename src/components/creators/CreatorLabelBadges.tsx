@@ -6,16 +6,20 @@ import { CreatorLabel } from '../../types/firestore';
  * deliberately tiny — they sit alongside other metadata and shouldn't dominate.
  */
 
+// Light-mode-first defaults (visible on white) plus dark: overrides for the
+// dark theme. The previous /15 alpha backgrounds + 400 text were invisible on
+// a white surface — now light mode uses solid -100 fills with -800 text and
+// dark mode keeps the muted glassy look.
 const COLOR_CLASSES: Record<string, string> = {
-  orange: 'bg-orange-500/15 text-orange-400 border border-orange-500/25',
-  violet: 'bg-violet-500/15 text-violet-400 border border-violet-500/25',
-  slate: 'bg-slate-500/15 text-slate-300 border border-slate-500/25',
-  emerald: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25',
-  blue: 'bg-blue-500/15 text-blue-400 border border-blue-500/25',
-  pink: 'bg-pink-500/15 text-pink-400 border border-pink-500/25',
-  amber: 'bg-amber-500/15 text-amber-400 border border-amber-500/25',
-  cyan: 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25',
-  red: 'bg-red-500/15 text-red-400 border border-red-500/25',
+  orange:  'bg-orange-100  text-orange-800  border border-orange-200  dark:bg-orange-500/15  dark:text-orange-300  dark:border-orange-500/30',
+  violet:  'bg-violet-100  text-violet-800  border border-violet-200  dark:bg-violet-500/15  dark:text-violet-300  dark:border-violet-500/30',
+  slate:   'bg-slate-100   text-slate-800   border border-slate-200   dark:bg-slate-500/15   dark:text-slate-200   dark:border-slate-500/30',
+  emerald: 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30',
+  blue:    'bg-blue-100    text-blue-800    border border-blue-200    dark:bg-blue-500/15    dark:text-blue-300    dark:border-blue-500/30',
+  pink:    'bg-pink-100    text-pink-800    border border-pink-200    dark:bg-pink-500/15    dark:text-pink-300    dark:border-pink-500/30',
+  amber:   'bg-amber-100   text-amber-900   border border-amber-200   dark:bg-amber-500/15   dark:text-amber-300   dark:border-amber-500/30',
+  cyan:    'bg-cyan-100    text-cyan-800    border border-cyan-200    dark:bg-cyan-500/15    dark:text-cyan-300    dark:border-cyan-500/30',
+  red:     'bg-red-100     text-red-800     border border-red-200     dark:bg-red-500/15     dark:text-red-300     dark:border-red-500/30',
 };
 
 export const LABEL_COLOR_OPTIONS: Array<{ value: string; swatch: string }> = [

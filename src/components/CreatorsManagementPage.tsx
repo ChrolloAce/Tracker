@@ -380,10 +380,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                         return next;
                       });
                     }}
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all border ${getLabelColorClass(label.color)} ${
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all ${getLabelColorClass(label.color)} ${
                       active
-                        ? 'ring-2 ring-content border-transparent'
-                        : 'opacity-60 hover:opacity-100 border-transparent'
+                        ? 'ring-2 ring-orange-500 ring-offset-1 ring-offset-surface'
+                        : 'opacity-60 hover:opacity-100'
                     }`}
                   >
                     {label.name}
@@ -601,6 +601,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           userId={user.uid}
           creatorIds={Array.from(selectedCreatorIds)}
           labels={labels}
+          creatorProfiles={creatorProfiles}
           onClose={() => setShowBulkLabelModal(false)}
           onSaved={async () => {
             setSelectedCreatorIds(new Set());
