@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus, ChevronLeft, ChevronDown, Users, DollarSign, Check, Eye, Search, RefreshCw,
@@ -9,6 +9,7 @@ import {
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Sidebar from '../components/layout/Sidebar';
+import DateRangeFilter, { type DateFilterType } from '../components/DateRangeFilter';
 import { Button } from '../components/ui/Button';
 import PayoutStructureManager from '../components/PayoutStructureManager';
 import VideoSliderSection from '../components/VideoSliderSection';
@@ -1411,6 +1412,32 @@ function FlatPayoutsView({
   const [campaignFilter, setCampaignFilter] = useState<Set<string>>(new Set());
   const [creatorFilter, setCreatorFilter] = useState<Set<string>>(new Set());
   const [creatorSearch, setCreatorSearch] = useState('');
+  // Top-level date filter — when set to anything other than 'all', it
+  // overrides each campaign's persisted billing window for DISPLAY ONLY:
+  // each row's payout is recomputed against this window at render time
+  // without touching the campaign doc. Lets admins flip between
+  // "last 7 days" / "last 30 days" / custom without editing campaigns.
+  const [periodFilter, setPeriodFilter] = useState<DateFilterType>('all');
+  const [customRange, setCustomRange] = useState<{ startDate: Date; endDate: Date } | undefined>(undefined);
+  const periodOverride = useMemo(() => {
+    if (periodFilter === 'all') return null;
+    if (periodFilter === 'custom') return customRange ? { start: customRange.startDate, end: customRange.endDate } : null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const day = 86400000;
+    switch (periodFilter) {
+      case 'today':      return { start: today, end: new Date(today.getTime() + day - 1) };
+      case 'yesterday':  return { start: new Date(today.getTime() - day), end: new Date(today.getTime() - 1) };
+      case 'last7days':  return { start: new Date(today.getTime() - 6 * day), end: new Date(today.getTime() + day - 1) };
+      case 'last14days': return { start: new Date(today.getTime() - 13 * day), end: new Date(today.getTime() + day - 1) };
+      case 'last30days': return { start: new Date(today.getTime() - 29 * day), end: new Date(today.getTime() + day - 1) };
+      case 'last90days': return { start: new Date(today.getTime() - 89 * day), end: new Date(today.getTime() + day - 1) };
+      case 'mtd':        return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(today.getTime() + day - 1) };
+      case 'lastmonth':  return { start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59) };
+      case 'ytd':        return { start: new Date(now.getFullYear(), 0, 1), end: new Date(today.getTime() + day - 1) };
+      default: return null;
+    }
+  }, [periodFilter, customRange]);
   const [showAddCreatorFor, setShowAddCreatorFor] = useState<string | null>(null);
   /** When the "Add creators" button can't resolve a single campaign target
    *  (multiple campaigns exist + no single-campaign filter), surface a small
@@ -1694,6 +1721,16 @@ function FlatPayoutsView({
           The button uses the brand-orange neo-brutalism vocabulary so it carries
           the visual weight of a primary action, sized to match the toolbar. */}
       <div className="flex items-center gap-3 flex-wrap">
+        {/* Top-level period filter — same component as the dashboard. When
+            anything other than "All" is picked, every row recomputes its
+            payout against this window for display only; no campaign doc is
+            modified. Pulled out of each row so the admin doesn't have to
+            edit campaign billing periods just to view a slice. */}
+        <DateRangeFilter
+          selectedFilter={periodFilter}
+          customRange={customRange}
+          onFilterChange={(f, r) => { setPeriodFilter(f); if (r) setCustomRange(r); else if (f !== 'custom') setCustomRange(undefined); }}
+        />
         <CreatorMultiSelect creators={uniqueCreators} selected={creatorFilter} onChange={setCreatorFilter} />
         <CampaignMultiSelect campaigns={campaigns} selected={campaignFilter} onChange={setCampaignFilter} />
         <div className="relative w-full sm:w-auto sm:flex-1 max-w-xs">
@@ -1853,7 +1890,9 @@ function FlatPayoutsView({
               </div>
               <div className="sticky left-[40px] bg-surface-tertiary/40 w-[260px] flex-shrink-0 pl-1 pr-2 py-2.5">Creator</div>
               <div className="flex-1 min-w-[200px] px-3 py-2.5">Campaign</div>
-              <div className="w-[180px] flex-shrink-0 px-3 py-2.5">Billing Period</div>
+              {!periodOverride && (
+                <div className="w-[180px] flex-shrink-0 px-3 py-2.5">Billing Period</div>
+              )}
               <div className="w-[140px] flex-shrink-0 px-3 py-2.5">Amount</div>
               <div className="w-[120px] flex-shrink-0 px-3 py-2.5">Status</div>
               <div className="sticky right-0 bg-surface-tertiary/40 w-[120px] flex-shrink-0 pl-2 pr-5 py-2.5 text-right">Action</div>
@@ -1863,6 +1902,18 @@ function FlatPayoutsView({
                 const handlers = makeHandlers(campaign, creator.id);
                 const k = rowKey(campaign.id, creator.id);
                 const checked = selectedRowKeys.has(k);
+                // When the top-level period filter is active, recompute the
+                // payout against the picked window for display only — pass
+                // an overlay campaign with start/end swapped in. recalcCreator
+                // returns the creator unchanged if videos aren't loaded yet,
+                // so the row gracefully shows the persisted amount until the
+                // first on-demand load completes.
+                const displayCampaign = periodOverride
+                  ? { ...campaign, startDate: periodOverride.start, endDate: periodOverride.end }
+                  : campaign;
+                const displayCreator = periodOverride && creator.videosLoaded
+                  ? recalcCreator(creator, displayCampaign)
+                  : creator;
                 return (
                   <div key={`${campaign.id}-${creator.id}`} className={`flex items-stretch ${checked ? 'bg-orange-500/5' : ''}`}>
                     <div className="w-[40px] flex-shrink-0 flex items-start pt-5 pl-4 pr-1">
@@ -1882,11 +1933,12 @@ function FlatPayoutsView({
                     </div>
                     <div className="flex-1 min-w-0">
                       <CreatorCard
-                        creator={creator}
+                        creator={displayCreator}
                         orgId={orgId}
                         projectId={projectId}
-                        campaign={campaign}
+                        campaign={displayCampaign}
                         showCampaignColumn
+                        hidePeriodColumn={!!periodOverride}
                         payoutsEnabled={payoutsEnabled}
                         {...handlers}
                       />
@@ -2887,7 +2939,7 @@ function CreatorAccountStack({ creator, max = 3 }: { creator: CampaignCreator; m
 
 // ==================== CREATOR CARD ====================
 
-function CreatorCard({ creator, orgId, projectId, campaign, showCampaignColumn = false, onLoadVideos, onApprove, onMarkPaid, onUnapprove, onRevertPaid, onRetryTransfer, payoutsEnabled, onOpenPicker, onRemove, onSetOverride, onClearOverride, onSetStartDate, onToggleExcludeVideo, onVideosChange, onLogPriorPayout, onRemovePriorPayout, onUpdatePeriod }: {
+function CreatorCard({ creator, orgId, projectId, campaign, showCampaignColumn = false, hidePeriodColumn = false, onLoadVideos, onApprove, onMarkPaid, onUnapprove, onRevertPaid, onRetryTransfer, payoutsEnabled, onOpenPicker, onRemove, onSetOverride, onClearOverride, onSetStartDate, onToggleExcludeVideo, onVideosChange, onLogPriorPayout, onRemovePriorPayout, onUpdatePeriod }: {
   creator: CampaignCreator;
   orgId: string; projectId: string;
   campaign: PayoutCampaign;
@@ -2895,6 +2947,10 @@ function CreatorCard({ creator, orgId, projectId, campaign, showCampaignColumn =
    *  and the Structure column. Used by the flat all-creators-across-campaigns
    *  view; left off in any single-campaign-context view (would be redundant). */
   showCampaignColumn?: boolean;
+  /** When true, suppress the per-row Billing Period cell — used when the
+   *  page-level date filter is overriding the campaign window so the column
+   *  isn't editable on a per-row basis (would conflict with the global view). */
+  hidePeriodColumn?: boolean;
   onLoadVideos: () => void; onApprove: () => void; onMarkPaid: () => void;
   /** Flip status from `approved` → `pending`. Confirm dialog + audit log handled in parent. */
   onUnapprove: () => void;
@@ -3057,7 +3113,10 @@ function CreatorCard({ creator, orgId, projectId, campaign, showCampaignColumn =
 
         {/* Billing Period — campaign date window. Click to edit inline; the
             change applies to every creator on this campaign (since the
-            window is campaign-level). "All time" = no window set. */}
+            window is campaign-level). "All time" = no window set. Hidden
+            when the page-level date filter is overriding the window so the
+            global selector becomes the single source of truth. */}
+        {!hidePeriodColumn && (
         <div className="w-[180px] flex-shrink-0 px-3 py-3.5 min-w-0 relative" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setEditingPeriod(v => !v)}
@@ -3084,6 +3143,7 @@ function CreatorCard({ creator, orgId, projectId, campaign, showCampaignColumn =
             />
           )}
         </div>
+        )}
 
         {/* Amount — net owed in its own column with a small clock icon, mirroring
             viral.app. The Send button below carries no amount label so it can stay
