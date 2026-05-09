@@ -23,6 +23,8 @@ import { CreatorDirectVideoSubmission } from './CreatorDirectVideoSubmission';
 import CreatorsTable from './creators/CreatorsTable';
 import ManageCreatorLabelsModal from './creators/ManageCreatorLabelsModal';
 import BulkLabelModal from './creators/BulkLabelModal';
+import { getLabelColorClass } from './creators/CreatorLabelBadges';
+import { Tag } from 'lucide-react';
 import AssignCreatorProjectsModal from './creators/AssignCreatorProjectsModal';
 
 export interface CreatorsManagementPageRef {
@@ -87,12 +89,17 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [addVideosForCreator, setAddVideosForCreator] = useState<OrgMember | null>(null);
   const [labelingCreator, setLabelingCreator] = useState<OrgMember | null>(null);
   const [showBulkLabelModal, setShowBulkLabelModal] = useState(false);
+  // In-page label filter. Empty set = show all. Multi-select uses OR semantics
+  // (creator passes if ANY selected label is on their profile) — that matches
+  // how a "show me UGC OR Influencer" mental model usually works for admins
+  // segmenting their roster.
+  const [selectedFilterLabelIds, setSelectedFilterLabelIds] = useState<Set<string>>(new Set());
   const [assigningProjectsCreator, setAssigningProjectsCreator] = useState<OrgMember | null>(null);
   const [labels, setLabels] = useState<CreatorLabel[]>([]);
 
   // Reset to page 1 whenever the header search query changes so results from
   // the new query don't land on a stale page index.
-  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedFilterLabelIds]);
 
   // Load labels for the project (seeds UGC/Influencer/Faceless on first read).
   const loadLabels = useCallback(async () => {
@@ -253,7 +260,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   // Including handles makes "@username" lookups work even when the creator's
   // display name doesn't contain the term.
   const q = searchQuery.trim().toLowerCase();
-  const filteredCreators = q
+  const searchedCreators = q
     ? creators.filter(c => {
         if ((c.displayName || '').toLowerCase().includes(q)) return true;
         if ((c.email || '').toLowerCase().includes(q)) return true;
@@ -261,6 +268,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         return accs.some(a => (a.username || '').toLowerCase().includes(q));
       })
     : creators;
+
+  // Then apply the label filter (OR semantics — pass if any selected label is
+  // on the creator's profile). Falls through unchanged when no labels picked.
+  const filteredCreators = selectedFilterLabelIds.size === 0
+    ? searchedCreators
+    : searchedCreators.filter(c => {
+        const ids = creatorProfiles.get(c.userId)?.labelIds || [];
+        return ids.some(id => selectedFilterLabelIds.has(id));
+      });
 
   // Pagination calculations (against the filtered list)
   const totalPages = Math.max(1, Math.ceil(filteredCreators.length / itemsPerPage));
@@ -332,6 +348,56 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       {/* Accounts Tab */}
       {activeTab === 'accounts' && (
         <>
+          {/* Label filter chips — only render once at least one label exists.
+              OR semantics: each chip toggles its labelId in/out of the filter
+              set; an empty set shows all creators. The "All" chip clears it. */}
+          {creators.length > 0 && labels.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-muted uppercase tracking-wider mr-1">
+                <Tag className="w-3.5 h-3.5" />
+                Filter
+              </span>
+              <button
+                onClick={() => setSelectedFilterLabelIds(new Set())}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all border ${
+                  selectedFilterLabelIds.size === 0
+                    ? 'bg-content text-content-inverse border-content'
+                    : 'bg-surface-secondary text-content-muted border-border hover:text-content hover:border-border-strong'
+                }`}
+              >
+                All
+              </button>
+              {labels.map(label => {
+                const active = selectedFilterLabelIds.has(label.id);
+                return (
+                  <button
+                    key={label.id}
+                    onClick={() => {
+                      setSelectedFilterLabelIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(label.id)) next.delete(label.id);
+                        else next.add(label.id);
+                        return next;
+                      });
+                    }}
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all border ${getLabelColorClass(label.color)} ${
+                      active
+                        ? 'ring-2 ring-content border-transparent'
+                        : 'opacity-60 hover:opacity-100 border-transparent'
+                    }`}
+                  >
+                    {label.name}
+                  </button>
+                );
+              })}
+              {selectedFilterLabelIds.size > 0 && (
+                <span className="text-xs text-content-muted ml-1">
+                  {filteredCreators.length} of {creators.length}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Creators List - Dashboard Style */}
           {creators.length === 0 ? (
         <EmptyState
