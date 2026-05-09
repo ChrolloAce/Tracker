@@ -43,6 +43,7 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import TeamManagementPage from '../components/TeamManagementPage';
 import SelectCreatorModal from '../components/SelectCreatorModal';
 import BulkAssignCreatorModal from '../components/BulkAssignCreatorModal';
+import BulkSparkModal from '../components/video-modal/BulkSparkModal';
 import PaywallOverlay from '../components/PaywallOverlay';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
@@ -400,6 +401,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const [bulkAssignCreatorState, setBulkAssignCreatorState] = useState<{ isOpen: boolean; videoIds: string[]; accountIds: string[]; label: string }>({ isOpen: false, videoIds: [], accountIds: [], label: '' });
+  // Bulk Spark — videos selected from any VideoSubmissionsTable on the page.
+  // The modal applies the same sparkedAt + freeze flag to every video in one
+  // sequential write loop so admins can mark a whole campaign as Sparked
+  // without opening each video individually.
+  const [bulkSparkState, setBulkSparkState] = useState<{ isOpen: boolean; videos: VideoSubmission[] }>({ isOpen: false, videos: [] });
   const [usageLimits, setUsageLimits] = useState<{
     accountsLeft: number;
     videosLeft: number;
@@ -4323,6 +4329,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onBulkRefresh={isSuperAdmin ? handleBulkRefreshVideos : undefined}
                             onToggleStale={handleToggleStale}
                             onBulkToggleStale={handleBulkToggleStale}
+                            onBulkSpark={(videos) => setBulkSparkState({ isOpen: true, videos })}
                             isSuperAdmin={isSuperAdmin}
                             headerTitle={getVideoTableHeader(dateFilter)}
                             trendPeriodDays={getTrendPeriodDays(dateFilter)}
@@ -5607,6 +5614,30 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           setBulkAssignCreatorState({ isOpen: false, videoIds: [], accountIds: [], label: '' });
         }}
       />
+
+      {/* Bulk Spark Modal — applies one Spark moment + freeze flag to every
+          selected video. Refreshes the videos list on apply so the chart
+          immediately reflects the new sparkedAt boundary. */}
+      {currentOrgId && currentProjectId && (
+        <BulkSparkModal
+          isOpen={bulkSparkState.isOpen}
+          onClose={() => setBulkSparkState({ isOpen: false, videos: [] })}
+          orgId={currentOrgId}
+          projectId={currentProjectId}
+          videos={bulkSparkState.videos}
+          onApplied={(sparkedIds, sparkedAt, frozen) => {
+            // Patch local state so the table + chart reflect the change
+            // without a full reload. The combined-submissions selectors
+            // recompute off `submissions`.
+            const ids = new Set(sparkedIds);
+            setSubmissions(prev => prev.map(v =>
+              ids.has(v.id)
+                ? { ...v, sparkedAt, ...(frozen ? { isStale: true } : {}) }
+                : v
+            ));
+          }}
+        />
+      )}
 
       {bulkAddToast && (
         <Toast

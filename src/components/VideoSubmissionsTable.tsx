@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, Users, BarChart3, Download, Link as LinkIcon, Snowflake } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, Users, BarChart3, Download, Link as LinkIcon, Snowflake, Zap } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { MiniTrendChart } from './ui/MiniTrendChart';
@@ -30,6 +30,9 @@ interface VideoSubmissionsTableProps {
   onBulkRefresh?: (videos: VideoSubmission[]) => void;
   onToggleStale?: (video: VideoSubmission) => void;
   onBulkToggleStale?: (videos: VideoSubmission[], isStale: boolean) => void;
+  /** Open the bulk-spark modal pre-loaded with the selected videos. The
+   *  table only forwards the selection; the modal lives on the page. */
+  onBulkSpark?: (videos: VideoSubmission[]) => void;
   isSuperAdmin?: boolean;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
   trendPeriodDays?: number; // Number of days for trend calculation (defaults to 7)
@@ -212,6 +215,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onBulkRefresh,
   onToggleStale,
   onBulkToggleStale,
+  onBulkSpark,
   isSuperAdmin,
   headerTitle,
   trendPeriodDays = 7
@@ -758,6 +762,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       >
                         <Users className="w-4 h-4" />
                         <span>Assign to Creator</span>
+                      </button>
+                    )}
+                    {onBulkSpark && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowActionsMenu(false);
+                          const selectedSubs = filteredAndSortedSubmissions.filter((v: VideoSubmission) => selectedVideos.has(v.id));
+                          onBulkSpark(selectedSubs);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-orange-400 hover:bg-orange-500/10 flex items-center space-x-3 transition-colors border-t border-border"
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>Spark Selected</span>
                       </button>
                     )}
                     {isSuperAdmin && onBulkRefresh && (
