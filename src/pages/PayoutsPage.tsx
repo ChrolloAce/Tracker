@@ -1421,6 +1421,13 @@ function FlatPayoutsView({
   const campaignPickerRef = useRef<HTMLDivElement>(null);
   const [pickerForCreatorId, setPickerForCreatorId] = useState<{ campaignId: string; creatorId: string } | null>(null);
   const [payConfirmFor, setPayConfirmFor] = useState<{ campaignId: string; creatorId: string } | null>(null);
+  // Bulk selection — keys are `${campaignId}:${creatorId}` so the same person
+  // appearing in two campaigns gets two distinct checkboxes (each row is its
+  // own (campaign, creator) pair). When non-empty, the bulk action bar
+  // surfaces above the table with "Apply structure to N selected".
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
+  const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
+  const rowKey = (campaignId: string, creatorId: string) => `${campaignId}:${creatorId}`;
 
   useEffect(() => {
     if (!showCampaignPicker) return;
@@ -1434,6 +1441,31 @@ function FlatPayoutsView({
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [showCampaignPicker]);
+
+  // Apply a structure to every currently-selected row in one pass. Groups by
+  // campaign so each campaign gets a single onUpdateCampaign call (not one
+  // per creator) — keeps Firestore writes batched and avoids a re-render
+  // storm on the campaign list.
+  const applyBulkStructure = useCallback((structure: PayoutStructure) => {
+    if (selectedRowKeys.size === 0) return;
+    const byCampaign = new Map<string, Set<string>>();
+    selectedRowKeys.forEach(k => {
+      const [cid, crid] = k.split(':');
+      const set = byCampaign.get(cid) || new Set<string>();
+      set.add(crid);
+      byCampaign.set(cid, set);
+    });
+    byCampaign.forEach((creatorIds, cid) => {
+      onUpdateCampaign(cid, prev => ({
+        ...prev,
+        creators: prev.creators.map(x =>
+          creatorIds.has(x.id) ? recalcCreator({ ...x, structure }, prev) : x,
+        ),
+      }));
+    });
+    setSelectedRowKeys(new Set());
+    setBulkPickerOpen(false);
+  }, [selectedRowKeys, onUpdateCampaign]);
 
   // Flatten + filter. `nonStatusRows` ignores the status tab so totals stay
   // stable across tab switches — they reflect the active campaign/creator/search
@@ -1761,9 +1793,53 @@ function FlatPayoutsView({
         </div>
       ) : (
         <div className="rounded-2xl bg-surface-secondary border border-border shadow-theme overflow-hidden">
+          {/* Bulk action bar — appears when at least one row is selected.
+              The "Apply structure" button reuses the existing slide-over so
+              admins get the same picker experience whether they're assigning
+              to one or to many. */}
+          {selectedRowKeys.size > 0 && (
+            <div className="flex items-center justify-between gap-3 px-5 py-2.5 bg-orange-500/10 border-b border-orange-500/30">
+              <div className="text-sm font-semibold text-content">
+                {selectedRowKeys.size} selected
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setBulkPickerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Apply structure to {selectedRowKeys.size}
+                </button>
+                <button
+                  onClick={() => setSelectedRowKeys(new Set())}
+                  className="px-3 py-1.5 rounded-lg border border-border-subtle text-content-muted hover:text-content hover:border-border-strong text-xs font-semibold"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <div className="hidden md:flex items-center bg-surface-tertiary/40 text-[11px] font-semibold uppercase tracking-wider text-content-muted">
-              <div className="sticky left-0 bg-surface-tertiary/40 w-[260px] flex-shrink-0 pl-5 pr-2 py-2.5">Creator</div>
+              <div className="sticky left-0 bg-surface-tertiary/40 w-[40px] flex-shrink-0 pl-4 pr-1 py-2.5 flex items-center">
+                <input
+                  type="checkbox"
+                  checked={filteredRows.length > 0 && filteredRows.every(r => selectedRowKeys.has(rowKey(r.campaign.id, r.creator.id)))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const next = new Set(selectedRowKeys);
+                      filteredRows.forEach(r => next.add(rowKey(r.campaign.id, r.creator.id)));
+                      setSelectedRowKeys(next);
+                    } else {
+                      const next = new Set(selectedRowKeys);
+                      filteredRows.forEach(r => next.delete(rowKey(r.campaign.id, r.creator.id)));
+                      setSelectedRowKeys(next);
+                    }
+                  }}
+                  className="w-3.5 h-3.5 accent-orange-500 cursor-pointer"
+                />
+              </div>
+              <div className="sticky left-[40px] bg-surface-tertiary/40 w-[260px] flex-shrink-0 pl-1 pr-2 py-2.5">Creator</div>
               <div className="flex-1 min-w-[200px] px-3 py-2.5">Campaign</div>
               <div className="w-[180px] flex-shrink-0 px-3 py-2.5">Billing Period</div>
               <div className="w-[140px] flex-shrink-0 px-3 py-2.5">Amount</div>
@@ -1773,22 +1849,63 @@ function FlatPayoutsView({
             <div className="border-t border-border-subtle divide-y divide-border-subtle">
               {filteredRows.map(({ campaign, creator }) => {
                 const handlers = makeHandlers(campaign, creator.id);
+                const k = rowKey(campaign.id, creator.id);
+                const checked = selectedRowKeys.has(k);
                 return (
-                  <CreatorCard
-                    key={`${campaign.id}-${creator.id}`}
-                    creator={creator}
-                    orgId={orgId}
-                    projectId={projectId}
-                    campaign={campaign}
-                    showCampaignColumn
-                    payoutsEnabled={payoutsEnabled}
-                    {...handlers}
-                  />
+                  <div key={`${campaign.id}-${creator.id}`} className={`flex items-stretch ${checked ? 'bg-orange-500/5' : ''}`}>
+                    <div className="w-[40px] flex-shrink-0 flex items-start pt-5 pl-4 pr-1">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setSelectedRowKeys(prev => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(k);
+                            else next.delete(k);
+                            return next;
+                          });
+                        }}
+                        className="w-3.5 h-3.5 accent-orange-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <CreatorCard
+                        creator={creator}
+                        orgId={orgId}
+                        projectId={projectId}
+                        campaign={campaign}
+                        showCampaignColumn
+                        payoutsEnabled={payoutsEnabled}
+                        {...handlers}
+                      />
+                    </div>
+                  </div>
                 );
               })}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bulk structure picker — same slide-over, just a synthetic creator
+          for the picker prop (it only uses creator.name for the title). */}
+      {bulkPickerOpen && (
+        <StructurePickerSlideOver
+          creator={{
+            id: '_bulk',
+            name: `${selectedRowKeys.size} creator${selectedRowKeys.size === 1 ? '' : 's'}`,
+            email: '',
+            videos: [],
+            videosLoaded: false,
+            videosLoading: false,
+            payoutStatus: 'pending',
+          }}
+          orgId={orgId}
+          projectId={projectId}
+          userId={userId}
+          onClose={() => setBulkPickerOpen(false)}
+          onAssign={applyBulkStructure}
+        />
       )}
 
       {/* Structure picker */}

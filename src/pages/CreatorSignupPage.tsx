@@ -54,6 +54,10 @@ const CreatorSignupPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Portal URL returned by the API after a successful signup. The success
+  // screen offers a "Go to your dashboard" button that opens this link
+  // (the creator's own scoped public dashboard at /c/:token).
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -96,7 +100,15 @@ const CreatorSignupPage: React.FC = () => {
       if (!r.ok) {
         setSubmitError(json?.error || 'Could not submit the form.');
       } else {
+        setPortalUrl(json?.data?.portalUrl || null);
         setSuccess(true);
+        // Auto-redirect to the creator's portal after a brief success beat
+        // so they don't have to click — same intent as the user's request
+        // ("take me to their dashboard"). The CTA below is the fallback.
+        const url = json?.data?.portalUrl;
+        if (url) {
+          setTimeout(() => { window.location.href = url; }, 1200);
+        }
       }
     } catch {
       setSubmitError('Network error submitting the form.');
@@ -138,16 +150,28 @@ const CreatorSignupPage: React.FC = () => {
           <h1 className="text-2xl font-bold">Your account has been created</h1>
           <p className="text-sm text-content-muted leading-relaxed">
             Thanks for signing up to <span className="font-semibold text-content">{spec.project.name}</span>.
-            We've added you as a creator and started tracking the accounts you submitted. The team
-            will share your portal link with you shortly so you can see your stats live.
+            We've added you as a creator and started tracking the accounts you submitted.
+            {portalUrl
+              ? ' Taking you to your dashboard now…'
+              : ' The team will share your portal link with you shortly.'}
           </p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] active:shadow-[0_0_0_0_#c2410c] active:translate-y-0.5 transition-all"
-          >
-            Go to ViewTrack
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          {portalUrl ? (
+            <a
+              href={portalUrl}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] active:shadow-[0_0_0_0_#c2410c] active:translate-y-0.5 transition-all"
+            >
+              Go to your dashboard
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          ) : (
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-[0_3px_0_0_#c2410c] hover:shadow-[0_2px_0_0_#c2410c] active:shadow-[0_0_0_0_#c2410c] active:translate-y-0.5 transition-all"
+            >
+              Go to ViewTrack
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
     );
