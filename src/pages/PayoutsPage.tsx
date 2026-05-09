@@ -1463,9 +1463,21 @@ function FlatPayoutsView({
         ),
       }));
     });
+    // Kick off the on-demand video load for any selected creator that
+    // hasn't loaded yet, so each row's amount populates without the admin
+    // having to expand them one at a time. Same path as a manual click.
+    const targetCampaigns = campaigns.filter(c => byCampaign.has(c.id));
+    for (const c of targetCampaigns) {
+      const wantedCreators = byCampaign.get(c.id)!;
+      for (const cr of c.creators) {
+        if (!wantedCreators.has(cr.id)) continue;
+        if (cr.videosLoaded || cr.videosLoading) continue;
+        makeHandlers(c, cr.id).onLoadVideos();
+      }
+    }
     setSelectedRowKeys(new Set());
     setBulkPickerOpen(false);
-  }, [selectedRowKeys, onUpdateCampaign]);
+  }, [selectedRowKeys, onUpdateCampaign, campaigns]);
 
   // Flatten + filter. `nonStatusRows` ignores the status tab so totals stay
   // stable across tab switches — they reflect the active campaign/creator/search
@@ -1920,12 +1932,20 @@ function FlatPayoutsView({
             projectId={projectId}
             userId={userId}
             onClose={() => setPickerForCreatorId(null)}
-            onAssign={s => {
+            onAssign={async s => {
               onUpdateCampaign(c.id, prev => ({
                 ...prev,
                 creators: prev.creators.map(x => x.id === cr.id ? recalcCreator({ ...x, structure: s }, prev) : x),
               }));
               setPickerForCreatorId(null);
+              // If videos aren't loaded yet, the recalcCreator call above
+              // returned the creator unchanged (it short-circuits on empty
+              // videos) — so the amount column would read $0 until the user
+              // expanded the row. Trigger the same on-demand load now so
+              // the calc + persist happens immediately.
+              if (!cr.videosLoaded && !cr.videosLoading) {
+                makeHandlers(c, cr.id).onLoadVideos();
+              }
             }}
           />
         );
