@@ -39,16 +39,21 @@ function deepScanForAvatarUrl(obj: any, depth: number = 0, maxDepth: number = 4)
  * 
  * Purpose: Handle TikTok video discovery and refresh
  * Responsibilities:
- * - Discover new TikTok videos (forward discovery, 10 most recent)
+ * - Discover new TikTok videos (scan up to `limit` recent posts, dedupe by id)
  * - Refresh existing TikTok videos (batch refresh all videos)
  * - Upload thumbnails to Firebase Storage
  * - Normalize video data format
  */
 export class TikTokSyncService {
   /**
-   * Discover new TikTok videos (forward discovery)
-   * Fetches the 10 most recent videos and returns only NEW videos
-   * 
+   * Discover new TikTok videos.
+   *
+   * Fetches up to `limit` videos from the profile and returns every video
+   * whose id is not in `existingVideos`. We deliberately scan the entire
+   * batch instead of stopping at the first duplicate — apidojo/tiktok-scraper-api
+   * surfaces pinned/featured posts first, so a strict "stop at first match"
+   * loop misses every newer-than-pinned post.
+   *
    * @param account - Tracked account object
    * @param orgId - Organization ID for thumbnail storage
    * @param existingVideos - Map of existing video IDs
@@ -116,24 +121,22 @@ export class TikTokSyncService {
         }
       }
       
-      // Filter out existing videos
+      // Scan the full batch and dedupe against existingVideos. apidojo's
+      // ordering is pinned-first then chronological, so we can't break early.
       const newVideos: any[] = [];
-      let foundDuplicate = false;
-      
+      let duplicateCount = 0;
+
       for (const video of batch) {
         const videoId = video.id;
         if (!videoId) continue;
-        
         if (existingVideos.has(videoId)) {
-          console.log(`    ✓ [TIKTOK] Found duplicate: ${videoId} - stopping discovery`);
-          foundDuplicate = true;
-          break;
+          duplicateCount++;
+          continue;
         }
-        
         newVideos.push(video);
       }
-      
-      console.log(`    📊 [TIKTOK] Discovered ${newVideos.length} new videos${foundDuplicate ? ' (stopped at duplicate)' : ''}`);
+
+      console.log(`    📊 [TIKTOK] Discovered ${newVideos.length} new videos (skipped ${duplicateCount} already in DB)`);
       
       // Normalize and upload thumbnails
       const normalizedVideos: any[] = [];

@@ -392,7 +392,7 @@ export default async function handler(
           if (isFirstTimeSync) {
             console.log(`   🆕 First-time sync - will fetch up to ${tiktokDiscoveryLimit} videos (capped by plan)`);
         } else {
-            console.log(`   🔄 Regular sync - will stop at first duplicate`);
+            console.log(`   🔄 Regular sync - will dedupe against ${videosToCheck.size} known videos`);
           }
 
           const result = await TikTokSyncService.discovery(account, orgId, videosToCheck, tiktokDiscoveryLimit);
